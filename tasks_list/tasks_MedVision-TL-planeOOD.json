@@ -1,0 +1,22 @@
+{
+    "autoPET-III_TumorLesionSize_Task01_Sagittal": 64,
+    "autoPET-III_TumorLesionSize_Task01_Coronal": 79,
+    "BraTS24_TumorLesionSize_Task04_Sagittal": 154,
+    "BraTS24_TumorLesionSize_Task04_Coronal": 294,
+    "BraTS24_TumorLesionSize_Task05_Sagittal": 191,
+    "BraTS24_TumorLesionSize_Task05_Coronal": 253,
+    "BraTS24_TumorLesionSize_Task10_Sagittal": 140,
+    "BraTS24_TumorLesionSize_Task10_Coronal": 82,
+    "HNTSMRG24_TumorLesionSize_Task02_Sagittal": 8,
+    "HNTSMRG24_TumorLesionSize_Task02_Coronal": 35,
+    "KiPA22_TumorLesionSize_Task01_Sagittal": 278,
+    "KiPA22_TumorLesionSize_Task01_Coronal": 361,
+    "KiTS23_TumorLesionSize_Task01_Sagittal": 838,
+    "KiTS23_TumorLesionSize_Task01_Coronal": 1053,
+    "MSD_TumorLesionSize_Task03_Sagittal": 111,
+    "MSD_TumorLesionSize_Task03_Coronal": 136,
+    "MSD_TumorLesionSize_Task05_Sagittal": 270,
+    "MSD_TumorLesionSize_Task05_Coronal": 302,
+    "MSD_TumorLesionSize_Task06_Sagittal": 128,
+    "MSD_TumorLesionSize_Task06_Coronal": 201
+}

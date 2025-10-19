@@ -1,0 +1,12 @@
+{
+    "autoPET-III_TumorLesionSize_Task01_Axial-336x336": 87,
+    "BraTS24_TumorLesionSize_Task04_Axial-336x336": 347,
+    "BraTS24_TumorLesionSize_Task05_Axial-336x336": 556,
+    "BraTS24_TumorLesionSize_Task10_Axial-336x336": 399,
+    "HNTSMRG24_TumorLesionSize_Task02_Axial-336x336": 148,
+    "KiPA22_TumorLesionSize_Task01_Axial-336x336": 866,
+    "KiTS23_TumorLesionSize_Task01_Axial-336x336": 1859,
+    "MSD_TumorLesionSize_Task03_Axial-336x336": 223,
+    "MSD_TumorLesionSize_Task05_Axial-336x336": 543,
+    "MSD_TumorLesionSize_Task06_Axial-336x336": 428
+}

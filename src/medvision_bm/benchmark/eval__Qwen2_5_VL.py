@@ -168,7 +168,7 @@ def main():
         install_vendored_lmms_eval(proj_dependency="qwen2_5_vl")
         install_medvision_ds(data_dir)
         install_torch_cu124()
-        # install_flash_attention_torch_and_deps_py311_v2()
+        install_flash_attention_torch_and_deps_py311_v2()
         # NOTE: vllm version may need to be adjusted based on compatibility of model and transformers version
         install_vllm(data_dir, version="0.10.2")
         # NOTE: Reinstall packages to overwrite potentially incompatible versions
