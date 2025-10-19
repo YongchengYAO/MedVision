@@ -2,6 +2,12 @@
 
 This is the official codebase of **MedVision**.
 
+🌏 **Project**: [to be updated]
+
+🧑🏻‍💻 **Code**: https://github.com/YongchengYAO/MedVision
+
+🩻 **Huggingface Dataset**: [YongchengYAO/MedVision](https://huggingface.co/datasets/YongchengYAO/MedVision)
+
 # TODO
 
 - [ ] Add preprint and project page
