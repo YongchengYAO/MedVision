@@ -1,0 +1,3 @@
+include: KiPA22_BoxCoordinate_base-336x336.yaml
+task: KiPA22_BoxCoordinate_Task01_Axial-336x336
+dataset_name: KiPA22_BoxSize_Task01_Axial_Test

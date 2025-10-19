@@ -1,0 +1,48 @@
+tag: MedVision-BoxCoordinate,TotalSegmentator
+dataset_path: YongchengYAO/MedVision
+dataset_kwargs:
+  token: True
+  trust_remote_code: True
+test_split: test
+fewshot_split: test
+num_fewshot: 0
+output_type: generate_until
+doc_to_visual: !function utils.doc_to_visual
+doc_to_text: !function utils.doc_to_text_BoxCoordinate
+doc_to_target: !function utils.doc_to_target_BoxCoordinate
+process_results: !function utils.process_results_BoxCoordinate
+metric_list:
+- metric: avgMAE
+  aggregation: !function utils.aggregate_results_avgMAE
+  higher_is_better: false
+- metric: avgMRE
+  aggregation: !function utils.aggregate_results_avgMRE
+  higher_is_better: false
+- metric: SuccessRate
+  aggregation: !function utils.aggregate_results_SuccessRate
+  higher_is_better: true
+# order: <model name>, default, dataset
+# code: https://github.com/EvolvingLMMs-Lab/lmms-eval/blob/978eb7f1ccb994f580f9c74309321ad1cf2a5d7e/lmms_eval/api/task.py#L790
+lmms_eval_specific_kwargs:
+  medgemma:
+  biomedgpt:
+  healthgpt:
+  llava_med:
+  meddr:
+  huatuogpt_vision:
+  gemini__2_5:
+  gemini__2_5_woTool:
+  internvl3:
+  llava_onevision:
+  qwen2_5_vl:
+    model: "qwen2_5_vl"
+    sample_model_hf: "Qwen/Qwen2.5-VL-32B-Instruct"
+  vllm_qwen25vl:
+    model: "qwen2_5_vl"
+    sample_model_hf: "Qwen/Qwen2.5-VL-32B-Instruct"
+  default:
+    pre_prompt: ""
+    post_prompt: ""
+  dataset:
+metadata:
+- version: 1.0.0

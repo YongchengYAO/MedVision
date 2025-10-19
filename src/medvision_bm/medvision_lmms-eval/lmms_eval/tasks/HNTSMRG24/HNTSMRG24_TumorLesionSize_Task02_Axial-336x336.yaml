@@ -1,0 +1,3 @@
+include: HNTSMRG24_TumorLesionSize_base-336x336.yaml
+task: HNTSMRG24_TumorLesionSize_Task02_Axial-336x336
+dataset_name: HNTSMRG24_TumorLesionSize_Task02_Axial_Test

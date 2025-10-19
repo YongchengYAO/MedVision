@@ -1,0 +1,41 @@
+# Use Ubuntu as the base image
+FROM ubuntu:20.04
+
+# Avoid interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-c"]
+
+#=================================================================
+# Base OS deps (no extra users, no GitHub setup)
+USER root
+RUN apt-get update && apt-get install -y --fix-missing \
+    sudo wget curl ca-certificates unzip vim git git-lfs \
+    build-essential gcc g++ bzip2 \
+    libglib2.0-0 libxext6 libsm6 libxrender1 libgl1 \
+    libopenmpi-dev openmpi-bin \
+    openssh-server fish \
+ && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+#=================================================================
+# Miniconda (system-wide under /opt), keep image small
+ENV PATH="/opt/miniconda/bin:/usr/local/bin:${PATH}"
+RUN mkdir -p /opt && \
+    wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
+    bash /tmp/miniconda.sh -b -u -p /opt/miniconda && \
+    rm -f /tmp/miniconda.sh && \
+    /opt/miniconda/bin/conda config --system --set auto_update_conda false && \
+    /opt/miniconda/bin/conda clean -afy
+
+#=================================================================
+# Clone MedVision repository
+RUN set -eux; \
+    mkdir -p /root/Documents; \
+    cd /root/Documents; \
+    if [ ! -d "MedVision" ]; then \
+        GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/YongchengYAO/MedVision.git; \
+    fi
+
+#=================================================================
+ENV HOME="/root"
+WORKDIR /root/Documents
+CMD ["/bin/bash"]

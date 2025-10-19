@@ -1,0 +1,3 @@
+include: KiTS23_TumorLesionSize_base-336x336.yaml
+task: KiTS23_TumorLesionSize_Task01_Axial-336x336
+dataset_name: KiTS23_TumorLesionSize_Task01_Axial_Test

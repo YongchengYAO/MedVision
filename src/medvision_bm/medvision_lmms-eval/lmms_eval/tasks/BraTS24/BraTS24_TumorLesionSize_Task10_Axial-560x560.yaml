@@ -1,0 +1,3 @@
+include: BraTS24_TumorLesionSize_base-560x560.yaml
+task: BraTS24_TumorLesionSize_Task10_Axial-560x560
+dataset_name: BraTS24_TumorLesionSize_Task10_Axial_Test

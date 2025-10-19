@@ -1,0 +1,3 @@
+include: TotalSegmentator_MaskSize_base.yaml
+task: TotalSegmentator_MaskSize_Task01_Coronal 
+dataset_name: TotalSegmentator_MaskSize_Task01_Coronal_Test

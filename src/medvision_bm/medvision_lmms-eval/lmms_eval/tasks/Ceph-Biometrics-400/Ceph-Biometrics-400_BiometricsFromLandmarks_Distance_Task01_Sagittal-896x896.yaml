@@ -1,0 +1,3 @@
+include: Ceph-Biometrics-400_BiometricsFromLandmarks_base-896x896.yaml
+task: Ceph-Biometrics-400_BiometricsFromLandmarks_Distance_Task01_Sagittal-896x896
+dataset_name: Ceph-Biometrics-400_BiometricsFromLandmarks_Distance_Task01_Sagittal_Test

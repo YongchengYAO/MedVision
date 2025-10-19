@@ -1,0 +1,3 @@
+include: FeTA24_BiometricsFromLandmarks_base_local_ds.yaml
+task: FeTA24_BiometricsFromLandmarks_Task01_Sagittal_local_ds_OOD
+dataset_path: /mnt/vincent-pvc-rwm/BiometricVQA-Bench/Data/BiometricVQA/local_processed_dataset_ADTask-OOD/FeTA24_BiometricsFromLandmarks_Task01_Sagittal_Test

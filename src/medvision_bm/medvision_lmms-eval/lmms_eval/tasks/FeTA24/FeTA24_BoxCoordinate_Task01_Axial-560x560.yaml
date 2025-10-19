@@ -1,0 +1,3 @@
+include: FeTA24_BoxCoordinate_base-560x560.yaml
+task: FeTA24_BoxCoordinate_Task01_Axial-560x560
+dataset_name: FeTA24_BoxSize_Task01_Axial_Test

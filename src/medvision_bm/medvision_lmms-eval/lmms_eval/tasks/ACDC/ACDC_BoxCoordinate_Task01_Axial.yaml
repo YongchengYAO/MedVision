@@ -1,0 +1,3 @@
+include: ACDC_BoxCoordinate_base.yaml
+task: ACDC_BoxCoordinate_Task01_Axial
+dataset_name: ACDC_BoxSize_Task01_Axial_Test

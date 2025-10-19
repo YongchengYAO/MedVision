@@ -1,0 +1,3 @@
+include: autoPET-III_TumorLesionSize_base-560x560.yaml
+task: autoPET-III_TumorLesionSize_Task01_Axial-560x560
+dataset_name: autoPET-III_TumorLesionSize_Task01_Axial_Test

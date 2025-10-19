@@ -1,0 +1,3 @@
+include: SKM-TEA_BoxCoordinate_base-560x560.yaml
+task: SKM-TEA_BoxCoordinate_Task02_Axial-560x560
+dataset_name: SKM-TEA_BoxSize_Task02_Axial_Test

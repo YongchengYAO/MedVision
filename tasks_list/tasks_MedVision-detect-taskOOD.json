@@ -1,0 +1,17 @@
+{
+    "ISLES24_BoxCoordinate_Task02_Sagittal": 269,
+    "ISLES24_BoxCoordinate_Task02_Coronal": 742,
+    "ISLES24_BoxCoordinate_Task02_Axial": 247,
+    "AMOS22_BoxCoordinate_Task02_Sagittal": 70095,
+    "AMOS22_BoxCoordinate_Task02_Coronal": 61427,
+    "AMOS22_BoxCoordinate_Task02_Axial": 33606,
+    "BCV15_BoxCoordinate_Task02_Sagittal": 6007,
+    "BCV15_BoxCoordinate_Task02_Coronal": 5714,
+    "BCV15_BoxCoordinate_Task02_Axial": 3042,
+    "BraTS24_BoxCoordinate_Task11_Sagittal": 2479,
+    "BraTS24_BoxCoordinate_Task11_Coronal": 2339,
+    "BraTS24_BoxCoordinate_Task11_Axial": 3235,
+    "BraTS24_BoxCoordinate_Task05_Sagittal": 3533,
+    "BraTS24_BoxCoordinate_Task05_Coronal": 4154,
+    "BraTS24_BoxCoordinate_Task05_Axial": 2916
+}

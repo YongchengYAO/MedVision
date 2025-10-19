@@ -1,0 +1,3 @@
+include: SKM-TEA_BoxCoordinate_base.yaml
+task: SKM-TEA_BoxCoordinate_Task02_Coronal 
+dataset_name: SKM-TEA_BoxSize_Task02_Coronal_Test

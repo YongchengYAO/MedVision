@@ -1,0 +1,3 @@
+include: MSD_BoxCoordinate_base-336x336.yaml
+task: MSD_BoxCoordinate_Task02_Axial-336x336
+dataset_name: MSD_BoxSize_Task02_Axial_Test

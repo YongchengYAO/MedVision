@@ -1,0 +1,84 @@
+FROM vincentycyao/medvision:base
+
+# Avoid interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-c"]
+
+#=================================================================
+# Lingshu environment setup
+ENV ENV_NAME="eval-lingshu"
+
+# Configure conda to use only conda-forge channel
+RUN set -eux; \
+    /opt/miniconda/bin/conda config --system --remove-key default_channels || true; \
+    /opt/miniconda/bin/conda config --system --remove-key channels || true; \
+    /opt/miniconda/bin/conda config --system --add channels conda-forge; \
+    /opt/miniconda/bin/conda config --system --set channel_priority strict
+
+# Create conda environment using conda-forge channel
+RUN set -eux; \
+    source /opt/miniconda/etc/profile.d/conda.sh && \
+    eval "$(conda shell.bash hook)" && \
+    if [ -d "/opt/miniconda/envs/${ENV_NAME}" ]; then \
+        echo "Conda env '${ENV_NAME}' already exists. Skipping creation."; \
+    else \
+        conda create -n "${ENV_NAME}" python=3.11 -y; \
+    fi
+    
+# Install CUDA toolkit
+RUN set -eux; \
+    CONDA_BIN="/opt/miniconda/bin/conda"; \
+    ${CONDA_BIN} install -n "${ENV_NAME}" --override-channels -c nvidia -c conda-forge cuda-toolkit=12.4 -y
+
+# Upgrade pip
+RUN set -eux; \
+    CONDA_BIN="/opt/miniconda/bin/conda"; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --upgrade pip setuptools wheel
+
+# Install MedVision package
+RUN set -eux; \
+    CONDA_BIN="/opt/miniconda/bin/conda"; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install "/root/Documents/MedVision"
+
+# Setup evaluation environment
+RUN set -eux; \
+    CONDA_BIN="/opt/miniconda/bin/conda"; \
+    cd /root/Documents/MedVision; \
+    git pull; \
+    \
+    # Set paths and configs
+    benchmark_dir="/root/Documents/MedVision"; \
+    data_dir="${benchmark_dir}/Data"; \
+    model_hf_id="lingshu-medical-mllm/Lingshu-32B"; \
+    model_name="lingshu-32b"; \
+    batch_size_per_gpu=10; \
+    \
+    # Other configs (safe to leave as is)
+    task_tag="MedVision-AD"; \
+    result_dir="${benchmark_dir}/Results/${task_tag}"; \
+    tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-AD.json"; \
+    task_status_json_path="${benchmark_dir}/completed_tasks/completed_tasks_${task_tag}.json"; \
+    sample_limit=1000; \
+    \
+    # Install medvision_bm
+    rm -rf "${benchmark_dir}/build" "${benchmark_dir}/src/medvision_bm.egg-info"; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install "${benchmark_dir}"; \
+    \
+    # Run evaluation
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output \
+    python -m medvision_bm.benchmark.eval__lingshu \
+    --env_setup_only \
+    --model_hf_id $model_hf_id \
+    --model_name $model_name \
+    --results_dir $result_dir \
+    --data_dir $data_dir \
+    --tasks_list_json_path $tasks_list_json_path \
+    --task_status_json_path $task_status_json_path \
+    --batch_size_per_gpu $batch_size_per_gpu \
+    --sample_limit $sample_limit
+#=================================================================
+ENV HOME="/root"
+WORKDIR /root/Documents
+# Replace default bash with a command that initializes conda and activates the env,
+# then drops into an interactive shell.
+CMD ["bash", "-lc", "source /opt/miniconda/etc/profile.d/conda.sh && conda activate ${ENV_NAME} && exec bash"]

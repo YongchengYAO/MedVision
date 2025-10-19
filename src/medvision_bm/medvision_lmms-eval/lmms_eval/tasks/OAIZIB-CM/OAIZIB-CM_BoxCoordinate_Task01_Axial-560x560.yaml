@@ -1,0 +1,3 @@
+include: OAIZIB-CM_BoxCoordinate_base-560x560.yaml
+task: OAIZIB-CM_BoxCoordinate_Task01_Axial-560x560
+dataset_name: OAIZIB-CM_BoxSize_Task01_Axial_Test

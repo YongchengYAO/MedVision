@@ -1,0 +1,3 @@
+include: TopCoW24_BoxCoordinate_base.yaml
+task: TopCoW24_BoxCoordinate_Task02_Coronal 
+dataset_name: TopCoW24_BoxSize_Task02_Coronal_Test

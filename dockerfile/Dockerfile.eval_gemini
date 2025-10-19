@@ -1,0 +1,50 @@
+FROM vincentycyao/medvision:base
+
+# Avoid interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-c"]
+
+#=================================================================
+# Gemini-2.5 environment setup
+ENV ENV_NAME="eval-gemini25"
+
+# Create conda environment using conda-forge channel
+RUN set -eux; \
+    source /opt/miniconda/etc/profile.d/conda.sh && \
+    eval "$(conda shell.bash hook)" && \
+    if [ -d "/opt/miniconda/envs/${ENV_NAME}" ]; then \
+        echo "Conda env '${ENV_NAME}' already exists. Skipping creation."; \
+    else \
+        conda create --override-channels -n ${ENV_NAME} python=3.11 -y -c conda-forge; \
+    fi
+    
+# Install CUDA toolkit
+RUN set -eux; \
+    CONDA_BIN="/opt/miniconda/bin/conda"; \
+    ${CONDA_BIN} install -n "${ENV_NAME}" --override-channels -c nvidia -c conda-forge cuda-toolkit=12.4 -y
+
+# Upgrade pip
+RUN set -eux; \
+    CONDA_BIN="/opt/miniconda/bin/conda"; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --upgrade pip setuptools wheel
+
+# Install MedVision package
+RUN set -eux; \
+    CONDA_BIN="/opt/miniconda/bin/conda"; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install "/root/Documents/MedVision"
+
+# Setup evaluation environment
+RUN set -eux; \
+    CONDA_BIN="/opt/miniconda/bin/conda"; \
+    cd /root/Documents/MedVision; \
+    git pull; \
+    DATA_DIR="/root/Documents/MedVision/Data"; \
+    mkdir -p "${DATA_DIR}"; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output python -m medvision_bm.benchmark.env_setup -r requirements/requirements_eval_gemini25.txt --lmms_eval_opt_deps gemini25 --data_dir "${DATA_DIR}"
+
+#=================================================================
+ENV HOME="/root"
+WORKDIR /root/Documents
+# Replace default bash with a command that initializes conda and activates the env,
+# then drops into an interactive shell.
+CMD ["bash", "-lc", "source /opt/miniconda/etc/profile.d/conda.sh && conda activate ${ENV_NAME} && exec bash"]
