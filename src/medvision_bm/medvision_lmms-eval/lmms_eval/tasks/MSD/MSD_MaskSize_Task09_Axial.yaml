@@ -1,0 +1,3 @@
+include: MSD_MaskSize_base.yaml
+task: MSD_MaskSize_Task09_Axial 
+dataset_name: MSD_MaskSize_Task09_Axial_Test

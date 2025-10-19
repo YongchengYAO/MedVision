@@ -1,0 +1,3 @@
+include: CAMUS_BoxCoordinate_base-336x336.yaml
+task: CAMUS_BoxCoordinate_Task01_Axial-336x336
+dataset_name: CAMUS_BoxSize_Task01_Axial_Test

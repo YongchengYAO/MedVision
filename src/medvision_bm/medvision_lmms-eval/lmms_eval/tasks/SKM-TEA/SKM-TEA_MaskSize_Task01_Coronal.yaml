@@ -1,0 +1,3 @@
+include: SKM-TEA_MaskSize_base.yaml
+task: SKM-TEA_MaskSize_Task01_Coronal 
+dataset_name: SKM-TEA_MaskSize_Task01_Coronal_Test

@@ -1,0 +1,3 @@
+include: MSD_TumorLesionSize_base-896x896.yaml
+task: MSD_TumorLesionSize_Task03_Axial-896x896
+dataset_name: MSD_TumorLesionSize_Task03_Axial_Test

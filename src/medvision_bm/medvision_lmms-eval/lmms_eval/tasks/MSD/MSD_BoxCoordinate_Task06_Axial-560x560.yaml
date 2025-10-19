@@ -1,0 +1,3 @@
+include: MSD_BoxCoordinate_base-560x560.yaml
+task: MSD_BoxCoordinate_Task06_Axial-560x560
+dataset_name: MSD_BoxSize_Task06_Axial_Test

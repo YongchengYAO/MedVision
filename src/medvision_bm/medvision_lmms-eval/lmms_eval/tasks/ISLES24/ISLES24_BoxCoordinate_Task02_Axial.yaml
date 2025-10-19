@@ -1,0 +1,3 @@
+include: ISLES24_BoxCoordinate_base.yaml
+task: ISLES24_BoxCoordinate_Task02_Axial 
+dataset_name: ISLES24_BoxSize_Task02_Axial_Test

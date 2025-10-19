@@ -1,0 +1,3 @@
+include: HNTSMRG24_BoxCoordinate_base-336x336.yaml
+task: HNTSMRG24_BoxCoordinate_Task01_Axial-336x336
+dataset_name: HNTSMRG24_BoxSize_Task01_Axial_Test

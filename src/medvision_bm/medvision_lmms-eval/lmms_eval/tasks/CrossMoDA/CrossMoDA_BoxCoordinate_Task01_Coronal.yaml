@@ -1,0 +1,3 @@
+include: CrossMoDA_BoxCoordinate_base.yaml
+task: CrossMoDA_BoxCoordinate_Task01_Coronal 
+dataset_name: CrossMoDA_BoxSize_Task01_Coronal_Test

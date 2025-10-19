@@ -1,0 +1,3 @@
+include: MSD_MaskSize_base.yaml
+task: MSD_MaskSize_Task10_Sagittal
+dataset_path: MSD_MaskSize_Task10_Sagittal_Test

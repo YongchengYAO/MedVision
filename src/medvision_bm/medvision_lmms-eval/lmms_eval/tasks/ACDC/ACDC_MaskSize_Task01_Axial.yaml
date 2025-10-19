@@ -1,0 +1,3 @@
+include: ACDC_MaskSize_base.yaml
+task: ACDC_MaskSize_Task01_Axial
+dataset_name: ACDC_MaskSize_Task01_Axial_Test

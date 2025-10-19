@@ -1,0 +1,3 @@
+include: KiTS23_BoxCoordinate_base.yaml
+task: KiTS23_BoxCoordinate_Task01_Axial
+dataset_name: KiTS23_BoxSize_Task01_Axial_Test

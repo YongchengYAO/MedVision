@@ -1,0 +1,3 @@
+include: TotalSegmentator_BoxCoordinate_base-560x560.yaml
+task: TotalSegmentator_BoxCoordinate_Task01_Axial-560x560
+dataset_name: TotalSegmentator_BoxSize_Task01_Axial_Test

@@ -1,0 +1,3 @@
+include: BraTS24_MaskSize_base.yaml
+task: BraTS24_MaskSize_Task13_Coronal 
+dataset_name: BraTS24_MaskSize_Task13_Coronal_Test

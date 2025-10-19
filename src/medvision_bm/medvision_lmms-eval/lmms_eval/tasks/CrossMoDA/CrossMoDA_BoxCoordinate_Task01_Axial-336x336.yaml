@@ -1,0 +1,3 @@
+include: CrossMoDA_BoxCoordinate_base-336x336.yaml
+task: CrossMoDA_BoxCoordinate_Task01_Axial-336x336
+dataset_name: CrossMoDA_BoxSize_Task01_Axial_Test

@@ -1,0 +1,3 @@
+include: autoPET-III_BoxCoordinate_base-896x896.yaml
+task: autoPET-III_BoxCoordinate_Task02_Axial-896x896
+dataset_name: autoPET-III_BoxSize_Task02_Axial_Test

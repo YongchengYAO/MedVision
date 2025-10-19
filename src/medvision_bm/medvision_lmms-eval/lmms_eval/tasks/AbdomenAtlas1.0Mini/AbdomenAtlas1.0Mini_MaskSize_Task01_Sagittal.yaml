@@ -1,0 +1,3 @@
+include: AbdomenAtlas1.0Mini_MaskSize_base.yaml
+task: AbdomenAtlas1.0Mini_MaskSize_Task01_Sagittal
+dataset_name: AbdomenAtlas1.0Mini_MaskSize_Task01_Sagittal_Test

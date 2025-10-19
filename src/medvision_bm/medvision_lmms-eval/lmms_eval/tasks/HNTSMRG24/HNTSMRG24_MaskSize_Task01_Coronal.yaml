@@ -1,0 +1,3 @@
+include: HNTSMRG24_MaskSize_base.yaml
+task: HNTSMRG24_MaskSize_Task01_Coronal 
+dataset_name: HNTSMRG24_MaskSize_Task01_Coronal_Test

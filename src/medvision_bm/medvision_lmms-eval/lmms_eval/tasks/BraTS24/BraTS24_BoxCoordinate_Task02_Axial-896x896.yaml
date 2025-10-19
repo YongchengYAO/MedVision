@@ -1,0 +1,3 @@
+include: BraTS24_BoxCoordinate_base-896x896.yaml
+task: BraTS24_BoxCoordinate_Task02_Axial-896x896
+dataset_name: BraTS24_BoxSize_Task02_Axial_Test

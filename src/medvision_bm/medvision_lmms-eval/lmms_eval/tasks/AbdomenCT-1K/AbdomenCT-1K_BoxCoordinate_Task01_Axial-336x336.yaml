@@ -1,0 +1,3 @@
+include: AbdomenCT-1K_BoxCoordinate_base-336x336.yaml
+task: AbdomenCT-1K_BoxCoordinate_Task01_Axial-336x336 
+dataset_name: AbdomenCT-1K_BoxSize_Task01_Axial_Test
