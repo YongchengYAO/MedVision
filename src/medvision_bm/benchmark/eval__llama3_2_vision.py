@@ -1,5 +1,4 @@
 import os
-import sys
 import subprocess
 import argparse
 from medvision_bm.utils import (
@@ -7,7 +6,7 @@ from medvision_bm.utils import (
     load_tasks_status,
     update_task_status,
     set_cuda_num_processes,
-    setup_env_var,
+    setup_env_hf_medvision_ds,
     ensure_hf_hub_installed,
     install_vendored_lmms_eval,
     install_medvision_ds,
@@ -15,25 +14,6 @@ from medvision_bm.utils import (
     install_vllm,
     setup_env_vllm,
 )
-
-
-def install_transformers_accelerate_for_qwen25vl():
-    # NOTE: Reinstall dev version of transformers and accelerate
-    # NOTE: This is specific for the Qwen2.5-VL model
-    # Install the required packages
-    subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            "transformers==4.54.1",
-        ],
-        check=True,
-    )
-    subprocess.run(
-        [sys.executable, "-m", "pip", "install", "accelerate==1.9.0"], check=True
-    )
 
 
 def run_evaluation_for_task_vllm_proxy(
@@ -74,13 +54,13 @@ def parse_args():
     # model-specific arguments
     parser.add_argument(
         "--model_hf_id",
-        default="Qwen/Qwen2.5-VL-7B-Instruct",
+        default="meta-llama/Llama-3.2-11B-Vision-Instruct",
         type=str,
         help="Hugging Face model ID.",
     )
     parser.add_argument(
         "--model_name",
-        default="Qwen2.5-VL-7B-Instruct",
+        default="Llama-3.2-11B-Vision-Instruct",
         type=str,
         help="Name of the model to evaluate.",
     )
@@ -93,7 +73,7 @@ def parse_args():
     )
     parser.add_argument(
         "--batch_size_per_gpu",
-        default=20,
+        default=10,
         type=int,
         help="Batch size per GPU.",
     )
@@ -163,16 +143,14 @@ def main():
 
     # NOTE: DO NOT change the order of these calls
     # ------
-    setup_env_var(data_dir)
+    setup_env_hf_medvision_ds(data_dir)
     if not args.skip_env_setup:
         ensure_hf_hub_installed()
-        install_vendored_lmms_eval(proj_dependency="qwen2_5_vl")
+        install_vendored_lmms_eval()
         install_medvision_ds(data_dir)
-        install_torch_cu124() 
+        install_torch_cu124()
         # NOTE: vllm version may need to be adjusted based on compatibility of model and transformers version
-        install_vllm(data_dir, version="0.10.0")
-        # NOTE: Reinstall packages to overwrite potentially incompatible versions
-        install_transformers_accelerate_for_qwen25vl()
+        install_vllm(data_dir, version="0.10.2")
     else:
         print(
             f"\n[Warning] Skipping environment setup as per argument --skip_env_setup. This should only be used for debugging.\n"
@@ -194,11 +172,11 @@ def main():
             f"gpu_memory_utilization={gpu_memory_utilization},"
             f"tensor_parallel_size={num_processes},"
             f"max_num_seqs={batch_size},"  # maximum batch size
-            "dtype=bfloat16"
+            "dtype=float16"
         )
 
         rc = run_evaluation_for_task_vllm_proxy(
-            lmmseval_module="vllm_qwen25vl",
+            lmmseval_module="vllm_llama_3_2_vision",
             model_args=vllm_model_args,
             task=task,
             batch_size=batch_size,

@@ -5,7 +5,7 @@ from medvision_bm.utils import (
     load_tasks,
     load_tasks_status,
     update_task_status,
-    setup_env_var,
+    setup_env_hf_medvision_ds,
     ensure_hf_hub_installed,
     install_vendored_lmms_eval,
     install_medvision_ds,
@@ -118,7 +118,7 @@ def main():
 
     # NOTE: DO NOT change the order of these calls
     # ------
-    setup_env_var(data_dir)
+    setup_env_hf_medvision_ds(data_dir)
     if not args.skip_env_setup:
         ensure_hf_hub_installed()
         install_vendored_lmms_eval(proj_dependency="gemini")

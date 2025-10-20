@@ -6,7 +6,7 @@ from medvision_bm.utils import (
     load_tasks_status,
     update_task_status,
     set_cuda_num_processes,
-    setup_env_var,
+    setup_env_hf_medvision_ds,
     ensure_hf_hub_installed,
     install_vendored_lmms_eval,
     install_medvision_ds,
@@ -54,26 +54,26 @@ def parse_args():
     # model-specific arguments
     parser.add_argument(
         "--model_hf_id",
-        default="OpenGVLab/InternVL3-38B",
+        default="google/gemma-3-27b-it",
         type=str,
         help="Hugging Face model ID.",
     )
     parser.add_argument(
         "--model_name",
-        default="InternVL3-38B",
+        default="gemma-3-27b-it",
         type=str,
         help="Name of the model to evaluate.",
     )
     # resource-specific arguments
     parser.add_argument(
         "--minimum_gpu",
-        default=2,
+        default=1,
         type=int,
         help="Minimum number of GPUs to use.",
     )
     parser.add_argument(
         "--batch_size_per_gpu",
-        default=1,
+        default=10,
         type=int,
         help="Batch size per GPU.",
     )
@@ -143,14 +143,14 @@ def main():
 
     # NOTE: DO NOT change the order of these calls
     # ------
-    setup_env_var(data_dir)
+    setup_env_hf_medvision_ds(data_dir)
     if not args.skip_env_setup:
         ensure_hf_hub_installed()
         install_vendored_lmms_eval()
         install_medvision_ds(data_dir)
         install_torch_cu124()
         # NOTE: vllm version may need to be adjusted based on compatibility of model and transformers version
-        install_vllm(data_dir, version="0.10.0")
+        install_vllm(data_dir, version="0.10.2")
     else:
         print(
             f"\n[Warning] Skipping environment setup as per argument --skip_env_setup. This should only be used for debugging.\n"
@@ -171,14 +171,11 @@ def main():
             f"model_version={model_hf},"
             f"gpu_memory_utilization={gpu_memory_utilization},"
             f"tensor_parallel_size={num_processes},"
-            f"max_num_seqs={batch_size},"  # maximum batch size
-            # "max_model_len=1024," # (optional) maximum input length
-            'limit_mm_per_prompt={"image": 1},'  # for InternVL3, https://github.com/vllm-project/vllm/blob/f3137cdd81cae3a48282c22130fbcadcfc64ea95/examples/offline_inference/vision_language.py#L393
-            "dtype=bfloat16"  # https://huggingface.co/OpenGVLab/InternVL3-38B
+            f"max_num_seqs={batch_size}"  # maximum batch size
         )
 
         rc = run_evaluation_for_task_vllm_proxy(
-            lmmseval_module="vllm_internvl3",
+            lmmseval_module="vllm_gemma3",
             model_args=vllm_model_args,
             task=task,
             batch_size=batch_size,

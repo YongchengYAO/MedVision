@@ -36,7 +36,7 @@ pip install "${benchmark_dir}"
 # --skip_env_setup \
 # --skip_update_status \
 CUDA_VISIBLE_DEVICES=0 \
-python -m  medvision_bm.benchmark.eval__HuatuoGPT_Vision \
+python -m  medvision_bm.benchmark.eval__huatuogpt_vision \
 --model_hf_id $model_hf_id \
 --model_name $model_name \
 --results_dir $result_dir \

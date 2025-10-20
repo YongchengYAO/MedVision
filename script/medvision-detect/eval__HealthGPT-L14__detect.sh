@@ -34,7 +34,7 @@ pip install "${benchmark_dir}"
 # --skip_env_setup \
 # --skip_update_status \
 CUDA_VISIBLE_DEVICES=0 \
-python -m  medvision_bm.benchmark.eval__HealthGPT \
+python -m  medvision_bm.benchmark.eval__healthgpt \
 --model_name $model_name \
 --results_dir $result_dir \
 --dir_third_party $dir_third_party \

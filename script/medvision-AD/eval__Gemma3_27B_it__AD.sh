@@ -36,7 +36,7 @@ pip install "${benchmark_dir}"
 # --skip_env_setup \
 # --skip_update_status \
 CUDA_VISIBLE_DEVICES=0 \
-python -m  medvision_bm.benchmark.eval__Gemma3 \
+python -m  medvision_bm.benchmark.eval__gemma3 \
 --model_hf_id $model_hf_id \
 --model_name $model_name \
 --results_dir $result_dir \

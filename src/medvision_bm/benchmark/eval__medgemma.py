@@ -6,11 +6,10 @@ from medvision_bm.utils import (
     load_tasks_status,
     update_task_status,
     set_cuda_num_processes,
-    setup_env_var,
+    setup_env_hf_medvision_ds,
     ensure_hf_hub_installed,
     install_vendored_lmms_eval,
     install_medvision_ds,
-    install_flash_attention_torch_and_deps_py311_v2,
 )
 
 
@@ -139,12 +138,11 @@ def main():
 
     # NOTE: DO NOT change the order of these calls
     # ------
-    setup_env_var(data_dir)
+    setup_env_hf_medvision_ds(data_dir)
     if not args.skip_env_setup:
         ensure_hf_hub_installed()
         install_vendored_lmms_eval()
         install_medvision_ds(data_dir)
-        # install_flash_attention_torch_and_deps_py311_v2()
     else:
         print(
             f"\n[Warning] Skipping environment setup as per argument --skip_env_setup. This should only be used for debugging.\n"

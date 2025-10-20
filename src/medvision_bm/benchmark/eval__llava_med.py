@@ -6,28 +6,32 @@ from medvision_bm.utils import (
     load_tasks_status,
     update_task_status,
     set_cuda_num_processes,
-    setup_env_var,
+    setup_env_hf_medvision_ds,
     ensure_hf_hub_installed,
     install_vendored_lmms_eval,
     install_medvision_ds,
-    install_flash_attention_torch_and_deps_py39_v2,
+    install_flash_attention_torch_and_deps_py310_v2,
 )
 
 
-def install_meddr_dependencies(dir_third_party: str):
+def install_llavamed_dependencies_pre(dir_third_party: str):
+    # ------------------------------
+    # NOTE: This is specific to the LLaVA-Med model
+    # NOTE: Put this section before lmms-eval installation to avoid conflicts
+    # ------------------------------
     os.makedirs(dir_third_party, exist_ok=True)
+    folder_name = "LLaVA-Med"
+    dir_llavamed = os.path.join(dir_third_party, folder_name)
 
-    # Install InternVL codebase
-    dir_internvl = os.path.join(dir_third_party, "InternVL")
-    if not os.path.exists(dir_internvl):
+    if not os.path.exists(dir_llavamed):
         # NOTE: Fix codebase to a specific commit
         github_commit = (
-            "2410d1dbf208f0e799459aff9376e5747dbf41a2"  # Commits on Sep 22, 2025
+            "30697ca50b5c29a8e955c99330b259776aef27b9"  # Commits on Jun 4, 2025
         )
         try:
             # Clone the repository
             subprocess.run(
-                f"git clone https://github.com/OpenGVLab/InternVL.git InternVL",
+                f"git clone https://github.com/microsoft/LLaVA-Med.git {folder_name}",
                 cwd=dir_third_party,
                 check=True,
                 shell=True,
@@ -35,63 +39,31 @@ def install_meddr_dependencies(dir_third_party: str):
             # Checkout specific commit
             subprocess.run(
                 f"git checkout {github_commit}",
-                cwd=dir_internvl,
+                cwd=dir_llavamed,
                 check=True,
                 shell=True,
             )
-        except subprocess.CalledProcessError as e:
-            error_msg = (
-                f"Failed to clone InternVL repository at commit {github_commit}."
+        except Exception:
+            raise RuntimeError(
+                f"Failed to clone LLaVA-Med repository at commit {github_commit}."
             )
-            if e.stderr:
-                error_msg += f"\nError output: {e.stderr}"
-            if e.stdout:
-                error_msg += f"\nStdout: {e.stdout}"
-            raise RuntimeError(error_msg)
-    subprocess.run(
-        f"pip install -r {os.path.join(dir_internvl,'requirements', 'internvl_chat.txt')}",
-        cwd=dir_internvl,
-        check=True,
-        shell=True,
-    )
 
-    # Install MedDr codebase
-    dir_meddr = os.path.join(dir_third_party, "MedDr")
-    if not os.path.exists(dir_meddr):
-        # NOTE: Fix codebase to a specific commit
-        github_commit = (
-            "48d7cd7078c406cf1f59d5ade207f8cce49bd21e"  # Commits on Sep 22, 2025
-        )
-        try:
-            # Clone the repository
-            subprocess.run(
-                f"git clone https://github.com/sunanhe/MedDr.git MedDr",
-                cwd=dir_third_party,
-                check=True,
-                shell=True,
-            )
-            # Checkout specific commit
-            subprocess.run(
-                f"git checkout {github_commit}",
-                cwd=dir_meddr,
-                check=True,
-                shell=True,
-            )
-        except subprocess.CalledProcessError as e:
-            error_msg = f"Failed to clone MedDr repository at commit {github_commit}."
-            if e.stderr:
-                error_msg += f"\nError output: {e.stderr}"
-            if e.stdout:
-                error_msg += f"\nStdout: {e.stdout}"
-            raise RuntimeError(error_msg)
+    subprocess.run("pip install .", cwd=dir_llavamed, check=True, shell=True)
+    # ------------------------------
 
-    # NOTE: This is a workaround for the issue with the import of the MedDr module
-    os.environ["MedDr_DIR"] = dir_meddr
 
-    # Install the required packages
-    subprocess.run(
-        "pip install bitsandbytes==0.45.2", check=True, shell=True
-    )  # to solve the "missing triton.ops" error
+def install_llavamed_dependencies_post():
+    # ------------------------------
+    # NOTE: This is specific to the LLaVA-Med model
+    # NOTE: Put this section AFTER lmms-eval installation to avoid conflicts
+    # ------------------------------
+    # Install dependencies
+    subprocess.run("pip install protobuf==3.20", check=True, shell=True)
+    subprocess.run("pip install numpy==1.26.4", check=True, shell=True)
+
+    # Temporary fix for the error: https://github.com/huggingface/transformers/issues/29426
+    subprocess.run("pip install transformers==4.37.2", check=True, shell=True)
+    # ------------------------------
 
 
 def run_evaluation_for_task(
@@ -110,7 +82,7 @@ def run_evaluation_for_task(
         "-m",
         "accelerate.commands.launch",
         f"--num_processes={num_processes}",
-        "--main_process_port=29501",
+        "--main_process_port=29502",
         "-m",
         "lmms_eval",
         "--model",
@@ -137,13 +109,13 @@ def parse_args():
     # model-specific arguments
     parser.add_argument(
         "--model_hf_id",
-        default="Sunanhe/MedDr_0401",
+        default="microsoft/llava-med-v1.5-mistral-7b",
         type=str,
         help="Hugging Face model ID.",
     )
     parser.add_argument(
         "--model_name",
-        default="MedDr",
+        default="llava-med-v1.5-mistral-7b",
         type=str,
         help="Name of the model to evaluate.",
     )
@@ -156,7 +128,7 @@ def parse_args():
     )
     parser.add_argument(
         "--batch_size_per_gpu",
-        default=1,
+        default=50,
         type=int,
         help="Batch size per GPU.",
     )
@@ -225,13 +197,14 @@ def main():
 
     # NOTE: DO NOT change the order of these calls
     # ------
-    setup_env_var(data_dir)
+    setup_env_hf_medvision_ds(data_dir)
     if not args.skip_env_setup:
         ensure_hf_hub_installed()
-        install_vendored_lmms_eval(proj_dependency="meddr")
+        install_llavamed_dependencies_pre(dir_third_party)
+        install_vendored_lmms_eval(proj_dependency="llava_med")
         install_medvision_ds(data_dir)
-        install_flash_attention_torch_and_deps_py39_v2()
-        install_meddr_dependencies(dir_third_party)
+        install_llavamed_dependencies_post()
+        install_flash_attention_torch_and_deps_py310_v2()
     else:
         print(
             f"\n[Warning] Skipping environment setup as per argument --skip_env_setup. This should only be used for debugging.\n"
@@ -247,16 +220,18 @@ def main():
             continue
 
         batch_size = args.batch_size_per_gpu * num_processes
-        model_args = f"model_path={model_hf}," "device_map=auto"
+        model_args = (
+            f"model_path={model_hf}," "conv_mode=mistral_instruct," "temperature=0"
+        )
 
         rc = run_evaluation_for_task(
             num_processes=num_processes,
-            lmmseval_module="meddr",
+            lmmseval_module="llava_med",
             model_args=model_args,
             task=task,
             batch_size=batch_size,
             sample_limit=sample_limit,
-            output_path=os.path.join(result_dir),
+            output_path=result_dir,
         )
 
         if rc == 0 and not args.skip_update_status:
