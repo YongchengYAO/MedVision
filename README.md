@@ -1,8 +1,6 @@
-<h1>
+![MedVision](fig/medvision-logo.png)
 
-  <img src="fig/logo-medvision-lite.png" width="40" style="vertical-align:middle; margin-right:10px;">MedVision
-
-</h1> 
+# About
 
 This is the official codebase `medvision_bm` of the **MedVision** project. 
 
