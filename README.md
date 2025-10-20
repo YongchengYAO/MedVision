@@ -1,6 +1,6 @@
 <h1>
 
-  <img src="fig/logo-medvision.png" width="40" style="vertical-align:middle; margin-right:10px;">MedVision
+  <img src="fig/logo-medvision-lite.png" width="40" style="vertical-align:middle; margin-right:10px;">MedVision
 
 </h1> 
 
