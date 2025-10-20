@@ -116,6 +116,8 @@ def main():
     data_dir = args.data_dir
     sample_limit = args.sample_limit
 
+    # NOTE: DO NOT change the order of these calls
+    # ------
     setup_env_var(data_dir)
     if not args.skip_env_setup:
         ensure_hf_hub_installed()
@@ -125,6 +127,7 @@ def main():
         print(
             f"\n[Warning] Skipping environment setup as per argument --skip_env_setup. This should only be used for debugging.\n"
         )
+    # ------
 
     tasks = load_tasks(tasks_list_json_path)
 
@@ -151,7 +154,8 @@ def main():
             sample_limit=sample_limit,
             output_path=os.path.join(result_dir, model_name),
         )
-        if rc == 0:
+
+        if rc == 0 and not args.skip_update_status:
             update_task_status(task_status_json_path, model_name, task)
         else:
             print(f"Warning: Task {task} failed (return code {rc})")

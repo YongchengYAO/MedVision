@@ -141,6 +141,8 @@ def main():
 
     num_processes = set_cuda_num_processes(minimum_gpu=args.minimum_gpu)
 
+    # NOTE: DO NOT change the order of these calls
+    # ------
     setup_env_var(data_dir)
     if not args.skip_env_setup:
         ensure_hf_hub_installed()
@@ -154,6 +156,7 @@ def main():
             f"\n[Warning] Skipping environment setup as per argument --skip_env_setup. This should only be used for debugging.\n"
         )
         setup_env_vllm(data_dir)
+    # ------
 
     tasks = load_tasks(tasks_list_json_path)
 

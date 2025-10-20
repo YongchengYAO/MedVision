@@ -173,7 +173,8 @@ def main():
             sample_limit=sample_limit,
             output_path=result_dir,
         )
-        if rc == 0:
+
+        if rc == 0 and not args.skip_update_status:
             update_task_status(task_status_json_path, model_name, task)
         else:
             print(f"Warning: Task {task} failed (return code {rc})")

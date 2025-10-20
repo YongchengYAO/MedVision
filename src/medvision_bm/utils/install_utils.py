@@ -418,9 +418,7 @@ def install_flash_attention_torch_and_deps_py311_v2():
 def setup_env_vllm(data_dir):
     # Ensure proper process spawning
     os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
-    os.environ["VLLM_ATTENTION_BACKEND"] = "FLASH_ATTN"
-    # Disable FlashInfer sampler due to compatibility issues: https://github.com/vllm-project/vllm/issues/22008
-    os.environ["VLLM_USE_FLASHINFER_SAMPLER"] = "0"
+
     # Set the cache directory for vllm
     os.environ["XDG_CACHE_HOME"] = os.path.join(data_dir, ".cache", "vllm")
 

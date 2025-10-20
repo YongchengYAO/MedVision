@@ -135,7 +135,6 @@ nvidia-curand-cu12==10.3.7.77
 nvidia-cusolver-cu12==11.7.1.2
 nvidia-cusparse-cu12==12.5.4.2
 nvidia-cusparselt-cu12==0.6.3
-nvidia-ml-py==13.580.82
 nvidia-nccl-cu12==2.26.2
 nvidia-nvjitlink-cu12==12.6.85
 nvidia-nvshmem-cu12==3.3.20
