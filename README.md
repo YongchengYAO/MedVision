@@ -1,6 +1,10 @@
-# MedVision
+<h1>
 
-This is the official codebase of **MedVision**.
+  <img src="fig/logo-medvision.png" width="40" style="vertical-align:middle; margin-right:10px;">MedVision
+
+</h1> 
+
+This is the official codebase `medvision_bm` of the **MedVision** project. 
 
 🌏 **Project**: [to be updated]
 
@@ -10,13 +14,13 @@ This is the official codebase of **MedVision**.
 
 <br/>
 
-# News
+# 🔥 News
 
 - [Oct 8, 2025] 🚀 Release **MedVision** dataset v1.0.0
 
 <br/>
 
-# TODO
+# 📜 TODO
 
 - [ ] Add preprint and project page
 - [ ] Release training code 
@@ -24,18 +28,21 @@ This is the official codebase of **MedVision**.
 
 <br/>
 
-# Benchmark
+# 🛠️ Install `medvision_bm`
+
+```bash
+pip install "git+https://github.com/YongchengYAO/MedVision.git"
+```
+
+<br/>
+
+# 📊 Benchmark
 
 - **[Usage]** The scripts in `script/medvision-*` should be sufficient for dependencies installation, data processing, and benchmarking
 
 - **[Debug]** Use the dependencies list in `requirements` for debugging packages conflict
 
   1. Install the benchmark codebase medvision_bm
-  
-     ```bash
-     # First, install the benchmark codebase: medvision_bm
-     pip install "git+https://github.com/YongchengYAO/MedVision.git"
-     ```
   
   2. Modify dependencies list, such as `requirements/requirements_eval_qwen25vl.txt`
   
