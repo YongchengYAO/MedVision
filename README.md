@@ -46,7 +46,9 @@ pip install "git+https://github.com/YongchengYAO/MedVision.git"
   
   3. Setup env
   
-     📝 Match `--lmms_eval_opt_deps` with model, choose from [meddr, lingshu, huatuogpt_vision, llava_med, qwen2_5_vl, gemini] – defined [here](https://github.com/YongchengYAO/MedVision/blob/master/src/medvision_bm/medvision_lmms-eval/pyproject.toml)
+     📝 Match `--lmms_eval_opt_deps` with model:
+     - Choose from [meddr, lingshu, huatuogpt_vision, llava_med, qwen2_5_vl, gemini] – defined [here](https://github.com/YongchengYAO/MedVision/blob/master/src/medvision_bm/medvision_lmms-eval/pyproject.toml)
+     - If model is not one of these, ignore `--lmms_eval_opt_deps` 
   
      ```bash
      # NOTE: replace <local-data-folder>
