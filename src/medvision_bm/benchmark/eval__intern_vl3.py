@@ -1,19 +1,14 @@
+import argparse
 import os
 import subprocess
-import argparse
-from medvision_bm.utils import (
-    load_tasks,
-    load_tasks_status,
-    update_task_status,
-    set_cuda_num_processes,
-    setup_env_hf_medvision_ds,
-    ensure_hf_hub_installed,
-    install_vendored_lmms_eval,
-    install_medvision_ds,
-    install_torch_cu124,
-    install_vllm,
-    setup_env_vllm,
-)
+
+from medvision_bm.utils import (ensure_hf_hub_installed, install_medvision_ds,
+                                install_torch_cu124,
+                                install_vendored_lmms_eval, install_vllm,
+                                load_tasks, load_tasks_status,
+                                set_cuda_num_processes,
+                                setup_env_hf_medvision_ds, setup_env_vllm,
+                                update_task_status)
 
 
 def run_evaluation_for_task_vllm_proxy(
@@ -173,7 +168,8 @@ def main():
             f"tensor_parallel_size={num_processes},"
             f"max_num_seqs={batch_size},"  # maximum batch size
             # "max_model_len=1024," # (optional) maximum input length
-            'limit_mm_per_prompt={"image": 1},'  # for InternVL3, https://github.com/vllm-project/vllm/blob/f3137cdd81cae3a48282c22130fbcadcfc64ea95/examples/offline_inference/vision_language.py#L393
+            # for InternVL3, https://github.com/vllm-project/vllm/blob/f3137cdd81cae3a48282c22130fbcadcfc64ea95/examples/offline_inference/vision_language.py#L393
+            'limit_mm_per_prompt={"image": 1},'
             "dtype=bfloat16"  # https://huggingface.co/OpenGVLab/InternVL3-38B
         )
 

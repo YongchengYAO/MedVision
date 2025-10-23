@@ -1,28 +1,21 @@
-import os
 import json
+import os
 
 
 def set_cuda_num_processes(minimum_gpu: int = 1):
     cuda_visible = os.getenv("CUDA_VISIBLE_DEVICES", None)
     if cuda_visible is None:
-        print(f"No CUDA_VISIBLE_DEVICES found. Using minimum GPU: {minimum_gpu}")
+        print(
+            f"No CUDA_VISIBLE_DEVICES found. Using minimum GPU: {minimum_gpu}")
         num_processes = minimum_gpu
         return num_processes
     else:
-        num_processes = max(1, len([d for d in cuda_visible.split(",") if d.strip()]))
+        num_processes = max(
+            1, len([d for d in cuda_visible.split(",") if d.strip()]))
         print(
             f"Using CUDA_VISIBLE_DEVICES={cuda_visible}; num_processes={num_processes}"
         )
         return num_processes
-
-
-def setup_env_var(data_dir: str):
-    # Set environment variables BEFORE importing datasets
-    os.environ["MedVision_DATA_DIR"] = data_dir
-    os.environ["HF_DATASETS_CACHE"] = os.path.join(
-        data_dir, ".cache", "huggingface", "datasets"
-    )
-    os.environ["HF_HOME"] = os.path.join(data_dir, ".cache", "huggingface")
 
 
 def update_task_status(json_path, model_name, task_name):

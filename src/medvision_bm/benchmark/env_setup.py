@@ -4,6 +4,33 @@ import subprocess
 import sys
 from pathlib import Path
 
+from medvision_bm.utils import install_medvision_ds, install_vendored_lmms_eval
+
+
+def run_pip_install(requirements_path: Path) -> None:
+    if not requirements_path.exists() or not requirements_path.is_file():
+        raise FileNotFoundError(
+            f"Requirements file not found: {requirements_path}")
+
+    # Use the current interpreter to run pip to avoid PATH/env mismatches.
+    cmd = [
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
+        "--upgrade",
+        "--force-reinstall",
+        "--no-deps",
+        "-r",
+        str(requirements_path),
+    ]
+
+    env = os.environ.copy()
+    env.setdefault("PIP_DISABLE_PIP_VERSION_CHECK", "1")
+
+    print(f"Installing packages from: {requirements_path}")
+    subprocess.run(cmd, env=env)
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -15,45 +42,43 @@ def parse_args() -> argparse.Namespace:
         required=True,
         help="Path to the requirements.txt file.",
     )
+    parser.add_argument(
+        "--data_dir",
+        type=str,
+        help="Directory to store downloaded datasets and source code.",
+    )
+    parser.add_argument(
+        "--lmms_eval_opt_deps",
+        type=str,
+        help="Optional dependencies for lmms_eval installation.",
+    )
     return parser.parse_args()
-
-
-def run_pip_install(requirements_path: Path) -> int:
-    if not requirements_path.exists() or not requirements_path.is_file():
-        print(f"Error: Requirements file not found: {requirements_path}", file=sys.stderr)
-        return 2
-
-    # Use the current interpreter to run pip to avoid PATH/env mismatches.
-    cmd = [
-        sys.executable,
-        "-m",
-        "pip",
-        "install",
-        "-r",
-        str(requirements_path),
-    ]
-
-    # Optionally disable pip's version check to reduce noise and speed up.
-    env = os.environ.copy()
-    env.setdefault("PIP_DISABLE_PIP_VERSION_CHECK", "1")
-
-    print(f"Installing packages from: {requirements_path}")
-    try:
-        proc = subprocess.run(cmd, env=env)
-        return proc.returncode
-    except KeyboardInterrupt:
-        print("Installation interrupted by user.", file=sys.stderr)
-        return 130
-    except Exception as exc:
-        print(f"Error running pip: {exc}", file=sys.stderr)
-        return 1
 
 
 def main() -> None:
     args = parse_args()
+
+    print("Starting environment setup...")
+
+    # Install packages from the specified requirements file
+    print(f"\n[Info] Installing packages from: {args.requirement}")
     req_path = Path(args.requirement).expanduser().resolve()
-    exit_code = run_pip_install(req_path)
-    sys.exit(exit_code)
+    run_pip_install(req_path)
+
+    # Install the vendored lmms_eval package
+    print(f"\n[Info] Installing vendored lmms_eval package...")
+    opt_deps = args.lmms_eval_opt_deps
+    if opt_deps is not None:
+        install_vendored_lmms_eval(proj_dependency=opt_deps)
+    else:
+        install_vendored_lmms_eval()
+
+    # Install dataset codebase: medvision_ds
+    print(f"\n[Info] Installing medvision_ds package...")
+    data_dir = args.data_dir
+    assert data_dir is not None, "--data_dir argument is required."
+    os.makedirs(data_dir, exist_ok=True)
+    install_medvision_ds(data_dir)
 
 
 if __name__ == "__main__":

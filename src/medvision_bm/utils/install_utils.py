@@ -1,15 +1,18 @@
 import os
-import sys
-import subprocess
 import shlex
+import subprocess
+import sys
 from importlib.resources import files  # Python 3.9+
+
+from huggingface_hub import snapshot_download
 
 
 def ensure_hf_hub_installed():
     try:
         from huggingface_hub import snapshot_download  # noqa: F401
     except ImportError:
-        subprocess.run("pip install huggingface_hub[cli]", check=True, shell=True)
+        subprocess.run(
+            "pip install huggingface_hub[cli]", check=True, shell=True)
 
 
 def _install_lmms_eval(
@@ -97,13 +100,21 @@ def install_vendored_lmms_eval(
     )
 
 
-def install_medvision_ds(
+def setup_env_hf(data_dir):
+    os.environ["HF_DATASETS_CACHE"] = os.path.join(
+        data_dir, ".cache", "huggingface", "datasets"
+    )
+    os.environ["HF_HOME"] = os.path.join(data_dir, ".cache", "huggingface")
+
+
+def setup_env_medvision_ds(
     data_dir,
     force_install_code=True,
     force_install_data=False,
-    local_dir=None,
 ):
-    from huggingface_hub import snapshot_download
+    # Set dataset directory
+    os.makedirs(data_dir, exist_ok=True)
+    os.environ["MedVision_DATA_DIR"] = data_dir
 
     # Force install dataset codebase, default to "False"
     if force_install_code:
@@ -113,6 +124,26 @@ def install_medvision_ds(
     if force_install_data:
         os.environ["MedVision_FORCE_DOWNLOAD_DATA"] = "true"
 
+
+def setup_env_hf_medvision_ds(data_dir,
+                              force_install_code=True,
+                              force_install_data=False,
+                              ):
+    # Set environment variables for medvision_ds
+    setup_env_medvision_ds(
+        data_dir=data_dir,
+        force_install_code=force_install_code,
+        force_install_data=force_install_data,
+    )
+
+    # Set environment variables for Hugging Face
+    setup_env_hf(data_dir)
+
+
+def install_medvision_ds(
+    data_dir,
+    local_dir=None,
+):
     if local_dir is None:
         snapshot_download(
             repo_id="YongchengYAO/MedVision",
@@ -141,6 +172,32 @@ def install_medvision_ds(
     subprocess.run(cmd_w_flock, check=True, shell=True)
 
 
+def pip_install_medvision_ds():
+    try:
+        print(f'\n[Info] Installing medvision_ds from Hugging Face Datasets repo: pip install "git+https://huggingface.co/datasets/YongchengYAO/MedVision.git#subdirectory=src"')
+        subprocess.run(
+            'pip install "git+https://huggingface.co/datasets/YongchengYAO/MedVision.git#subdirectory=src"',
+            check=True,
+            shell=True,
+        )
+        print("Successfully installed medvision_ds.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error installing medvision_ds: {e}", file=sys.stderr)
+
+
+def pip_install_medvision_bm():
+    try:
+        print(f'\n[Info] Installing medvision_bm from GitHub repo: pip install "git+https://github.com/YongchengYAO/MedVision.git"')
+        subprocess.run(
+            'pip install "git+https://github.com/YongchengYAO/MedVision.git"',
+            check=True,
+            shell=True,
+        )
+        print("Successfully installed medvision_bm.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error installing medvision_bm: {e}", file=sys.stderr)
+
+
 def setup_env_cuda():
     print("Setting up CUDA environment...")
     cuda_home = os.environ.get("CONDA_PREFIX", "")
@@ -152,6 +209,16 @@ def setup_env_cuda():
     os.environ["LD_LIBRARY_PATH"] = (
         f"{cuda_home}/lib:{os.environ.get('LD_LIBRARY_PATH', '')}"
     )
+
+
+def install_cuda_toolkit(version="12.4"):
+    """Install CUDA toolkit using conda."""
+    print("Installing CUDA toolkit...")
+    subprocess.run(
+        ["conda", "install", "-c", "nvidia", f"cuda-toolkit={version}", "-y"],
+        check=True,
+    )
+    setup_env_cuda()
 
 
 def install_torch_cu121():

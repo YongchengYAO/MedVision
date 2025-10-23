@@ -1,0 +1,26 @@
+SEED = 1024
+
+DATASETS_NAME2PACKAGE = {
+    "ACDC": "ACDC",
+    "AMOS22": "AMOS22",
+    "AbdomenAtlas1.0Mini": "AbdomenAtlas__1_0__Mini",
+    "AbdomenCT-1K": "AbdomenCT_1K",
+    "BCV15": "BCV15",
+    "BraTS24": "BraTS24",
+    "CAMUS": "CAMUS",
+    "Ceph-Biometrics-400": "Ceph_Biometrics_400",
+    "CrossMoDA": "CrossMoDA",
+    "FLARE22": "FLARE22",
+    "FeTA24": "FeTA24",
+    "HNTSMRG24": "HNTSMRG24",
+    "ISLES24": "ISLES24",
+    "KiPA22": "KiPA22",
+    "KiTS23": "KiTS23",
+    "MSD": "MSD",
+    "OAIZIB-CM": "OAIZIB_CM",
+    "SKM-TEA": "SKM_TEA",
+    "ToothFairy2": "ToothFairy2",
+    "TopCoW24": "TopCoW24",
+    "TotalSegmentator": "TotalSegmentator",
+    "autoPET-III": "autoPET_III",
+}
