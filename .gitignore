@@ -200,6 +200,7 @@ pyrightconfig.json
 # For MedVision
 Data
 Results
+SFT
 completed_tasks
 src/medvision_bm/train/*
 local
