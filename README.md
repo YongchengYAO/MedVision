@@ -21,7 +21,7 @@ This is the official codebase `medvision_bm` of the **MedVision** project.
 # 📜 TODO
 
 - [ ] Add preprint and project page
-- [ ] Release training code 
+- [x] Release training code 
 - [ ] Release docker images
 
 <br/>
@@ -36,7 +36,7 @@ pip install "git+https://github.com/YongchengYAO/MedVision.git"
 
 # 📊 Benchmark
 
-- **[Usage]** The scripts in `script/medvision-*` should be sufficient for dependencies installation, data processing, and benchmarking
+- **[Usage]** The scripts in `script/medvision-*/eval__*` should be sufficient for dependencies installation, data processing, and benchmarking
 
 - **[Debug]** Use the dependencies list in `requirements` for debugging packages conflict
 
@@ -59,4 +59,4 @@ pip install "git+https://github.com/YongchengYAO/MedVision.git"
 
 # Training: SFT
 
-[to be updated]
+**[Usage]** The scripts in `script/medvision-*/train__SFT__*` should be sufficient for dependencies installation, data processing, and training.
