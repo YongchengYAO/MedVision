@@ -57,6 +57,6 @@ pip install "git+https://github.com/YongchengYAO/MedVision.git"
 
 <br/>
 
-# Training: SFT
+# 🎯 Training: SFT
 
 **[Usage]** The scripts in `script/medvision-*/train__SFT__*` should be sufficient for dependencies installation, data processing, and training.
