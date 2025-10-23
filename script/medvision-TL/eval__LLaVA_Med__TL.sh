@@ -1,4 +1,4 @@
-ENV_NAME="llavamed"
+ENV_NAME="eval-llavamed"
 
 # Only create the env if it doesn't already exist
 source activate base

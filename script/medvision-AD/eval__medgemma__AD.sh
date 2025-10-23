@@ -1,4 +1,4 @@
-ENV_NAME="medgemma"
+ENV_NAME="eval-medgemma"
 
 # Only create the env if it doesn't already exist
 source activate base

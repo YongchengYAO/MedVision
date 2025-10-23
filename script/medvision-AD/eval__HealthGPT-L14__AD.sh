@@ -1,4 +1,4 @@
-ENV_NAME="healthgpt"
+ENV_NAME="eval-healthgpt"
 
 # Only create the env if it doesn't already exist
 source activate base

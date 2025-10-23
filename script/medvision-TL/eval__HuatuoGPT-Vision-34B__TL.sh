@@ -1,4 +1,4 @@
-ENV_NAME="huatuogpt-vision"
+ENV_NAME="eval-huatuogpt-vision"
 
 # Only create the env if it doesn't already exist
 source activate base

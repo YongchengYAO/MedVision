@@ -1,4 +1,4 @@
-ENV_NAME="llama3-vision"
+ENV_NAME="eval-llama3-vision"
 
 # Only create the env if it doesn't already exist
 source activate base

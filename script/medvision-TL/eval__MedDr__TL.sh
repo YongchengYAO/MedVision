@@ -1,4 +1,4 @@
-ENV_NAME="meddr"
+ENV_NAME="eval-meddr"
 
 # Only create the env if it doesn't already exist
 source activate base

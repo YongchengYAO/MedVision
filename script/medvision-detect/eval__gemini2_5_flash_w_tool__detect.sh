@@ -1,4 +1,4 @@
-ENV_NAME="gemini25"
+ENV_NAME="eval-gemini25"
 
 # Only create the env if it doesn't already exist
 source activate base

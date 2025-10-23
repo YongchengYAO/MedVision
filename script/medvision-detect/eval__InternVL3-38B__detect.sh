@@ -1,4 +1,4 @@
-ENV_NAME="internvl3"
+ENV_NAME="eval-internvl3"
 
 # Only create the env if it doesn't already exist
 source activate base

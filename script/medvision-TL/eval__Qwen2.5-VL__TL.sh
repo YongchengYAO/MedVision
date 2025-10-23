@@ -1,4 +1,4 @@
-ENV_NAME="qwen25vl"
+ENV_NAME="eval-qwen25vl"
 
 # Only create the env if it doesn't already exist
 source activate base

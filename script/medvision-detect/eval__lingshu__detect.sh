@@ -1,4 +1,4 @@
-ENV_NAME="lingshu"
+ENV_NAME="eval-lingshu"
 
 # Only create the env if it doesn't already exist
 source activate base

@@ -1,4 +1,4 @@
-ENV_NAME="llava-onevision"
+ENV_NAME="eval-llava-onevision"
 
 # Only create the env if it doesn't already exist
 source activate base

@@ -1,4 +1,4 @@
-ENV_NAME="gemma3"
+ENV_NAME="eval-gemma3"
 
 # Only create the env if it doesn't already exist
 source activate base
