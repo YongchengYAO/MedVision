@@ -46,6 +46,20 @@ def safe_print(*args, force: bool = False, **kwargs):
 
 def broadcast_int_from_main(value: int, src: int = 0):
     import torch.distributed as dist
+    """
+    Broadcast an integer value from the source (main) process to all other processes.
+
+    Why we need this:
+    - In distributed training (DDP / multi-process setups) only one process (commonly the
+      main process) should perform certain global computations (e.g., computing the total
+      number of training steps based on the global dataset size).
+    - Other processes may have only a local view (sharded dataset/dataloader) and would
+      compute different step counts if they tried independently. Broadcasting ensures every
+      process receives the exact same integer so training logic stays consistent across
+      processes (same max_steps, scheduling, checkpointing decisions, etc.).
+    - Without this synchronization, processes could diverge: some may stop earlier/later,
+      produce inconsistent checkpoint/state, or deadlock during collective operations.
+    """
     if dist.is_available() and dist.is_initialized():
         obj = [int(value) if dist.get_rank() == src else 0]
         dist.broadcast_object_list(obj, src=src)
@@ -197,6 +211,8 @@ def _doc_to_text_BiometricsFromLandmarks(doc, img_processor=None, reshape_size=N
     img_shape = img_2d_raw.shape
 
     # -------------
+    # FIXME: This implementation only works for Qwen2.5VL
+    # TODO: Generalize to other models; reuse code if possible
     # NOTE: If img_processor is provided, a model-specific processing is applied to get the reshaped image size
     # -------------
     if img_processor is not None:
@@ -288,7 +304,7 @@ def _doc_to_target_BiometricsFromLandmarks(doc):
     return biometric_profile["metric_value"]
 
 
-# NOTE: This is specific to the BiometricVQA dataset
+# NOTE: This is specific to the MedVision dataset
 def _format_data_distance_angle(
     example: dict[str, Any], img_processor=None, reshape_size=None
 ) -> dict[str, Any]:
@@ -300,6 +316,150 @@ def _format_data_distance_angle(
     target_str = str(_doc_to_target_BiometricsFromLandmarks(example))
     prompt = _doc_to_text_BiometricsFromLandmarks(
         example, img_processor, reshape_size)
+
+    example["messages"] = [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                },
+                {
+                    "type": "text",
+                    "text": prompt,
+                },
+            ],
+        },
+        {
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "text",
+                    "text": target_str,
+                },
+            ],
+        },
+    ]
+
+    return example
+
+
+
+def _doc_to_text_TumorLesionSize(doc, img_processor=None, reshape_size=None):
+    """Convert document to text."""
+    # Early assertions
+    assert img_processor is not None or reshape_size is not None, "\n [Error] Either img_processor or reshape_size must be provided."
+    assert not (
+        img_processor is not None and reshape_size is not None), "\n [Error] Provide only one of img_processor or reshape_size, not both."
+
+    format_prompt_tl = (
+        "The answer should be two decimal numbers separated by a comma without any units or additional text. "
+        "The first is the major axis length, and the second is the minor axis length."
+    )
+
+    # Import the dataset-specific module from biometric_vqa.datasets
+    dataset_name = doc["dataset_name"]
+    dataset_module = DATASETS_NAME2PACKAGE.get(dataset_name)
+    if dataset_module is None:
+        raise ValueError(f"Dataset {dataset_name} not found in DATASETS_NAME2PACKAGE.")
+    preprocess_biometry = importlib.import_module(
+        f"biometric_vqa.datasets.{dataset_module}.preprocess_biometry"
+    )
+
+    # Get task info
+    taskID = doc["taskID"]
+    bm_plan = preprocess_biometry.benchmark_plan
+    task_info = bm_plan["tasks"][int(taskID) - 1]
+
+    # Get label info
+    label = str(doc["label"])
+    labels_map = task_info["labels_map"]
+    if label not in labels_map:
+        raise ValueError(f"Label {label} not found in labels_map.")
+    else:
+        label_name = labels_map.get(label)
+
+    # Get 2D image info
+    image_description = task_info["image_description"]
+
+    # Read NIfTI image
+    img_path = doc["image_file"]
+    slice_dim = doc["slice_dim"]
+    slice_idx = doc["slice_idx"]
+    pixel_size_hw, img_2d_raw = _load_nifti_2d(img_path, slice_dim, slice_idx)
+    img_shape = img_2d_raw.shape
+
+    # Get biometrics profile for this case
+    biometric_profile = doc["biometric_profile"]
+    metric_unit = biometric_profile["metric_unit"]
+    if isinstance(metric_unit, list):
+        assert len(metric_unit) == 1, "metric_unit list should have only one element."
+        metric_unit = metric_unit[0]
+    elif isinstance(metric_unit, str):
+        if metric_unit == "mm":
+            metric_unit = "millimeters"
+        elif metric_unit == "cm":
+            metric_unit = "centimeters"
+    else:
+        raise ValueError(f"Unsupported metric_unit type: {type(metric_unit)}")
+
+    # -------------
+    # FIXME: This implementation only works for Qwen2.5VL
+    # TODO: Generalize to other models, reuse code if possible
+    # NOTE: If img_processor is provided, a model-specific processing is applied to get the reshaped image size
+    # -------------
+    if img_processor is not None:
+        # Get reshaped image size so that we can adjust the pixel size dynamically
+        img_PIL = Image.fromarray(img_2d_raw)
+        processed_visual = img_processor([img_PIL])
+        image_grid_thw = processed_visual["image_grid_thw"][0]
+        patch_size = img_processor.patch_size
+        img_shape_resized = (
+            image_grid_thw[1] * patch_size, image_grid_thw[2] * patch_size)
+    elif reshape_size is not None:
+        assert len(reshape_size) == 2, "reshape_size should be of length 2"
+        img_shape_resized = reshape_size
+    # -------------
+
+    # Adjust pixel size based on the resize ratio
+    original_height, original_width = img_shape
+    pixel_height, pixel_width = pixel_size_hw
+    resize_ratio_h = img_shape_resized[0] / original_height
+    resize_ratio_w = img_shape_resized[1] / original_width
+    adjusted_pixel_height = pixel_height / resize_ratio_h
+    adjusted_pixel_width = pixel_width / resize_ratio_w
+    # Include pixel size information in question text
+    pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
+
+    # Question
+    question = (
+        f"Task:\n"
+        f"Given the input medical image: {image_description}, "
+        f"estimate the major and minor axis lengths of the ellipse enclosing the {label_name}, in {metric_unit}.\n"
+        f"Additional information:\n"
+        f"{pixel_size_text}\n"
+        f"Format requirement:\n"
+        f"{format_prompt_tl}"
+    )
+    return question, label_name
+
+
+def _doc_to_target_TumorLesionSize(doc):
+    """Get ground truth biometrics."""
+    biometric_profile = doc["biometric_profile"]
+    return [
+        biometric_profile["metric_value_major_axis"][0],
+        biometric_profile["metric_value_minor_axis"][0],
+    ]
+
+
+# NOTE: This is dataset-specific formatting function
+def _format_data_lesionSizeTasks(
+    example: dict[str, Any], img_processor=None, reshape_size=None
+) -> dict[str, Any]:
+    target = _doc_to_target_TumorLesionSize(example)
+    target_str = ", ".join([f"{value:.3f}" for value in target])
+    prompt, _ = _doc_to_text_TumorLesionSize(example, img_processor, reshape_size)
 
     example["messages"] = [
         {
@@ -356,6 +516,7 @@ def _load_single_dataset(task, tag_ds):
                 else:
                     raise
 
+        # NOTE: This is specific to the MedVision dataset and configs
         # Add dataset name column
         # Extract dataset name (part before "_BiometricsFromLandmarks")
         dataset_name = task.split(f"_{tag_ds}")[0]
@@ -372,28 +533,17 @@ def _load_single_dataset(task, tag_ds):
         raise Exception(f"Task {task} failed: {str(e)}")
 
 
-def prepare_dataset_angle_distance(
+def load_split_limit_dataset(
     tasks_list_json_path,
     limit_train_sample,
     limit_val_sample,
     num_workers_concat_datasets=4,
-    num_workers_format_dataset=32,
-    model_hf=None,
     tag_ds=None,
-    img_processor=None,
-    reshape_size=None,
 ):
     # Early assertions
     assert tag_ds is not None, "\n [Error] tag_ds (i.e., the string in tasks names: <dataset_name>_<tag_ds>) must be provided."
-    assert img_processor is not None or reshape_size is not None, "\n [Error] Either img_processor or reshape_size must be provided."
-    assert not (
-        img_processor is not None and reshape_size is not None), "\n [Error] Provide only one of img_processor or reshape_size, not both."
 
     print(f"Starting dataset preparation from {tasks_list_json_path}")
-    print(
-        f"Memory usage before loading: {psutil.virtual_memory().percent}%")
-
-    assert model_hf is not None, "Model HF ID must be provided for dataset preparation."
 
     # Load tasks list from JSON file
     with open(tasks_list_json_path, "r") as f:
@@ -424,7 +574,7 @@ def prepare_dataset_angle_distance(
         for future in as_completed(future_to_task):
             task = future_to_task[future]
             try:
-                ds = future.result(timeout=120)  # 5 minute timeout per task
+                ds = future.result(timeout=120)  # 2 minute timeout per task
                 datasets_list.append(ds)
                 print(
                     f"✓ Completed {task} ({len(datasets_list)}/{len(tasks)})")
@@ -478,49 +628,99 @@ def prepare_dataset_angle_distance(
                 range(limit_train_sample))
         )
 
+    return dataset
+
+
+def format_dataset(dataset, img_processor, reshape_size, mapping_func, num_workers_format_dataset):
+    assert img_processor is not None or reshape_size is not None, "\n [Error] Either img_processor or reshape_size must be provided."
+    assert not (
+        img_processor is not None and reshape_size is not None), "\n [Error] Provide only one of img_processor or reshape_size, not both."
+
     # Format the dataset with parallelism
     # Use conservative parallelism for formatting to avoid OOM
+    available_cpus = get_cgroup_limited_cpus()
     format_workers = min(num_workers_format_dataset, available_cpus)
     print(f"Formatting dataset with {format_workers} workers...")
     if img_processor is not None:
         dataset = dataset.map(
-            _format_data_distance_angle,
+            mapping_func,
             fn_kwargs={"img_processor": img_processor},
             num_proc=format_workers,
             desc="Formatting dataset",
         )
     elif reshape_size is not None:
         dataset = dataset.map(
-            _format_data_distance_angle,
+            mapping_func,
             fn_kwargs={"reshape_size": reshape_size},
             num_proc=format_workers,
             desc="Formatting dataset",
         )
     print(f"Dataset length after formatting: {len(dataset)}")
 
+
+def prepare_dataset_angle_distance(
+    tasks_list_json_path,
+    limit_train_sample,
+    limit_val_sample,
+    num_workers_concat_datasets=4,
+    num_workers_format_dataset=32,
+    tag_ds=None,
+    img_processor=None,
+    reshape_size=None,
+):
+    dataset = load_split_limit_dataset(
+        tasks_list_json_path=tasks_list_json_path,
+        limit_train_sample=limit_train_sample,
+        limit_val_sample=limit_val_sample,
+        num_workers_concat_datasets=num_workers_concat_datasets,
+        tag_ds=tag_ds,
+    )
+
+    dataset = format_dataset(dataset, img_processor, reshape_size,
+                             _format_data_distance_angle, num_workers_format_dataset)
+
     return dataset
 
-# TODO: debug
-# FIXME: This is wrong in multi-GPU setting. The len(train_dl) may not reflect the actual number of samples.
-# --- NEW Training BLOCK: handle resume logic & recompute max_steps if user changed epochs ---
+
+def prepare_dataset_tumor_lesion(
+    tasks_list_json_path,
+    limit_train_sample,
+    limit_val_sample,
+    num_workers_concat_datasets=4,
+    num_workers_format_dataset=32,
+    tag_ds=None,
+    img_processor=None,
+    reshape_size=None,
+):
+    dataset = load_split_limit_dataset(
+        tasks_list_json_path=tasks_list_json_path,
+        limit_train_sample=limit_train_sample,
+        limit_val_sample=limit_val_sample,
+        num_workers_concat_datasets=num_workers_concat_datasets,
+        tag_ds=tag_ds,
+    )
+
+    dataset = format_dataset(dataset, img_processor, reshape_size,
+                             _format_data_lesionSizeTasks, num_workers_format_dataset)
+
+    return dataset
 
 
-def recompute_total_max_steps(trainer, *, gradient_accumulation_steps=None, num_train_epochs=None):
+
+
+def recompute_total_max_steps(trainer):
     """Recompute total planned update steps based on global dataset size, world size and desired epochs."""
     args = trainer.args
-    state = PartialState()
+    grad_accum = args.gradient_accumulation_steps
+    epoch = args.num_train_epochs
+    per_device_bsz = args.per_device_train_batch_size
 
     # Prefer accelerate's world size; fallback to Trainer args/env
+    state = PartialState()
     world_size = getattr(state, "num_processes", None) or getattr(
         args, "world_size", None)
     if not world_size or world_size < 1:
         world_size = int(os.environ.get("WORLD_SIZE", "1"))
-
-    per_device_bsz = getattr(args, "per_device_train_batch_size", 1)
-    grad_accum = gradient_accumulation_steps or getattr(
-        args, "gradient_accumulation_steps", 1)
-    epochs = int(num_train_epochs or getattr(
-        args, "num_train_epochs", 1))
 
     new_max_steps = 0
     dataset_n = None
@@ -543,21 +743,20 @@ def recompute_total_max_steps(trainer, *, gradient_accumulation_steps=None, num_
             steps_per_epoch = max(
                 1, math.ceil(len(train_dl) / grad_accum))
 
-        new_max_steps = steps_per_epoch * epochs
+        new_max_steps = steps_per_epoch * epoch
 
         # Main-process-only logs
         print(f"[resume] world_size: {world_size}")
         print(f"[resume] dataset size (global): {dataset_n}")
-        print(
-            f"[resume] per_device_train_batch_size: {per_device_bsz}")
+        print(f"[resume] per_device_train_batch_size: {per_device_bsz}")
         print(f"[resume] gradient_accumulation_steps: {grad_accum}")
-        print(f"[resume] num_train_epochs: {epochs}")
-        print(
-            f"[resume] steps_per_epoch (computed): {steps_per_epoch}")
+        print(f"[resume] num_train_epochs: {epoch}")
+        print(f"[resume] steps_per_epoch (computed): {steps_per_epoch}")
         print(
             f"[resume] Recomputed new_max_steps (epochs based): {new_max_steps}")
 
-    # Share the computed value to all processes
+    # Share the computed value to all processes so every worker uses the exact same max_steps.
+    # This prevents mismatched training horizons, inconsistent checkpointing, or hangs in collective ops.
     new_max_steps = broadcast_int_from_main(new_max_steps)
     return new_max_steps
 
@@ -846,7 +1045,7 @@ def cleanup_all_gpu():
         )
 
 
-def train_resume_from_checkpoint(trainer, last_checkpoint, gradient_accumulation_steps, num_train_epochs):
+def train_resume_from_checkpoint(trainer, last_checkpoint):
     safe_print("[resume] Requested resume_from_checkpoint=True")
 
     from transformers.trainer_utils import get_last_checkpoint
@@ -854,45 +1053,70 @@ def train_resume_from_checkpoint(trainer, last_checkpoint, gradient_accumulation
     assert last_checkpoint is not None, f"No checkpoint found in {last_checkpoint}"
     safe_print(f"[resume] Found checkpoint: {last_checkpoint}")
 
+    # recompute_total_max_steps already broadcasts the integer so every process
+    # receives the same `new_max_steps` value in its local variable.
     new_max_steps = recompute_total_max_steps(
-        trainer,
-        gradient_accumulation_steps=gradient_accumulation_steps,
-        num_train_epochs=num_train_epochs,
+        trainer
     )
 
     # --- load previous trainer_state.json directly (avoid non-existent _load_state) ---
     trainer_state_path = os.path.join(last_checkpoint, "trainer_state.json")
     try:
-        with open(trainer_state_path, "r", encoding="utf-8") as f:
-            _prev_state = json.load(f)
-        prev_global = _prev_state.get("global_step")
-        prev_recorded_max = _prev_state.get("max_steps")
-        safe_print(
-            f"[resume] Loaded previous trainer_state.json: global_step={prev_global}, max_steps={prev_recorded_max}"
-        )
+        # Only main process reads the checkpoint file and computes the decision.
+        prev_global = None
+        prev_recorded_max = None
+        should_finish_int = 0  # 0 -> False, 1 -> True
+        if is_main_process():
+            with open(trainer_state_path, "r", encoding="utf-8") as f:
+                _prev_state = json.load(f)
+            prev_global = _prev_state.get("global_step")
+            prev_recorded_max = _prev_state.get("max_steps")
+            print(
+                f"[resume] Loaded previous trainer_state.json: global_step={prev_global}, max_steps={prev_recorded_max}"
+            )
+
+            # Decide whether training is already finished relative to the new horizon.
+            if new_max_steps <= prev_recorded_max and prev_global >= new_max_steps:
+                should_finish_int = 1
+        else:
+            # Non-main processes don't read the file.
+            prev_global = None
+            prev_recorded_max = None
+
+        # Broadcast the boolean decision (as int) so every process knows whether to mark finished.
+        should_finish_int = broadcast_int_from_main(should_finish_int)
+        should_finish = bool(should_finish_int)
+
     except Exception as e:
         raise RuntimeError(
             f"[resume] Failed to read trainer_state.json ({e}); cannot resume training.")
     # -------------------------------------------------------------------------------
 
-    if new_max_steps <= prev_recorded_max:
-        if prev_global >= new_max_steps:
-            safe_print(
-                "[resume] Training already satisfies (or exceeds) the new reduced horizon."
-                " Nothing further to do. If you intended more training, increase num_train_epochs."
-            )
-            trainer.state.is_finished = True
+    # Apply the new_max_steps and is_finished flag on every process for consistency.
+    # This ensures all processes have identical trainer args/state before training resumes.
+    trainer.args.max_steps = new_max_steps
+    trainer.state.max_steps = new_max_steps
+    trainer.state.is_finished = should_finish
+
+    # Main-process-only logs (kept for visibility)
+    if is_main_process():
+        if new_max_steps <= (prev_recorded_max or -1):
+            if should_finish:
+                print(
+                    "[resume] Training already satisfies (or exceeds) the new reduced horizon."
+                    " Nothing further to do. If you intended more training, increase num_train_epochs."
+                )
+            else:
+                print(
+                    "[resume] Horizon reduced (or unchanged) and progress not past new_max_steps; continuing."
+                )
         else:
-            safe_print(
-                "[resume] Horizon reduced (or unchanged) and progress not past new_max_steps; continuing."
-            )
-            trainer.args.max_steps = new_max_steps
-            trainer.state.max_steps = new_max_steps
-    else:
-        safe_print("[resume] Extending training horizon.")
-        trainer.args.max_steps = new_max_steps
-        trainer.state.max_steps = new_max_steps
-        trainer.state.is_finished = False
+            print("[resume] Extending training horizon.")
+
+        print(
+            f"[resume] Applied new_max_steps={new_max_steps} on all processes.")
+        print(
+            f"[resume] Marked is_finished={trainer.state.is_finished} on all processes.")
 
     safe_print("Resuming training...")
     trainer.train(resume_from_checkpoint=last_checkpoint)
