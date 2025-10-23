@@ -1,17 +1,13 @@
+import argparse
 import os
 import subprocess
-import argparse
-from medvision_bm.utils import (
-    load_tasks,
-    load_tasks_status,
-    update_task_status,
-    set_cuda_num_processes,
-    setup_env_hf_medvision_ds,
-    ensure_hf_hub_installed,
-    install_vendored_lmms_eval,
-    install_medvision_ds,
-    install_flash_attention_torch_and_deps_py39_v2,
-)
+
+from medvision_bm.utils import (ensure_hf_hub_installed,
+                                install_flash_attention_torch_and_deps_py39_v2,
+                                install_medvision_ds,
+                                install_vendored_lmms_eval, load_tasks,
+                                load_tasks_status, set_cuda_num_processes,
+                                setup_env_hf_medvision_ds, update_task_status)
 
 
 def install_meddr_dependencies(dir_third_party: str):

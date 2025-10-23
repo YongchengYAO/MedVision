@@ -9,6 +9,10 @@ description = "medvision_bm: a codebase for the MedVision benchmark"
 requires-python = ">=3.9"
 authors = [{ name = "Yongcheng Yao", email = "yc.yao@ed.ac.uk" }]
 license = { text = "CC-BY-NC 4.0" }
+dependencies = [
+    "huggingface_hub",
+    "datasets==3.6.0",
+]
 
 [project.urls]
 "License" = "https://creativecommons.org/licenses/by-nc/4.0/"
@@ -21,6 +25,8 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["medvision_bm*"]
+
+[project.optional-dependencies]
 
 # Include the vendored source as data (copied into site-packages)
 [tool.setuptools.package-data]

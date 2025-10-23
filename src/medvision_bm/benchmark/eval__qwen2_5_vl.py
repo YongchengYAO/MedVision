@@ -1,20 +1,15 @@
-import os
-import sys
-import subprocess
 import argparse
-from medvision_bm.utils import (
-    load_tasks,
-    load_tasks_status,
-    update_task_status,
-    set_cuda_num_processes,
-    setup_env_hf_medvision_ds,
-    ensure_hf_hub_installed,
-    install_vendored_lmms_eval,
-    install_medvision_ds,
-    install_torch_cu124,
-    install_vllm,
-    setup_env_vllm,
-)
+import os
+import subprocess
+import sys
+
+from medvision_bm.utils import (ensure_hf_hub_installed, install_medvision_ds,
+                                install_torch_cu124,
+                                install_vendored_lmms_eval, install_vllm,
+                                load_tasks, load_tasks_status,
+                                set_cuda_num_processes,
+                                setup_env_hf_medvision_ds, setup_env_vllm,
+                                update_task_status)
 
 
 def install_transformers_accelerate_for_qwen25vl():
