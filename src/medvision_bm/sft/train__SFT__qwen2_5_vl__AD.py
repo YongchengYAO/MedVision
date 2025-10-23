@@ -1,10 +1,10 @@
 """
 Tutorial:
     - medgemma finetuning: https://github.com/Google-Health/medgemma/blob/main/notebooks/fine_tune_with_hugging_face.ipynb
-    - other visual SFT: https://huggingface.co/docs/trl/training_vlm_sft
+    - other visual SFT: https://huggingface.co/docs/trl/main/en/training_vlm_sft 
 
 NOTE:
-ref: https://github.com/huggingface/trl/blob/main/docs/source/sft_trainer.md#multi-gpu-training
+Multi-GPU training: https://github.com/huggingface/trl/blob/main/docs/source/sft_trainer.md#multi-gpu-training
 
 Trainer (and thus SFTTrainer) supports multi-GPU training.gg
 If you run your script with `python script.py` it will default to using DP as the strategy, which may be slower than expected.
@@ -50,7 +50,6 @@ def main(
                 "num_workers_concat_datasets"),
             num_workers_format_dataset=kwargs.get(
                 "num_workers_format_dataset"),
-            model_hf=base_model_hf,
             tag_ds="BiometricsFromLandmarks",
             img_processor=img_processor,
         )
