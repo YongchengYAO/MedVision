@@ -134,7 +134,7 @@ def _doc_to_visual(doc):
     return [pil_img]
 
 
-def _get_biometric_prompt_angle(biometrics_name, l1p1, l1p2, l2p1, l2p2, metric_unit):
+def _get_prompt_angle(biometrics_name, l1p1, l1p2, l2p1, l2p2, metric_unit):
     """Prepare prompt for angle estimate VQA. Inputs are names."""
     if biometrics_name is not None and biometrics_name != "":
         return (
@@ -151,7 +151,7 @@ def _get_biometric_prompt_angle(biometrics_name, l1p1, l1p2, l2p1, l2p2, metric_
         )
 
 
-def _get_biometric_prompt_distance(biometrics_name, p1, p2, metric_unit):
+def _get_prompt_distance(biometrics_name, p1, p2, metric_unit):
     """Prepare prompt for distance estimate VQA. Inputs are names."""
     metric_unit = metric_unit.strip().replace("mm", "millimeters")
     if biometrics_name is not None and biometrics_name != "":
@@ -169,7 +169,7 @@ def _get_biometric_prompt_distance(biometrics_name, p1, p2, metric_unit):
         )
 
 
-def _doc_to_text_BiometricsFromLandmarks(doc, img_processor=None, reshape_size=None):
+def _doc_to_text_AngleDistanceTask(doc, img_processor=None, reshape_size=None):
     """Convert document to text."""
     # Early assertions
     assert img_processor is not None or reshape_size is not None, "\n [Error] Either img_processor or reshape_size must be provided."
@@ -250,7 +250,7 @@ def _doc_to_text_BiometricsFromLandmarks(doc, img_processor=None, reshape_size=N
         p1_name = lms_map[lms[0]]
         p2_name = lms_map[lms[1]]
         biometrics_name = line_dict["name"]
-        task_prompt = _get_biometric_prompt_distance(
+        task_prompt = _get_prompt_distance(
             biometrics_name, p1_name, p2_name, metric_unit
         )
     if metric_type == "angle":
@@ -277,7 +277,7 @@ def _doc_to_text_BiometricsFromLandmarks(doc, img_processor=None, reshape_size=N
         line2_p1_name = line2_lms_map[line2_lms[0]]
         line2_p2_name = line2_lms_map[line2_lms[1]]
         biometrics_name = angle_dict["name"]
-        task_prompt = _get_biometric_prompt_angle(
+        task_prompt = _get_prompt_angle(
             biometrics_name,
             line1_p1_name,
             line1_p2_name,
@@ -298,14 +298,14 @@ def _doc_to_text_BiometricsFromLandmarks(doc, img_processor=None, reshape_size=N
     return question
 
 
-def _doc_to_target_BiometricsFromLandmarks(doc):
+def _doc_to_target_AngleDistanceTask(doc):
     """Get ground truth biometrics."""
     biometric_profile = doc["biometric_profile"]
     return biometric_profile["metric_value"]
 
 
 # NOTE: This is specific to the MedVision dataset
-def _format_data_distance_angle(
+def _format_data_AngleDistanceTask(
     example: dict[str, Any], img_processor=None, reshape_size=None
 ) -> dict[str, Any]:
     # Early assertions
@@ -313,8 +313,8 @@ def _format_data_distance_angle(
     assert not (
         img_processor is not None and reshape_size is not None), "\n [Error] Provide only one of img_processor or reshape_size, not both."
 
-    target_str = str(_doc_to_target_BiometricsFromLandmarks(example))
-    prompt = _doc_to_text_BiometricsFromLandmarks(
+    target_str = str(_doc_to_target_AngleDistanceTask(example))
+    prompt = _doc_to_text_AngleDistanceTask(
         example, img_processor, reshape_size)
 
     example["messages"] = [
@@ -344,8 +344,7 @@ def _format_data_distance_angle(
     return example
 
 
-
-def _doc_to_text_TumorLesionSize(doc, img_processor=None, reshape_size=None):
+def _doc_to_text_TumorLesionTask(doc, img_processor=None, reshape_size=None):
     """Convert document to text."""
     # Early assertions
     assert img_processor is not None or reshape_size is not None, "\n [Error] Either img_processor or reshape_size must be provided."
@@ -361,7 +360,8 @@ def _doc_to_text_TumorLesionSize(doc, img_processor=None, reshape_size=None):
     dataset_name = doc["dataset_name"]
     dataset_module = DATASETS_NAME2PACKAGE.get(dataset_name)
     if dataset_module is None:
-        raise ValueError(f"Dataset {dataset_name} not found in DATASETS_NAME2PACKAGE.")
+        raise ValueError(
+            f"Dataset {dataset_name} not found in DATASETS_NAME2PACKAGE.")
     preprocess_biometry = importlib.import_module(
         f"biometric_vqa.datasets.{dataset_module}.preprocess_biometry"
     )
@@ -393,7 +393,8 @@ def _doc_to_text_TumorLesionSize(doc, img_processor=None, reshape_size=None):
     biometric_profile = doc["biometric_profile"]
     metric_unit = biometric_profile["metric_unit"]
     if isinstance(metric_unit, list):
-        assert len(metric_unit) == 1, "metric_unit list should have only one element."
+        assert len(
+            metric_unit) == 1, "metric_unit list should have only one element."
         metric_unit = metric_unit[0]
     elif isinstance(metric_unit, str):
         if metric_unit == "mm":
@@ -444,7 +445,7 @@ def _doc_to_text_TumorLesionSize(doc, img_processor=None, reshape_size=None):
     return question, label_name
 
 
-def _doc_to_target_TumorLesionSize(doc):
+def _doc_to_target_TumorLesionTask(doc):
     """Get ground truth biometrics."""
     biometric_profile = doc["biometric_profile"]
     return [
@@ -454,12 +455,13 @@ def _doc_to_target_TumorLesionSize(doc):
 
 
 # NOTE: This is dataset-specific formatting function
-def _format_data_lesionSizeTasks(
+def _format_data_TumorLesionTask(
     example: dict[str, Any], img_processor=None, reshape_size=None
 ) -> dict[str, Any]:
-    target = _doc_to_target_TumorLesionSize(example)
+    target = _doc_to_target_TumorLesionTask(example)
     target_str = ", ".join([f"{value:.3f}" for value in target])
-    prompt, _ = _doc_to_text_TumorLesionSize(example, img_processor, reshape_size)
+    prompt, _ = _doc_to_text_TumorLesionTask(
+        example, img_processor, reshape_size)
 
     example["messages"] = [
         {
@@ -484,6 +486,129 @@ def _format_data_lesionSizeTasks(
             ],
         },
     ]
+
+    return example
+
+
+def _doc_to_text_DetectionTask(doc):
+    """Convert document to text."""
+    # Import the dataset-specific module from biometric_vqa.datasets
+    dataset_name = doc["dataset_name"]
+    dataset_module = DATASETS_NAME2PACKAGE.get(dataset_name)
+    if dataset_module is None:
+        raise ValueError(
+            f"Dataset {dataset_name} not found in DATASETS_NAME2PACKAGE.")
+    preprocess_detection = importlib.import_module(
+        f"biometric_vqa.datasets.{dataset_module}.preprocess_detection"
+    )
+
+    # Get task infoG
+    taskID = doc["taskID"]
+    bm_plan = preprocess_detection.benchmark_plan
+    task_info = bm_plan["tasks"][int(taskID) - 1]
+    # Get label info
+    label = str(doc["label"])
+    labels_map = task_info["labels_map"]
+    if label not in labels_map:
+        raise ValueError(f"Label {label} not found in labels_map.")
+    else:
+        label_name = labels_map.get(label)
+    # Get image info
+    image_description = task_info["image_description"]
+
+    # Format prompt for box coordinates
+    format_prompt_BoxCoordinates = "Return the coordinates as [x1, y1, x2, y2] where (x1, y1) is the lower-left corner and (x2, y2) is the upper-right corner, with coordinates normalized to [0, 1]."
+
+    # Question
+    question = (
+        f"Task:\n"
+        f"Given the input medical image: {image_description}, "
+        f"return the coordinates of the lower-left and upper-right corner of the bounding box for the {label_name}.\n"
+        f"Format requirement:\n"
+        f"{format_prompt_BoxCoordinates}"
+    )
+    return question
+
+
+def _doc_to_target_DetectionTask(doc):
+    """
+    Get bounding coordinates.
+    NOTE:
+    Definition of the output bounding box coordinates:
+    1.  The origin of the coordinates is at the [lower-left corner] of the image.
+    2.  The first two numbers are the coordinates of the [lower-left] corner and
+        the last two numbers are the coordinates of the [upper-right] corner of the bounding box.
+    3.  The coordinates are expected to be in the format of [coor0_dim1, coor0_dim0, coor1_dim1, coor1_dim0], where:
+        - coor0: lower-left corner of the bounding box
+        - coor1: upper-right corner of the bounding box
+        - dim0: the first dimension of the image (height)
+        - dim1: the second dimension of the image (width)
+    NOTE:
+    Definition of bounding box coordinates in the benchmark planner:
+    1. The origin of the coordinates is at the [top-left corner] of the image.
+    2. The first two numbers are the coordinates of the [upper-left] corner and
+       the last two numbers are the coordinates of the [lower-right] corner of the bounding box.
+    NOTE: CAVEAT!
+    !!! We need to convert the coordinates from the benchmark planner format to the output format. !!!
+    """
+    # Read NIfTI image
+    img_size = doc["image_size_2d"]
+    # Convert the coordinates from the benchmark planner format to the output format.
+    bm_coor0_dim0, bm_coor0_dim1 = doc["bounding_boxes"]["min_coords"][0]
+    bm_coor1_dim0, bm_coor1_dim1 = doc["bounding_boxes"]["max_coords"][0]
+    img_coor0_dim0 = bm_coor0_dim1
+    img_coor0_dim1 = img_size[0] - bm_coor1_dim0
+    img_coor1_dim0 = bm_coor1_dim1
+    img_coor1_dim1 = img_size[0] - bm_coor0_dim0
+    # Convert bounding box coordinates to relative coordinates
+    coor0_dim1 = img_coor0_dim1 / img_size[0]
+    coor0_dim0 = img_coor0_dim0 / img_size[1]
+    coor1_dim1 = img_coor1_dim1 / img_size[0]
+    coor1_dim0 = img_coor1_dim0 / img_size[1]
+    # Return the relative coordinates in the image space (the origin is at the lower-left corner)
+    return [coor0_dim0, coor0_dim1, coor1_dim0, coor1_dim1]
+
+
+# NOTE: This is dataset-specific formatting function
+def _format_data_DetectionTask(example: dict[str, Any]) -> dict[str, Any]:
+    target_coords = _doc_to_target_DetectionTask(example)
+    coord_str = f"{target_coords[0]:.3f}, {target_coords[1]:.3f}, {target_coords[2]:.3f}, {target_coords[3]:.3f}"
+
+    example["messages"] = [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                },
+                {
+                    "type": "text",
+                    "text": _doc_to_text_DetectionTask(example),
+                },
+            ],
+        },
+        {
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "text",
+                    "text": coord_str,
+                },
+            ],
+        },
+    ]
+
+    # Calculate box-image ratio
+    assert "image_size_2d" in example, "Error: image_size_2d is missing in the dataset."
+    img_dims = example["image_size_2d"]
+    assert "bounding_boxes" in example and "dimensions" in example["bounding_boxes"]
+    box_dims = (
+        example["bounding_boxes"]["dimensions"][0]
+        if isinstance(example["bounding_boxes"]["dimensions"], list)
+        else example["bounding_boxes"]["dimensions"]
+    )
+    example["box_image_ratio"] = box_dims[0] * \
+        box_dims[1] / (img_dims[0] * img_dims[1])
 
     return example
 
@@ -658,7 +783,7 @@ def format_dataset(dataset, img_processor, reshape_size, mapping_func, num_worke
     print(f"Dataset length after formatting: {len(dataset)}")
 
 
-def prepare_dataset_angle_distance(
+def prepare_dataset_AngleDistanceTask(
     tasks_list_json_path,
     limit_train_sample,
     limit_val_sample,
@@ -677,12 +802,12 @@ def prepare_dataset_angle_distance(
     )
 
     dataset = format_dataset(dataset, img_processor, reshape_size,
-                             _format_data_distance_angle, num_workers_format_dataset)
+                             _format_data_AngleDistanceTask, num_workers_format_dataset)
 
     return dataset
 
 
-def prepare_dataset_tumor_lesion(
+def prepare_dataset_TumorLesionTask(
     tasks_list_json_path,
     limit_train_sample,
     limit_val_sample,
@@ -701,11 +826,33 @@ def prepare_dataset_tumor_lesion(
     )
 
     dataset = format_dataset(dataset, img_processor, reshape_size,
-                             _format_data_lesionSizeTasks, num_workers_format_dataset)
+                             _format_data_TumorLesionTask, num_workers_format_dataset)
 
     return dataset
 
 
+def prepare_dataset_DetectionTask(
+    tasks_list_json_path,
+    limit_train_sample,
+    limit_val_sample,
+    num_workers_concat_datasets=4,
+    num_workers_format_dataset=32,
+    tag_ds=None,
+    img_processor=None,
+    reshape_size=None,
+):
+    dataset = load_split_limit_dataset(
+        tasks_list_json_path=tasks_list_json_path,
+        limit_train_sample=limit_train_sample,
+        limit_val_sample=limit_val_sample,
+        num_workers_concat_datasets=num_workers_concat_datasets,
+        tag_ds=tag_ds,
+    )
+
+    dataset = format_dataset(dataset, img_processor, reshape_size,
+                             _format_data_DetectionTask, num_workers_format_dataset)
+
+    return dataset
 
 
 def recompute_total_max_steps(trainer):

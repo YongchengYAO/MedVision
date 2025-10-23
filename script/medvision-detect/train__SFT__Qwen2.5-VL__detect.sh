@@ -17,17 +17,17 @@ train_sft_dir="${benchmark_dir}/SFT"
 data_dir="${benchmark_dir}/Data"
 
 # Data configs
-tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-AD.json"
+tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-detect.json"
 
 # Model configs
 base_model_hf="Qwen/Qwen2.5-VL-32B-Instruct"
-run_name="MedVision__SFT__qwen25vl-32b__AD"
+run_name="MedVision__SFT__qwen25vl-32b__detect"
 lora_checkpoint_dir="${train_sft_dir}/${run_name}/checkpoints/${run_name}" # Put ${run_name} at the end for distinct HF repo names when pushing LoRA checkpoints
-merged_model_hf="MedVision__SFT-m__qwen25vl-32b__AD"
+merged_model_hf="MedVision__SFT-m__qwen25vl-32b__detect"
 merged_model_dir="${train_sft_dir}/${run_name}/merged_model"
 
 # Training configs
-epoch=10
+epoch=1
 save_steps=100
 eval_steps=50
 logging_steps=50
@@ -36,7 +36,7 @@ use_flash_attention_2=true
 num_workers_concat_datasets=4
 num_workers_format_dataset=32
 dataloader_num_workers=8
-train_sample_limit=10000
+train_sample_limit=20 # NOTE: debugging
 val_sample_limit=100
 dataloader_pin_memory=true
 use_flash_attention_2=true
@@ -77,7 +77,7 @@ python -m medvision_bm.sft.env_setup --data_dir ${data_dir}
 # # Run
 CUDA_VISIBLE_DEVICES=0,1 \
 accelerate launch --num_processes=2 --main_process_port=29502 --mixed_precision=bf16 \
--m  medvision_bm.sft.train__SFT__qwen2_5_vl__AD \
+-m  medvision_bm.sft.train__SFT__qwen2_5_vl__detect \
 --run_name ${run_name} \
 --base_model_hf ${base_model_hf} \
 --lora_checkpoint_dir ${lora_checkpoint_dir} \
@@ -111,7 +111,7 @@ accelerate launch --num_processes=2 --main_process_port=29502 --mixed_precision=
 --resume_from_checkpoint ${resume_from_checkpoint} \
 --gradient_checkpointing ${gradient_checkpointing} \
 --dataloader_pin_memory ${dataloader_pin_memory} \
-2>&1 | tee train__SFT__qwen2_5_vl__AD.log
+2>&1 | tee train__SFT__qwen2_5_vl__detect.log
 
 conda deactivate
 # conda remove -n $ENV_NAME --all -y

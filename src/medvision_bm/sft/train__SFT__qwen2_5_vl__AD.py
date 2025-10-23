@@ -1,10 +1,8 @@
 """
 Tutorial:
     - medgemma finetuning: https://github.com/Google-Health/medgemma/blob/main/notebooks/fine_tune_with_hugging_face.ipynb
-    - other visual SFT: https://huggingface.co/docs/trl/main/en/training_vlm_sft 
-
-NOTE:
-Multi-GPU training: https://github.com/huggingface/trl/blob/main/docs/source/sft_trainer.md#multi-gpu-training
+    - other visual SFT: https://huggingface.co/docs/trl/main/en/training_vlm_sft
+                        https://github.com/huggingface/trl/blob/main/docs/source/sft_trainer.md 
 
 Trainer (and thus SFTTrainer) supports multi-GPU training.gg
 If you run your script with `python script.py` it will default to using DP as the strategy, which may be slower than expected.
@@ -13,7 +11,6 @@ To use DDP (which is generally recommended, see here for more info) you must lau
 or
 > accelerate launch script.py
 """
-
 import argparse
 import os
 
@@ -21,7 +18,7 @@ from transformers import AutoProcessor
 
 from medvision_bm.sft.utils import (cleanup_all_gpu, is_main_process,
                                     merge_models,
-                                    prepare_dataset_angle_distance,
+                                    prepare_dataset_AngleDistanceTask,
                                     prepare_trainer,
                                     train_resume_from_checkpoint)
 from medvision_bm.utils import setup_env_hf_medvision_ds
@@ -42,7 +39,7 @@ def main(
         # Prepare the dataset
         img_processor = AutoProcessor.from_pretrained(
             base_model_hf).image_processor
-        dataset = prepare_dataset_angle_distance(
+        dataset = prepare_dataset_AngleDistanceTask(
             tasks_list_json_path=tasks_list_json_path,
             limit_train_sample=kwargs.get("train_sample_limit"),
             limit_val_sample=kwargs.get("val_sample_limit"),
