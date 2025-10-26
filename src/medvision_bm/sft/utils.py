@@ -760,7 +760,7 @@ def format_dataset(dataset, img_processor, reshape_size, mapping_func, num_worke
     assert img_processor is not None or reshape_size is not None, "\n [Error] Either img_processor or reshape_size must be provided."
     assert not (
         img_processor is not None and reshape_size is not None), "\n [Error] Provide only one of img_processor or reshape_size, not both."
-
+        
     # Format the dataset with parallelism
     # Use conservative parallelism for formatting to avoid OOM
     available_cpus = get_cgroup_limited_cpus()
@@ -780,7 +780,7 @@ def format_dataset(dataset, img_processor, reshape_size, mapping_func, num_worke
             num_proc=format_workers,
             desc="Formatting dataset",
         )
-    print(f"Dataset length after formatting: {len(dataset)}")
+    return dataset
 
 
 def prepare_dataset_AngleDistanceTask(
