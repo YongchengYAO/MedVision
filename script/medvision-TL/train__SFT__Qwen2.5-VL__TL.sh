@@ -9,7 +9,7 @@ else
     conda create -n "${ENV_NAME}" python==3.11 -y
 fi
 conda activate "${ENV_NAME}"
-# conda install -c nvidia cuda-toolkit=12.4 -y
+conda install -c nvidia cuda-toolkit=12.4 -y
 
 # Set paths
 benchmark_dir="/mnt/vincent-pvc-rwm/Github/MedVision"
@@ -17,7 +17,7 @@ train_sft_dir="${benchmark_dir}/SFT"
 data_dir="${benchmark_dir}/Data"
 
 # Data configs
-tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-TL.json"
+tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-TL__train_SFT.json"
 
 # Model configs
 base_model_hf="Qwen/Qwen2.5-VL-32B-Instruct"
@@ -64,12 +64,12 @@ wandb_run_name=${run_name}
 # NOTE: For continuing an existing run, set the wandb_run_id to the ID of the existing run.
 wandb_run_id="run-001"
 
-# # Install medvision_bm
-# rm -rf "${benchmark_dir}/build" "${benchmark_dir}/src/medvision_bm.egg-info"
-# pip install -e "${benchmark_dir}"
+# Install medvision_bm
+rm -rf "${benchmark_dir}/build" "${benchmark_dir}/src/medvision_bm.egg-info"
+pip install "${benchmark_dir}"
 
-# # Setup training env
-# python -m medvision_bm.sft.env_setup --data_dir ${data_dir}
+# Setup training env
+python -m medvision_bm.sft.env_setup --data_dir ${data_dir}
 
 # # [Debugging] Disable WANDB online logging
 # export WANDB_MODE=offline      # or HF_DISABLE_WANDB=1
