@@ -2,9 +2,37 @@ import os
 import shlex
 import subprocess
 import sys
+from pathlib import Path
 from importlib.resources import files  # Python 3.9+
 
 from huggingface_hub import snapshot_download
+
+
+def run_pip_install(requirements_path: Path | str) -> None:
+    # Normalize input to a Path so both str and Path work.
+    req_path = Path(requirements_path).expanduser().resolve(strict=False)
+
+    if not req_path.exists() or not req_path.is_file():
+        raise FileNotFoundError(f"Requirements file not found: {requirements_path}")
+
+    # Use the current interpreter to run pip to avoid PATH/env mismatches.
+    cmd = [
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
+        "--upgrade",
+        "--force-reinstall",
+        "--no-deps",
+        "-r",
+        str(req_path),
+    ]
+
+    env = os.environ.copy()
+    env.setdefault("PIP_DISABLE_PIP_VERSION_CHECK", "1")
+
+    print(f"Installing packages from: {req_path}")
+    subprocess.run(cmd, env=env, check=True)
 
 
 def ensure_hf_hub_installed():

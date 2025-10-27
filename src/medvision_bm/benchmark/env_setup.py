@@ -4,32 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from medvision_bm.utils import install_medvision_ds, install_vendored_lmms_eval
-
-
-def run_pip_install(requirements_path: Path) -> None:
-    if not requirements_path.exists() or not requirements_path.is_file():
-        raise FileNotFoundError(
-            f"Requirements file not found: {requirements_path}")
-
-    # Use the current interpreter to run pip to avoid PATH/env mismatches.
-    cmd = [
-        sys.executable,
-        "-m",
-        "pip",
-        "install",
-        "--upgrade",
-        "--force-reinstall",
-        "--no-deps",
-        "-r",
-        str(requirements_path),
-    ]
-
-    env = os.environ.copy()
-    env.setdefault("PIP_DISABLE_PIP_VERSION_CHECK", "1")
-
-    print(f"Installing packages from: {requirements_path}")
-    subprocess.run(cmd, env=env)
+from medvision_bm.utils import install_medvision_ds, install_vendored_lmms_eval, run_pip_install
 
 
 def parse_args() -> argparse.Namespace:
@@ -39,12 +14,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "-r",
         "--requirement",
+        type=str,
         required=True,
         help="Path to the requirements.txt file.",
     )
     parser.add_argument(
         "--data_dir",
         type=str,
+        required=True,
         help="Directory to store downloaded datasets and source code.",
     )
     parser.add_argument(
@@ -76,7 +53,6 @@ def main() -> None:
     # Install dataset codebase: medvision_ds
     print(f"\n[Info] Installing medvision_ds package...")
     data_dir = args.data_dir
-    assert data_dir is not None, "--data_dir argument is required."
     os.makedirs(data_dir, exist_ok=True)
     install_medvision_ds(data_dir)
 

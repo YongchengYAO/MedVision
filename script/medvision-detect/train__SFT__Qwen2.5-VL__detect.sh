@@ -71,8 +71,13 @@ pip install "${benchmark_dir}"
 # Setup training env
 python -m medvision_bm.sft.env_setup --data_dir ${data_dir}
 
+# # [Alternative] Setup training env: use a specific requirements file
+# python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --requirement "${benchmark_dir}/requirements/requirements_sft_qwen25vl.txt"
+
 # # [Debugging] Disable WANDB online logging
 # export WANDB_MODE=offline      # or HF_DISABLE_WANDB=1
+# export WANDB_CORE_DEBUG=true
+# export WANDB_DEBUG=true
 
 # # Run
 CUDA_VISIBLE_DEVICES=0,1 \
