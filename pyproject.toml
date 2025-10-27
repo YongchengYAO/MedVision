@@ -10,7 +10,7 @@ requires-python = ">=3.9"
 authors = [{ name = "Yongcheng Yao", email = "yc.yao@ed.ac.uk" }]
 license = { text = "CC-BY-NC 4.0" }
 dependencies = [
-    "huggingface_hub",
+    "huggingface_hub==0.36.1",
     "datasets==3.6.0",
 ]
 
