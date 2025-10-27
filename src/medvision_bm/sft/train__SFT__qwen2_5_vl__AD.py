@@ -87,9 +87,6 @@ def main(
                 train_resume_from_checkpoint(
                     trainer=trainer,
                     last_checkpoint=last_checkpoint,
-                    gradient_accumulation_steps=kwargs.get(
-                        "gradient_accumulation_steps"),
-                    num_train_epochs=kwargs.get("epoch"),
                 )
             else:
                 if is_main_process():
