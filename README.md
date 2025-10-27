@@ -81,4 +81,14 @@ pip install "git+https://github.com/YongchengYAO/MedVision.git"
 
 # 🎯 Training: SFT
 
-**[Usage]** The scripts in `script/medvision-*/train__SFT__*` should be sufficient for dependencies installation, data processing, and training.
+- **[Usage]** The scripts in `script/medvision-*/train__SFT__*` should be sufficient for dependencies installation, data processing, and training.
+
+- **[Debug]** Use the dependencies list in `requirements` for debugging packages conflict
+
+  1. Modify dependencies list, such as `requirements/requirements_sft_qwen25vl.txt`
+  
+  2. Use the alternative setup command in `script/medvision-*/train__SFT__*` 
+      ```bash
+      # [Alternative] Setup training env: use a specific requirements file
+      python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --requirement "${benchmark_dir}/requirements/requirements_sft_qwen25vl.txt"
+      ```
