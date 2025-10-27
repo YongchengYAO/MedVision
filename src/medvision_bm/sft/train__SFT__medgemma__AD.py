@@ -16,10 +16,10 @@ import os
 
 from transformers import AutoProcessor
 
-from medvision_bm.sft.qwen25vl_utils import make_collate_fn_Qwen25VL
+from medvision_bm.sft.medgemma_utils import make_collate_fn_MedGemma
 from medvision_bm.sft.utils import (cleanup_all_gpu, is_main_process,
                                     merge_models,
-                                    prepare_dataset_DetectionTask,
+                                    prepare_dataset_AngleDistanceTask,
                                     prepare_trainer,
                                     train_resume_from_checkpoint)
 from medvision_bm.utils import setup_env_hf_medvision_ds
@@ -40,7 +40,7 @@ def main(
         # Prepare the dataset
         img_processor = AutoProcessor.from_pretrained(
             base_model_hf).image_processor
-        dataset = prepare_dataset_DetectionTask(
+        dataset = prepare_dataset_AngleDistanceTask(
             tasks_list_json_path=tasks_list_json_path,
             limit_train_sample=kwargs.get("train_sample_limit"),
             limit_val_sample=kwargs.get("val_sample_limit"),
@@ -48,8 +48,8 @@ def main(
                 "num_workers_concat_datasets"),
             num_workers_format_dataset=kwargs.get(
                 "num_workers_format_dataset"),
-            tag_ds="BoxSize", # MedVision dataset specific, used to extract dataset name from detection task configs
-            img_processor=img_processor,
+            tag_ds="BiometricsFromLandmarks", # MedVision dataset specific, used to extract dataset name from AD task configs
+            reshape_size=[896, 896], # MedGemma specific
         )
 
         # Prepare trainer
@@ -58,7 +58,7 @@ def main(
             base_model_hf=base_model_hf,
             lora_checkpoint_dir=lora_checkpoint_dir,
             data=dataset,
-            make_collate_fn=make_collate_fn_Qwen25VL,
+            make_collate_fn=make_collate_fn_MedGemma,
             per_device_train_batch_size=kwargs.get(
                 "per_device_train_batch_size"),
             per_device_eval_batch_size=kwargs.get(
@@ -87,7 +87,7 @@ def main(
                 train_resume_from_checkpoint(
                     trainer=trainer,
                     last_checkpoint=last_checkpoint,
-                    )
+                )
             else:
                 if is_main_process():
                     print(

@@ -48,7 +48,7 @@ def main(
                 "num_workers_concat_datasets"),
             num_workers_format_dataset=kwargs.get(
                 "num_workers_format_dataset"),
-            tag_ds="BiometricsFromLandmarks",
+            tag_ds="BiometricsFromLandmarks", # MedVision dataset specific, used to extract dataset name from AD task configs
             img_processor=img_processor,
         )
 

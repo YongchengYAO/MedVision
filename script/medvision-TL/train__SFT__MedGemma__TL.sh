@@ -1,4 +1,4 @@
-ENV_NAME="sft-qwen25vl"
+ENV_NAME="sft-medgemma"
 
 # Only create the env if it doesn't already exist
 source activate base
@@ -17,17 +17,17 @@ train_sft_dir="${benchmark_dir}/SFT"
 data_dir="${benchmark_dir}/Data"
 
 # Data configs
-tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-AD__train_SFT.json"
+tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-TL__train_SFT.json"
 
 # Model configs
-base_model_hf="Qwen/Qwen2.5-VL-32B-Instruct"
-run_name="MedVision__SFT__qwen25vl-32b__AD"
+base_model_hf="google/medgemma-27b-it"
+run_name="MedVision__SFT__medgemma-27b-it__TL"
 lora_checkpoint_dir="${train_sft_dir}/${run_name}/checkpoints/${run_name}" # Put ${run_name} at the end for distinct HF repo names when pushing LoRA checkpoints
-merged_model_hf="MedVision__SFT-m__qwen25vl-32b__AD"
+merged_model_hf="MedVision__SFT-m__medgemma-27b-it__TL"
 merged_model_dir="${train_sft_dir}/${run_name}/merged_model"
 
 # Training configs
-epoch=30
+epoch=3
 save_steps=100
 eval_steps=50
 logging_steps=50
@@ -36,7 +36,7 @@ use_flash_attention_2=true
 num_workers_concat_datasets=4
 num_workers_format_dataset=32
 dataloader_num_workers=8
-train_sample_limit=10000
+train_sample_limit=1000000
 val_sample_limit=100
 dataloader_pin_memory=true
 use_flash_attention_2=true
@@ -46,9 +46,9 @@ resume_from_checkpoint=true # Enable resuming from the last checkpoint
 
 # Resource-constrained training configs
 gradient_checkpointing=true # Enable gradient checkpointing to save memory
-per_device_train_batch_size=1
-per_device_eval_batch_size=1
-gradient_accumulation_steps=12 # Control effective batch size: effective_batch_size = per_device_train_batch_size * gradient_accumulation_steps * num_gpus
+per_device_train_batch_size=4
+per_device_eval_batch_size=4
+gradient_accumulation_steps=3 # Control effective batch size: effective_batch_size = per_device_train_batch_size * gradient_accumulation_steps * num_gpus
 
 # Merge and push configs
 push_LoRA=false # Push LoRA checkpoint to HF Hub after each save
@@ -72,7 +72,7 @@ pip install "${benchmark_dir}"
 python -m medvision_bm.sft.env_setup --data_dir ${data_dir}
 
 # # [Alternative] Setup training env: use a specific requirements file
-# python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --requirement "${benchmark_dir}/requirements/requirements_sft_qwen25vl.txt"
+# python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --requirement "${benchmark_dir}/requirements/requirements_sft_medgemma.txt"
 
 # # [Debugging] Disable WANDB online logging
 # export WANDB_MODE=offline      # or HF_DISABLE_WANDB=1
@@ -82,7 +82,7 @@ python -m medvision_bm.sft.env_setup --data_dir ${data_dir}
 # # Run
 CUDA_VISIBLE_DEVICES=0,1 \
 accelerate launch --num_processes=2 --main_process_port=29502 --mixed_precision=bf16 \
--m  medvision_bm.sft.train__SFT__qwen2_5_vl__AD \
+-m  medvision_bm.sft.train__SFT__medgemma__TL \
 --run_name ${run_name} \
 --base_model_hf ${base_model_hf} \
 --lora_checkpoint_dir ${lora_checkpoint_dir} \
@@ -116,7 +116,7 @@ accelerate launch --num_processes=2 --main_process_port=29502 --mixed_precision=
 --resume_from_checkpoint ${resume_from_checkpoint} \
 --gradient_checkpointing ${gradient_checkpointing} \
 --dataloader_pin_memory ${dataloader_pin_memory} \
-2>&1 | tee train__SFT__qwen2_5_vl__AD.log
+2>&1 | tee train__SFT__medgemma-27b-it__TL.log
 
 conda deactivate
 # conda remove -n $ENV_NAME --all -y
