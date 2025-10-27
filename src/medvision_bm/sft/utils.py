@@ -211,11 +211,13 @@ def _doc_to_text_AngleDistanceTask(doc, img_processor=None, reshape_size=None):
     img_shape = img_2d_raw.shape
 
     # -------------
-    # FIXME: This implementation only works for Qwen2.5VL
-    # TODO: Generalize to other models; reuse code if possible
     # NOTE: If img_processor is provided, a model-specific processing is applied to get the reshaped image size
     # -------------
     if img_processor is not None:
+        # ====== Qwen2.5VL specific processing ======
+        # FIXME: This block only works for Qwen2.5VL
+        # TODO: Generalize to other models; reuse code if possible
+        # ---
         # Get reshaped image size so that we can adjust the pixel size dynamically
         img_PIL = Image.fromarray(img_2d_raw)
         processed_visual = img_processor([img_PIL])
@@ -223,7 +225,9 @@ def _doc_to_text_AngleDistanceTask(doc, img_processor=None, reshape_size=None):
         patch_size = img_processor.patch_size
         img_shape_resized = (
             image_grid_thw[1] * patch_size, image_grid_thw[2] * patch_size)
+        # ===== End of Qwen2.5VL specific processing ======
     elif reshape_size is not None:
+        # NOTE: For all models that have a fixed reshape size
         assert len(reshape_size) == 2, "reshape_size should be of length 2"
         img_shape_resized = reshape_size
     # -------------
@@ -760,7 +764,7 @@ def format_dataset(dataset, img_processor, reshape_size, mapping_func, num_worke
     assert img_processor is not None or reshape_size is not None, "\n [Error] Either img_processor or reshape_size must be provided."
     assert not (
         img_processor is not None and reshape_size is not None), "\n [Error] Provide only one of img_processor or reshape_size, not both."
-        
+
     # Format the dataset with parallelism
     # Use conservative parallelism for formatting to avoid OOM
     available_cpus = get_cgroup_limited_cpus()
@@ -908,48 +912,12 @@ def recompute_total_max_steps(trainer):
     return new_max_steps
 
 
-# Safer alternative: build a collate_fn bound to a specific processor (avoids relying on a global in multi-process contexts).
-def make_collate_fn(proc):
-    def _collate_fn_local(examples: list[dict[str, Any]]):
-        texts = []
-        images = []
-        for example in examples:
-            if "processed_images" in example:
-                images.append(example["processed_images"])
-            else:
-                pil_images = _doc_to_visual(example)
-                images.append(pil_images)
-            texts.append(
-                proc.apply_chat_template(
-                    example["messages"], add_generation_prompt=False, tokenize=False
-                ).strip()
-            )
-
-        batch = proc(text=texts, images=images,
-                     return_tensors="pt", padding=True)
-
-        labels = batch["input_ids"].clone()
-        image_token_id = proc.tokenizer.convert_tokens_to_ids(proc.image_token)
-        image_begin_token_id = [
-            proc.tokenizer.convert_tokens_to_ids("<|im_start|>")]
-        image_end_token_id = [
-            proc.tokenizer.convert_tokens_to_ids("<|im_end|>")]
-
-        labels[labels == proc.tokenizer.pad_token_id] = -100
-        labels[labels == image_begin_token_id] = -100
-        labels[labels == image_token_id] = -100
-        labels[labels == image_end_token_id] = -100
-
-        batch["labels"] = labels
-        return batch
-    return _collate_fn_local
-
-
 def prepare_trainer(
     run_name,
     base_model_hf,
     lora_checkpoint_dir,
     data,
+    make_collate_fn,
     per_device_train_batch_size=14,
     per_device_eval_batch_size=14,
     gradient_accumulation_steps=6,

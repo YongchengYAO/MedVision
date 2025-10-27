@@ -16,6 +16,7 @@ import os
 
 from transformers import AutoProcessor
 
+from medvision_bm.sft.qwen25vl_utils import make_collate_fn_Qwen25VL
 from medvision_bm.sft.utils import (cleanup_all_gpu, is_main_process,
                                     merge_models,
                                     prepare_dataset_AngleDistanceTask,
@@ -57,6 +58,7 @@ def main(
             base_model_hf,
             lora_checkpoint_dir=lora_checkpoint_dir,
             data=dataset,
+            make_collate_fn=make_collate_fn_Qwen25VL,
             per_device_train_batch_size=kwargs.get(
                 "per_device_train_batch_size"),
             per_device_eval_batch_size=kwargs.get(
