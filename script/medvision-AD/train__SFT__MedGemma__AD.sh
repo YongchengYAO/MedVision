@@ -62,7 +62,7 @@ wandb_dir="${train_sft_dir}/${run_name}"
 wandb_project="MedVision-SFT"
 wandb_run_name=${run_name}
 # NOTE: For continuing an existing run, set the wandb_run_id to the ID of the existing run.
-wandb_run_id="run-001"
+wandb_run_id="run-002"
 
 # Install medvision_bm
 rm -rf "${benchmark_dir}/build" "${benchmark_dir}/src/medvision_bm.egg-info"

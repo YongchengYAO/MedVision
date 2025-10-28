@@ -4,7 +4,7 @@ Tutorial:
     - other visual SFT: https://huggingface.co/docs/trl/main/en/training_vlm_sft
                         https://github.com/huggingface/trl/blob/main/docs/source/sft_trainer.md 
 
-Trainer (and thus SFTTrainer) supports multi-GPU training.gg
+Trainer (and thus SFTTrainer) supports multi-GPU training.
 If you run your script with `python script.py` it will default to using DP as the strategy, which may be slower than expected.
 To use DDP (which is generally recommended, see here for more info) you must launch the script with
 > python -m torch.distributed.launch script.py

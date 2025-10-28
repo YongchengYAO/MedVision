@@ -27,7 +27,7 @@ merged_model_hf="MedVision__SFT-m__medgemma-27b-it__TL"
 merged_model_dir="${train_sft_dir}/${run_name}/merged_model"
 
 # Training configs
-epoch=3
+epoch=30
 save_steps=100
 eval_steps=50
 logging_steps=50
@@ -36,7 +36,7 @@ use_flash_attention_2=true
 num_workers_concat_datasets=4
 num_workers_format_dataset=32
 dataloader_num_workers=8
-train_sample_limit=1000000
+train_sample_limit=10000
 val_sample_limit=100
 dataloader_pin_memory=true
 use_flash_attention_2=true

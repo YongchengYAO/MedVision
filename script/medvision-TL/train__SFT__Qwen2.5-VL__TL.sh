@@ -27,7 +27,7 @@ merged_model_hf="MedVision__SFT-m__qwen25vl-32b__TL"
 merged_model_dir="${train_sft_dir}/${run_name}/merged_model"
 
 # Training configs
-epoch=1
+epoch=30
 save_steps=100
 eval_steps=50
 logging_steps=50
