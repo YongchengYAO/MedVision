@@ -14,15 +14,39 @@ or
 import argparse
 import os
 
+from datasets import load_from_disk
 from transformers import AutoProcessor
 
 from medvision_bm.sft.qwen25vl_utils import make_collate_fn_Qwen25VL
-from medvision_bm.sft.utils import (cleanup_all_gpu, is_main_process,
-                                    merge_models,
+from medvision_bm.sft.utils import (cleanup_all_gpu, merge_models,
                                     prepare_dataset_DetectionTask,
                                     prepare_trainer,
                                     train_resume_from_checkpoint)
 from medvision_bm.utils import setup_env_hf_medvision_ds
+
+try:
+    from accelerate import PartialState
+    _PS = PartialState()
+    _IS_MAIN = _PS.is_main_process
+
+    def is_main_process() -> bool:
+        """Return True only on the main (rank 0) process."""
+        return _IS_MAIN
+
+    def barrier() -> None:
+        """Synchronize all processes (no-op in single process)."""
+        _PS.wait_for_everyone()
+
+except Exception:
+    # Fallback if Accelerate or torch.distributed is unavailable
+    def is_main_process() -> bool:
+        """Best-effort check for main process in non-distributed runs."""
+        r = os.environ.get("RANK") or os.environ.get("LOCAL_RANK")
+        return r in (None, "", "0")
+
+    def barrier() -> None:
+        """No-op fallback for single-process runs."""
+        pass
 
 
 def main(
@@ -37,22 +61,34 @@ def main(
     setup_env_hf_medvision_ds(data_dir=data_dir)
 
     if not kwargs.get("merge_only"):
-        # Prepare the dataset
-        img_processor = AutoProcessor.from_pretrained(
-            base_model_hf).image_processor
-        dataset = prepare_dataset_DetectionTask(
-            tasks_list_json_path=tasks_list_json_path,
-            limit_train_sample=kwargs.get("train_sample_limit"),
-            limit_val_sample=kwargs.get("val_sample_limit"),
-            num_workers_concat_datasets=kwargs.get(
-                "num_workers_concat_datasets"),
-            num_workers_format_dataset=kwargs.get(
-                "num_workers_format_dataset"),
-            tag_ds="BoxSize", # MedVision dataset specific, used to extract dataset name from detection task configs
-            img_processor=img_processor,
-        )
+        # Prepare the dataset cache directory
+        prepared_ds_dir = os.path.join(
+            data_dir, "tmp_prepared_detect_ds")  # shared path
 
-        # Prepare trainer
+        # Prepare the dataset on the main process ONLY
+        if is_main_process():
+            img_processor = AutoProcessor.from_pretrained(
+                base_model_hf).image_processor
+            dataset = prepare_dataset_DetectionTask(
+                tasks_list_json_path=tasks_list_json_path,
+                limit_train_sample=kwargs.get("train_sample_limit"),
+                limit_val_sample=kwargs.get("val_sample_limit"),
+                num_workers_concat_datasets=kwargs.get(
+                    "num_workers_concat_datasets"),
+                num_workers_format_dataset=kwargs.get(
+                    "num_workers_format_dataset"),
+                # MedVision dataset specific, used to extract dataset name from detection task configs
+                tag_ds="BoxSize",
+                img_processor=img_processor,
+            )
+            os.makedirs(prepared_ds_dir, exist_ok=True)
+            dataset.save_to_disk(prepared_ds_dir)
+        barrier()
+
+        # All processes load the prepared dataset
+        dataset = load_from_disk(prepared_ds_dir)
+
+        # Prepare trainer (DO NOT guard this with is_main_process())
         trainer = prepare_trainer(
             run_name=run_name,
             base_model_hf=base_model_hf,
@@ -80,14 +116,14 @@ def main(
 
         from transformers.trainer_utils import get_last_checkpoint
 
-        # Train the model
+        # Train the model (DO NOT guard this with is_main_process())
         if kwargs.get("resume_from_checkpoint"):
             last_checkpoint = get_last_checkpoint(lora_checkpoint_dir)
             if last_checkpoint is not None:
                 train_resume_from_checkpoint(
                     trainer=trainer,
                     last_checkpoint=last_checkpoint,
-                    )
+                )
             else:
                 if is_main_process():
                     print(
@@ -98,28 +134,32 @@ def main(
             trainer.train()
 
         # Save the trained model
-        trainer.save_model()
+        if is_main_process():
+            trainer.save_model()
+        barrier()
 
         cleanup_all_gpu()
 
     # Optionally merge LoRA with base model and push to Hub
     if kwargs.get("merge_model") or kwargs.get("merge_only"):
-        if kwargs.get("push_merged_model"):
-            merge_models(
-                base_model_hf=base_model_hf,
-                lora_checkpoint_dir=lora_checkpoint_dir,
-                merged_model_hf=kwargs.get("merged_model_hf"),
-                merged_model_dir=kwargs.get("merged_model_dir"),
-                push_to_hub=True,
-            )
-        else:
-            merge_models(
-                base_model_hf=base_model_hf,
-                lora_checkpoint_dir=lora_checkpoint_dir,
-                merged_model_hf=kwargs.get("merged_model_hf"),
-                merged_model_dir=kwargs.get("merged_model_dir"),
-                push_to_hub=False,
-            )
+        if is_main_process():
+            if kwargs.get("push_merged_model"):
+                merge_models(
+                    base_model_hf=base_model_hf,
+                    lora_checkpoint_dir=lora_checkpoint_dir,
+                    merged_model_hf=kwargs.get("merged_model_hf"),
+                    merged_model_dir=kwargs.get("merged_model_dir"),
+                    push_to_hub=True,
+                )
+            else:
+                merge_models(
+                    base_model_hf=base_model_hf,
+                    lora_checkpoint_dir=lora_checkpoint_dir,
+                    merged_model_hf=kwargs.get("merged_model_hf"),
+                    merged_model_dir=kwargs.get("merged_model_dir"),
+                    push_to_hub=False,
+                )
+        barrier()
 
     cleanup_all_gpu()
 

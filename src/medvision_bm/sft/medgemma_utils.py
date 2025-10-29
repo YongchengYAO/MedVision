@@ -23,7 +23,8 @@ def make_collate_fn_MedGemma(proc):
             )
 
         # Tokenize the texts and process the images
-        batch = proc(text=texts, images=images, return_tensors="pt", padding=True)
+        batch = proc(text=texts, images=images,
+                     return_tensors="pt", padding=True)
 
         # The labels are the input_ids, with the padding and image tokens masked in
         # the loss computation

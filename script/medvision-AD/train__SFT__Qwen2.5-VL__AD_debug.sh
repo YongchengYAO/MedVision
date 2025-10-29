@@ -62,8 +62,9 @@ wandb_resume="allow" # Wandb resume mode (e.g., 'allow', 'must', 'never')
 wandb_dir="${train_sft_dir}/${run_name}"
 wandb_project="MedVision-SFT"
 wandb_run_name=${run_name}
-# NOTE: For continuing an existing run, set the wandb_run_id to the ID of the existing run.
-wandb_run_id="run-001"
+
+# # NOTE: For continuing an existing run, set the wandb_run_id to the ID of the existing run.
+# wandb_run_id="run-001" # run ID must be unique in the wandb_project
 
 # Install medvision_bm
 rm -rf "${benchmark_dir}/build" "${benchmark_dir}/src/medvision_bm.egg-info"
@@ -81,8 +82,8 @@ python -m medvision_bm.sft.env_setup --data_dir ${data_dir}
 # export WANDB_DEBUG=true
 
 # # Run
-CUDA_VISIBLE_DEVICES=0 \
-accelerate launch --num_processes=1 --main_process_port=29502 --mixed_precision=bf16 \
+CUDA_VISIBLE_DEVICES=0,1 \
+accelerate launch --num_processes=2 --main_process_port=29502 --mixed_precision=bf16 \
 -m  medvision_bm.sft.train__SFT__qwen2_5_vl__AD \
 --run_name ${run_name} \
 --base_model_hf ${base_model_hf} \
