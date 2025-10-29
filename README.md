@@ -92,6 +92,8 @@ pip install "git+https://github.com/YongchengYAO/MedVision.git"
       # [Alternative] Setup training env: use a specific requirements file
       python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --requirement "${benchmark_dir}/requirements/requirements_sft_qwen25vl.txt"
       ```
+      
+<br/>
 
 # 💿 Data Downloading
 
@@ -127,4 +129,5 @@ or
 # NOTE: replace <config-list-csv>
 python -m medvision_bm.benchmark.download_datasets --configs_csv <config-list-csv>
 ```
-📝 
+
+<br/>
