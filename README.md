@@ -40,7 +40,7 @@ pip install "git+https://github.com/YongchengYAO/MedVision.git"
 
 - **[Debug]** Use the dependencies list in `requirements` for debugging packages conflict
 
-  1. Install the benchmark codebase medvision_bm
+  1. Install the benchmark codebase `medvision_bm`
   
   2. Modify dependencies list, such as `requirements/requirements_eval_qwen25vl.txt`
   
@@ -106,15 +106,15 @@ Something about the **MedVision** dataset:
     - naming convention: `{dataset}_{annotation-type}_{task-ID}_{slice}_{split}`
       - `dataset`: [details](https://huggingface.co/datasets/YongchengYAO/MedVision#datasets)
       - `annotation-type`: 
-        - "BoxSize": detection annotations (bounding box)
-        - "TumorLesionSize": tumor/lesion size annotations
-        - "BiometricsFromLandmarks": angle/distance annotations
-      - `task-ID`: "Task-xx"
+        - `BoxSize`: detection annotations (bounding box)
+        - `TumorLesionSize`: tumor/lesion size annotations
+        - `BiometricsFromLandmarks`: angle/distance annotations
+      - `task-ID`: `Task[xx]`
         - For datasets with multiple image-mask pairs, we defined tasks in `medvision_ds/datasets/*/preprocess_*.py`
         - source: [medvision_ds](https://huggingface.co/datasets/YongchengYAO/MedVision/tree/main/src)
         - e.g., detection tasks for the `BraTS24` dataset is defined in the `benchmark_plan` in `medvision_ds/datasets/BraTS24/preprocess_detection.py`
-      - `slice`: ["Sagittal", "Coronal", "Axial"]
-      - `split`: ["Train", "Test"]
+      - `slice`: [`Sagittal`, `Coronal`, `Axial`]
+      - `split`: [`Train`, `Test`]
   
 - Any combination of [`data-config` x `split`] will incur the downloading and processing of the whole `dataset`
 
