@@ -686,8 +686,8 @@ def load_split_limit_dataset(
                          available_cpus, len(tasks))
 
     # NOTE: Force single-threaded loading for new datasets to avoid conflicts, otherwise errors may occur.
-    data_dir = os.environ.get("MEDVISION_DATA_DIR")
-    assert data_dir is not None, "\n [Error] MEDVISION_DATA_DIR environment variable must be set."
+    data_dir = os.environ.get("MedVision_DATA_DIR")
+    assert data_dir is not None, "\n [Error] MedVision_DATA_DIR environment variable must be set."
     # Read the .downloaded_datasets.json file in data_dir
     with open(os.path.join(data_dir, ".downloaded_datasets.json"), "r") as f:
         downloaded_datasets = list(json.load(f).keys())
