@@ -686,18 +686,20 @@ def load_split_limit_dataset(
                          available_cpus, len(tasks))
 
     # NOTE: Force single-threaded loading for new datasets to avoid conflicts, otherwise errors may occur.
-    # NOTE: This is specific to the MedVision dataset and configs: extract dataset name (part before "_<tag_ds>")
-    dataset_name = task.split(f"_{tag_ds}")[0]
-    data_dir = os.environ.get("MEDVISION_BM_DATA_DIR")
-    assert data_dir is not None, "\n [Error] MEDVISION_BM_DATA_DIR environment variable must be set."
+    data_dir = os.environ.get("MEDVISION_DATA_DIR")
+    assert data_dir is not None, "\n [Error] MEDVISION_DATA_DIR environment variable must be set."
     # Read the .downloaded_datasets.json file in data_dir
     with open(os.path.join(data_dir, ".downloaded_datasets.json"), "r") as f:
         downloaded_datasets = list(json.load(f).keys())
-    if dataset_name not in downloaded_datasets:
-        concat_workers = 1
-        print(
-            f"Dataset {dataset_name} is newly downloaded. Using single-threaded loading to avoid conflicts."
-        )
+    for task in tasks:
+        # NOTE: This is specific to the MedVision dataset and configs: extract dataset name (part before "_<tag_ds>")
+        dataset_name = task.split(f"_{tag_ds}")[0]
+        if dataset_name not in downloaded_datasets:
+            concat_workers = 1
+            print(
+                f"Dataset {dataset_name} is newly downloaded. Using single-threaded loading to avoid conflicts."
+            )
+            break
 
     print(
         f"Using {concat_workers} workers for dataset loading (available CPUs: {available_cpus})"
