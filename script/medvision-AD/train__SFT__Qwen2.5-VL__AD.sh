@@ -12,7 +12,7 @@ conda activate "${ENV_NAME}"
 conda install -c nvidia cuda-toolkit=12.4 -y
 
 # Set paths
-benchmark_dir="/mnt/vincent-pvc-rwm/Github/MedVision"
+benchmark_dir="/root/Documents/MedVision"
 train_sft_dir="${benchmark_dir}/SFT"
 data_dir="${benchmark_dir}/Data"
 

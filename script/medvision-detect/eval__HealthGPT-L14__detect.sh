@@ -12,7 +12,7 @@ conda activate "${ENV_NAME}"
 pip install huggingface-hub
 
 # Set paths and configs
-benchmark_dir="/mnt/vincent-pvc-rwm/Github/MedVision"
+benchmark_dir="/root/Documents/MedVision"
 data_dir="${benchmark_dir}/Data"
 dir_third_party="${benchmark_dir}/third_party"
 model_name="HealthGPT-L14"

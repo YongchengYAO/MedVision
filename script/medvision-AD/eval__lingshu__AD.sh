@@ -13,7 +13,7 @@ conda install -c nvidia cuda-toolkit=12.4 -y
 pip install huggingface-hub
 
 # Set paths and configs
-benchmark_dir="/mnt/vincent-pvc-rwm/Github/MedVision"
+benchmark_dir="/root/Documents/MedVision"
 data_dir="${benchmark_dir}/Data"
 model_hf_id="lingshu-medical-mllm/Lingshu-32B"
 model_name="lingshu-32b"

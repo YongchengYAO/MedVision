@@ -13,7 +13,8 @@ def run_pip_install(requirements_path: Path | str) -> None:
     req_path = Path(requirements_path).expanduser().resolve(strict=False)
 
     if not req_path.exists() or not req_path.is_file():
-        raise FileNotFoundError(f"Requirements file not found: {requirements_path}")
+        raise FileNotFoundError(
+            f"Requirements file not found: {requirements_path}")
 
     # Use the current interpreter to run pip to avoid PATH/env mismatches.
     cmd = [
@@ -198,6 +199,9 @@ def install_medvision_ds(
         f'pip install --no-cache-dir --force-reinstall "$latest_wheel"\''
     )
     subprocess.run(cmd_w_flock, check=True, shell=True)
+
+    # Set environment variables for medvision_ds
+    setup_env_medvision_ds(data_dir=data_dir)
 
 
 def pip_install_medvision_ds():

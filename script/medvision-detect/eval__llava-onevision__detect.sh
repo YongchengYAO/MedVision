@@ -12,7 +12,7 @@ conda activate "${ENV_NAME}"
 pip install huggingface-hub
 
 # Set paths and configs
-benchmark_dir="/mnt/vincent-pvc-rwm/Github/MedVision"
+benchmark_dir="/root/Documents/MedVision"
 data_dir="${benchmark_dir}/Data"
 model_hf_id="llava-hf/llava-onevision-qwen2-72b-ov-hf"
 model_name="llava-onevision-qwen2-72b-ov-hf"
