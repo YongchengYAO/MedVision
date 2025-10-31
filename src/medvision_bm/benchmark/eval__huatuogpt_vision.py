@@ -179,11 +179,11 @@ def main():
         install_vendored_lmms_eval(proj_dependency="huatuogpt_vision")
         install_medvision_ds(data_dir)
         install_flash_attention_torch_and_deps_py311_v2()
-        install_huatuogpt_vision_dependencies_post(dir_third_party)
     else:
         print(
             f"\n[Warning] Skipping environment setup as per argument --skip_env_setup. This should only be used for debugging.\n"
         )
+    install_huatuogpt_vision_dependencies_post(dir_third_party)
     # ------
 
     tasks = load_tasks(tasks_list_json_path)
