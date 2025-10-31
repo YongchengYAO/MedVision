@@ -8,7 +8,9 @@ This is the official codebase `medvision_bm` of the **MedVision** project.
 
 🧑🏻‍💻 **Code**: https://github.com/YongchengYAO/MedVision
 
-🩻 **Huggingface Dataset**: [YongchengYAO/MedVision](https://huggingface.co/datasets/YongchengYAO/MedVision)
+🩻 **Huggingface Dataset**: [https://huggingface.co/datasets/YongchengYAO/MedVision](https://huggingface.co/datasets/YongchengYAO/MedVision)
+
+🐳 **Docker**: https://hub.docker.com/r/vincentycyao/medvision/tags
 
 <br/>
 
@@ -22,7 +24,7 @@ This is the official codebase `medvision_bm` of the **MedVision** project.
 
 - [ ] Add preprint and project page
 - [x] Release training code 
-- [ ] Release docker images
+- [x] Release docker images
 
 <br/>
 
@@ -47,7 +49,7 @@ pip install "git+https://github.com/YongchengYAO/MedVision.git"
   3. Setup env
   
      📝 Match `--lmms_eval_opt_deps` with model:
-     - Choose from [meddr, lingshu, huatuogpt_vision, llava_med, qwen2_5_vl, gemini] – defined [here](https://github.com/YongchengYAO/MedVision/blob/master/src/medvision_bm/medvision_lmms-eval/pyproject.toml)
+     - Choose from [`meddr`, `lingshu`, `huatuogpt_vision`, `llava_med`, `qwen2_5_vl`, `gemini`] – defined [here](https://github.com/YongchengYAO/MedVision/blob/master/src/medvision_bm/medvision_lmms-eval/pyproject.toml)
      - If model is not one of these, ignore `--lmms_eval_opt_deps` 
   
      ```bash
@@ -56,7 +58,7 @@ pip install "git+https://github.com/YongchengYAO/MedVision.git"
      ```
 
   4. Skip env setup with `--skip_env_setup` in benchmarking scripts `script/medvision-*/eval__*`
-   
+  
       ```bash
       # Run
       # Add these arguments for debugging:
@@ -93,6 +95,7 @@ pip install "git+https://github.com/YongchengYAO/MedVision.git"
       python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --requirement "${benchmark_dir}/requirements/requirements_sft_qwen25vl.txt"
       ```
       
+
 <br/>
 
 # 💿 Data Downloading
