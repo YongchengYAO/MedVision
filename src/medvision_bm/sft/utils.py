@@ -359,14 +359,14 @@ def _doc_to_text_TumorLesionTask(doc, img_processor=None, reshape_size=None):
         "The first is the major axis length, and the second is the minor axis length."
     )
 
-    # Import the dataset-specific module from biometric_vqa.datasets
+    # Import the dataset-specific module from medvision_ds.datasets
     dataset_name = doc["dataset_name"]
     dataset_module = DATASETS_NAME2PACKAGE.get(dataset_name)
     if dataset_module is None:
         raise ValueError(
             f"Dataset {dataset_name} not found in DATASETS_NAME2PACKAGE.")
     preprocess_biometry = importlib.import_module(
-        f"biometric_vqa.datasets.{dataset_module}.preprocess_biometry"
+        f"medvision_ds.datasets.{dataset_module}.preprocess_biometry"
     )
 
     # Get task info
@@ -495,14 +495,14 @@ def _format_data_TumorLesionTask(
 
 def _doc_to_text_DetectionTask(doc):
     """Convert document to text."""
-    # Import the dataset-specific module from biometric_vqa.datasets
+    # Import the dataset-specific module from medvision_ds.datasets
     dataset_name = doc["dataset_name"]
     dataset_module = DATASETS_NAME2PACKAGE.get(dataset_name)
     if dataset_module is None:
         raise ValueError(
             f"Dataset {dataset_name} not found in DATASETS_NAME2PACKAGE.")
     preprocess_detection = importlib.import_module(
-        f"biometric_vqa.datasets.{dataset_module}.preprocess_detection"
+        f"medvision_ds.datasets.{dataset_module}.preprocess_detection"
     )
 
     # Get task infoG
@@ -573,7 +573,8 @@ def _doc_to_target_DetectionTask(doc):
 
 
 # NOTE: This is dataset-specific formatting function
-def _format_data_DetectionTask(example: dict[str, Any]) -> dict[str, Any]:
+# NOTE: img_processor and reshape_size are not used here, but kept for API consistency 
+def _format_data_DetectionTask(example: dict[str, Any], img_processor=None, reshape_size=None) -> dict[str, Any]:
     target_coords = _doc_to_target_DetectionTask(example)
     coord_str = f"{target_coords[0]:.3f}, {target_coords[1]:.3f}, {target_coords[2]:.3f}, {target_coords[3]:.3f}"
 
