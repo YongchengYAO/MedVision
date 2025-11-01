@@ -1,3 +1,7 @@
+--index-url https://download.pytorch.org/whl/cu124
+torch==2.6.0
+torchaudio==2.6.0
+torchvision==0.21.0
 accelerate==0.34.2
 aiohappyeyeballs==2.6.1
 aiohttp==3.13.1
@@ -208,9 +212,6 @@ tiktoken==0.12.0
 timm==0.9.12
 tokenizers==0.15.1
 tomli==2.3.0
-torch==2.6.0+cu124
-torchaudio==2.6.0+cu124
-torchvision==0.21.0+cu124
 tqdm==4.67.1
 tqdm-multiprocess==0.0.11
 transformers==4.37.2
