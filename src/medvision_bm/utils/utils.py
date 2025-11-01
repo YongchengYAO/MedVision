@@ -2,7 +2,7 @@ import json
 import os
 
 
-def set_cuda_num_processes(minimum_gpu: int = 1):
+def set_cuda_num_processes(minimum_gpu=1):
     cuda_visible = os.getenv("CUDA_VISIBLE_DEVICES", None)
     if cuda_visible is None:
         print(
@@ -48,7 +48,7 @@ def update_task_status(json_path, model_name, task_name):
     return False
 
 
-def load_tasks(json_file_path: str):
+def load_tasks(json_file_path):
     with open(json_file_path, "r") as f:
         tasks_dict = json.load(f)
     tasks = list(tasks_dict.keys())
@@ -56,7 +56,7 @@ def load_tasks(json_file_path: str):
     return tasks
 
 
-def load_tasks_status(tasks_status_file: str, model_name: str):
+def load_tasks_status(tasks_status_file, model_name):
     if os.path.exists(tasks_status_file):
         try:
             with open(tasks_status_file, "r") as f:

@@ -24,7 +24,7 @@ from trl import SFTConfig, SFTTrainer
 from medvision_bm.utils.configs import DATASETS_NAME2PACKAGE, SEED
 
 
-def is_main_process() -> bool:
+def is_main_process():
     try:
         ps = PartialState()
         # Some versions/contexts may not expose the attribute; guard against that.
@@ -37,13 +37,13 @@ def is_main_process() -> bool:
     return True
 
 
-def safe_print(*args, force: bool = False, **kwargs):
+def safe_print(*args, force=False, **kwargs):
     """Print only on main process unless force=True."""
     if force or is_main_process():
         print(*args, **kwargs)
 
 
-def broadcast_int_from_main(value: int, src: int = 0):
+def broadcast_int_from_main(value, src=0):
     import torch.distributed as dist
     """
     Broadcast an integer value from the source (main) process to all other processes.
@@ -309,8 +309,8 @@ def _doc_to_target_AngleDistanceTask(doc):
 
 # NOTE: This is specific to the MedVision dataset
 def _format_data_AngleDistanceTask(
-    example: dict[str, Any], img_processor=None, reshape_size=None
-) -> dict[str, Any]:
+    example, img_processor=None, reshape_size=None
+):
     # Early assertions
     assert img_processor is not None or reshape_size is not None, "\n [Error] Either img_processor or reshape_size must be provided."
     assert not (
@@ -459,8 +459,8 @@ def _doc_to_target_TumorLesionTask(doc):
 
 # NOTE: This is dataset-specific formatting function
 def _format_data_TumorLesionTask(
-    example: dict[str, Any], img_processor=None, reshape_size=None
-) -> dict[str, Any]:
+    example, img_processor=None, reshape_size=None
+):
     target = _doc_to_target_TumorLesionTask(example)
     target_str = ", ".join([f"{value:.3f}" for value in target])
     prompt, _ = _doc_to_text_TumorLesionTask(
@@ -573,7 +573,7 @@ def _doc_to_target_DetectionTask(doc):
 
 
 # NOTE: This is dataset-specific formatting function
-# NOTE: img_processor and reshape_size are not used here, but kept for API consistency 
+# NOTE: img_processor and reshape_size are not used here, but kept for API consistency
 def _format_data_DetectionTask(example: dict[str, Any], img_processor=None, reshape_size=None) -> dict[str, Any]:
     target_coords = _doc_to_target_DetectionTask(example)
     coord_str = f"{target_coords[0]:.3f}, {target_coords[1]:.3f}, {target_coords[2]:.3f}, {target_coords[3]:.3f}"

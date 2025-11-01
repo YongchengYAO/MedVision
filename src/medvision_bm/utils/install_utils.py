@@ -8,7 +8,7 @@ from importlib.resources import files  # Python 3.9+
 from huggingface_hub import snapshot_download
 
 
-def run_pip_install(requirements_path: Path | str) -> None:
+def run_pip_install(requirements_path):
     # Normalize input to a Path so both str and Path work.
     req_path = Path(requirements_path).expanduser().resolve(strict=False)
 
