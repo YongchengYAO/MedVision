@@ -364,7 +364,7 @@ def _format_data_AngleDistanceTask(
         png_path = os.path.join(png_dir, png_filename)
         os.makedirs(png_dir, exist_ok=True)
         pil_img.save(png_path)
-        example["image_file_png"] = png_path
+        example["image_file_png"] = [png_path]
 
     return example
 
@@ -531,7 +531,7 @@ def _format_data_TumorLesionTask(
         png_path = os.path.join(png_dir, png_filename)
         os.makedirs(png_dir, exist_ok=True)
         pil_img.save(png_path)
-        example["image_file_png"] = png_path
+        example["image_file_png"] = [png_path]
 
     return example
 
@@ -664,7 +664,7 @@ def _format_data_DetectionTask(example, img_processor=None, reshape_size=None, p
         png_path = os.path.join(png_dir, png_filename)
         os.makedirs(png_dir, exist_ok=True)
         pil_img.save(png_path)
-        example["image_file_png"] = png_path
+        example["image_file_png"] = [png_path]
 
     return example
 
@@ -901,15 +901,14 @@ def load_split_limit_dataset(
     dataset["validation"] = dataset.pop("test")
 
     # Limit the number of training and validation samples if specified
-    if limit_train_sample and limit_train_sample < len(dataset["train"]):
+    if limit_train_sample > 0 and limit_train_sample < len(dataset["train"]):
         print(
             f"\n[Info][Warning] Limiting training samples to {limit_train_sample} (original: {len(dataset['train'])})"
         )
-        if limit_train_sample > 0:
-            dataset["train"] = (
-                dataset["train"].shuffle(seed=SEED).select(
-                    range(limit_train_sample))
-            )
+        dataset["train"] = (
+            dataset["train"].shuffle(seed=SEED).select(
+                range(limit_train_sample))
+        )
     return dataset
 
 
@@ -1427,13 +1426,11 @@ def parse_args_multiTask():
     parser.add_argument(
         "--base_model_hf",
         type=str,
-        required=True,
         help="Hugging Face model ID for the base model",
     )
     parser.add_argument(
         "--lora_checkpoint_dir",
         type=str,
-        required=True,
         help="Local directory path for LoRA checkpoint",
     )
     parser.add_argument(
@@ -1723,7 +1720,6 @@ def parse_validate_args_multiTask():
     wandb_run_name = args.wandb_run_name
     wandb_run_id = args.wandb_run_id
     # -- Data
-    data_dir = args.data_dir
     tasks_list_json_path_AD = args.tasks_list_json_path_AD
     tasks_list_json_path_detect = args.tasks_list_json_path_detect
     tasks_list_json_path_TL = args.tasks_list_json_path_TL
@@ -1736,11 +1732,13 @@ def parse_validate_args_multiTask():
         and tasks_list_json_path_TL is None
     ):
         raise AssertionError(
-            "At least one of --tasks_list_json_path_AD, "
-            "--tasks_list_json_path_detect, or --tasks_list_json_path_TL must be provided"
+            f"\n[Error] At least one of --tasks_list_json_path_AD, "
+            "--tasks_list_json_path_detect, or --tasks_list_json_path_TL must be provided.\n"
         )
+
+    # Create LoRA checkpoint directory if it doesn't exist
+    # This is needed even if this is the first run
     os.makedirs(lora_checkpoint_dir, exist_ok=True)
-    os.makedirs(data_dir, exist_ok=True)
 
     # Set wandb environment variables
     os.environ["WANDB_RESUME"] = wandb_resume

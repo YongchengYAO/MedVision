@@ -16,10 +16,9 @@ import os
 
 from accelerate.utils import InitProcessGroupKwargs
 from datasets import DatasetDict, concatenate_datasets, load_from_disk
-from transformers import AutoProcessor
 from transformers.trainer_utils import get_last_checkpoint
 
-from medvision_bm.sft.qwen25vl_utils import make_collate_fn_Qwen25VL
+from medvision_bm.sft.medgemma_utils import make_collate_fn_MedGemma
 from medvision_bm.sft.utils import (_format_data_AngleDistanceTask,
                                     _format_data_DetectionTask,
                                     _format_data_TumorLesionTask,
@@ -123,7 +122,7 @@ def main(
                     f"[Info] Using user-specified prepared dataset directory: {prepared_ds_dir}\n")
         else:
             prepared_ds_dir = os.path.join(
-                data_dir, f"tmp_prepared_ds__Qwen2_5VL__AD{train_limit_AD}_D{train_limit_detect}_TL{train_limit_TL}_all{train_limit_total}")
+                data_dir, f"tmp_prepared_ds__MedGemma__AD{train_limit_AD}_D{train_limit_detect}_TL{train_limit_TL}_all{train_limit_total}")
             if is_main_process():
                 print(
                     f"[Info] Using default prepared dataset directory: {prepared_ds_dir}\n")
@@ -131,10 +130,6 @@ def main(
         # Prepare the dataset on the main process ONLY
         if is_main_process():
             if not kwargs.get("skip_process_dataset"):
-                assert base_model_hf is not None, "[Error] base_model_hf must be provided for processing dataset for Qwen2.5VL fine-tuning."
-                img_processor = AutoProcessor.from_pretrained(
-                    base_model_hf).image_processor
-
                 train_ds_list = []
                 val_ds_list = []
 
@@ -151,7 +146,7 @@ def main(
                             "num_workers_format_dataset"),
                         # MedVision dataset specific, used to extract dataset name from AD task configs
                         tag_ds="BiometricsFromLandmarks",
-                        img_processor=img_processor,
+                        reshape_size=[896, 896],  # MedGemma specific
                         process_img=kwargs.get("process_img"),
                         save_processed_img_to_disk=kwargs.get(
                             "save_processed_img_to_disk"),
@@ -172,7 +167,7 @@ def main(
                             "num_workers_format_dataset"),
                         # MedVision dataset specific, used to extract dataset name from detection task configs
                         tag_ds="BoxSize",
-                        img_processor=img_processor,
+                        reshape_size=[896, 896],  # MedGemma specific
                         process_img=kwargs.get("process_img"),
                         save_processed_img_to_disk=kwargs.get(
                             "save_processed_img_to_disk"),
@@ -193,7 +188,7 @@ def main(
                             "num_workers_format_dataset"),
                         # MedVision dataset specific, used to extract dataset name from TL task configs
                         tag_ds="TumorLesionSize",
-                        img_processor=img_processor,
+                        reshape_size=[896, 896],  # MedGemma specific
                         process_img=kwargs.get("process_img"),
                         save_processed_img_to_disk=kwargs.get(
                             "save_processed_img_to_disk"),
@@ -238,7 +233,7 @@ def main(
             base_model_hf=base_model_hf,
             lora_checkpoint_dir=lora_checkpoint_dir,
             data=dataset,
-            make_collate_fn=make_collate_fn_Qwen25VL,
+            make_collate_fn=make_collate_fn_MedGemma,
             per_device_train_batch_size=kwargs.get(
                 "per_device_train_batch_size"),
             per_device_eval_batch_size=kwargs.get(

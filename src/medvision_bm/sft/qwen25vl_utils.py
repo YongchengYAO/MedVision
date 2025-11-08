@@ -18,8 +18,8 @@ def make_collate_fn_Qwen25VL(proc):
 
             elif "image_file_png" in example:
                 from PIL import Image
-                pil_image = Image.open(
-                    example["image_file_png"]).convert("RGB")
+                pil_image = [Image.open(f).convert("RGB")
+                             for f in example["image_file_png"]]
                 images.append(pil_image)
 
             elif "image_file" in example:

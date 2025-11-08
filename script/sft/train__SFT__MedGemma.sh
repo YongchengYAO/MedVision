@@ -1,4 +1,4 @@
-ENV_NAME="sft-qwen25vl"
+ENV_NAME="sft-medgemma"
 
 
 # Only create the env if it doesn't already exist
@@ -31,10 +31,10 @@ tasks_list_json_path_TL="${benchmark_dir}/tasks_list/tasks_MedVision-TL__train_S
 
 
 # Model configs
-base_model_hf="Qwen/Qwen2.5-VL-32B-Instruct"
-run_name="MedVision__SFT__qwen25vl-32b__detect-AD-TL"
+base_model_hf="google/medgemma-27b-it"
+run_name="MedVision__SFT__medgemma-27b-it__detect-AD-TL"
 lora_checkpoint_dir="${train_sft_dir}/${run_name}/checkpoints/${run_name}" # Put ${run_name} at the end for distinct HF repo names when pushing LoRA checkpoints
-merged_model_hf="MedVision__SFT-m__qwen25vl-32b__detect-AD-TL"
+merged_model_hf="MedVision__SFT-m__medgemma-27b__detect-AD-TL"
 merged_model_dir="${train_sft_dir}/${run_name}/merged_model"
 
 
@@ -66,7 +66,7 @@ train_sample_limit_task_Detection=11000
 val_sample_limit_task_Detection=105
 train_sample_limit_task_TL=5500
 val_sample_limit_task_TL=50
-# ----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 dataloader_pin_memory=true
 use_flash_attention_2=true
 
@@ -76,7 +76,7 @@ resume_from_checkpoint=true # Enable resuming from the last checkpoint
 
 
 # Resource-constrained training configs
-gradient_checkpointing=true # Enable gradient checkpointing to save memory
+gradient_checkpointing=false # Enable gradient checkpointing to save memory
 per_device_train_batch_size=1
 per_device_eval_batch_size=1
 gradient_accumulation_steps=12 # Control effective batch size: effective_batch_size = per_device_train_batch_size * gradient_accumulation_steps * num_gpus
@@ -92,7 +92,7 @@ merge_model=true # [With training] Merge after training and push to HF Hub
 # Set wandb configs for logging
 wandb_resume="allow" # Wandb resume mode (e.g., 'allow', 'must', 'never')
 wandb_dir="${train_sft_dir}/${run_name}"
-wandb_project="MedVision-SFT-Qwen2.5VL"
+wandb_project="MedVision-SFT-MedGemma"
 wandb_run_name=${run_name}
 # NOTE: For continuing an existing run, set the wandb_run_id to the ID of the existing run.
 wandb_run_id="multitask-D11k-AD5.5k-TL5.5k" # run ID must be unique in the wandb_project
@@ -106,7 +106,7 @@ pip install "${benchmark_dir}"
 # Setup training env
 python -m medvision_bm.sft.env_setup --data_dir ${data_dir}
 # # [Alternative] Setup training env: use a specific requirements file
-# python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --requirement "${benchmark_dir}/requirements/requirements_sft_qwen25vl.txt"
+# python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --requirement "${benchmark_dir}/requirements/requirements_sft_medgemma.txt"
 
 
 # # [Debugging] Disable WANDB online logging
@@ -145,13 +145,13 @@ python -m medvision_bm.sft.env_setup --data_dir ${data_dir}
 # Config 1
 # - Set skip_process_dataset=true if the prepared dataset already exists on disk and you want to skip dataset processing. 
 # - Set skip_process_dataset=false to process the dataset again (this will overwrite the existing prepared dataset on disk).
-skip_process_dataset=false 
+skip_process_dataset=false
 
 # Config 2
 # - Set save_processed_img_to_disk=true to save processed images to PNG files on disk during dataset processing for faster subsequent loading (recommended)
 # - Set save_processed_img_to_disk=false to not save processed images to disk (default), images will be processed on-the-fly during training
 # Caveat: Currently, setting save_processed_img_to_disk=true may break running SFT jobs since there is no file locking mechanism and there could be conflicts
-#         when the SFT job tries to read the dataset while the dataset processing job is still writing to disk.
+#         when the SFT job tries to read the PNG file while the dataset processing job is still writing to disk.
 save_processed_img_to_disk=true
 
 # Config 3
@@ -165,11 +165,10 @@ save_processed_img_to_disk=true
 # ------------------------------------------------------------------------------
 
 # Offload dataset processing from training to a separate run to avoid timeout issues
-python -m  medvision_bm.sft.train__SFT__qwen2_5_vl \
+python -m  medvision_bm.sft.train__SFT__medgemma \
 --skip_process_dataset ${skip_process_dataset} \
 --process_dataset_only true \
 --save_processed_img_to_disk ${save_processed_img_to_disk} \
---base_model_hf ${base_model_hf} \
 --data_dir ${data_dir} \
 --tasks_list_json_path_AD ${tasks_list_json_path_AD} \
 --tasks_list_json_path_detect ${tasks_list_json_path_detect} \
@@ -188,7 +187,7 @@ python -m  medvision_bm.sft.train__SFT__qwen2_5_vl \
 # Skip dataset processing and directly load from disk for training
 CUDA_VISIBLE_DEVICES=0,1 \
 accelerate launch --num_processes=2 --main_process_port=29502 --mixed_precision=bf16 \
--m  medvision_bm.sft.train__SFT__qwen2_5_vl \
+-m  medvision_bm.sft.train__SFT__medgemma \
 --skip_process_dataset true \
 --process_dataset_only false \
 --run_name ${run_name} \
