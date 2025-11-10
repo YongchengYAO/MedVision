@@ -1182,119 +1182,68 @@ def prepare_trainer(
 def merge_models(
     base_model_hf,
     lora_checkpoint_dir,
-    merged_model_hf=None,
-    merged_model_dir=None,
-    push_to_hub=False,
+    merged_model_hf,
+    merged_model_dir,
+    push_to_hub,
 ):
     """
     Merge LoRA adapter with base model and optionally save locally and/or push to Hugging Face Hub.
-
-    Args:
-        base_model_hf (str): Base model ID or path (e.g., "google/medgemma-4b-it")
-        lora_checkpoint_dir (str): Path or HF repository ID of the trained LoRA adapter
-        merged_model_hf (str, optional): Hugging Face model repository ID for pushing.
-                                       Required when push_to_hub=True. Defaults to None.
-        merged_model_dir (str): Local directory to save merged model. Defaults to "merged_model".
-        push_to_hub (bool): Whether to push to Hugging Face Hub. Defaults to False.
-
-    Raises:
-        ValueError: If merged_model_hf is None when push_to_hub is True.
+    This function is intended to be called **only on the main process**.
     """
-    # Ensure only the main process runs the merge and synchronize with others.
-    from accelerate import Accelerator
-    acc = Accelerator()
-    if not acc.is_main_process:
-        acc.wait_for_everyone()
-        return
 
-    # Aggressive memory cleanup before loading models
-    torch.cuda.empty_cache()
-    gc.collect()
+    print("\n[Info] Starting model merge process (CPU-only)...")
 
-    # Print initial memory state
-    print("\n[Info] Starting model merge process...")
-    if torch.cuda.is_available():
-        for i in range(torch.cuda.device_count()):
-            allocated = torch.cuda.memory_allocated(i) / 1024**3
-            cached = torch.cuda.memory_reserved(i) / 1024**3
-            print(
-                f"[Info] GPU {i} before merge - Allocated: {allocated:.2f}GB, Cached: {cached:.2f}GB"
-            )
-
-    # Load base model with aggressive memory optimization
-    print("[Info] Loading base model...")
+    # 1) Load base model on CPU
     model = AutoModelForImageTextToText.from_pretrained(
-        base_model_hf, low_cpu_mem_usage=True, torch_dtype=torch.bfloat16, device_map="auto"
+        base_model_hf,
+        low_cpu_mem_usage=True,
+        torch_dtype=torch.bfloat16,  # or float16/float32 as appropriate
+        device_map="cpu",
     )
 
-    # Load LoRA adapter and merge with base model
+    # 2) Load LoRA adapter and merge
     peft_model = PeftModel.from_pretrained(model, lora_checkpoint_dir)
     merged_model = peft_model.merge_and_unload()
 
-    # Clear intermediate references immediately
-    del model
-    del peft_model
-    torch.cuda.empty_cache()
+    # Drop references to base + peft wrapper
+    del model, peft_model
     gc.collect()
 
-    # Load processor from the adapter (includes any training-specific configurations)
+    # 3) Load processor from the adapter
     processor = AutoProcessor.from_pretrained(lora_checkpoint_dir)
 
-    # Save merged model locally if requested
+    # 4) Save locally (optional)
     if merged_model_dir is not None:
         print(f"[Info] Saving merged model to: {merged_model_dir}")
         merged_model.save_pretrained(
-            merged_model_dir, safe_serialization=True, max_shard_size="2GB"
+            merged_model_dir,
+            safe_serialization=True,
+            max_shard_size="2GB",
         )
         processor.save_pretrained(merged_model_dir)
         print(f"[Info] Merged model saved to: {merged_model_dir}")
 
-    # Push to Hugging Face Hub if requested
+    # 5) Push to Hub (optional)
     if push_to_hub:
         if merged_model_hf is None:
             raise ValueError(
                 "[Error] merged_model_hf must be specified when push_to_hub is True."
             )
-        else:
-            print(
-                f"[Info] Pushing merged model to Hugging Face Hub: {merged_model_hf}")
-            merged_model.push_to_hub(
-                merged_model_hf, private=True, max_shard_size="2GB"
-            )
-            processor.push_to_hub(merged_model_hf, private=True)
-            print(
-                f"[Info] Successfully pushed merged model to: {merged_model_hf}")
-
-    # Clean up merged model references
-    del merged_model
-    del processor
-    torch.cuda.empty_cache()
-    gc.collect()
-
-    print("[Info] Model merge completed with memory cleanup.")
-
-    # Synchronize so other processes can proceed
-    acc.wait_for_everyone()
-
-
-def cleanup_all_gpu():
-    # Step 1: delete or unset GPU-resident objects
-    # del model, optimizer, tensors...
-
-    # Step 2: collect Python garbage
-    gc.collect()
-
-    # Step 3: empty cache for each CUDA device
-    for d in range(torch.cuda.device_count()):
-        with torch.cuda.device(d):
-            torch.cuda.empty_cache()
-
-    # Optional: get memory summary
-    for d in range(torch.cuda.device_count()):
         print(
-            f"Device {d}: allocated={torch.cuda.memory_allocated(d)/1024**2:.1f}MB, "
-            f"reserved={torch.cuda.memory_reserved(d)/1024**2:.1f}MB"
+            f"[Info] Pushing merged model to Hugging Face Hub: {merged_model_hf}")
+        merged_model.push_to_hub(
+            merged_model_hf,
+            private=True,
+            max_shard_size="2GB",
         )
+        processor.push_to_hub(merged_model_hf, private=True)
+        print(f"[Info] Successfully pushed merged model to: {merged_model_hf}")
+
+    # 6) Final cleanup
+    del merged_model, processor
+    gc.collect()
+
+    print("[Info] Model merge completed.")
 
 
 def train_resume_from_checkpoint(trainer, last_checkpoint):
@@ -1711,8 +1660,6 @@ def parse_validate_args_multiTask():
 
     # Arguments
     # ------------------------------------------------------------
-    # -- Model
-    lora_checkpoint_dir = args.lora_checkpoint_dir
     # -- wandb logging
     wandb_resume = args.wandb_resume
     wandb_dir = args.wandb_dir
@@ -1736,10 +1683,6 @@ def parse_validate_args_multiTask():
             "--tasks_list_json_path_detect, or --tasks_list_json_path_TL must be provided.\n"
         )
 
-    # Create LoRA checkpoint directory if it doesn't exist
-    # This is needed even if this is the first run
-    os.makedirs(lora_checkpoint_dir, exist_ok=True)
-
     # Set wandb environment variables
     os.environ["WANDB_RESUME"] = wandb_resume
     if wandb_dir is not None:
@@ -1753,3 +1696,52 @@ def parse_validate_args_multiTask():
         os.environ["WANDB_RUN_ID"] = wandb_run_id
 
     return vars(args)
+
+
+def parse_sample_limits(**kwargs):
+    # Determine sample limits for each task
+    # Angle/distance task
+    if kwargs.get("train_sample_limit_task_AD") > 0:
+        train_limit_AD = kwargs.get("train_sample_limit_task_AD")
+    else:
+        train_limit_AD = kwargs.get("train_sample_limit_per_task")
+    if kwargs.get("val_sample_limit_task_AD") > 0:
+        val_limit_AD = kwargs.get("val_sample_limit_task_AD")
+    else:
+        val_limit_AD = kwargs.get("val_sample_limit_per_task")
+    if kwargs.get("tasks_list_json_path_AD") is None:
+        train_limit_AD = 0
+        val_limit_AD = 0
+    # Detection task
+    if kwargs.get("train_sample_limit_task_Detection") > 0:
+        train_limit_detect = kwargs.get(
+            "train_sample_limit_task_Detection")
+    else:
+        train_limit_detect = kwargs.get("train_sample_limit_per_task")
+    if kwargs.get("val_sample_limit_task_Detection") > 0:
+        val_limit_detect = kwargs.get(
+            "val_sample_limit_task_Detection")
+    else:
+        val_limit_detect = kwargs.get("val_sample_limit_per_task")
+    if kwargs.get("tasks_list_json_path_detect") is None:
+        train_limit_detect = 0
+        val_limit_detect = 0
+    # Tumor lesion size task
+    if kwargs.get("train_sample_limit_task_TL") > 0:
+        train_limit_TL = kwargs.get("train_sample_limit_task_TL")
+    else:
+        train_limit_TL = kwargs.get("train_sample_limit_per_task")
+    if kwargs.get("val_sample_limit_task_TL") > 0:
+        val_limit_TL = kwargs.get("val_sample_limit_task_TL")
+    else:
+        val_limit_TL = kwargs.get("val_sample_limit_per_task")
+    if kwargs.get("tasks_list_json_path_TL") is None:
+        train_limit_TL = 0
+        val_limit_TL = 0
+    # Total sample limit across all tasks
+    train_limit_total = kwargs.get("train_sample_limit")
+
+    return (train_limit_AD, val_limit_AD,
+            train_limit_detect, val_limit_detect,
+            train_limit_TL, val_limit_TL,
+            train_limit_total)

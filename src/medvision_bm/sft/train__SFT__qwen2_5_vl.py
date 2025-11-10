@@ -12,8 +12,10 @@ or
 > accelerate launch script.py
 """
 import datetime
+import gc
 import os
 
+import torch
 from accelerate.utils import InitProcessGroupKwargs
 from datasets import DatasetDict, concatenate_datasets, load_from_disk
 from transformers import AutoProcessor
@@ -22,8 +24,8 @@ from transformers.trainer_utils import get_last_checkpoint
 from medvision_bm.sft.qwen25vl_utils import make_collate_fn_Qwen25VL
 from medvision_bm.sft.utils import (_format_data_AngleDistanceTask,
                                     _format_data_DetectionTask,
-                                    _format_data_TumorLesionTask,
-                                    cleanup_all_gpu, merge_models,
+                                    _format_data_TumorLesionTask, merge_models,
+                                    parse_sample_limits,
                                     parse_validate_args_multiTask,
                                     prepare_dataset, prepare_trainer,
                                     train_resume_from_checkpoint)
@@ -61,9 +63,6 @@ def main(
     run_name,
     base_model_hf,
     data_dir,
-    tasks_list_json_path_AD,
-    tasks_list_json_path_detect,
-    tasks_list_json_path_TL,
     lora_checkpoint_dir,
     **kwargs,
 ):
@@ -72,34 +71,9 @@ def main(
         setup_env_hf_medvision_ds(data_dir=data_dir)
 
     if not kwargs.get("merge_only"):
-        # Determine sample limits for each task
-        if kwargs.get("train_sample_limit_task_AD") > 0:
-            train_limit_AD = kwargs.get("train_sample_limit_task_AD")
-        else:
-            train_limit_AD = kwargs.get("train_sample_limit_per_task")
-        if kwargs.get("val_sample_limit_task_AD") > 0:
-            val_limit_AD = kwargs.get("val_sample_limit_task_AD")
-        else:
-            val_limit_AD = kwargs.get("val_sample_limit_per_task")
-        if kwargs.get("train_sample_limit_task_Detection") > 0:
-            train_limit_detect = kwargs.get(
-                "train_sample_limit_task_Detection")
-        else:
-            train_limit_detect = kwargs.get("train_sample_limit_per_task")
-        if kwargs.get("val_sample_limit_task_Detection") > 0:
-            val_limit_detect = kwargs.get(
-                "val_sample_limit_task_Detection")
-        else:
-            val_limit_detect = kwargs.get("val_sample_limit_per_task")
-        if kwargs.get("train_sample_limit_task_TL") > 0:
-            train_limit_TL = kwargs.get("train_sample_limit_task_TL")
-        else:
-            train_limit_TL = kwargs.get("train_sample_limit_per_task")
-        if kwargs.get("val_sample_limit_task_TL") > 0:
-            val_limit_TL = kwargs.get("val_sample_limit_task_TL")
-        else:
-            val_limit_TL = kwargs.get("val_sample_limit_per_task")
-        train_limit_total = kwargs.get("train_sample_limit")
+        # Parse sample limits
+        train_limit_AD, val_limit_AD, train_limit_detect, val_limit_detect, train_limit_TL, val_limit_TL, train_limit_total = parse_sample_limits(
+            **kwargs)
 
         # Prepare the dataset cache directory
         # NOTE:
@@ -138,10 +112,11 @@ def main(
                 train_ds_list = []
                 val_ds_list = []
 
-                if tasks_list_json_path_AD is not None:
+                if kwargs.get("tasks_list_json_path_AD") is not None:
                     # Prepare datasets for AD task
                     dataset_AD = prepare_dataset(
-                        tasks_list_json_path=tasks_list_json_path_AD,
+                        tasks_list_json_path=kwargs.get(
+                            "tasks_list_json_path_AD"),
                         limit_train_sample=train_limit_AD,
                         limit_val_sample=val_limit_AD,
                         mapping_func=_format_data_AngleDistanceTask,
@@ -159,10 +134,11 @@ def main(
                     train_ds_list.append(dataset_AD["train"])
                     val_ds_list.append(dataset_AD["validation"])
 
-                if tasks_list_json_path_detect is not None:
+                if kwargs.get("tasks_list_json_path_detect") is not None:
                     # Prepare datasets for Detection task
                     dataset_detect = prepare_dataset(
-                        tasks_list_json_path=tasks_list_json_path_detect,
+                        tasks_list_json_path=kwargs.get(
+                            "tasks_list_json_path_detect"),
                         limit_train_sample=train_limit_detect,
                         limit_val_sample=val_limit_detect,
                         mapping_func=_format_data_DetectionTask,
@@ -180,10 +156,11 @@ def main(
                     train_ds_list.append(dataset_detect["train"])
                     val_ds_list.append(dataset_detect["validation"])
 
-                if tasks_list_json_path_TL is not None:
+                if kwargs.get("tasks_list_json_path_TL") is not None:
                     # Prepare datasets for Tumor Lesion Size task
                     dataset_TL = prepare_dataset(
-                        tasks_list_json_path=tasks_list_json_path_TL,
+                        tasks_list_json_path=kwargs.get(
+                            "tasks_list_json_path_TL"),
                         limit_train_sample=train_limit_TL,
                         limit_val_sample=val_limit_TL,
                         mapping_func=_format_data_TumorLesionTask,
@@ -219,6 +196,8 @@ def main(
                 # Save the prepared dataset to disk for other processes to load
                 os.makedirs(prepared_ds_dir, exist_ok=True)
                 dataset.save_to_disk(prepared_ds_dir)
+
+        # All processes synchronize here: wait for dataset preparation to complete
         barrier()
 
         # Stop here if only processing dataset
@@ -226,7 +205,6 @@ def main(
             if is_main_process():
                 print(
                     f"Data processing completed. Prepared dataset saved at '{prepared_ds_dir}'.")
-            cleanup_all_gpu()
             return
 
         # All processes load the prepared dataset
@@ -260,6 +238,10 @@ def main(
 
         # Train the model (DO NOT guard this with is_main_process())
         if kwargs.get("resume_from_checkpoint"):
+            # Create LoRA checkpoint directory if it doesn't exist
+            # This is needed even if this is the first run
+            os.makedirs(lora_checkpoint_dir, exist_ok=True)
+
             last_checkpoint = get_last_checkpoint(lora_checkpoint_dir)
             if last_checkpoint is not None:
                 train_resume_from_checkpoint(
@@ -278,9 +260,16 @@ def main(
         # Save the trained model
         if is_main_process():
             trainer.save_model()
-        barrier()
 
-        cleanup_all_gpu()
+    # Free VRAM
+    # Safe delete trainer only if it exists (prevents NameError when trainer was never created)
+    if "trainer" in globals() or "trainer" in locals():
+        try:
+            del trainer
+        except Exception:
+            pass
+    gc.collect()
+    torch.cuda.empty_cache()
 
     # Optionally merge LoRA with base model and push to Hub
     if kwargs.get("merge_model") or kwargs.get("merge_only"):
@@ -292,9 +281,6 @@ def main(
                 merged_model_dir=kwargs.get("merged_model_dir"),
                 push_to_hub=kwargs.get("push_merged_model"),
             )
-        barrier()
-
-    cleanup_all_gpu()
 
 
 if __name__ == "__main__":
