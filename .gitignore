@@ -196,6 +196,7 @@ pyrightconfig.json
 # End of https://www.toptal.com/developers/gitignore/api/python,visualstudiocode
 
 .DS_Store
+.build.lock
 
 # For MedVision
 Data
