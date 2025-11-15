@@ -21,7 +21,7 @@ from datasets import DatasetDict, concatenate_datasets, load_from_disk
 from transformers.trainer_utils import get_last_checkpoint
 
 from medvision_bm.sft.medgemma_utils import make_collate_fn_MedGemma
-from medvision_bm.sft.utils import (_format_data_AngleDistanceTask,
+from medvision_bm.sft.sft_utils import (_format_data_AngleDistanceTask,
                                     _format_data_DetectionTask,
                                     _format_data_TumorLesionTask, merge_models,
                                     parse_sample_limits,

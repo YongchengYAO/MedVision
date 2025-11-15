@@ -35,7 +35,7 @@ pip install "${benchmark_dir}"
 # --env_setup_only \
 # --skip_env_setup \
 # --skip_update_status \
-CUDA_VISIBLE_DEVICES=1 \
+CUDA_VISIBLE_DEVICES=0 \
 python -m  medvision_bm.benchmark.eval__medgemma \
 --model_hf_id $model_hf_id \
 --model_name $model_name \

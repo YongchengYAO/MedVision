@@ -1,4 +1,4 @@
-from medvision_bm.sft.utils import _doc_to_visual
+from medvision_bm.sft.sft_utils import _doc_to_visual
 
 
 # NOTE: This is model-specific collate function.

@@ -22,7 +22,7 @@ from transformers import AutoProcessor
 from transformers.trainer_utils import get_last_checkpoint
 
 from medvision_bm.sft.qwen25vl_utils import make_collate_fn_Qwen25VL
-from medvision_bm.sft.utils import (_format_data_AngleDistanceTask,
+from medvision_bm.sft.sft_utils import (_format_data_AngleDistanceTask,
                                     _format_data_DetectionTask,
                                     _format_data_TumorLesionTask, merge_models,
                                     parse_sample_limits,
