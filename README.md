@@ -70,7 +70,44 @@ git pull
 
 # 📊 Benchmark
 
-- **[Usage]** The scripts in `script/benchmark-*/eval__*` should be sufficient for dependencies installation, data processing, and benchmarking
+- **[Usage]** 
+
+  1. The scripts in `script/benchmark-*/eval__*` should be sufficient for dependencies installation, data processing, and benchmarking
+  2. After evaluating all models in step 1, parse model outputs and calculate metrics (e.g., MRE, MAE, IoU, Success Rate):
+
+  ```bash
+  # args:
+  # --task_type: ["AD", "TL", "Detection"]
+  # --task_dir: task folder
+  # --model_dir: model folder
+  # --limit: limit sample size in the parsed files
+  # --skip_existing: (store_ture arg) skip parsed files
+  
+  # example 1: parse all models for the T/L task 
+  python -m medvision_bm.benchmark.parse_outputs --task_type TL --task_dir Results/MedVision-TL
+  
+  # example 2: parse one model for the detection task and skip existing parsed files
+  python -m medvision_bm.benchmark.parse_outputs --task_type Detection --task_dir Results/MedVision-detect/Qwen2.5-VL-32B-Instruct --skip_existing
+  ```
+
+  File structure after 2 steps:
+
+  ```
+  ├── MedVision
+  	├── completed_tasks 
+  		├── completed_tasks_MedVision-AD.json           # <== tasks status tracker
+  		├── ...
+  	├── Results                                         # <== benchmark results
+  		├── MedVision-AD
+  		├── MedVision-detect
+  			├── Qwen2.5-VL-32B-Instruct
+  				├── parsed                                   # folder for parsed files
+  				├── *.jsonl                                  # <== model outputs
+  				├── *.json                                   # <== summary file
+  		├── MedVision-TL
+  ```
+
+  
 
 - **[Debug]** [here](https://github.com/YongchengYAO/MedVision/tree/master/docs/debug_env_setup.md)
 
