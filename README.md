@@ -76,6 +76,9 @@ git pull
   2. After evaluating all models in step 1, parse model outputs and calculate metrics (e.g., MRE, MAE, IoU, Success Rate):
 
   ```bash
+  # CLI command: 
+  # python -m medvision_bm.benchmark.parse_outputs
+  #
   # args:
   # --task_type: ["AD", "TL", "Detection"]
   # --task_dir: task folder
@@ -87,27 +90,61 @@ git pull
   python -m medvision_bm.benchmark.parse_outputs --task_type TL --task_dir Results/MedVision-TL
   
   # example 2: parse one model for the detection task and skip existing parsed files
-  python -m medvision_bm.benchmark.parse_outputs --task_type Detection --task_dir Results/MedVision-detect/Qwen2.5-VL-32B-Instruct --skip_existing
+  python -m medvision_bm.benchmark.parse_outputs --task_type Detection --model_dir Results/MedVision-detect/Qwen2.5-VL-32B-Instruct --skip_existing
   ```
 
-  File structure after 2 steps:
+  3. Summarize model performance for each task
+
+  ```bash
+  # CLI command: 
+  # python -m medvision_bm.benchmark.summarize_AD_task 
+  # python -m medvision_bm.benchmark.summarize_detection_task
+  # python -m medvision_bm.benchmark.summarize_TL_task
+  # python -m medvision_bm.benchmark.analyze_detection_task_boxsize
+  # python -m medvision_bm.benchmark.analyze_detection_task_boxsize_vs_random
+  #
+  # args:
+  # --task_dir: task folder
+  # --model_dir: model folder
+  # --skip_model_wo_parsed_files: skip model directories that don't have a 'parsed' folder
+  
+  # example 1: summarize all models for the A/D task
+  python -m medvision_bm.benchmark.summarize_AD_task --task_dir Results/MedVision-AD
+  
+  # example 2: summarize one model for the detection task
+  python -m medvision_bm.benchmark.summarize_detection_task --model_dir Results/MedVision-detect/Qwen2.5-VL-32B-Instruct
+  
+  # example 3: analyze how target size affect detection performance
+  python -m medvision_bm.benchmark.analyze_detection_task_boxsize --task_dir Results/MedVision-detect
+  
+  # example 4: compare detection performance with randow guessing
+  python -m medvision_bm.benchmark.analyze_detection_task_boxsize_vs_random --task_dir Results/MedVision-detect
+  ```
+
+  File structure after these steps:
 
   ```
   ├── MedVision
   	├── completed_tasks 
-  		├── completed_tasks_MedVision-AD.json           # <== tasks status tracker
+  		├── completed_tasks_MedVision-AD.json              # <== tasks status tracker
   		├── ...
-  	├── Results                                         # <== benchmark results
+  	├── Results                                            # <== benchmark results
   		├── MedVision-AD
+  			├── ...
+  			├── summary_AD_task.txt                            # <== !!! summary !!!
   		├── MedVision-detect
   			├── Qwen2.5-VL-32B-Instruct
-  				├── parsed                                   # folder for parsed files
-  				├── *.jsonl                                  # <== model outputs
-  				├── *.json                                   # <== summary file
+  				├── parsed                                       # <== folder for parsed files
+  					├── summary_*.json                             # <== mean metrics in subgroups
+  					├── *.csv                                      # <== mean metrics in subgroups
+  				├── *.jsonl                                      # <== model outputs
+  				├── *.json                                       # <== summary file
+  			├── ...
+  			├── summary_detection_task.txt                   # <== !!! summary !!!
   		├── MedVision-TL
+  			├── ...
+  			├── summary_TL_task.txt                          # <== !!! summary !!!
   ```
-
-  
 
 - **[Debug]** [here](https://github.com/YongchengYAO/MedVision/tree/master/docs/debug_env_setup.md)
 
@@ -145,6 +182,8 @@ Something about the **MedVision** dataset:
 - Any combination of [`data-config` x `split`] will incur the downloading and processing of the whole `dataset`
 
 Since it takes some time for data downloading and processing, you can just download datasets from tasks list (example [here](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list)) or configs list (example [here](https://huggingface.co/datasets/YongchengYAO/MedVision/tree/main/info)) in advance.
+
+⚠️ You need to set API token for these datasets (see [detailed instructions](https://huggingface.co/datasets/YongchengYAO/MedVision#datasets)): FeTA24, SKM-TEA, and ToothFairy2
 
 ```bash
 # NOTE: replace <task-list-json>

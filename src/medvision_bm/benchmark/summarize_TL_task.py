@@ -6,13 +6,18 @@ import re
 
 import numpy as np
 
-from medvision_bm.utils.configs import (EXCLUDED_KEYS, MINIMUM_GROUP_SIZE,
-                                        TUMOR_LESION_GROUP_KEYS)
+from medvision_bm.utils.configs import (
+    EXCLUDED_KEYS,
+    MINIMUM_GROUP_SIZE,
+    TUMOR_LESION_GROUP_KEYS,
+)
 from medvision_bm.utils.parse_utils import (
     convert_numpy_to_python,
-    get_labelsMap_imgModality_from_biometry_benchmark_plan, get_subfolders,
+    get_labelsMap_imgModality_from_biometry_benchmark_plan,
+    get_subfolders,
     get_targetLabel_imgModality_from_biometry_benchmark_plan,
-    group_by_label_modality_slice)
+    group_by_label_modality_slice,
+)
 
 
 def cal_metrics_TL_task(results):
@@ -30,8 +35,7 @@ def cal_metrics_TL_task(results):
     try:
         # Split the prediction string by comma and convert to float32
         prd_parts = pred.strip().split(",")
-        pred_metrics = np.array([np.float32(part.strip())
-                                for part in prd_parts])
+        pred_metrics = np.array([np.float32(part.strip()) for part in prd_parts])
         if len(pred_metrics) != 2:
             mean_absolute_error = np.nan
             mean_relative_error = np.nan
@@ -39,14 +43,13 @@ def cal_metrics_TL_task(results):
         else:
             absolute_error = np.abs(pred_metrics - target_metrics)
             mean_absolute_error = np.mean(absolute_error)
-            mean_relative_error = np.mean(
-                absolute_error / (target_metrics + 1e-15))
+            mean_relative_error = np.mean(absolute_error / (target_metrics + 1e-15))
             success = True
     except:
         mean_absolute_error = np.nan
         mean_relative_error = np.nan
         success = False
-        
+
     # NOTE: These key names must match the "metric" field in the task's YAML configuration file
     return {
         "avgMAE": {"MAE": mean_absolute_error, "success": success},
@@ -58,15 +61,15 @@ def cal_metrics_TL_task(results):
 def _initialize_metric_counters_TL_task():
     """Initialize all metric counters for TL task aggregation."""
     return {
-        'sum_MAE': 0,
-        'sum_MRE': 0,
-        'num_success': 0,
-        'count_valid_AE': 0,  # Count of valid absolute error samples
-        'count_valid_RE': 0,  # Count of valid relative error samples
+        "sum_MAE": 0,
+        "sum_MRE": 0,
+        "num_success": 0,
+        "count_valid_AE": 0,  # Count of valid absolute error samples
+        "count_valid_RE": 0,  # Count of valid relative error samples
         # Counts for AE thresholds [0.0-0.1), [0.1-0.2), ..., [0.9-1.0+]
-        'count_AE_thresholds': [0] * 10,
+        "count_AE_thresholds": [0] * 10,
         # Counts for RE thresholds [0.0-0.1), [0.1-0.2), ..., [0.9-1.0+]
-        'count_RE_thresholds': [0] * 10,
+        "count_RE_thresholds": [0] * 10,
     }
 
 
@@ -79,12 +82,12 @@ def _update_mae_counters(value, counters):
         counters: Dictionary of counters to update
     """
     if not np.isnan(value):
-        counters['sum_MAE'] += value
-        counters['count_valid_AE'] += 1
+        counters["sum_MAE"] += value
+        counters["count_valid_AE"] += 1
 
         # Assign to threshold bucket (bucket 0 = [0.0, 0.1), ..., bucket 9 = [0.9, inf))
         threshold_index = min(int(value * 10), 9)
-        counters['count_AE_thresholds'][threshold_index] += 1
+        counters["count_AE_thresholds"][threshold_index] += 1
 
 
 def _update_mre_counters(value, counters):
@@ -96,12 +99,12 @@ def _update_mre_counters(value, counters):
         counters: Dictionary of counters to update
     """
     if not np.isnan(value):
-        counters['sum_MRE'] += value
-        counters['count_valid_RE'] += 1
+        counters["sum_MRE"] += value
+        counters["count_valid_RE"] += 1
 
         # Assign to threshold bucket (bucket 0 = [0.0, 0.1), ..., bucket 9 = [0.9, inf))
         threshold_index = min(int(value * 10), 9)
-        counters['count_RE_thresholds'][threshold_index] += 1
+        counters["count_RE_thresholds"][threshold_index] += 1
 
 
 def _update_metric_counters_TL_task(metrics_dict, counters):
@@ -115,7 +118,7 @@ def _update_metric_counters_TL_task(metrics_dict, counters):
         _update_mre_counters(metrics_dict["avgMRE"]["MRE"], counters)
 
     # Update success count
-    counters['num_success'] += metrics_dict["SuccessRate"]["success"]
+    counters["num_success"] += metrics_dict["SuccessRate"]["success"]
 
 
 def _calculate_final_metrics_TL_task(counters, count_total):
@@ -130,19 +133,30 @@ def _calculate_final_metrics_TL_task(counters, count_total):
         Dictionary with final computed metrics including MAE<k and MRE<k cumulative accuracies
     """
     task_metrics = {
-        "avgMAE": counters['sum_MAE'] / counters['count_valid_AE'] if counters['count_valid_AE'] > 0 else np.nan,
-        "avgMRE": counters['sum_MRE'] / counters['count_valid_RE'] if counters['count_valid_RE'] > 0 else np.nan,
-        "SuccessRate": counters['num_success'] / count_total if count_total > 0 else 0.0,
+        "avgMAE": (
+            counters["sum_MAE"] / counters["count_valid_AE"]
+            if counters["count_valid_AE"] > 0
+            else np.nan
+        ),
+        "avgMRE": (
+            counters["sum_MRE"] / counters["count_valid_RE"]
+            if counters["count_valid_RE"] > 0
+            else np.nan
+        ),
+        "SuccessRate": (
+            counters["num_success"] / count_total if count_total > 0 else 0.0
+        ),
         "num_samples": count_total,
     }
 
     # Add cumulative accuracy metrics: MAE<k and MRE<k for k in [0.1, 0.2, ..., 1.0]
-    keys = ["AE", "RE"]
+    keys = ["RE"]
     for key in keys:
         for k in range(1, 11):
-            cumulative_count = sum(counters[f'count_{key}_thresholds'][0:k])
-            task_metrics[f"M{key}<{k/10:.1f}"] = cumulative_count / \
-                count_total if count_total > 0 else 0.0
+            cumulative_count = sum(counters[f"count_{key}_thresholds"][0:k])
+            task_metrics[f"M{key}<{k/10:.1f}"] = (
+                cumulative_count / count_total if count_total > 0 else 0.0
+            )
 
     return task_metrics
 
@@ -159,34 +173,30 @@ def calculate_summary_metrics_per_anatomy_TL_task(grouped_data):
     """
     summary_metrics = {}
 
-    for parent_class, task_data in grouped_data.items():
+    for parent_class, data in grouped_data.items():
         if parent_class is None:
             continue
 
-        summary_metrics[parent_class] = {}
+        targets = data["targets"]
+        responses = data["responses"]
 
-        for task_type, data in task_data.items():
-            targets = data["targets"]
-            responses = data["responses"]
+        # Skip if targets or responses are empty
+        if not targets or not responses:
+            continue
 
-            # Skip if targets or responses are empty
-            if not targets or not responses:
-                continue
+        # Initialize counters
+        counters = _initialize_metric_counters_TL_task()
+        count_total = len(targets)
 
-            # Initialize counters
-            counters = _initialize_metric_counters_TL_task()
-            count_total = len(targets)
+        # Process each target-response pair
+        for target, response in zip(targets, responses):
+            mock_results = {"filtered_resps": [response], "target": target}
+            metrics_dict = cal_metrics_TL_task(mock_results)
+            _update_metric_counters_TL_task(metrics_dict, counters)
 
-            # Process each target-response pair
-            for target, response in zip(targets, responses):
-                mock_results = {"filtered_resps": [response], "target": target}
-                metrics_dict = cal_metrics_TL_task(mock_results)
-                _update_metric_counters_TL_task(metrics_dict, counters)
-
-            # Calculate and store final metrics
-            task_metrics = _calculate_final_metrics_TL_task(
-                counters, count_total)
-            summary_metrics[parent_class][task_type] = task_metrics
+        # Calculate and store final metrics
+        task_metrics = _calculate_final_metrics_TL_task(counters, count_total)
+        summary_metrics[parent_class] = task_metrics
 
     return summary_metrics
 
@@ -203,7 +213,7 @@ def process_jsonl_file_TL_task(
         limit: Maximum number of samples to process (None for no limit)
 
     Returns:
-        List of tuples: (imgModality, planner_task_type, label_name, target, filtered_resps, task_id, slice_dim)
+        List of tuples: (imgModality, label_name, target, filtered_resps, task_id, slice_dim)
     """
     results = []
     # Extract dataset name from filename pattern 'samples_{dataset_name}_'
@@ -229,25 +239,10 @@ def process_jsonl_file_TL_task(
                 filtered_resps = data.get("filtered_resps")
                 target = data.get("target")
 
-                # Determine planner task type from filename
-                if "MaskSize" in os.path.basename(jsonl_path):
-                    planner_task_type = "MaskSize"
-                elif "BoxSize" in os.path.basename(jsonl_path):
-                    planner_task_type = "BoxSize"
-                elif "BoxCoordinate" in os.path.basename(jsonl_path):
-                    planner_task_type = "BoxCoordinate"
-                elif "TumorLesionSize" in os.path.basename(jsonl_path):
-                    planner_task_type = "TumorLesionSize"
-                else:
-                    raise ValueError(f"Unknown task type in file {jsonl_path}")
-
-                # Get label: for TumorLesionSize, fetch from benchmark plan; otherwise from doc
-                if planner_task_type == "TumorLesionSize":
-                    label, _ = get_targetLabel_imgModality_from_biometry_benchmark_plan(
-                        dataset_name, task_id
-                    )
-                else:
-                    label = doc.get("label")
+                # Get label from benchmark plan
+                label, _ = get_targetLabel_imgModality_from_biometry_benchmark_plan(
+                    dataset_name, task_id
+                )
 
                 if (
                     label is not None
@@ -266,7 +261,6 @@ def process_jsonl_file_TL_task(
                         results.append(
                             (
                                 imgModality,
-                                planner_task_type,
                                 label_name,
                                 target,
                                 filtered_resps,
@@ -278,8 +272,7 @@ def process_jsonl_file_TL_task(
                 if limit is not None and count >= limit:
                     break
             except json.JSONDecodeError:
-                raise ValueError(
-                    f"Error in parsing the JSON file {jsonl_path}")
+                raise ValueError(f"Error in parsing the JSON file {jsonl_path}")
 
     return results
 
@@ -305,8 +298,7 @@ def process_parsed_file_in_model_folder(
     # Collect all data from the parsed JSONL files
     all_data = []
     for jsonl_file in jsonl_files:
-        file_data = process_jsonl_file_TL_task(
-            jsonl_file, limit)
+        file_data = process_jsonl_file_TL_task(jsonl_file, limit)
         all_data.extend(file_data)
 
     # Skip processing if no data was collected
@@ -323,8 +315,7 @@ def process_parsed_file_in_model_folder(
         return
 
     # Calculate summary metrics per anatomy
-    summary_metrics = calculate_summary_metrics_per_anatomy_TL_task(
-        grouped_data)
+    summary_metrics = calculate_summary_metrics_per_anatomy_TL_task(grouped_data)
 
     # Save values JSON file
     output_path = os.path.join(
@@ -374,8 +365,7 @@ def print_model_summaries(task_dir, skip_model_wo_parsed_files=False):
 
         # Skip if parsed folder doesn't exist and flag is set
         if skip_model_wo_parsed_files and not os.path.exists(parsed_dir):
-            print(
-                f"\nSkipping model directory (no parsed folder): {model_dir}")
+            print(f"\nSkipping model directory (no parsed folder): {model_dir}")
             continue
 
         metrics_file = os.path.join(
@@ -400,76 +390,68 @@ def print_model_summaries(task_dir, skip_model_wo_parsed_files=False):
         }
 
         # Aggregate metrics across all labels and task types
-        for label, tasks in metrics.items():
-            for task_type, task_metrics in tasks.items():
-                mae = task_metrics.get("avgMAE")
-                mre = task_metrics.get("avgMRE")
-                sr = task_metrics.get("SuccessRate")
-                samples = task_metrics.get("num_samples", 0)
-                mre_lt_01 = task_metrics.get("MRE<0.1")
-                mre_lt_02 = task_metrics.get("MRE<0.2")
-                mre_lt_03 = task_metrics.get("MRE<0.3")
+        for label, task_metrics in metrics.items():
+            mae = task_metrics.get("avgMAE")
+            mre = task_metrics.get("avgMRE")
+            sr = task_metrics.get("SuccessRate")
+            samples = task_metrics.get("num_samples", 0)
+            mre_lt_01 = task_metrics.get("MRE<0.1")
+            mre_lt_02 = task_metrics.get("MRE<0.2")
+            mre_lt_03 = task_metrics.get("MRE<0.3")
 
-                if mre is not None and not np.isnan(mre) and samples > 0:
-                    if label not in model_summary["labels"]:
-                        model_summary["labels"][label] = {
-                            "mae": mae,
-                            "mre": mre,
-                            "sr": sr,
-                            "samples": samples,
-                            "task_type": task_type,
-                            "MRE<0.1": mre_lt_01,
-                            "MRE<0.2": mre_lt_02,
-                            "MRE<0.3": mre_lt_03,
-                        }
-                    else:
-                        # Merge metrics from multiple task types for the same label using weighted average
-                        prev = model_summary["labels"][label]
-                        prev_samples = prev["samples"]
-                        new_total = prev_samples + samples
+            if mre is not None and not np.isnan(mre) and samples > 0:
+                if label not in model_summary["labels"]:
+                    model_summary["labels"][label] = {
+                        "mae": mae,
+                        "mre": mre,
+                        "sr": sr,
+                        "samples": samples,
+                        "MRE<0.1": mre_lt_01,
+                        "MRE<0.2": mre_lt_02,
+                        "MRE<0.3": mre_lt_03,
+                    }
+                else:
+                    # Merge metrics from multiple task types for the same label using weighted average
+                    prev = model_summary["labels"][label]
+                    prev_samples = prev["samples"]
+                    new_total = prev_samples + samples
 
-                        def wavg(old_val, new_val):
-                            """Calculate weighted average, handling None and NaN values"""
-                            if (old_val is None or np.isnan(old_val)) and (
-                                new_val is None or np.isnan(new_val)
-                            ):
-                                return None
-                            if old_val is None or np.isnan(old_val):
-                                return new_val
-                            if new_val is None or np.isnan(new_val):
-                                return old_val
-                            return (
-                                old_val * prev_samples + new_val * samples
-                            ) / new_total
+                    def wavg(old_val, new_val):
+                        """Calculate weighted average, handling None and NaN values"""
+                        if (old_val is None or np.isnan(old_val)) and (
+                            new_val is None or np.isnan(new_val)
+                        ):
+                            return None
+                        if old_val is None or np.isnan(old_val):
+                            return new_val
+                        if new_val is None or np.isnan(new_val):
+                            return old_val
+                        return (old_val * prev_samples + new_val * samples) / new_total
 
-                        prev["mae"] = wavg(prev["mae"], mae)
-                        prev["mre"] = wavg(prev["mre"], mre)
-                        prev["sr"] = wavg(prev["sr"], sr)
-                        prev["MRE<0.1"] = wavg(prev["MRE<0.1"], mre_lt_01)
-                        prev["MRE<0.2"] = wavg(prev["MRE<0.2"], mre_lt_02)
-                        prev["MRE<0.3"] = wavg(prev["MRE<0.3"], mre_lt_03)
-                        prev["samples"] = new_total
-                        prev["task_type"] += f", {task_type}"
+                    prev["mae"] = wavg(prev["mae"], mae)
+                    prev["mre"] = wavg(prev["mre"], mre)
+                    prev["sr"] = wavg(prev["sr"], sr)
+                    prev["MRE<0.1"] = wavg(prev["MRE<0.1"], mre_lt_01)
+                    prev["MRE<0.2"] = wavg(prev["MRE<0.2"], mre_lt_02)
+                    prev["MRE<0.3"] = wavg(prev["MRE<0.3"], mre_lt_03)
+                    prev["samples"] = new_total
 
-                    if mae is not None and not np.isnan(mae):
-                        model_summary["weighted_sum_mae"] += mae * samples
-                    model_summary["weighted_sum_mre"] += mre * samples
-                    model_summary["weighted_sum_sr"] += sr * samples
-                    model_summary["total_samples"] += samples
+                if mae is not None and not np.isnan(mae):
+                    model_summary["weighted_sum_mae"] += mae * samples
+                model_summary["weighted_sum_mre"] += mre * samples
+                model_summary["weighted_sum_sr"] += sr * samples
+                model_summary["total_samples"] += samples
 
         # Calculate overall weighted averages across all labels
         if model_summary["total_samples"] > 0:
             model_summary["weighted_avg_mae"] = (
-                model_summary["weighted_sum_mae"] /
-                model_summary["total_samples"]
+                model_summary["weighted_sum_mae"] / model_summary["total_samples"]
             )
             model_summary["weighted_avg_mre"] = (
-                model_summary["weighted_sum_mre"] /
-                model_summary["total_samples"]
+                model_summary["weighted_sum_mre"] / model_summary["total_samples"]
             )
             model_summary["weighted_avg_sr"] = (
-                model_summary["weighted_sum_sr"] /
-                model_summary["total_samples"]
+                model_summary["weighted_sum_sr"] / model_summary["total_samples"]
             )
 
         # Compute micro-averaged (sample-weighted) MRE<k accuracy metrics
@@ -527,7 +509,7 @@ def print_model_summaries(task_dir, skip_model_wo_parsed_files=False):
         )
         label_header = "\nLabel-specific metrics:"
         table_header = (
-            f"{'Label':<50} | {'Task Type':<20} | {'MAE':<8} | {'MRE':<8} | {'SR':<8} | "
+            f"{'Label':<50}  | {'MAE':<8} | {'MRE':<8} | {'SR':<8} | "
             f"{'MRE<0.1':<8} | {'MRE<0.2':<8} | {'MRE<0.3':<8} | {'Samples':<8}"
         )
         separator = "-" * 135
@@ -550,7 +532,7 @@ def print_model_summaries(task_dir, skip_model_wo_parsed_files=False):
             re02 = metrics.get("MRE<0.2")
             re03 = metrics.get("MRE<0.3")
             line = (
-                f"{label:<50} | {metrics['task_type']:<20} | "
+                f"{label:<50}  | "
                 f"{(mae if mae is not None else float('nan')):<8.4f} | "
                 f"{metrics['mre']:<8.4f} | {metrics['sr']:<8.4f} | "
                 f"{(re01 if re01 is not None else float('nan')):<8.4f} | "
@@ -593,8 +575,7 @@ def _process_task_directory(task_dir, limit, skip_model_wo_parsed_files=False):
         # Skip if parsed folder doesn't exist and flag is set
         parsed_files_dir = os.path.join(model_dir, "parsed")
         if skip_model_wo_parsed_files and not os.path.exists(parsed_files_dir):
-            print(
-                f"\nSkipping model directory (no parsed folder): {model_dir}")
+            print(f"\nSkipping model directory (no parsed folder): {model_dir}")
             continue
 
         print(f"\nProcessing model directory: {model_dir}")
@@ -629,22 +610,19 @@ def main(**kwargs):
     task_dir = kwargs.get("task_dir")
     model_dir = kwargs.get("model_dir")
     limit = kwargs.get("limit")
-    skip_model_wo_parsed_files = kwargs.get(
-        "skip_model_wo_parsed_files", False)
+    skip_model_wo_parsed_files = kwargs.get("skip_model_wo_parsed_files", False)
 
     if task_dir is not None:
         print(
             f"Using task_dir: {task_dir}\nModel directories within this folder will be looped over."
         )
-        _process_task_directory(
-            task_dir, limit, skip_model_wo_parsed_files)
+        _process_task_directory(task_dir, limit, skip_model_wo_parsed_files)
 
     elif model_dir is not None:
         print(
             f"Using model_dir: {model_dir}\nProcessing all JSONL files within this directory."
         )
-        _process_single_model_directory(
-            model_dir, limit)
+        _process_single_model_directory(model_dir, limit)
 
     else:
         raise ValueError("Either 'task_dir' or 'model_dir' must be provided.")
@@ -685,8 +663,7 @@ def parse_args():
 
     # Validate that skip_model_wo_parsed_files is only used with task_dir
     if args.skip_model_wo_parsed_files and args.task_dir is None:
-        parser.error(
-            "--skip_model_wo_parsed_files can only be used with --task_dir")
+        parser.error("--skip_model_wo_parsed_files can only be used with --task_dir")
 
     return args
 

@@ -1,13 +1,12 @@
+import importlib
 import os
 import re
+from collections import defaultdict
 
 import nibabel as nib
 import numpy as np
-from collections import defaultdict
-
 
 from medvision_bm.utils.configs import DATASETS_NAME2PACKAGE
-import importlib
 
 
 def get_subfolders(task_dir):
@@ -196,7 +195,6 @@ def cal_Recall(pred, target):
     return Recall
 
 
-
 def cal_metrics_detection_task(results):
     """
     Calculate detection task metrics from model predictions.
@@ -212,8 +210,7 @@ def cal_metrics_detection_task(results):
     try:
         # Parse prediction string: split by comma and convert to float32
         prd_parts = pred.strip().split(",")
-        pred_metrics = np.array([np.float32(part.strip())
-                                for part in prd_parts])
+        pred_metrics = np.array([np.float32(part.strip()) for part in prd_parts])
         if len(pred_metrics) != 4:
             # Invalid prediction format: return 0 for overlap metrics instead of NaN
             # This ensures failed predictions are counted in averages (0% performance)
@@ -279,13 +276,13 @@ def cal_metrics(results, task_type):
         expected_length = 1
     else:
         raise ValueError(
-            f"Invalid task_type: {task_type}. Must be 'Detection', 'TL', or 'AD'")
+            f"Invalid task_type: {task_type}. Must be 'Detection', 'TL', or 'AD'"
+        )
 
     try:
         # Split the results string by comma and convert to float32
         prd_parts = pred.strip().split(",")
-        pred_metrics = np.array([np.float32(part.strip())
-                                for part in prd_parts])
+        pred_metrics = np.array([np.float32(part.strip()) for part in prd_parts])
 
         if len(pred_metrics) != expected_length:
             mean_absolute_error = np.nan
@@ -299,8 +296,7 @@ def cal_metrics(results, task_type):
             if task_type == "Detection":
                 IoU = cal_IoU(pred_metrics, target_metrics)
             else:
-                mean_relative_error = np.mean(
-                    absolute_error / (target_metrics + 1e-15))
+                mean_relative_error = np.mean(absolute_error / (target_metrics + 1e-15))
 
             success = True
     except:
@@ -324,9 +320,7 @@ def cal_metrics(results, task_type):
         }
 
 
-def get_labelsMap_imgModality_from_seg_benchmark_plan(
-    dataset_name, task_id
-):
+def get_labelsMap_imgModality_from_seg_benchmark_plan(dataset_name, task_id):
     """
     Import benchmark_plan and get labels_map for the given dataset and task_id.
 
@@ -353,8 +347,7 @@ def get_labelsMap_imgModality_from_seg_benchmark_plan(
             and task_id > 0
             and task_id <= len(benchmark_plan["tasks"])
         ):
-            imgModality = benchmark_plan["tasks"][task_id -
-                                                  1].get("image_modality")
+            imgModality = benchmark_plan["tasks"][task_id - 1].get("image_modality")
             labels_map = benchmark_plan["tasks"][task_id - 1].get("labels_map")
             return (labels_map, imgModality)
     except (ImportError, AttributeError, IndexError) as e:
@@ -363,9 +356,7 @@ def get_labelsMap_imgModality_from_seg_benchmark_plan(
         )
 
 
-def get_labelsMap_imgModality_from_biometry_benchmark_plan(
-    dataset_name, task_id
-):
+def get_labelsMap_imgModality_from_biometry_benchmark_plan(dataset_name, task_id):
     """
     Import benchmark_plan and get labels_map for the given dataset and task_id.
 
@@ -394,8 +385,7 @@ def get_labelsMap_imgModality_from_biometry_benchmark_plan(
             and task_id > 0
             and task_id <= len(benchmark_plan["tasks"])
         ):
-            imgModality = benchmark_plan["tasks"][task_id -
-                                                  1].get("image_modality")
+            imgModality = benchmark_plan["tasks"][task_id - 1].get("image_modality")
             labels_map = benchmark_plan["tasks"][task_id - 1].get("labels_map")
             return (labels_map, imgModality)
     except (ImportError, AttributeError, IndexError) as e:
@@ -404,9 +394,7 @@ def get_labelsMap_imgModality_from_biometry_benchmark_plan(
         )
 
 
-def get_targetLabel_imgModality_from_biometry_benchmark_plan(
-    dataset_name, task_id
-):
+def get_targetLabel_imgModality_from_biometry_benchmark_plan(dataset_name, task_id):
     try:
         package_name = DATASETS_NAME2PACKAGE[dataset_name]
         # Import the module dynamically
@@ -422,10 +410,8 @@ def get_targetLabel_imgModality_from_biometry_benchmark_plan(
             and task_id > 0
             and task_id <= len(benchmark_plan["tasks"])
         ):
-            imgModality = benchmark_plan["tasks"][task_id -
-                                                  1].get("image_modality")
-            target_label = benchmark_plan["tasks"][task_id -
-                                                   1].get("target_label")
+            imgModality = benchmark_plan["tasks"][task_id - 1].get("image_modality")
+            target_label = benchmark_plan["tasks"][task_id - 1].get("target_label")
             return (target_label, imgModality)
     except (ImportError, AttributeError, IndexError) as e:
         raise ValueError(
@@ -433,18 +419,13 @@ def get_targetLabel_imgModality_from_biometry_benchmark_plan(
         )
 
 
-
-def group_by_anatomy_modality_slice(
-    data
-):
+def group_by_anatomy_modality_slice(data):
     from medvision_bm.utils.configs import label_map_regroup
 
-    result = defaultdict(lambda: defaultdict(
-        lambda: {"targets": [], "responses": []}))
+    result = defaultdict(lambda: {"targets": [], "responses": []})
 
     for (
         imgModality,
-        task_type,
         label_name,
         target,
         filtered_resps,
@@ -452,9 +433,7 @@ def group_by_anatomy_modality_slice(
         slice_dim,
     ) in data:
         if label_name not in list(label_map_regroup.keys()):
-            raise ValueError(
-                "" f"Label '{label_name}' not found in label_map_regroup"
-            )
+            raise ValueError("" f"Label '{label_name}' not found in label_map_regroup")
         parent_class = label_map_regroup.get(label_name)
         # -------------
         if imgModality == "MRI":
@@ -476,27 +455,21 @@ def group_by_anatomy_modality_slice(
             slicetype = "A"
         else:
             raise ValueError(f"Unknown slice dimension: {slice_dim}")
-        new_parent_class = parent_class + " @ " + \
-            imgModality + " " + f"({slicetype})"
-        result[new_parent_class][task_type]["targets"].append(target)
-        result[new_parent_class][task_type]["responses"].extend(filtered_resps)
+        new_parent_class = parent_class + " @ " + imgModality + " " + f"({slicetype})"
+        result[new_parent_class]["targets"].append(target)
+        result[new_parent_class]["responses"].extend(filtered_resps)
 
     # Convert defaultdict to regular dict
     return {k: dict(v) for k, v in result.items()}
 
 
-
-def group_by_label_modality_slice(
-    data
-):
+def group_by_label_modality_slice(data):
     from medvision_bm.utils.configs import label_map_rename
 
-    result = defaultdict(lambda: defaultdict(
-        lambda: {"targets": [], "responses": []}))
+    result = defaultdict(lambda: {"targets": [], "responses": []})
 
     for (
         imgModality,
-        task_type,
         label_name,
         target,
         filtered_resps,
@@ -504,9 +477,7 @@ def group_by_label_modality_slice(
         slice_dim,
     ) in data:
         if label_name not in list(label_map_rename.keys()):
-            raise ValueError(
-                "" f"Label '{label_name}' not found in label_map_rename"
-            )
+            raise ValueError("" f"Label '{label_name}' not found in label_map_rename")
         new_label = label_map_rename.get(label_name)
         # -------------
         if imgModality == "MRI":
@@ -528,10 +499,11 @@ def group_by_label_modality_slice(
             slicetype = "A"
         else:
             raise ValueError(f"Unknown slice dimension: {slice_dim}")
-        new_parent_class = new_label + " @ " + \
-            imgModality + " " + f"({slicetype})"
-        result[new_parent_class][task_type]["targets"].append(target)
-        result[new_parent_class][task_type]["responses"].extend(filtered_resps)
+        new_parent_class = new_label + " @ " + imgModality + " " + f"({slicetype})"
+
+        # TODO: debug
+        result[new_parent_class]["targets"].append(target)
+        result[new_parent_class]["responses"].extend(filtered_resps)
 
     # Convert defaultdict to regular dict
     return {k: dict(v) for k, v in result.items()}
@@ -573,7 +545,7 @@ def group_by_boxImgRatio(data):
             if box_img_ratio < threshold:
                 bin_label = label
                 break
-        
+
         result[bin_label][task_type]["targets"].append(target)
         result[bin_label][task_type]["responses"].extend(filtered_resps)
         result[bin_label][task_type]["image_size_2d"].append(image_size_2d)

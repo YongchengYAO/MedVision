@@ -12,6 +12,7 @@ license = { text = "CC-BY-NC 4.0" }
 dependencies = [
     "datasets==3.6.0",
     "huggingface_hub==0.36.0",
+    "nibabel",
 ]
 
 [project.urls]

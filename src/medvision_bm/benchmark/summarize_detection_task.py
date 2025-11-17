@@ -7,14 +7,19 @@ from collections import defaultdict
 
 import numpy as np
 
-from medvision_bm.utils.configs import (EXCLUDED_KEYS, MINIMUM_GROUP_SIZE,
-                                        TUMOR_LESION_GROUP_KEYS)
+from medvision_bm.utils.configs import (
+    EXCLUDED_KEYS,
+    MINIMUM_GROUP_SIZE,
+    TUMOR_LESION_GROUP_KEYS,
+)
 from medvision_bm.utils.parse_utils import (
     cal_metrics_detection_task,
     convert_numpy_to_python,
-    get_labelsMap_imgModality_from_seg_benchmark_plan, get_subfolders,
+    get_labelsMap_imgModality_from_seg_benchmark_plan,
+    get_subfolders,
     get_targetLabel_imgModality_from_biometry_benchmark_plan,
-    group_by_anatomy_modality_slice)
+    group_by_anatomy_modality_slice,
+)
 
 
 def _initialize_metric_counters_detection_task():
@@ -25,22 +30,22 @@ def _initialize_metric_counters_detection_task():
         Dictionary with counters for sums, counts, and threshold-based metrics
     """
     return {
-        'sum_MAE': 0,
-        'sum_IoU': 0,
-        'sum_DSC': 0,
-        'sum_Precision': 0,
-        'sum_Recall': 0,
-        'num_success': 0,
-        'count_valid_AE': 0,
-        'count_valid_IoU': 0,
-        'count_valid_DSC': 0,
-        'count_valid_Precision': 0,
-        'count_valid_Recall': 0,
-        'count_AE_thresholds': [0] * 10,
-        'count_IoU_thresholds': [0] * 5,
-        'count_DSC_thresholds': [0] * 5,
-        'count_Precision_thresholds': [0] * 5,
-        'count_Recall_thresholds': [0] * 5,
+        "sum_MAE": 0,
+        "sum_IoU": 0,
+        "sum_DSC": 0,
+        "sum_Precision": 0,
+        "sum_Recall": 0,
+        "num_success": 0,
+        "count_valid_AE": 0,
+        "count_valid_IoU": 0,
+        "count_valid_DSC": 0,
+        "count_valid_Precision": 0,
+        "count_valid_Recall": 0,
+        "count_AE_thresholds": [0] * 10,
+        "count_IoU_thresholds": [0] * 5,
+        "count_DSC_thresholds": [0] * 5,
+        "count_Precision_thresholds": [0] * 5,
+        "count_Recall_thresholds": [0] * 5,
     }
 
 
@@ -53,12 +58,12 @@ def _update_mae_counters(mae_value, counters):
         counters: Dictionary of metric counters to update
     """
     if not np.isnan(mae_value):
-        counters['sum_MAE'] += mae_value
-        counters['count_valid_AE'] += 1
+        counters["sum_MAE"] += mae_value
+        counters["count_valid_AE"] += 1
 
         # Determine threshold bin (0.0-0.1, 0.1-0.2, etc.)
         threshold_index = min(int(mae_value * 10), 9)
-        counters['count_AE_thresholds'][threshold_index] += 1
+        counters["count_AE_thresholds"][threshold_index] += 1
 
 
 def _update_threshold_counters(metric_value, threshold_counts):
@@ -89,34 +94,33 @@ def _update_metric_counters_detection_task(metrics_dict, counters):
     # Update IoU
     if not np.isnan(metrics_dict["avgIoU"]["IoU"]):
         iou = metrics_dict["avgIoU"]["IoU"]
-        counters['sum_IoU'] += iou
-        counters['count_valid_IoU'] += 1
-        _update_threshold_counters(iou, counters['count_IoU_thresholds'])
+        counters["sum_IoU"] += iou
+        counters["count_valid_IoU"] += 1
+        _update_threshold_counters(iou, counters["count_IoU_thresholds"])
 
     # Update DSC
     if not np.isnan(metrics_dict["DSC"]["DSC"]):
         dsc = metrics_dict["DSC"]["DSC"]
-        counters['sum_DSC'] += dsc
-        counters['count_valid_DSC'] += 1
-        _update_threshold_counters(dsc, counters['count_DSC_thresholds'])
+        counters["sum_DSC"] += dsc
+        counters["count_valid_DSC"] += 1
+        _update_threshold_counters(dsc, counters["count_DSC_thresholds"])
 
     # Update Precision
     if not np.isnan(metrics_dict["Precision"]["Precision"]):
         precision = metrics_dict["Precision"]["Precision"]
-        counters['sum_Precision'] += precision
-        counters['count_valid_Precision'] += 1
-        _update_threshold_counters(
-            precision, counters['count_Precision_thresholds'])
+        counters["sum_Precision"] += precision
+        counters["count_valid_Precision"] += 1
+        _update_threshold_counters(precision, counters["count_Precision_thresholds"])
 
     # Update Recall
     if not np.isnan(metrics_dict["Recall"]["Recall"]):
         recall = metrics_dict["Recall"]["Recall"]
-        counters['sum_Recall'] += recall
-        counters['count_valid_Recall'] += 1
-        _update_threshold_counters(recall, counters['count_Recall_thresholds'])
+        counters["sum_Recall"] += recall
+        counters["count_valid_Recall"] += 1
+        _update_threshold_counters(recall, counters["count_Recall_thresholds"])
 
     # Update success count
-    counters['num_success'] += metrics_dict["SuccessRate"]["success"]
+    counters["num_success"] += metrics_dict["SuccessRate"]["success"]
 
 
 def _calculate_final_metrics_detection_task(counters, count_total):
@@ -131,32 +135,56 @@ def _calculate_final_metrics_detection_task(counters, count_total):
         Dictionary with final averaged metrics and threshold statistics
     """
     task_metrics = {
-        "avgMAE": counters['sum_MAE'] / counters['count_valid_AE'] if counters['count_valid_AE'] > 0 else np.nan,
-        "IoU": counters['sum_IoU'] / counters['count_valid_IoU'] if counters['count_valid_IoU'] > 0 else np.nan,
-        "DSC": counters['sum_DSC'] / counters['count_valid_DSC'] if counters['count_valid_DSC'] > 0 else np.nan,
-        "Precision": counters['sum_Precision'] / counters['count_valid_Precision'] if counters['count_valid_Precision'] > 0 else np.nan,
-        "Recall": counters['sum_Recall'] / counters['count_valid_Recall'] if counters['count_valid_Recall'] > 0 else np.nan,
-        "SuccessRate": counters['num_success'] / count_total if count_total > 0 else 0.0,
+        "avgMAE": (
+            counters["sum_MAE"] / counters["count_valid_AE"]
+            if counters["count_valid_AE"] > 0
+            else np.nan
+        ),
+        "IoU": (
+            counters["sum_IoU"] / counters["count_valid_IoU"]
+            if counters["count_valid_IoU"] > 0
+            else np.nan
+        ),
+        "DSC": (
+            counters["sum_DSC"] / counters["count_valid_DSC"]
+            if counters["count_valid_DSC"] > 0
+            else np.nan
+        ),
+        "Precision": (
+            counters["sum_Precision"] / counters["count_valid_Precision"]
+            if counters["count_valid_Precision"] > 0
+            else np.nan
+        ),
+        "Recall": (
+            counters["sum_Recall"] / counters["count_valid_Recall"]
+            if counters["count_valid_Recall"] > 0
+            else np.nan
+        ),
+        "SuccessRate": (
+            counters["num_success"] / count_total if count_total > 0 else 0.0
+        ),
         "num_samples": count_total,
     }
 
     # Add cumulative MRE (Mean Relative Error) metrics
     # MRE<k means proportion of samples with MAE less than k/10
     for k in range(1, 11):
-        cumulative_count = sum(counters['count_AE_thresholds'][0:k])
-        task_metrics[f"MRE<{k/10:.1f}"] = cumulative_count / \
-            count_total if count_total > 0 else 0.0
+        cumulative_count = sum(counters["count_AE_thresholds"][0:k])
+        task_metrics[f"MRE<{k/10:.1f}"] = (
+            cumulative_count / count_total if count_total > 0 else 0.0
+        )
 
     # Add threshold-based metrics for overlap measures
     # e.g., "IoU>0.5" means proportion of samples with IoU >= 0.5
-    metric_names = ['IoU', 'DSC', 'Precision', 'Recall']
+    metric_names = ["IoU", "DSC", "Precision", "Recall"]
     for metric_name in metric_names:
-        threshold_key = f'count_{metric_name}_thresholds'
+        threshold_key = f"count_{metric_name}_thresholds"
         for k in range(5, 10):
-            threshold_value = (k / 10)
+            threshold_value = k / 10
             count_at_threshold = counters[threshold_key][k - 5]
-            task_metrics[f"{metric_name}>{threshold_value:.1f}"] = count_at_threshold / \
-                count_total if count_total > 0 else 0.0
+            task_metrics[f"{metric_name}>{threshold_value:.1f}"] = (
+                count_at_threshold / count_total if count_total > 0 else 0.0
+            )
 
     return task_metrics
 
@@ -173,34 +201,32 @@ def calculate_summary_metrics_per_anatomy_detection_task(grouped_data):
     """
     summary_metrics = {}
 
-    for parent_class, task_data in grouped_data.items():
+    for parent_class, data in grouped_data.items():
         if parent_class is None:
             continue
 
         summary_metrics[parent_class] = {}
 
-        for task_type, data in task_data.items():
-            targets = data["targets"]
-            responses = data["responses"]
+        targets = data["targets"]
+        responses = data["responses"]
 
-            # Skip if targets or responses are empty
-            if not targets or not responses:
-                continue
+        # Skip if targets or responses are empty
+        if not targets or not responses:
+            continue
 
-            # Initialize counters
-            counters = _initialize_metric_counters_detection_task()
-            count_total = len(targets)
+        # Initialize counters
+        counters = _initialize_metric_counters_detection_task()
+        count_total = len(targets)
 
-            # Process each target-response pair
-            for target, response in zip(targets, responses):
-                mock_results = {"filtered_resps": [response], "target": target}
-                metrics_dict = cal_metrics_detection_task(mock_results)
-                _update_metric_counters_detection_task(metrics_dict, counters)
+        # Process each target-response pair
+        for target, response in zip(targets, responses):
+            mock_results = {"filtered_resps": [response], "target": target}
+            metrics_dict = cal_metrics_detection_task(mock_results)
+            _update_metric_counters_detection_task(metrics_dict, counters)
 
-            # Calculate and store final metrics
-            task_metrics = _calculate_final_metrics_detection_task(
-                counters, count_total)
-            summary_metrics[parent_class][task_type] = task_metrics
+        # Calculate and store final metrics
+        task_metrics = _calculate_final_metrics_detection_task(counters, count_total)
+        summary_metrics[parent_class] = task_metrics
 
     return summary_metrics
 
@@ -221,7 +247,7 @@ def group_anatomy_vs_tumor_lesion(model_path):
         model_path: Path to the model folder containing summary metrics file
     """
     input_file = os.path.join(
-        model_path, "summary_metrics_per_anatomy-modality-slice.json"
+        model_path, "summary_metrics_per_anatomy_modality_slice.json"
     )
 
     if not os.path.exists(input_file):
@@ -246,9 +272,9 @@ def group_anatomy_vs_tumor_lesion(model_path):
             )
             continue
         # Exclude regions with too few samples for reliable statistics
-        if task_data["BoxCoordinate"]["num_samples"] < MINIMUM_GROUP_SIZE:
+        if task_data["num_samples"] < MINIMUM_GROUP_SIZE:
             print(
-                f"[Exclude] Skipping region '{region_name}' due to insufficient samples: {task_data['BoxCoordinate']['num_samples']} < minimum sample size {MINIMUM_GROUP_SIZE}."
+                f"[Exclude] Skipping region '{region_name}' due to insufficient samples: {task_data['num_samples']} < minimum sample size {MINIMUM_GROUP_SIZE}."
             )
             continue
 
@@ -280,17 +306,16 @@ def group_anatomy_vs_tumor_lesion(model_path):
         total_samples = 0
 
         # Aggregate metrics with sample size weights
-        for region_name, task_data in group_data.items():
-            for task_type, metrics in task_data.items():
-                # Weight each metric by its sample size
-                sample_size = metrics.get("num_samples", 0)
+        for _, metrics in group_data.items():
+            # Weight each metric by its sample size
+            sample_size = metrics.get("num_samples", 0)
 
-                for metric_name, value in metrics.items():
-                    if metric_name == "num_samples":
-                        total_samples += value
-                    elif not np.isnan(value) and np.isfinite(value):
-                        all_metrics[metric_name].append(value)
-                        all_sample_sizes[metric_name].append(sample_size)
+            for metric_name, value in metrics.items():
+                if metric_name == "num_samples":
+                    total_samples += value
+                elif not np.isnan(value) and np.isfinite(value):
+                    all_metrics[metric_name].append(value)
+                    all_sample_sizes[metric_name].append(sample_size)
 
         # Calculate weighted means: sum(value * weight) / sum(weight)
         mean_metrics = {}
@@ -298,7 +323,8 @@ def group_anatomy_vs_tumor_lesion(model_path):
             num_sample = all_sample_sizes[metric_name]
             if sum(num_sample) > 0:
                 mean_metrics[metric_name] = np.sum(
-                    np.array(values) * np.array(num_sample)) / np.sum(num_sample)
+                    np.array(values) * np.array(num_sample)
+                ) / np.sum(num_sample)
             else:
                 raise ValueError(f"No valid samples for metric {metric_name}")
 
@@ -359,7 +385,7 @@ def process_jsonl_file_detection_task(
         limit: Maximum number of samples to process (None = process all)
 
     Returns:
-        List of tuples: (imgModality, planner_task_type, label_name, target, 
+        List of tuples: (imgModality, label_name, target,
                         filtered_resps, task_id, slice_dim)
     """
     results = []
@@ -386,25 +412,8 @@ def process_jsonl_file_detection_task(
                 filtered_resps = data.get("filtered_resps")
                 target = data.get("target")
 
-                # Determine task type from filename
-                if "MaskSize" in os.path.basename(jsonl_path):
-                    planner_task_type = "MaskSize"
-                elif "BoxSize" in os.path.basename(jsonl_path):
-                    planner_task_type = "BoxSize"
-                elif "BoxCoordinate" in os.path.basename(jsonl_path):
-                    planner_task_type = "BoxCoordinate"
-                elif "TumorLesionSize" in os.path.basename(jsonl_path):
-                    planner_task_type = "TumorLesionSize"
-                else:
-                    raise ValueError(f"Unknown task type in file {jsonl_path}")
-
-                # Get label using appropriate lookup method
-                if planner_task_type == "TumorLesionSize":
-                    label, _ = get_targetLabel_imgModality_from_biometry_benchmark_plan(
-                        dataset_name, task_id
-                    )
-                else:
-                    label = doc.get("label")
+                # Get label
+                label = doc.get("label")
 
                 if (
                     label is not None
@@ -412,7 +421,6 @@ def process_jsonl_file_detection_task(
                     and filtered_resps is not None
                     and target is not None
                 ):
-
                     # Resolve label name and image modality from benchmark plan
                     labels_map, imgModality = (
                         get_labelsMap_imgModality_from_seg_benchmark_plan(
@@ -424,7 +432,6 @@ def process_jsonl_file_detection_task(
                         results.append(
                             (
                                 imgModality,
-                                planner_task_type,
                                 label_name,
                                 target,
                                 filtered_resps,
@@ -436,8 +443,7 @@ def process_jsonl_file_detection_task(
                 if limit is not None and count >= limit:
                     break
             except json.JSONDecodeError:
-                raise ValueError(
-                    f"Error in parsing the JSON file {jsonl_path}")
+                raise ValueError(f"Error in parsing the JSON file {jsonl_path}")
 
     return results
 
@@ -471,8 +477,7 @@ def process_parsed_file_in_model_folder(
     # Collect all data from the parsed JSONL files
     all_data = []
     for jsonl_file in jsonl_files:
-        file_data = process_jsonl_file_detection_task(
-            jsonl_file, limit)
+        file_data = process_jsonl_file_detection_task(jsonl_file, limit)
         all_data.extend(file_data)
 
     # Early exit if no valid data found
@@ -489,8 +494,7 @@ def process_parsed_file_in_model_folder(
         return
 
     # Calculate summary metrics per anatomy
-    summary_metrics = calculate_summary_metrics_per_anatomy_detection_task(
-        grouped_data)
+    summary_metrics = calculate_summary_metrics_per_anatomy_detection_task(grouped_data)
 
     # Save values JSON file
     output_path = os.path.join(
@@ -552,8 +556,7 @@ def print_summary_metrics(task_dir, skip_model_wo_parsed_files=False):
 
         # Skip models without parsed results if requested
         if skip_model_wo_parsed_files and not os.path.exists(parsed_dir):
-            print(
-                f"\nSkipping model directory (no parsed folder): {model_dir}")
+            print(f"\nSkipping model directory (no parsed folder): {model_dir}")
             continue
 
         metrics_file = os.path.join(
@@ -608,7 +611,8 @@ def print_summary_metrics(task_dir, skip_model_wo_parsed_files=False):
 
     # Save summary metrics to JSON
     summary_output_path = os.path.join(
-        task_dir, "all_models_summary_metrics_detection_task.json")
+        task_dir, "all_models_summary_metrics_detection_task.json"
+    )
     with open(summary_output_path, "w") as f:
         json.dump(convert_numpy_to_python(all_model_metrics), f, indent=2)
 
@@ -639,6 +643,9 @@ def _process_task_directory(task_dir, limit, skip_model_wo_parsed_files=False):
     # Get list of model folders within task_dir
     model_dirs = get_subfolders(task_dir)
 
+    # NOTE: Exclude random_detection folder
+    model_dirs = [d for d in model_dirs if os.path.basename(d) != "random_detection"]
+
     # Print configuration info once at the beginning
     print(f"\nConfigurations in medvision_bm/utils/configs.py:")
     print(f"  TUMOR_LESION_GROUP_KEYS: {TUMOR_LESION_GROUP_KEYS}")
@@ -650,8 +657,7 @@ def _process_task_directory(task_dir, limit, skip_model_wo_parsed_files=False):
         # Skip models without parsed results if requested
         parsed_files_dir = os.path.join(model_dir, "parsed")
         if skip_model_wo_parsed_files and not os.path.exists(parsed_files_dir):
-            print(
-                f"\nSkipping model directory (no parsed folder): {model_dir}")
+            print(f"\nSkipping model directory (no parsed folder): {model_dir}")
             continue
 
         print(f"\nProcessing model directory: {model_dir}")
@@ -686,22 +692,19 @@ def main(**kwargs):
     task_dir = kwargs.get("task_dir")
     model_dir = kwargs.get("model_dir")
     limit = kwargs.get("limit")
-    skip_model_wo_parsed_files = kwargs.get(
-        "skip_model_wo_parsed_files", False)
+    skip_model_wo_parsed_files = kwargs.get("skip_model_wo_parsed_files", False)
 
     if task_dir is not None:
         print(
             f"Using task_dir: {task_dir}\nModel directories within this folder will be looped over."
         )
-        _process_task_directory(
-            task_dir, limit, skip_model_wo_parsed_files)
+        _process_task_directory(task_dir, limit, skip_model_wo_parsed_files)
 
     elif model_dir is not None:
         print(
             f"Using model_dir: {model_dir}\nProcessing all JSONL files within this directory."
         )
-        _process_single_model_directory(
-            model_dir, limit)
+        _process_single_model_directory(model_dir, limit)
 
     else:
         raise ValueError("Either 'task_dir' or 'model_dir' must be provided.")
@@ -751,8 +754,7 @@ def parse_args():
 
     # Validate skip flag only with task_dir
     if args.skip_model_wo_parsed_files and args.task_dir is None:
-        parser.error(
-            "--skip_model_wo_parsed_files can only be used with --task_dir")
+        parser.error("--skip_model_wo_parsed_files can only be used with --task_dir")
 
     return args
 

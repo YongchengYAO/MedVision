@@ -174,15 +174,16 @@ def install_medvision_ds(
     local_dir=None,
 ):
     if local_dir is None:
+        os.makedirs(data_dir, exist_ok=True)
         snapshot_download(
             repo_id="YongchengYAO/MedVision",
             allow_patterns="src/*",
             repo_type="dataset",
             local_dir=data_dir,
         )
-        dir_bmvqa = os.path.join(data_dir, "src")
+        dir_bmvqa = os.path.abspath(os.path.join(data_dir, "src"))
     else:
-        dir_bmvqa = os.path.join(local_dir, "src")
+        dir_bmvqa = os.path.abspath(os.path.join(local_dir, "src"))
 
     tmp_build_lock_file = os.path.join(dir_bmvqa, ".build.lock")
     build_dir = os.path.join(dir_bmvqa, "build")
@@ -191,17 +192,31 @@ def install_medvision_ds(
     wheel_dir = os.path.join(dir_bmvqa, "wheels")
     os.makedirs(wheel_dir, exist_ok=True)
     cmd_w_flock = (
-        f"flock -w 600 {tmp_build_lock_file} bash -lc '"
-        f"rm -rf {build_dir} {dist_dir} {egg_info_dir} && "
+        f"flock -w 600 {shlex.quote(tmp_build_lock_file)} bash -lc '"
+        f"rm -rf {shlex.quote(build_dir)} {shlex.quote(dist_dir)} {shlex.quote(egg_info_dir)} && "
         f"python -m pip install --upgrade build && "
-        f"python -m build --wheel --outdir {wheel_dir} {dir_bmvqa} && "
-        f"latest_wheel=$(ls -t {wheel_dir}/medvision_ds-*.whl | head -n1) && "
+        f"python -m build --wheel --outdir {shlex.quote(wheel_dir)} {shlex.quote(dir_bmvqa)} && "
+        f"latest_wheel=$(ls -t {shlex.quote(wheel_dir)}/medvision_ds-*.whl | head -n1) && "
         f'pip install --no-cache-dir --force-reinstall "$latest_wheel"\''
     )
-    subprocess.run(cmd_w_flock, check=True, shell=True)
+    
+    # Try with flock, fallback to without flock if it fails
+    try:
+        subprocess.run(cmd_w_flock, check=True, shell=True)
+    except subprocess.CalledProcessError:
+        print("Warning: flock failed, attempting installation without file lock...")
+        cmd_no_flock = (
+            f"bash -lc '"
+            f"rm -rf {shlex.quote(build_dir)} {shlex.quote(dist_dir)} {shlex.quote(egg_info_dir)} && "
+            f"python -m pip install --upgrade build && "
+            f"python -m build --wheel --outdir {shlex.quote(wheel_dir)} {shlex.quote(dir_bmvqa)} && "
+            f"latest_wheel=$(ls -t {shlex.quote(wheel_dir)}/medvision_ds-*.whl | head -n1) && "
+            f'pip install --no-cache-dir --force-reinstall "$latest_wheel"\''
+        )
+        subprocess.run(cmd_no_flock, check=True, shell=True)
 
     # Set environment variables for medvision_ds
-    setup_env_medvision_ds(data_dir=data_dir)
+    setup_env_hf_medvision_ds(data_dir=data_dir)
 
 
 def pip_install_medvision_ds():

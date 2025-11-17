@@ -1,10 +1,12 @@
 import argparse
 import os
-import subprocess
-import sys
 from pathlib import Path
 
-from medvision_bm.utils import install_medvision_ds, install_vendored_lmms_eval, run_pip_install
+from medvision_bm.utils import (
+    install_medvision_ds,
+    install_vendored_lmms_eval,
+    run_pip_install,
+)
 
 
 def parse_args() -> argparse.Namespace:
