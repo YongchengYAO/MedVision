@@ -6,12 +6,10 @@ import re
 
 import numpy as np
 
-from medvision_bm.utils.parse_utils import (_load_nifti_2d,
-                                            cal_metrics_AD_task,
-                                            cal_metrics_detection_task,
-                                            cal_metrics_TL_task,
+from medvision_bm.utils.parse_utils import (cal_metrics,
                                             convert_numpy_to_python,
-                                            extract_last_k_nums)
+                                            extract_last_k_nums,
+                                            get_subfolders, load_nifti_2d)
 
 
 def _extract_task_id(filename):
@@ -72,7 +70,7 @@ def _patch_doc_detection_task(data, doc):
         img_path = doc["mask_file"]
         slice_dim = doc["slice_dim"]
         slice_idx = doc["slice_idx"]
-        _, img_2d = _load_nifti_2d(img_path, slice_dim, slice_idx)
+        _, img_2d = load_nifti_2d(img_path, slice_dim, slice_idx)
         image_size_2d = img_2d.shape
         data["doc"]["image_size_2d"] = image_size_2d
 
@@ -111,7 +109,6 @@ def _update_re_counts(re_val, count_RE_ls):
         count_RE_ls[8] += 1
     elif re_val < 1.0:
         count_RE_ls[9] += 1
-    return count_RE_ls
 
 
 def _update_results_summary(results_summary_data, metrics, count_total):
@@ -133,7 +130,7 @@ def _update_results_summary(results_summary_data, metrics, count_total):
     results_summary_data["results"][task_name]["avgMRE,none"] = str(avg_mre)
     results_summary_data["results"][task_name]["avgIoU,none"] = str(avg_iou)
     results_summary_data["results"][task_name]["SuccessRate,none"] = success_rate
-    
+
     # Use labels like MRE<0.1, MRE<0.2, ..., MRE<1.0
     count_RE_ls = metrics["count_RE_ls"]
     if isinstance(count_RE_ls, list):
@@ -183,50 +180,47 @@ def _process_jsonl_file(jsonl_file, temp_file, task_type, limit):
 
     with open(jsonl_file, "r") as f, open(temp_file, "w") as temp:
         for line in f:
+            # Read and parse each line as JSON
             data = json.loads(line)
             doc = data["doc"]
             resps = _extract_response(data)
-
             data["filtered_resps"] = [extract_last_k_nums(resps, target_nums)]
-
+            
+            # Calculate metrics
+            metrics_dict = cal_metrics(data, task_type)
+            data["avgMAE"] = metrics_dict["avgMAE"]
+            data["SuccessRate"] = metrics_dict["SuccessRate"]
             if task_type == 'Detection':
-                metrics_dict = cal_metrics_detection_task(data)
-                data["avgMAE"] = metrics_dict["avgMAE"]
                 data["avgIoU"] = metrics_dict["avgIoU"]
-                data["SuccessRate"] = metrics_dict["SuccessRate"]
-            elif task_type == "AD":
-                metrics_dict = cal_metrics_AD_task(data)
-                data["avgMAE"] = metrics_dict["avgMAE"]
+            elif task_type == "AD" or task_type == "TL":
                 data["avgMRE"] = metrics_dict["avgMRE"]
-                data["SuccessRate"] = metrics_dict["SuccessRate"]
-            elif task_type == "TL":
-                metrics_dict = cal_metrics_TL_task(data)
-                data["avgMAE"] = metrics_dict["avgMAE"]
-                data["avgMRE"] = metrics_dict["avgMRE"]
-                data["SuccessRate"] = metrics_dict["SuccessRate"]
+            else:
+                raise ValueError(
+                    f"Invalid task_type: {task_type}. Must be 'Detection', 'TL', or 'AD'")
 
+            # Update the summary dictionary: metrics
             if "avgMAE" in metrics_dict:
                 if not np.isnan(metrics_dict["avgMAE"]["MAE"]):
                     metrics["sum_MAE"] += metrics_dict["avgMAE"]["MAE"]
                     metrics["count_valid_AE"] += 1
-
             if "avgMRE" in metrics_dict:
                 if not np.isnan(metrics_dict["avgMRE"]["MRE"]):
                     metrics["sum_MRE"] += metrics_dict["avgMRE"]["MRE"]
                     metrics["count_valid_RE"] += 1
-                    metrics["count_RE_ls"] = _update_re_counts(metrics_dict["avgMRE"]["MRE"], metrics["count_RE_ls"])
-
+                    _update_re_counts(
+                        metrics_dict["avgMRE"]["MRE"], metrics["count_RE_ls"])
             if "avgIoU" in metrics_dict:
                 if not np.isnan(metrics_dict["avgIoU"]["IoU"]):
                     metrics["sum_IoU"] += metrics_dict["avgIoU"]["IoU"]
                     metrics["count_valid_IoU"] += 1
-
             metrics["num_success"] += metrics_dict["SuccessRate"]["success"]
             count_total += 1
 
+            # (Deprecated) Additional processing for Detection task, most likely not used, left here for backward compatibility
             if task_type == 'Detection':
                 _patch_doc_detection_task(data, doc)
 
+            # Write updated data to temp file which will be saved to the parsed JSONL file later
             temp.write(json.dumps(data, default=convert_numpy_to_python) + "\n")
 
             # Limit the number of processed samples if limit is set
@@ -244,9 +238,9 @@ def _process_model_directory(model_dir, task_type, limit, skip_existing):
     print(f"Found {len(jsonl_files)} JSONL files in {model_dir}")
 
     for jsonl_file in jsonl_files:
-
         # Get parsed file path: model_dir/parsed/*.jsonl
         parsed_file_path = _get_parsed_file_path(model_dir, jsonl_file)
+        os.makedirs(os.path.dirname(parsed_file_path), exist_ok=True)
 
         if skip_existing and os.path.exists(parsed_file_path):
             print(
@@ -257,17 +251,16 @@ def _process_model_directory(model_dir, task_type, limit, skip_existing):
         results_summary_data, results_json_file = _load_results_file(
             jsonl_file)
 
+        # Process JSONL file and save parsed results
         temp_file = jsonl_file + ".temp"
         metrics, count_total = _process_jsonl_file(
             jsonl_file, temp_file, task_type, limit)
-
-        results_summary_data = _update_results_summary(
-            results_summary_data, metrics, count_total)
-
-        os.makedirs(os.path.dirname(parsed_file_path), exist_ok=True)
         os.replace(temp_file, parsed_file_path)
         print(f"[Info] Saved parsed data to {parsed_file_path}")
 
+        # Update results summary data with new metrics
+        results_summary_data = _update_results_summary(
+            results_summary_data, metrics, count_total)
         parsed_results_json_path = os.path.join(
             os.path.dirname(parsed_file_path), results_json_file)
         with open(parsed_results_json_path, "w") as f:
@@ -288,10 +281,7 @@ def main(**kwargs):
             f"Using task_dir: {task_dir}\nModel directory within this folder will be looped over, and each JSONL file will be processed.")
 
         # Get list of model folder within task_dir
-        model_dirs = []
-        for entry in os.scandir(task_dir):
-            if entry.is_dir():
-                model_dirs.append(entry.path)
+        model_dirs = get_subfolders(task_dir)
 
         # Loop over each model directory and process JSONL files
         for model_dir in model_dirs:
