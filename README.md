@@ -186,13 +186,13 @@ Since it takes some time for data downloading and processing, you can just downl
 ⚠️ You need to set API token for these datasets (see [detailed instructions](https://huggingface.co/datasets/YongchengYAO/MedVision#datasets)): FeTA24, SKM-TEA, and ToothFairy2
 
 ```bash
-# NOTE: replace <task-list-json>
-python -m medvision_bm.benchmark.download_datasets --tasks_json <task-list-json>
+# NOTE: replace <task-list-json>, <data-folder>
+python -m medvision_bm.benchmark.download_datasets --tasks_json <task-list-json> --data_dir <data-folder>
 ```
 or
 ```bash
-# NOTE: replace <config-list-csv>
-python -m medvision_bm.benchmark.download_datasets --configs_csv <config-list-csv>
+# NOTE: replace <config-list-csv>, <data-folder>
+python -m medvision_bm.benchmark.download_datasets --configs_csv <config-list-csv> --data_dir <data-folder>
 ```
 
 <br/>
