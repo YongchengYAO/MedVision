@@ -20,6 +20,11 @@ def main():
         help="Directory to store downloaded datasets and source code.",
     )
     parser.add_argument(
+        "--force_download_data",
+        action="store_true",
+        help="Force re-download of dataset data even if already present.",
+    )
+    parser.add_argument(
         "--configs_csv",
         type=str,
         help="Path to CSV file containing list of dataset configurations to download",
@@ -45,7 +50,11 @@ def main():
         parser.error("Please provide either --configs_csv or --tasks_json, not both")
 
     # Setup environment for medvision_ds
-    setup_env_hf_medvision_ds(args.data_dir)
+    setup_env_hf_medvision_ds(
+        args.data_dir,
+        force_install_code=True, # Always force install code to ensure latest version
+        force_download_data=args.force_download_data,
+    )
 
     if args.configs_csv:
         with open(args.configs_csv, "r") as f:

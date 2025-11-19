@@ -130,6 +130,10 @@ def install_vendored_lmms_eval(
 
 
 def setup_env_hf(data_dir):
+    # Safeguard data_dir: you can use relative path with this function
+    data_dir = os.path.abspath(data_dir) 
+
+    # Set Hugging Face dataset and cache directories
     os.environ["HF_DATASETS_CACHE"] = os.path.join(
         data_dir, ".cache", "huggingface", "datasets"
     )
@@ -139,8 +143,11 @@ def setup_env_hf(data_dir):
 def setup_env_medvision_ds(
     data_dir,
     force_install_code=True,
-    force_install_data=False,
+    force_download_data=False,
 ):
+    # Safeguard data_dir: you can use relative path with this function
+    data_dir = os.path.abspath(data_dir)
+
     # Set dataset directory
     os.makedirs(data_dir, exist_ok=True)
     os.environ["MedVision_DATA_DIR"] = data_dir
@@ -150,19 +157,19 @@ def setup_env_medvision_ds(
         os.environ["MedVision_FORCE_INSTALL_CODE"] = "true"
 
     # Force download dataset, default to "False"
-    if force_install_data:
+    if force_download_data:
         os.environ["MedVision_FORCE_DOWNLOAD_DATA"] = "true"
 
 
 def setup_env_hf_medvision_ds(data_dir,
                               force_install_code=True,
-                              force_install_data=False,
+                              force_download_data=False,
                               ):
     # Set environment variables for medvision_ds
     setup_env_medvision_ds(
         data_dir=data_dir,
         force_install_code=force_install_code,
-        force_install_data=force_install_data,
+        force_download_data=force_download_data,
     )
 
     # Set environment variables for Hugging Face
@@ -174,6 +181,9 @@ def install_medvision_ds(
     local_dir=None,
 ):
     if local_dir is None:
+        # Safeguard data_dir: you can use relative path with this function
+        data_dir = os.path.abspath(data_dir)
+        
         os.makedirs(data_dir, exist_ok=True)
         snapshot_download(
             repo_id="YongchengYAO/MedVision",
@@ -530,6 +540,9 @@ def install_flash_attention_torch_and_deps_py311_v2():
 
 
 def setup_env_vllm(data_dir):
+    # Safeguard data_dir: you can use relative path with this function
+    data_dir = os.path.abspath(data_dir)
+
     # Ensure proper process spawning
     os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
 
