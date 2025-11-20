@@ -93,7 +93,7 @@ def cal_IoU(pred, target):
     return intersection_area / union_area if union_area > 0 else 0.0
 
 
-def cal_DSC(pred, target):
+def cal_F1(pred, target):
     # Ensure inputs are 1D numpy arrays with 4 numbers
     pred = np.asarray(pred).flatten()
     target = np.asarray(target).flatten()
@@ -120,15 +120,15 @@ def cal_DSC(pred, target):
     pred_area = (pred[2] - pred[0]) * (pred[3] - pred[1])
     target_area = (target[2] - target[0]) * (target[3] - target[1])
 
-    # Calculate DSC (Dice Similarity Coefficient)
-    # DSC = 2 * intersection / (area1 + area2)
-    dsc = (
+    # Calculate F1 (Dice Similarity Coefficient)
+    # F1 = 2 * intersection / (area1 + area2)
+    f1 = (
         (2.0 * intersection_area) / (pred_area + target_area)
         if (pred_area + target_area) > 0
         else np.nan
     )
 
-    return dsc
+    return f1
 
 
 def cal_Precision(pred, target):
@@ -203,7 +203,7 @@ def cal_metrics_detection_task(results):
         results: Dictionary containing 'filtered_resps' (predictions) and 'target' (ground truth)
 
     Returns:
-        Dictionary with metrics: avgMAE, avgIoU, DSC, Precision, Recall, SuccessRate
+        Dictionary with metrics: avgMAE, avgIoU, F1, Precision, Recall, SuccessRate
     """
     pred = results["filtered_resps"][0]
     target_metrics = eval(results["target"])
@@ -217,7 +217,7 @@ def cal_metrics_detection_task(results):
             # rather than excluded from calculations (which NaN would do)
             mean_absolute_error = np.nan
             IoU = 0
-            dsc = 0
+            f1 = 0
             precision = 0
             recall = 0
             success = False
@@ -225,7 +225,7 @@ def cal_metrics_detection_task(results):
             absolute_error = np.abs(pred_metrics - target_metrics)
             mean_absolute_error = np.mean(absolute_error)
             IoU = cal_IoU(pred_metrics, target_metrics)
-            dsc = cal_DSC(pred_metrics, target_metrics)
+            f1 = cal_F1(pred_metrics, target_metrics)
             precision = cal_Precision(pred_metrics, target_metrics)
             recall = cal_Recall(pred_metrics, target_metrics)
             success = True
@@ -234,7 +234,7 @@ def cal_metrics_detection_task(results):
         # Return 0 for overlap metrics to penalize failures in averages
         mean_absolute_error = np.nan
         IoU = 0
-        dsc = 0
+        f1 = 0
         precision = 0
         recall = 0
         success = False
@@ -243,7 +243,7 @@ def cal_metrics_detection_task(results):
     return {
         "avgMAE": {"MAE": mean_absolute_error, "success": success},
         "avgIoU": {"IoU": IoU},
-        "DSC": {"DSC": dsc},
+        "F1": {"F1": f1},
         "Precision": {"Precision": precision},
         "Recall": {"Recall": recall},
         "SuccessRate": {"success": success},
@@ -510,11 +510,7 @@ def group_by_label_modality_slice(data):
 
 
 def group_by_boxImgRatio(data):
-    result = defaultdict(
-        lambda: defaultdict(
-            lambda: {"targets": [], "responses": [], "image_size_2d": []}
-        )
-    )
+    result = defaultdict(lambda: {"targets": [], "responses": [], "image_size_2d": []})
 
     # Define thresholds and their corresponding labels
     thresholds = [
@@ -538,7 +534,7 @@ def group_by_boxImgRatio(data):
         (0.9, "85% <= Box/Image < 90%"),
     ]
 
-    for task_type, _, target, filtered_resps, _, box_img_ratio, image_size_2d in data:
+    for _, target, filtered_resps, _, box_img_ratio, image_size_2d in data:
         # Find the appropriate bin for this box_img_ratio
         bin_label = "90% <= Box/Image"  # Default for values >= 0.9
         for threshold, label in thresholds:
@@ -546,9 +542,9 @@ def group_by_boxImgRatio(data):
                 bin_label = label
                 break
 
-        result[bin_label][task_type]["targets"].append(target)
-        result[bin_label][task_type]["responses"].extend(filtered_resps)
-        result[bin_label][task_type]["image_size_2d"].append(image_size_2d)
+        result[bin_label]["targets"].append(target)
+        result[bin_label]["responses"].extend(filtered_resps)
+        result[bin_label]["image_size_2d"].append(image_size_2d)
 
     # Convert defaultdict to regular dict
     return {k: dict(v) for k, v in result.items()}

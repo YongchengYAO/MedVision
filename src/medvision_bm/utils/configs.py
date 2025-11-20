@@ -1,5 +1,84 @@
+# NOTE: Do not change the variable names in this file, as they are imported elsewhere
+#
+
+# Random seed for reproducibility, widly used across the codebase
 SEED = 1024
 
+
+# ----------------------------------------------------------------
+# NOTE: Summary filename in T/L tasks
+# ----------------------------------------------------------------
+# Mainly used in summarize_TL_task.py
+SUMMARY_FILENAME_TL_METRICS = "summary_metrics_TL_Task.json"
+SUMMARY_FILENAME_TL_VALUES = "summary_values_TL_Task.json"
+# ----------------------------------------------------------------
+
+# ----------------------------------------------------------------
+# NOTE: Summary filename in A/D tasks
+# ----------------------------------------------------------------
+# Mainly used in summarize_AD_task.py
+SUMMARY_FILENAME_AD_METRICS = "summary_metrics_AD_Task.json"
+SUMMARY_FILENAME_AD_VALUES = "summary_values_AD_Task.json"
+# ----------------------------------------------------------------
+
+# ----------------------------------------------------------------
+# NOTE: Summary filename in detection tasks
+# ----------------------------------------------------------------
+# Mainly used in summarize_detection_task.py
+SUMMARY_FILENAME_DETECT_METRICS = "summary_metrics_detect_Task.json"
+SUMMARY_FILENAME_DETECT_VALUES = "summary_values_detect_Task.json"
+SUMMARY_FILENAME_GROUPED_ANATOMY_VS_TUMOR_LESION_DETECT_METRICS = (
+    "summary_metrics_anatomy_vs_lesion_detect_Task.json"
+)
+SUMMARY_FILENAME_ALL_MODELS_DETECT_METRICS = (
+    "summary_metrics_all_models_detect_Task.json"
+)
+
+# Used in analyze_detection_task_boxsize_vs_random.py
+SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_DETECT_VALUES = (
+    "summary_values_per_boxImgRatio_detect_Task.json"
+)
+SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_DETECT_METRICS = (
+    "summary_metrics_per_boxImgRatio_detect_Task.json"
+)
+
+# Used in analyze_detection_task_boxsize.py
+SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_METRICS = (
+    "summary_metrics_per_sample_detect_Task.csv"
+)
+SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_MEAN_METRICS = (
+    "summary_metrics_boxImgRatio_x_label_detect_Task.csv"
+)
+# ----------------------------------------------------------------
+
+
+# ----------------------------------------------------------------
+# NOTE: These constants are mainly used in summarize_detection_task.py
+# ----------------------------------------------------------------
+# Minimum sample size for a label to be included in the group average calculation (anatomy and Tumor/Lesion groups)
+MINIMUM_GROUP_SIZE = 50
+# Keys to be excluded from group calculations
+EXCLUDED_KEYS = ["miscellaneous", "others"]
+# Keywords indicating Tumor/Lesion group labels
+TUMOR_LESION_GROUP_KEYS = ["tumor", "lesion", "metastatic"]
+# ----------------------------------------------------------------
+
+
+# ----------------------------------------------------------------
+# NOTE: Used in analyze_detection_task_boxsize_vs_random.py
+# ----------------------------------------------------------------
+# Number of random box simulations for random detection model
+RANDOM_BOX_SIMULATIONS = 100
+# ----------------------------------------------------------------
+
+
+# ----------------------------------------------------------------
+# NOTE: keep this mapping updated when new datasets are added
+# ----------------------------------------------------------------
+# Mapping from dataset names to package names
+# e.g., "AbdomenAtlas1.0Mini" -> "AbdomenAtlas__1_0__Mini"
+# Package names is used for module import:
+# e.g., from medvision_ds.datasets.AbdomenAtlas__1_0__Mini import preprocess_detection, preprocess_segmentation
 DATASETS_NAME2PACKAGE = {
     "ACDC": "ACDC",
     "AMOS22": "AMOS22",
@@ -24,16 +103,8 @@ DATASETS_NAME2PACKAGE = {
     "TotalSegmentator": "TotalSegmentator",
     "autoPET-III": "autoPET_III",
 }
+# ----------------------------------------------------------------
 
-# Minimum sample size for a label to be included in the group average calculation (anatomy and Tumor/Lesion groups)
-MINIMUM_GROUP_SIZE = 50
-# Keys to be excluded from group calculations
-EXCLUDED_KEYS = ["miscellaneous", "others"] 
-# Keywords indicating Tumor/Lesion group labels
-TUMOR_LESION_GROUP_KEYS = ["tumor", "lesion", "metastatic"] 
-
-# Number of random box simulations for random detection model 
-RANDOM_BOX_SIMULATIONS = 100
 
 label_map_regroup = {
     # ───────────────────────────── VASCULATURE ─────────────────────────────

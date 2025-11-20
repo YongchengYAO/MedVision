@@ -9,6 +9,8 @@ import numpy as np
 from medvision_bm.utils.configs import (
     EXCLUDED_KEYS,
     MINIMUM_GROUP_SIZE,
+    SUMMARY_FILENAME_TL_METRICS,
+    SUMMARY_FILENAME_TL_VALUES,
     TUMOR_LESION_GROUP_KEYS,
 )
 from medvision_bm.utils.parse_utils import (
@@ -318,17 +320,13 @@ def process_parsed_file_in_model_folder(
     summary_metrics = calculate_summary_metrics_per_anatomy_TL_task(grouped_data)
 
     # Save values JSON file
-    output_path = os.path.join(
-        parsed_files_dir, "summary_values_per_anatomy_modality_slice.json"
-    )
+    output_path = os.path.join(parsed_files_dir, SUMMARY_FILENAME_TL_VALUES)
     with open(output_path, "w") as f:
         json.dump(convert_numpy_to_python(grouped_data), f, indent=2)
     print(f"Saved target and model-predicted values to {output_path}")
 
     # Save summary metrics JSON file
-    output_path = os.path.join(
-        parsed_files_dir, "summary_metrics_per_anatomy_modality_slice.json"
-    )
+    output_path = os.path.join(parsed_files_dir, SUMMARY_FILENAME_TL_METRICS)
     with open(output_path, "w") as f:
         json.dump(convert_numpy_to_python(summary_metrics), f, indent=2)
     print(f"Saved summary metrics to {output_path}")
@@ -368,9 +366,7 @@ def print_model_summaries(task_dir, skip_model_wo_parsed_files=False):
             print(f"\nSkipping model directory (no parsed folder): {model_dir}")
             continue
 
-        metrics_file = os.path.join(
-            parsed_dir, "summary_metrics_per_anatomy_modality_slice.json"
-        )
+        metrics_file = os.path.join(parsed_dir, SUMMARY_FILENAME_TL_METRICS)
 
         with open(metrics_file, "r") as f:
             metrics = json.load(f)

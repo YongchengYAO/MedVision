@@ -1,6 +1,7 @@
 import argparse
 import csv
 import json
+import os
 
 from medvision_bm.utils import setup_env_hf_medvision_ds
 from medvision_bm.utils.data_utils import (
@@ -55,6 +56,8 @@ def main():
         force_install_code=True, # Always force install code to ensure latest version
         force_download_data=args.force_download_data,
     )
+
+    print(f"env var MedVision_FORCE_DOWNLOAD_DATA: {os.environ.get('MedVision_FORCE_DOWNLOAD_DATA')}")
 
     if args.configs_csv:
         with open(args.configs_csv, "r") as f:

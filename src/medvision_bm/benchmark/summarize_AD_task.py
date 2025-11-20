@@ -6,12 +6,11 @@ import re
 
 import numpy as np
 
-from medvision_bm.utils.parse_utils import (
-    convert_numpy_to_python,
-    get_labelsMap_imgModality_from_biometry_benchmark_plan,
-    get_subfolders,
-    get_targetLabel_imgModality_from_biometry_benchmark_plan,
+from medvision_bm.utils.configs import (
+    SUMMARY_FILENAME_AD_METRICS,
+    SUMMARY_FILENAME_AD_VALUES,
 )
+from medvision_bm.utils.parse_utils import convert_numpy_to_python, get_subfolders
 
 
 def cal_metrics_AD_task(results):
@@ -438,9 +437,9 @@ def process_parsed_file_in_model_folder(
     1. Finds and groups JSONL files in the 'parsed' subdirectory
     2. Extracts targets and model predictions from each file
     3. Calculates comprehensive metrics per anatomy/metric type
-    4. Saves results to two JSON files:
-       - summary_values_per_anatomy-modality-slice.json (raw data)
-       - summary_metrics_per_anatomy-modality-slice.json (aggregated metrics)
+    4. Saves results to two JSON files in the parsed directory:
+       - summary_AD_values.json (raw data: targets and predictions)
+       - summary_AD_metrics.json (aggregated metrics per label)
 
     Args:
         model_dir (str): Path to the model folder (must contain a 'parsed' subdirectory)
@@ -478,16 +477,18 @@ def process_parsed_file_in_model_folder(
     summary_metrics = calculate_summary_metrics_per_anatomy_AD_task(all_data)
 
     # Save raw values JSON file (targets and predictions for each sample)
+    # Output: parsed/summary_AD_values.json
     output_path = os.path.join(
-        parsed_files_dir, "summary_values_per_anatomy_modality_slice.json"
+        parsed_files_dir, SUMMARY_FILENAME_AD_VALUES
     )
     with open(output_path, "w") as f:
         json.dump(convert_numpy_to_python(all_data), f, indent=2)
     print(f"Saved target and model-predicted values to {output_path}")
 
     # Save aggregated metrics JSON file (metrics per label)
+    # Output: parsed/summary_AD_metrics.json
     output_path = os.path.join(
-        parsed_files_dir, "summary_metrics_per_anatomy_modality_slice.json"
+        parsed_files_dir, SUMMARY_FILENAME_AD_METRICS
     )
     with open(output_path, "w") as f:
         json.dump(convert_numpy_to_python(summary_metrics), f, indent=2)
@@ -509,9 +510,12 @@ def print_model_summaries(task_dir, skip_model_wo_parsed_files=False):
         task_dir (str): Path to the task directory containing model folders
         skip_model_wo_parsed_files (bool): Whether to skip models without parsed folders
 
+    Input:
+        - Reads from {model_dir}/parsed/summary_AD_metrics.json for each model
+    
     Output:
         - Prints formatted tables to console
-        - Saves summary to summary_AD_task.txt in task_dir
+        - Saves summary to {task_dir}/summary_AD_task.txt
     """
     # Get list of model folders within task_dir
     model_dirs = get_subfolders(task_dir)
@@ -540,7 +544,7 @@ def print_model_summaries(task_dir, skip_model_wo_parsed_files=False):
             continue
 
         metrics_file = os.path.join(
-            parsed_dir, "summary_metrics_per_anatomy_modality_slice.json"
+            parsed_dir, SUMMARY_FILENAME_AD_METRICS
         )
 
         with open(metrics_file, "r") as f:

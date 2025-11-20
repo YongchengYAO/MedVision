@@ -6,10 +6,15 @@ import re
 
 import pandas as pd
 
+from medvision_bm.utils.configs import (
+    SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_MEAN_METRICS,
+    SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_METRICS,
+)
 from medvision_bm.utils.parse_utils import (
     cal_metrics_detection_task,
-    get_labelsMap_imgModality_from_seg_benchmark_plan, get_subfolders,
-    get_targetLabel_imgModality_from_biometry_benchmark_plan)
+    get_labelsMap_imgModality_from_seg_benchmark_plan,
+    get_subfolders,
+)
 
 
 def process_jsonl_file_detection_task_w_boxSize(
@@ -30,7 +35,7 @@ def process_jsonl_file_detection_task_w_boxSize(
         limit: Maximum number of samples to process (None = process all)
 
     Returns:
-        List of tuples: (imgModality, planner_task_type, label_name, target, 
+        List of tuples: (imgModality, label_name, target,
                         filtered_resps, box_img_ratio, task_id)
     """
     results = []
@@ -57,25 +62,8 @@ def process_jsonl_file_detection_task_w_boxSize(
                 target = data.get("target")
                 box_img_ratio = data["box_img_ratio"]
 
-                # Determine task type from filename
-                if "MaskSize" in os.path.basename(jsonl_path):
-                    planner_task_type = "MaskSize"
-                elif "BoxSize" in os.path.basename(jsonl_path):
-                    planner_task_type = "BoxSize"
-                elif "BoxCoordinate" in os.path.basename(jsonl_path):
-                    planner_task_type = "BoxCoordinate"
-                elif "TumorLesionSize" in os.path.basename(jsonl_path):
-                    planner_task_type = "TumorLesionSize"
-                else:
-                    raise ValueError(f"Unknown task type in file {jsonl_path}")
-
-                # Get label using appropriate lookup method
-                if planner_task_type == "TumorLesionSize":
-                    label, _ = get_targetLabel_imgModality_from_biometry_benchmark_plan(
-                        dataset_name, task_id
-                    )
-                else:
-                    label = doc.get("label")
+                # Get label
+                label = doc.get("label")
 
                 if (
                     label is not None
@@ -95,7 +83,6 @@ def process_jsonl_file_detection_task_w_boxSize(
                         results.append(
                             (
                                 imgModality,
-                                planner_task_type,
                                 label_name,
                                 target,
                                 filtered_resps,
@@ -107,8 +94,7 @@ def process_jsonl_file_detection_task_w_boxSize(
                 if limit is not None and count >= limit:
                     break
             except json.JSONDecodeError:
-                raise ValueError(
-                    f"Error in parsing the JSON file {jsonl_path}")
+                raise ValueError(f"Error in parsing the JSON file {jsonl_path}")
 
     return results
 
@@ -116,13 +102,13 @@ def process_jsonl_file_detection_task_w_boxSize(
 def _normalize_modality(img_modality):
     """
     Normalize image modality names to standardized abbreviations.
-    
-    Converts full modality names (e.g., "MRI", "ultrasound") to their 
+
+    Converts full modality names (e.g., "MRI", "ultrasound") to their
     standard abbreviated forms (e.g., "MR", "US").
-    
+
     Args:
         img_modality: Original modality name
-        
+
     Returns:
         Standardized modality abbreviation (e.g., "MR", "CT", "US", "XR", "PET")
     """
@@ -131,7 +117,7 @@ def _normalize_modality(img_modality):
         "CT": "CT",
         "ultrasound": "US",
         "X-ray": "XR",
-        "PET": "PET"
+        "PET": "PET",
     }
     return modality_map.get(img_modality, img_modality)
 
@@ -139,13 +125,13 @@ def _normalize_modality(img_modality):
 def _get_box_img_group(box_img_ratio):
     """
     Categorize box-to-image ratio into predefined size groups.
-    
+
     Groups are defined in 0.05 increments from <0.05 to >=0.90, allowing
     for fine-grained analysis of detection performance by relative object size.
-    
+
     Args:
         box_img_ratio: Ratio of bounding box size to image size (float between 0 and 1)
-        
+
     Returns:
         String representing the ratio group (e.g., "<0.05", "0.05~0.10", ">=0.90")
     """
@@ -169,7 +155,7 @@ def _get_box_img_group(box_img_ratio):
         (0.85, "0.80~0.85"),
         (0.90, "0.85~0.90"),
     ]
-    
+
     for threshold, group_label in thresholds:
         if box_img_ratio < threshold:
             return group_label
@@ -184,24 +170,23 @@ def collect_data(data):
     1. Normalizes image modalities
     2. Creates composite labels combining anatomy and modality
     3. Categorizes box sizes into groups
-    4. Calculates IoU, DSC, Precision, and Recall metrics for each sample
+    4. Calculates IoU, F1, Precision, and Recall metrics for each sample
     5. Returns a structured DataFrame for analysis
 
     Args:
-        data: List of tuples containing (imgModality, task_type, label_name, target, 
+        data: List of tuples containing (imgModality, task_type, label_name, target,
               filtered_resps, box_img_ratio, taskID)
 
     Returns:
         pandas DataFrame with columns: task_type, box_img_group, label, box_img_ratio,
-        IoU, DSC, Precision, Recall
+        IoU, F1, Precision, Recall
     """
     from medvision_bm.utils.configs import label_map_regroup
 
     df_data = []
-    
+
     for (
         imgModality,
-        task_type,
         label_name,
         target,
         filtered_resps,
@@ -212,7 +197,7 @@ def collect_data(data):
         parent_class = label_map_regroup.get(label_name)
         normalized_modality = _normalize_modality(imgModality)
         new_parent_class = f"{parent_class} @ {normalized_modality}"
-        
+
         # Categorize box size
         box_img_group = _get_box_img_group(box_img_ratio)
 
@@ -223,16 +208,17 @@ def collect_data(data):
             metrics_dict = cal_metrics_detection_task(mock_results)
 
             # Append row data
-            df_data.append({
-                "task_type": task_type,
-                "box_img_group": box_img_group,
-                "label": new_parent_class,
-                "box_img_ratio": box_img_ratio,
-                "IoU": metrics_dict["avgIoU"]["IoU"],
-                "DSC": metrics_dict["DSC"]["DSC"],
-                "Precision": metrics_dict["Precision"]["Precision"],
-                "Recall": metrics_dict["Recall"]["Recall"],
-            })
+            df_data.append(
+                {
+                    "box_img_group": box_img_group,
+                    "label": new_parent_class,
+                    "box_img_ratio": box_img_ratio,
+                    "IoU": metrics_dict["avgIoU"]["IoU"],
+                    "F1": metrics_dict["F1"]["F1"],
+                    "Precision": metrics_dict["Precision"]["Precision"],
+                    "Recall": metrics_dict["Recall"]["Recall"],
+                }
+            )
 
     return pd.DataFrame(df_data)
 
@@ -240,17 +226,17 @@ def collect_data(data):
 def group_data_by_boxSize_label(df):
     """
     Aggregate metrics by box size group and anatomical label.
-    
-    Computes mean values for IoU, DSC, Precision, and Recall, along with 
+
+    Computes mean values for IoU, F1, Precision, and Recall, along with
     sample counts for each combination of box size group and label.
-    
+
     Args:
         df: DataFrame with individual sample metrics
-        
+
     Returns:
         DataFrame with aggregated metrics grouped by box_img_group and label,
-        including columns: box_img_group, label, IoU (mean), sample_size, 
-        DSC (mean), Precision (mean), Recall (mean)
+        including columns: box_img_group, label, IoU (mean), sample_size,
+        F1 (mean), Precision (mean), Recall (mean)
     """
     # Group by box_img_group and label, then calculate averages and sample size
     result = (
@@ -258,7 +244,7 @@ def group_data_by_boxSize_label(df):
         .agg(
             {
                 "IoU": ["mean", "count"],
-                "DSC": "mean",
+                "F1": "mean",
                 "Precision": "mean",
                 "Recall": "mean",
             }
@@ -267,7 +253,7 @@ def group_data_by_boxSize_label(df):
     )
 
     # Flatten the column names
-    result.columns = ["IoU", "sample_size", "DSC", "Precision", "Recall"]
+    result.columns = ["IoU", "sample_size", "F1", "Precision", "Recall"]
 
     # Reset index to make box_img_group and label regular columns
     result = result.reset_index()
@@ -285,11 +271,11 @@ def process_parsed_file_in_model_folder(
     This function performs the complete analysis pipeline:
     1. Finds all JSONL files in model_dir/parsed/
     2. Parses each file to extract detection data with box size information
-    3. Computes detection metrics (IoU, DSC, Precision, Recall) for each sample
+    3. Computes detection metrics (IoU, F1, Precision, Recall) for each sample
     4. Groups data by box size ranges and anatomical labels
     5. Saves both fine-grained and summary metrics as CSV files:
-       - metrics-boxSize-label-fine.csv: Individual sample metrics
-       - summary_metrics_per_boxSize-label-fine.csv: Aggregated statistics
+       - SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_METRICS: Individual sample metrics
+       - SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_MEAN_METRICS: Aggregated statistics
 
     Args:
         model_dir: Path to the model folder containing a 'parsed' subdirectory
@@ -305,8 +291,7 @@ def process_parsed_file_in_model_folder(
     # Collect all data from the parsed JSONL files
     all_data = []
     for jsonl_file in jsonl_files:
-        file_data = process_jsonl_file_detection_task_w_boxSize(
-            jsonl_file, limit)
+        file_data = process_jsonl_file_detection_task_w_boxSize(jsonl_file, limit)
         all_data.extend(file_data)
 
     # Early exit if no valid data found
@@ -316,19 +301,21 @@ def process_parsed_file_in_model_folder(
 
     # Collect data and return a DataFrame
     path_metrics_csv = os.path.join(
-        parsed_files_dir, "metrics_per_boxSize_label.csv")
+        parsed_files_dir, SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_METRICS
+    )
     df = collect_data(all_data)
     df.to_csv(
         path_metrics_csv,
         index=False,
         na_rep="NaN",
     )
-    print(
-        f"Saved metrics grouped by boxSize and label to CSV: {path_metrics_csv}")
+    print(f"Saved metrics grouped by boxSize and label to CSV: {path_metrics_csv}")
 
     # Group data by boxSize and label, then calculate summary metrics
     path_metrics_summary_csv = os.path.join(
-        parsed_files_dir, "summary_metrics_per_boxSize_label.csv")
+        parsed_files_dir,
+        SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_MEAN_METRICS,
+    )
     result_df = group_data_by_boxSize_label(df)
     result_df.to_csv(
         path_metrics_summary_csv,
@@ -336,7 +323,8 @@ def process_parsed_file_in_model_folder(
         na_rep="NaN",
     )
     print(
-        f"Saved summary (average) metrics grouped by boxSize and label to CSV: {path_metrics_summary_csv}")
+        f"Saved summary (average) metrics grouped by boxSize and label to CSV: {path_metrics_summary_csv}"
+    )
 
 
 def _process_task_directory(task_dir, limit, skip_model_wo_parsed_files=False):
@@ -354,13 +342,15 @@ def _process_task_directory(task_dir, limit, skip_model_wo_parsed_files=False):
     # Get list of model folders within task_dir
     model_dirs = get_subfolders(task_dir)
 
+    # Exclude "random_detection" folder if it exists
+    model_dirs = [d for d in model_dirs if os.path.basename(d) != "random_detection"]
+
     # Process each model directory
     for model_dir in model_dirs:
         # Skip models without parsed results if requested
         parsed_files_dir = os.path.join(model_dir, "parsed")
         if skip_model_wo_parsed_files and not os.path.exists(parsed_files_dir):
-            print(
-                f"\nSkipping model directory (no parsed folder): {model_dir}")
+            print(f"\nSkipping model directory (no parsed folder): {model_dir}")
             continue
 
         print(f"\nProcessing model directory: {model_dir}")
@@ -383,7 +373,7 @@ def main(**kwargs):
     """
     Main function to analyze detection task performance by box size.
 
-    Processes model results to generate metrics grouped by bounding box size 
+    Processes model results to generate metrics grouped by bounding box size
     relative to image size. Supports two modes:
     - Task mode: Process all models in a task directory
     - Model mode: Process a single model directory
@@ -397,22 +387,19 @@ def main(**kwargs):
     task_dir = kwargs.get("task_dir")
     model_dir = kwargs.get("model_dir")
     limit = kwargs.get("limit")
-    skip_model_wo_parsed_files = kwargs.get(
-        "skip_model_wo_parsed_files", False)
+    skip_model_wo_parsed_files = kwargs.get("skip_model_wo_parsed_files", False)
 
     if task_dir is not None:
         print(
             f"Using task_dir: {task_dir}\nModel directories within this folder will be looped over."
         )
-        _process_task_directory(
-            task_dir, limit, skip_model_wo_parsed_files)
+        _process_task_directory(task_dir, limit, skip_model_wo_parsed_files)
 
     elif model_dir is not None:
         print(
             f"Using model_dir: {model_dir}\nProcessing all JSONL files within this directory."
         )
-        _process_single_model_directory(
-            model_dir, limit)
+        _process_single_model_directory(model_dir, limit)
 
     else:
         raise ValueError("Either 'task_dir' or 'model_dir' must be provided.")
@@ -462,11 +449,14 @@ def parse_args():
 
     # Validate skip flag only with task_dir
     if args.skip_model_wo_parsed_files and args.task_dir is None:
-        parser.error(
-            "--skip_model_wo_parsed_files can only be used with --task_dir")
+        parser.error("--skip_model_wo_parsed_files can only be used with --task_dir")
 
     return args
 
+
+if __name__ == "__main__":
+    args_dict = vars(parse_args())
+    main(**args_dict)
 
 if __name__ == "__main__":
     args_dict = vars(parse_args())

@@ -10,6 +10,10 @@ import numpy as np
 from medvision_bm.utils.configs import (
     EXCLUDED_KEYS,
     MINIMUM_GROUP_SIZE,
+    SUMMARY_FILENAME_ALL_MODELS_DETECT_METRICS,
+    SUMMARY_FILENAME_DETECT_METRICS,
+    SUMMARY_FILENAME_DETECT_VALUES,
+    SUMMARY_FILENAME_GROUPED_ANATOMY_VS_TUMOR_LESION_DETECT_METRICS,
     TUMOR_LESION_GROUP_KEYS,
 )
 from medvision_bm.utils.parse_utils import (
@@ -17,7 +21,6 @@ from medvision_bm.utils.parse_utils import (
     convert_numpy_to_python,
     get_labelsMap_imgModality_from_seg_benchmark_plan,
     get_subfolders,
-    get_targetLabel_imgModality_from_biometry_benchmark_plan,
     group_by_anatomy_modality_slice,
 )
 
@@ -32,18 +35,18 @@ def _initialize_metric_counters_detection_task():
     return {
         "sum_MAE": 0,
         "sum_IoU": 0,
-        "sum_DSC": 0,
+        "sum_F1": 0,
         "sum_Precision": 0,
         "sum_Recall": 0,
         "num_success": 0,
         "count_valid_AE": 0,
         "count_valid_IoU": 0,
-        "count_valid_DSC": 0,
+        "count_valid_F1": 0,
         "count_valid_Precision": 0,
         "count_valid_Recall": 0,
         "count_AE_thresholds": [0] * 10,
         "count_IoU_thresholds": [0] * 5,
-        "count_DSC_thresholds": [0] * 5,
+        "count_F1_thresholds": [0] * 5,
         "count_Precision_thresholds": [0] * 5,
         "count_Recall_thresholds": [0] * 5,
     }
@@ -68,7 +71,7 @@ def _update_mae_counters(mae_value, counters):
 
 def _update_threshold_counters(metric_value, threshold_counts):
     """
-    Update threshold counters for overlap metrics (IoU, DSC, Precision, Recall).
+    Update threshold counters for overlap metrics (IoU, F1, Precision, Recall).
 
     Args:
         metric_value: Metric value to evaluate against thresholds
@@ -98,12 +101,12 @@ def _update_metric_counters_detection_task(metrics_dict, counters):
         counters["count_valid_IoU"] += 1
         _update_threshold_counters(iou, counters["count_IoU_thresholds"])
 
-    # Update DSC
-    if not np.isnan(metrics_dict["DSC"]["DSC"]):
-        dsc = metrics_dict["DSC"]["DSC"]
-        counters["sum_DSC"] += dsc
-        counters["count_valid_DSC"] += 1
-        _update_threshold_counters(dsc, counters["count_DSC_thresholds"])
+    # Update F1
+    if not np.isnan(metrics_dict["F1"]["F1"]):
+        f1 = metrics_dict["F1"]["F1"]
+        counters["sum_F1"] += f1
+        counters["count_valid_F1"] += 1
+        _update_threshold_counters(f1, counters["count_F1_thresholds"])
 
     # Update Precision
     if not np.isnan(metrics_dict["Precision"]["Precision"]):
@@ -145,9 +148,9 @@ def _calculate_final_metrics_detection_task(counters, count_total):
             if counters["count_valid_IoU"] > 0
             else np.nan
         ),
-        "DSC": (
-            counters["sum_DSC"] / counters["count_valid_DSC"]
-            if counters["count_valid_DSC"] > 0
+        "F1": (
+            counters["sum_F1"] / counters["count_valid_F1"]
+            if counters["count_valid_F1"] > 0
             else np.nan
         ),
         "Precision": (
@@ -166,17 +169,17 @@ def _calculate_final_metrics_detection_task(counters, count_total):
         "num_samples": count_total,
     }
 
-    # Add cumulative MRE (Mean Relative Error) metrics
-    # MRE<k means proportion of samples with MAE less than k/10
+    # Add cumulative MAE (Mean Absolute Error) metrics
+    # MAE<k means proportion of samples with MAE less than or equal to k/10
     for k in range(1, 11):
         cumulative_count = sum(counters["count_AE_thresholds"][0:k])
-        task_metrics[f"MRE<{k/10:.1f}"] = (
+        task_metrics[f"MAE<{k/10:.1f}"] = (
             cumulative_count / count_total if count_total > 0 else 0.0
         )
 
     # Add threshold-based metrics for overlap measures
     # e.g., "IoU>0.5" means proportion of samples with IoU >= 0.5
-    metric_names = ["IoU", "DSC", "Precision", "Recall"]
+    metric_names = ["IoU", "F1", "Precision", "Recall"]
     for metric_name in metric_names:
         threshold_key = f"count_{metric_name}_thresholds"
         for k in range(5, 10):
@@ -237,18 +240,16 @@ def group_anatomy_vs_tumor_lesion(model_path):
     and calculate weighted mean metrics for each group.
 
     This function:
-    1. Reads per-region metrics from summary_metrics_per_anatomy-modality-slice.json
+    1. Reads per-region metrics from SUMMARY_FILENAME_DETECT_METRICS
     2. Classifies regions as anatomy or tumor/lesion based on keywords
     3. Filters out regions marked as miscellaneous/others or with insufficient samples
     4. Calculates sample-weighted mean metrics for each group
-    5. Saves results to grouped_anatomy_vs_tumor_lesion_metrics.json
+    5. Saves results to SUMMARY_FILENAME_GROUPED_ANATOMY_VS_TUMOR_LESION_DETECT_METRICS
 
     Args:
         model_path: Path to the model folder containing summary metrics file
     """
-    input_file = os.path.join(
-        model_path, "summary_metrics_per_anatomy_modality_slice.json"
-    )
+    input_file = os.path.join(model_path, SUMMARY_FILENAME_DETECT_METRICS)
 
     if not os.path.exists(input_file):
         print(f"Summary metrics file not found: {input_file}")
@@ -353,7 +354,7 @@ def group_anatomy_vs_tumor_lesion(model_path):
 
     # Save grouped results
     output_path = os.path.join(
-        model_path, "grouped_anatomy_vs_tumor_lesion_metrics.json"
+        model_path, SUMMARY_FILENAME_GROUPED_ANATOMY_VS_TUMOR_LESION_DETECT_METRICS
     )
     with open(output_path, "w") as f:
         json.dump(convert_numpy_to_python(grouped_results), f, indent=2)
@@ -497,17 +498,13 @@ def process_parsed_file_in_model_folder(
     summary_metrics = calculate_summary_metrics_per_anatomy_detection_task(grouped_data)
 
     # Save values JSON file
-    output_path = os.path.join(
-        parsed_files_dir, "summary_values_per_anatomy_modality_slice.json"
-    )
+    output_path = os.path.join(parsed_files_dir, SUMMARY_FILENAME_DETECT_VALUES)
     with open(output_path, "w") as f:
         json.dump(convert_numpy_to_python(grouped_data), f, indent=2)
     print(f"Saved target and model-predicted values to {output_path}")
 
     # Save summary metrics JSON file
-    output_path = os.path.join(
-        parsed_files_dir, "summary_metrics_per_anatomy_modality_slice.json"
-    )
+    output_path = os.path.join(parsed_files_dir, SUMMARY_FILENAME_DETECT_METRICS)
     with open(output_path, "w") as f:
         json.dump(convert_numpy_to_python(summary_metrics), f, indent=2)
     print(f"Saved summary metrics to {output_path}")
@@ -545,7 +542,7 @@ def print_summary_metrics(task_dir, skip_model_wo_parsed_files=False):
         output_lines.append(text)
 
     print_and_capture("\n" + "=" * 80)
-    print_and_capture("SUMMARY METRICS: Recall, Precision, and DSC")
+    print_and_capture("SUMMARY METRICS: Recall, Precision, and F1")
     print_and_capture("=" * 80)
 
     # Collect metrics for all models
@@ -560,7 +557,9 @@ def print_summary_metrics(task_dir, skip_model_wo_parsed_files=False):
             continue
 
         metrics_file = os.path.join(
-            model_dir, "parsed", "grouped_anatomy_vs_tumor_lesion_metrics.json"
+            model_dir,
+            "parsed",
+            SUMMARY_FILENAME_GROUPED_ANATOMY_VS_TUMOR_LESION_DETECT_METRICS,
         )
 
         if os.path.exists(metrics_file):
@@ -574,11 +573,11 @@ def print_summary_metrics(task_dir, skip_model_wo_parsed_files=False):
                     model_metrics[group_name] = {
                         "Recall": mean_metrics.get("Recall", np.nan),
                         "Precision": mean_metrics.get("Precision", np.nan),
-                        "DSC": mean_metrics.get("DSC", np.nan),
+                        "F1": mean_metrics.get("F1", np.nan),
                         "IoU": mean_metrics.get("IoU", np.nan),
                         "SuccessRate": mean_metrics.get("SuccessRate", np.nan),
                         "IoU>0.5": mean_metrics.get("IoU>0.5", np.nan),
-                        "DSC>0.5": mean_metrics.get("DSC>0.5", np.nan),
+                        "F1>0.5": mean_metrics.get("F1>0.5", np.nan),
                         "total_samples": mean_metrics.get("total_samples", 0),
                         "num_regions": mean_metrics.get("num_regions", 0),
                     }
@@ -595,23 +594,23 @@ def print_summary_metrics(task_dir, skip_model_wo_parsed_files=False):
                 group_metrics = metrics[group_name]
                 recall = group_metrics["Recall"]
                 precision = group_metrics["Precision"]
-                dsc = group_metrics["DSC"]
+                f1 = group_metrics["F1"]
                 iou = group_metrics["IoU"]
                 success_rate = group_metrics["SuccessRate"]
                 iou_05 = group_metrics["IoU>0.5"]
-                dsc_05 = group_metrics["DSC>0.5"]
+                f1_05 = group_metrics["F1>0.5"]
                 samples = group_metrics["total_samples"]
                 regions = group_metrics["num_regions"]
 
                 print_and_capture(
                     f"  {group_name.upper():8} ({regions:2d} regions, {samples:4d} samples): "
-                    f"Recall={recall:.3f}, Precision={precision:.3f}, DSC={dsc:.3f}, IoU={iou:.3f}, "
-                    f"SuccessRate={success_rate:.3f}, IoU>0.5={iou_05:.3f}, DSC>0.5={dsc_05:.3f}"
+                    f"Recall={recall:.3f}, Precision={precision:.3f}, F1={f1:.3f}, IoU={iou:.3f}, "
+                    f"SuccessRate={success_rate:.3f}, IoU>0.5={iou_05:.3f}, F1>0.5={f1_05:.3f}"
                 )
 
     # Save summary metrics to JSON
     summary_output_path = os.path.join(
-        task_dir, "all_models_summary_metrics_detection_task.json"
+        task_dir, SUMMARY_FILENAME_ALL_MODELS_DETECT_METRICS
     )
     with open(summary_output_path, "w") as f:
         json.dump(convert_numpy_to_python(all_model_metrics), f, indent=2)

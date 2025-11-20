@@ -14,6 +14,13 @@ def tasks_to_configs(tasks, split):
     for task in tasks:
         config = f"{task}_{split}"
         configs.append(config)
+
+    # [Fix legacy naming issue] Replace "BoxCoordinate" with "BoxSize" in config names
+    #   - the dataset uses "BoxSize" instead of "BoxCoordinate"
+    #   - the tasks are named with "BoxCoordinate" 
+    # [Note] Why we did not change the task name?
+    #   - Using "BoxSize" in task names is reserved for mask size estimation tasks.
+    configs = [config.replace("BoxCoordinate", "BoxSize") for config in configs]
     return configs
 
 
@@ -34,6 +41,7 @@ def download_datasets_from_configs(configs, split="test"):
             split=split,
             streaming=False,
         )
+        print("Finished downloading.")
 
 
 def download_datasets_from_tasks(tasks, split="test"):
