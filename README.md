@@ -4,11 +4,11 @@
 
 This is the official codebase `medvision_bm` of the **MedVision** project. 
 
-🌏 **Project**: [to be updated]
+🌏 **Project**: https://medvision-vlm.github.io
 
 🧑🏻‍💻 **Code**: https://github.com/YongchengYAO/MedVision
 
-🩻 **Huggingface Dataset**: [https://huggingface.co/datasets/YongchengYAO/MedVision](https://huggingface.co/datasets/YongchengYAO/MedVision)
+🩻 **Huggingface Dataset**: [YongchengYAO/MedVision](https://huggingface.co/datasets/YongchengYAO/MedVision)
 
 🐳 **Docker**: https://hub.docker.com/r/vincentycyao/medvision/tags
 
@@ -126,24 +126,25 @@ git pull
   ```
   ├── MedVision
   	├── completed_tasks 
-  		├── completed_tasks_MedVision-AD.json              # <== tasks status tracker
+  		├── completed_tasks_MedVision-AD.json         # <== tasks status tracker
   		├── ...
-  	├── Results                                            # <== benchmark results
+  	├── Results                                     # <== benchmark results
   		├── MedVision-AD
   			├── ...
-  			├── summary_AD_task.txt                            # <== !!! summary !!!
+  			├── summary_AD_task.txt                     # <== [step 3] summary
   		├── MedVision-detect
   			├── Qwen2.5-VL-32B-Instruct
-  				├── parsed                                       # <== folder for parsed files
-  					├── summary_*.json                             # <== mean metrics in subgroups
-  					├── *.csv                                      # <== mean metrics in subgroups
-  				├── *.jsonl                                      # <== model outputs
-  				├── *.json                                       # <== summary file
+  				├── parsed                               
+  					├── *.jsonl                             # <== [step 2] parsed model outputs
+  					├── *.json                              # <== [step 2] parsed summary file
+  					├── summary_*                           # <== [step 3] mean metrics, values
+  				├── *.jsonl                               # <== [step 1] model outputs
+  				├── *.json                                # <== [step 1] summary file
   			├── ...
-  			├── summary_detection_task.txt                   # <== !!! summary !!!
+  			├── summary_detection_task.txt              # <== [step 3] summary
   		├── MedVision-TL
   			├── ...
-  			├── summary_TL_task.txt                          # <== !!! summary !!!
+  			├── summary_TL_task.txt                     # <== [step 3] summary
   ```
 
 - **[Debug]** [here](https://github.com/YongchengYAO/MedVision/tree/master/docs/debug_env_setup.md)
@@ -186,6 +187,16 @@ Since it takes some time for data downloading and processing, you can just downl
 ⚠️ You need to set API token for these datasets (see [detailed instructions](https://huggingface.co/datasets/YongchengYAO/MedVision#datasets)): FeTA24, SKM-TEA, and ToothFairy2
 
 ```bash
+# CLI command:
+# python -m medvision_bm.benchmark.download_datasets
+#
+# arg:
+# --data_dir: (required) data folder
+# --tasks_json: task json file
+# --configs_csv: config json file
+# --force_download_data: (store_true arg) force redownload raw imaging data
+# ⚠️ `--force_download_data` is for debugging only, it will repeatedly download data for tasks/configs of the same dataset
+
 # NOTE: replace <task-list-json>, <data-folder>
 python -m medvision_bm.benchmark.download_datasets --tasks_json <task-list-json> --data_dir <data-folder>
 ```
