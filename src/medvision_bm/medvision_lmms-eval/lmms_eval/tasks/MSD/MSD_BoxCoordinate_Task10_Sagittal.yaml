@@ -1,3 +1,3 @@
 include: MSD_BoxCoordinate_base.yaml
 task: MSD_BoxCoordinate_Task10_Sagittal
-dataset_path: MSD_BoxSize_Task10_Sagittal_Test
+dataset_name: MSD_BoxSize_Task10_Sagittal_Test
