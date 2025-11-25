@@ -4,13 +4,19 @@
 
 This is the official codebase `medvision_bm` of the **MedVision** project. 
 
-🌏 **Project**: https://medvision-vlm.github.io
+🌏 [**Project**](https://medvision-vlm.github.io) 🧑🏻‍💻 [**Code**](https://github.com/YongchengYAO/MedVision) 🩻 [**Dataset**](https://huggingface.co/datasets/YongchengYAO/MedVision) 🐳 [**Docker**](https://hub.docker.com/r/vincentycyao/medvision/tags) 🤗 [**SFT Models**](https://huggingface.co/collections/YongchengYAO/medvision-sft-models) 📖 [**arXiv**](https://arxiv.org/abs/2511.18676)
 
-🧑🏻‍💻 **Code**: https://github.com/YongchengYAO/MedVision
-
-🩻 **Huggingface Dataset**: [YongchengYAO/MedVision](https://huggingface.co/datasets/YongchengYAO/MedVision)
-
-🐳 **Docker**: https://hub.docker.com/r/vincentycyao/medvision/tags
+```
+@misc{yao2025medvisiondatasetbenchmarkquantitative,
+      title={MedVision: Dataset and Benchmark for Quantitative Medical Image Analysis}, 
+      author={Yongcheng Yao and Yongshuo Zong and Raman Dutt and Yongxin Yang and Sotirios A Tsaftaris and Timothy Hospedales},
+      year={2025},
+      eprint={2511.18676},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2511.18676}, 
+}
+```
 
 <br/>
 
@@ -22,7 +28,7 @@ This is the official codebase `medvision_bm` of the **MedVision** project.
 
 # 📜 TODO
 
-- [ ] Add preprint and project page
+- [x] Add preprint and project page
 - [x] Release training code 
 - [x] Release docker images
 - [ ] New tasks guide
@@ -156,6 +162,10 @@ git pull
 
 - **[Usage]** The scripts in `script/sft-*/train__SFT__*` should be sufficient for dependencies installation, data processing, and training.
 - **[Debug]** [here](https://github.com/YongchengYAO/MedVision/tree/master/docs/debug_env_setup.md)
+
+- **[Tutorial]** [Supervised Fine-Tuning (SFT) for VLMs on Medical Image Data](https://github.com/YongchengYAO/MedVision/tree/master/docs/SFT_Tutorial.md), [discussion channel](https://discuss.huggingface.co/t/supervised-fine-tuning-sft-for-vlms-on-medical-image-data/170805#p-246436-supervised-fine-tuning-sft-for-vlms-on-medical-image-data-1)
+
+- **[SFT Model Checkpoints]** [details](https://github.com/YongchengYAO/MedVision/tree/master/docs/SFT_model_checkpoints.md)
 
 <br/>
 
