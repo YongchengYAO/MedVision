@@ -3,7 +3,10 @@ import subprocess
 import sys
 
 from medvision_bm.utils import (
-    install_flash_attention_torch_and_deps_py311_v2, install_medvision_ds, run_pip_install)
+    install_flash_attention_torch_and_deps_py311_v2,
+    install_medvision_ds,
+    run_pip_install,
+)
 
 
 def install_basic_packages():

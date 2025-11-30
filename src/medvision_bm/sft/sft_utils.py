@@ -1,5 +1,6 @@
 import argparse
 import gc
+import gzip
 import importlib
 import json
 import math
@@ -17,8 +18,7 @@ from accelerate import PartialState
 from datasets import concatenate_datasets, load_dataset
 from peft import LoraConfig, PeftModel
 from PIL import Image
-from transformers import (AutoModelForImageTextToText, AutoProcessor,
-                          BitsAndBytesConfig)
+from transformers import AutoModelForImageTextToText, AutoProcessor, BitsAndBytesConfig
 from trl import SFTConfig, SFTTrainer
 
 from medvision_bm.utils import str2bool
@@ -369,6 +369,13 @@ def _format_data_AngleDistanceTask(
     return example
 
 
+def _format_data_AngleDistanceTask_CoT():
+    raise NotImplementedError(
+        "CoT formatting for AngleDistanceTask is not implemented yet. "
+        "Please use the non-CoT version for now."
+    )
+
+
 def _doc_to_text_TumorLesionTask(doc, img_processor=None, reshape_size=None):
     """Convert document to text."""
     # Early assertions
@@ -470,6 +477,191 @@ def _doc_to_text_TumorLesionTask(doc, img_processor=None, reshape_size=None):
     return question, label_name
 
 
+def _load_json(path: str):
+    """
+    Load a landmark file from .json or .json.gz format.
+    Returns the parsed JSON object (usually dict or list).
+    """
+    path = Path(path)
+
+    if path.suffix == ".gz":
+        with gzip.open(path, "rt", encoding="utf-8") as f:
+            data = json.load(f)
+    else:  # assume plain .json
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+    return data
+
+
+def _extract_3dCoor_to_2dCoor(coor_3d, slice_dim):
+    if slice_dim == 0:
+        return coor_3d[1:3]
+    elif slice_dim == 1:
+        return [coor_3d[0], coor_3d[2]]
+    elif slice_dim == 2:
+        return coor_3d[0:2]
+    else:
+        raise ValueError("slice_dim must be 0, 1, or 2")
+
+
+def _get_TL_landmarks_coords(example):
+    # Used in reasoning process reward
+    landmark_data = _load_json(example["landmark_file"])
+    slice_dim = example["slice_dim"]
+    if slice_dim == 0:
+        lm_key = "slice_landmarks_x"
+    elif slice_dim == 1:
+        lm_key = "slice_landmarks_y"
+    elif slice_dim == 2:
+        lm_key = "slice_landmarks_z"
+    slice_idx = example["slice_idx"]
+    lm_slice_ls = landmark_data[lm_key]
+
+    matched_entry = next(
+        (itm for itm in lm_slice_ls if itm.get("slice_idx") == slice_idx), None
+    )
+    if matched_entry is not None:
+        lm_slice = matched_entry
+    else:
+        raise ValueError(
+            f"No landmark entry found for slice_dim: {slice_dim} and slice_idx: {slice_idx}"
+        )
+
+    landmark_coords = {}
+    for p_name in ("P1", "P2", "P3", "P4"):
+        coor_2d = _extract_3dCoor_to_2dCoor(
+            lm_slice["landmarks"][0][p_name], slice_dim)
+        key = f"landmark_{p_name}"
+        landmark_coords[key] = coor_2d
+    return landmark_coords
+
+
+def _doc_to_text_TumorLesionTask_CoT(doc, img_processor=None, reshape_size=None):
+    """Convert document to text."""
+    # Early assertions
+    assert img_processor is not None or reshape_size is not None, "\n [Error] Either img_processor or reshape_size must be provided."
+    assert not (
+        img_processor is not None and reshape_size is not None), "\n [Error] Provide only one of img_processor or reshape_size, not both."
+
+    from medvision_bm.sft.sft_prompts import (
+        COT_INSTRUCT_TEMPLATE_TL,
+        FORMAT_PROMPT_TL_REASONING,
+    )
+
+    # Import the dataset-specific module from medvision_ds.datasets
+    dataset_name = doc["dataset_name"]
+    dataset_module = DATASETS_NAME2PACKAGE.get(dataset_name)
+    if dataset_module is None:
+        raise ValueError(
+            f"Dataset {dataset_name} not found in DATASETS_NAME2PACKAGE.")
+    preprocess_biometry = importlib.import_module(
+        f"medvision_ds.datasets.{dataset_module}.preprocess_biometry"
+    )
+
+    # Get task info
+    taskID = doc["taskID"]
+    bm_plan = preprocess_biometry.benchmark_plan
+    task_info = bm_plan["tasks"][int(taskID) - 1]
+
+    # Get label info
+    label = str(doc["label"])
+    labels_map = task_info["labels_map"]
+    if label not in labels_map:
+        raise ValueError(f"Label {label} not found in labels_map.")
+    else:
+        label_name = labels_map.get(label)
+
+    # Get 2D image info
+    image_description = task_info["image_description"]
+
+    # Read NIfTI image
+    img_path = doc["image_file"]
+    slice_dim = doc["slice_dim"]
+    slice_idx = doc["slice_idx"]
+    pixel_size_hw, img_2d_raw = _load_nifti_2d(img_path, slice_dim, slice_idx)
+    img_shape = img_2d_raw.shape
+
+    # Get biometrics profile for this case
+    biometric_profile = doc["biometric_profile"]
+    metric_unit = biometric_profile["metric_unit"]
+    if isinstance(metric_unit, list):
+        assert len(
+            metric_unit) == 1, "metric_unit list should have only one element."
+        metric_unit = metric_unit[0]
+    elif isinstance(metric_unit, str):
+        if metric_unit == "mm":
+            metric_unit = "millimeters"
+        elif metric_unit == "cm":
+            metric_unit = "centimeters"
+    else:
+        raise ValueError(f"Unsupported metric_unit type: {type(metric_unit)}")
+
+    # -------------
+    # FIXME: This implementation only works for Qwen2.5VL
+    # TODO: Generalize to other models, reuse code if possible
+    # NOTE: If img_processor is provided, a model-specific processing is applied to get the reshaped image size
+    # -------------
+    if img_processor is not None:
+        # Get reshaped image size so that we can adjust the pixel size dynamically
+        img_PIL = Image.fromarray(img_2d_raw)
+        processed_visual = img_processor([img_PIL])
+        image_grid_thw = processed_visual["image_grid_thw"][0]
+        patch_size = img_processor.patch_size
+        img_shape_resized = (
+            image_grid_thw[1] * patch_size, image_grid_thw[2] * patch_size)
+    elif reshape_size is not None:
+        assert len(reshape_size) == 2, "reshape_size should be of length 2"
+        img_shape_resized = reshape_size
+    # -------------
+
+    # Adjust pixel size based on the resize ratio
+    original_height, original_width = img_shape
+    pixel_height, pixel_width = pixel_size_hw
+    resize_ratio_h = img_shape_resized[0] / original_height
+    resize_ratio_w = img_shape_resized[1] / original_width
+    adjusted_pixel_height = pixel_height / resize_ratio_h
+    adjusted_pixel_width = pixel_width / resize_ratio_w
+    # Include pixel size information in question text
+    pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
+
+    # Question
+    question = (
+        f"Task:\n"
+        f"Given the input medical image: {image_description}, "
+        f"estimate the major and minor axis lengths of the ellipse enclosing the {label_name}, in {metric_unit}.\n"
+        f"Additional information:\n"
+        f"{pixel_size_text}\n"
+        f"Format requirement:\n"
+        f"{FORMAT_PROMPT_TL_REASONING}\n"
+        f"Reasoning steps:\n"
+        f"{COT_INSTRUCT_TEMPLATE_TL}\n"
+        f"Follow the reasoning steps to get the final answer in the required format."
+    )
+
+    # Gather values to fill in the CoT template
+    # NOTE: The keys must be in the COT_TEMPLATE_TL from medvision_bm.sft.sft_prompts
+    landmarks_coords = _get_TL_landmarks_coords(doc)
+    values_dict = {
+        "<label>": label_name,
+        "<image_description>": image_description,
+        "<pixel_width>": f"{adjusted_pixel_width:.3f}",
+        "<pixel_height>": f"{adjusted_pixel_height:.3f}",
+        "<metric_unit>": metric_unit,
+        "<x1_major>": f'{landmarks_coords["landmark_P1"][0]:.3f}',
+        "<y1_major>": f'{landmarks_coords["landmark_P1"][1]:.3f}',
+        "<x2_major>": f'{landmarks_coords["landmark_P2"][0]:.3f}',
+        "<y2_major>": f'{landmarks_coords["landmark_P2"][1]:.3f}',
+        "<x1_minor>": f'{landmarks_coords["landmark_P3"][0]:.3f}',
+        "<y1_minor>": f'{landmarks_coords["landmark_P3"][1]:.3f}',
+        "<x2_minor>": f'{landmarks_coords["landmark_P4"][0]:.3f}',
+        "<y2_minor>": f'{landmarks_coords["landmark_P4"][1]:.3f}',
+        "<major_axis_length>": f'{biometric_profile["metric_value_major_axis"][0]:.3f}',
+        "<minor_axis_length>": f'{biometric_profile["metric_value_minor_axis"][0]:.3f}',
+    }
+    return question, values_dict
+
+
 def _doc_to_target_TumorLesionTask(doc):
     """Get ground truth biometrics."""
     biometric_profile = doc["biometric_profile"]
@@ -477,6 +669,16 @@ def _doc_to_target_TumorLesionTask(doc):
         biometric_profile["metric_value_major_axis"][0],
         biometric_profile["metric_value_minor_axis"][0],
     ]
+
+
+def _doc_to_target_TumorLesionTask_CoT(values_dict):
+    """Get ground truth biometrics."""
+    from medvision_bm.sft.sft_prompts import COT_TEMPLATE_TL, fill_in_template
+
+    # Prepare values to fill in the CoT template
+    target_outputs_cot = fill_in_template(COT_TEMPLATE_TL, values_dict)
+
+    return target_outputs_cot
 
 
 # NOTE: This is dataset-specific formatting function
@@ -487,6 +689,68 @@ def _format_data_TumorLesionTask(
     target_str = ", ".join([f"{value:.3f}" for value in target])
     prompt, _ = _doc_to_text_TumorLesionTask(
         example, img_processor, reshape_size)
+
+    example["messages"] = [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                },
+                {
+                    "type": "text",
+                    "text": prompt,
+                },
+            ],
+        },
+        {
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "text",
+                    "text": target_str,
+                },
+            ],
+        },
+    ]
+
+    # [Not recommended] Save processed images to dataset, making the cached dataset very large
+    if process_img:
+        example["processed_images"] = _doc_to_visual(example)
+
+    # [Recommended] Save processed images to PNG files on disk
+    if save_processed_img_to_disk:
+        # Process image: read from nii.gz file and extract 2D slice
+        pil_img = _doc_to_visual(example)[0]
+
+        # Save tmp PNGs next to the source image inside a tmp_prepared_png folder
+        img_path = example["image_file"]
+        slice_dim = example["slice_dim"]
+        slice_idx = example["slice_idx"]
+        png_basename = Path(img_path).name.split(".", 1)[0]
+        png_filename = f"{png_basename}_dim{slice_dim}_slice{slice_idx}.png"
+        png_dir = os.path.join(os.path.dirname(img_path), "tmp_prepared_png")
+        png_path = os.path.join(png_dir, png_filename)
+        os.makedirs(png_dir, exist_ok=True)
+        pil_img.save(png_path)
+        example["image_file_png"] = [png_path]
+
+    return example
+
+
+# NOTE: This is dataset-specific formatting function
+def _format_data_TumorLesionTask_CoT(
+    example, img_processor=None, reshape_size=None, process_img=False, save_processed_img_to_disk=False,
+):
+    """
+    Format data for TumorLesionTask with CoT reasoning.
+    Compared to the non-CoT version, this function:
+    1. Uses a different prompt template that includes reasoning steps.
+    2. Returns a target string that includes reasoning steps.
+    """
+    prompt, values_dict = _doc_to_text_TumorLesionTask_CoT(
+        example, img_processor, reshape_size)
+    target_str = _doc_to_target_TumorLesionTask_CoT(values_dict)
 
     example["messages"] = [
         {
@@ -667,6 +931,13 @@ def _format_data_DetectionTask(example, img_processor=None, reshape_size=None, p
         example["image_file_png"] = [png_path]
 
     return example
+
+
+def _format_data_DetectionTask_CoT():
+    raise NotImplementedError(
+        "CoT formatting for DetectionTask is not implemented yet. "
+        "Please use the non-CoT version for now."
+    )
 
 
 def _load_single_dataset(task, tag_ds):
@@ -1679,7 +1950,7 @@ def parse_validate_args_multiTask():
         and tasks_list_json_path_TL is None
     ):
         raise AssertionError(
-            f"\n[Error] At least one of --tasks_list_json_path_AD, "
+            "\n[Error] At least one of --tasks_list_json_path_AD, "
             "--tasks_list_json_path_detect, or --tasks_list_json_path_TL must be provided.\n"
         )
 
