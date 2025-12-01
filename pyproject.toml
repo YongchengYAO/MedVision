@@ -31,7 +31,7 @@ include = ["medvision_bm*"]
 
 # Include the vendored source as data (copied into site-packages)
 [tool.setuptools.package-data]
-"medvision_bm" = ["medvision_lmms-eval/**", "medvision_lmms-eval/**/*", "medvision_lmms-eval/**/.*"]
+"medvision_bm" = ["medvision_lmms_eval/**", "medvision_lmms_eval/**/*", "medvision_lmms_eval/**/.*"]
 
 [tool.setuptools.dynamic]
 version = { attr = "medvision_bm.__version__" }
