@@ -545,7 +545,7 @@ def _doc_to_text_TumorLesionTask_CoT(doc, img_processor=None, reshape_size=None)
         img_processor is not None and reshape_size is not None), "\n [Error] Provide only one of img_processor or reshape_size, not both."
 
     from medvision_bm.sft.sft_prompts import (
-        COT_INSTRUCT_TEMPLATE_TL,
+        COT_INSTRUCT_TL_NORM,
         FORMAT_PROMPT_TL_REASONING,
     )
 
@@ -618,10 +618,15 @@ def _doc_to_text_TumorLesionTask_CoT(doc, img_processor=None, reshape_size=None)
     # Adjust pixel size based on the resize ratio
     original_height, original_width = img_shape
     pixel_height, pixel_width = pixel_size_hw
-    resize_ratio_h = img_shape_resized[0] / original_height
-    resize_ratio_w = img_shape_resized[1] / original_width
+    resized_img_h, resized_img_w = img_shape_resized
+    resize_ratio_h = resized_img_h / original_height
+    resize_ratio_w = resized_img_w / original_width
     adjusted_pixel_height = pixel_height / resize_ratio_h
     adjusted_pixel_width = pixel_width / resize_ratio_w
+
+    # Include image size information in the question text
+    image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
+
     # Include pixel size information in question text
     pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
 
@@ -631,33 +636,56 @@ def _doc_to_text_TumorLesionTask_CoT(doc, img_processor=None, reshape_size=None)
         f"Given the input medical image: {image_description}, "
         f"estimate the major and minor axis lengths of the ellipse enclosing the {label_name}, in {metric_unit}.\n"
         f"Additional information:\n"
+        f"{image_size_text}\n"
         f"{pixel_size_text}\n"
         f"Format requirement:\n"
         f"{FORMAT_PROMPT_TL_REASONING}\n"
         f"Reasoning steps:\n"
-        f"{COT_INSTRUCT_TEMPLATE_TL}\n"
+        f"{COT_INSTRUCT_TL_NORM}\n"
         f"Follow the reasoning steps to get the final answer in the required format."
     )
 
     # Gather values to fill in the CoT template
-    # NOTE: The keys must be in the COT_TEMPLATE_TL from medvision_bm.sft.sft_prompts
+    # NOTE: The keys must be in the COT_TEMPLATE_TL_NORM from medvision_bm.sft.sft_prompts
     landmarks_coords = _get_TL_landmarks_coords(doc)
+    # Caveat: 
+    # 1. x is the width direction, y is the height direction
+    # 2. use relative coordinates
+    # 3. recalculate the major and minor axis lengths based on adjusted pixel size and resized image size; marginal error may exist compared to the original values due to rounding errors
+    x1_major = landmarks_coords["landmark_P1"][1]/original_width
+    y1_major = landmarks_coords["landmark_P1"][0]/original_height
+    x2_major = landmarks_coords["landmark_P2"][1]/original_width
+    y2_major = landmarks_coords["landmark_P2"][0]/original_height
+    x1_minor = landmarks_coords["landmark_P3"][1]/original_width
+    y1_minor = landmarks_coords["landmark_P3"][0]/original_height
+    x2_minor = landmarks_coords["landmark_P4"][1]/original_width
+    y2_minor = landmarks_coords["landmark_P4"][0]/original_height
+    major_axis_length = math.sqrt(
+        ((x2_major - x1_major) * resized_img_w * adjusted_pixel_width) ** 2
+        + ((y2_major - y1_major) * resized_img_h * adjusted_pixel_height) ** 2
+    )
+    minor_axis_length = math.sqrt(
+        ((x2_minor - x1_minor) * resized_img_w * adjusted_pixel_width) ** 2
+        + ((y2_minor - y1_minor) * resized_img_h * adjusted_pixel_height) ** 2
+    )
     values_dict = {
         "<label>": label_name,
         "<image_description>": image_description,
+        "<image_width>": f"{resized_img_w}",
+        "<image_height>": f"{resized_img_h}",
         "<pixel_width>": f"{adjusted_pixel_width:.3f}",
         "<pixel_height>": f"{adjusted_pixel_height:.3f}",
         "<metric_unit>": metric_unit,
-        "<x1_major>": f'{landmarks_coords["landmark_P1"][0]:.3f}',
-        "<y1_major>": f'{landmarks_coords["landmark_P1"][1]:.3f}',
-        "<x2_major>": f'{landmarks_coords["landmark_P2"][0]:.3f}',
-        "<y2_major>": f'{landmarks_coords["landmark_P2"][1]:.3f}',
-        "<x1_minor>": f'{landmarks_coords["landmark_P3"][0]:.3f}',
-        "<y1_minor>": f'{landmarks_coords["landmark_P3"][1]:.3f}',
-        "<x2_minor>": f'{landmarks_coords["landmark_P4"][0]:.3f}',
-        "<y2_minor>": f'{landmarks_coords["landmark_P4"][1]:.3f}',
-        "<major_axis_length>": f'{biometric_profile["metric_value_major_axis"][0]:.3f}',
-        "<minor_axis_length>": f'{biometric_profile["metric_value_minor_axis"][0]:.3f}',
+        "<x1_major>": f'{x1_major:.3f}',
+        "<y1_major>": f'{y1_major:.3f}',
+        "<x2_major>": f'{x2_major:.3f}',
+        "<y2_major>": f'{y2_major:.3f}',
+        "<x1_minor>": f'{x1_minor:.3f}',
+        "<y1_minor>": f'{y1_minor:.3f}',
+        "<x2_minor>": f'{x2_minor:.3f}',
+        "<y2_minor>": f'{y2_minor:.3f}',
+        "<major_axis_length>": f'{major_axis_length:.3f}',
+        "<minor_axis_length>": f'{minor_axis_length:.3f}',
     }
     return question, values_dict
 
@@ -673,10 +701,10 @@ def _doc_to_target_TumorLesionTask(doc):
 
 def _doc_to_target_TumorLesionTask_CoT(values_dict):
     """Get ground truth biometrics."""
-    from medvision_bm.sft.sft_prompts import COT_TEMPLATE_TL, fill_in_template
+    from medvision_bm.sft.sft_prompts import COT_TEMPLATE_TL_NORM, fill_in_template
 
     # Prepare values to fill in the CoT template
-    target_outputs_cot = fill_in_template(COT_TEMPLATE_TL, values_dict)
+    target_outputs_cot = fill_in_template(COT_TEMPLATE_TL_NORM, values_dict)
 
     return target_outputs_cot
 
@@ -1519,8 +1547,6 @@ def merge_models(
 
 def train_resume_from_checkpoint(trainer, last_checkpoint):
     safe_print("[Resume] Requested resume_from_checkpoint=True")
-
-    from transformers.trainer_utils import get_last_checkpoint
 
     assert last_checkpoint is not None, f"No checkpoint found in {last_checkpoint}"
     safe_print(f"[Resume] Found checkpoint: {last_checkpoint}")

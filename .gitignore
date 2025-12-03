@@ -202,8 +202,12 @@ pyrightconfig.json
 Data
 Results
 SFT
+RFT
 Figures
 completed_tasks
 local
+**/dev
+**/dev_*
+
 *.log
 

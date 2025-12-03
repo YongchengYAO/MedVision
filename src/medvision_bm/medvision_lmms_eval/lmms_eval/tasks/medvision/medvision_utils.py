@@ -625,6 +625,11 @@ def create_doc_to_text_TumorLesionSize(preprocess_biometry_module):
 def create_doc_to_text_TumorLesionSize_CoT(preprocess_biometry_module):
     def doc_to_text_TumorLesionSize_CoT(doc, lmms_eval_specific_kwargs=None):
         """Convert document to text."""
+        from medvision_bm.sft.sft_prompts import (
+            COT_INSTRUCT_TL,
+            FORMAT_PROMPT_TL_REASONING,
+        )
+
         # Get task info
         taskID = doc["taskID"]
         bm_plan = preprocess_biometry_module.benchmark_plan
@@ -702,7 +707,10 @@ def create_doc_to_text_TumorLesionSize_CoT(preprocess_biometry_module):
             f"Additional information:\n"
             f"{pixel_size_text}\n"
             f"Format requirement:\n"
-            f"{FORMAT_PROMPT_TUMOR_LESION_SIZE}"
+            f"{FORMAT_PROMPT_TL_REASONING}\n"
+            f"Reasoning steps:\n"
+            f"{COT_INSTRUCT_TL}\n"
+            f"Follow the reasoning steps to get the final answer in the required format."
         )
         return question
 

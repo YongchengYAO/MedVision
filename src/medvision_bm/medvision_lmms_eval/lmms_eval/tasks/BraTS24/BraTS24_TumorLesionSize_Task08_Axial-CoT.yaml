@@ -1,0 +1,3 @@
+include: BraTS24_TumorLesionSize_base-CoT.yaml
+task: BraTS24_TumorLesionSize_Task08_Axial-CoT
+dataset_name: BraTS24_TumorLesionSize_Task08_Axial_Test

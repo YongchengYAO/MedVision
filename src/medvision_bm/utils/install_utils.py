@@ -2,8 +2,8 @@ import os
 import shlex
 import subprocess
 import sys
-from pathlib import Path
 from importlib.resources import files  # Python 3.9+
+from pathlib import Path
 
 from huggingface_hub import snapshot_download
 
@@ -13,8 +13,7 @@ def run_pip_install(requirements_path):
     req_path = Path(requirements_path).expanduser().resolve(strict=False)
 
     if not req_path.exists() or not req_path.is_file():
-        raise FileNotFoundError(
-            f"Requirements file not found: {requirements_path}")
+        raise FileNotFoundError(f"Requirements file not found: {requirements_path}")
 
     # Use the current interpreter to run pip to avoid PATH/env mismatches.
     cmd = [
@@ -40,8 +39,7 @@ def ensure_hf_hub_installed():
     try:
         from huggingface_hub import snapshot_download  # noqa: F401
     except ImportError:
-        subprocess.run(
-            "pip install huggingface_hub[cli]", check=True, shell=True)
+        subprocess.run("pip install huggingface_hub[cli]", check=True, shell=True)
 
 
 def _install_lmms_eval(
@@ -119,7 +117,7 @@ def install_vendored_lmms_eval(
     Install the vendored lmms-eval package that ships inside medvision_bm.
     """
     # Locate the vendored lmms-eval package, check [tool.setuptools.package-data] in pyproject.toml
-    lmms_eval_dir = str(files("medvision_bm").joinpath("medvision_lmms-eval"))
+    lmms_eval_dir = str(files("medvision_bm").joinpath("medvision_lmms_eval"))
     # NOTE: Must install the vendored lmms-eval in editable mode, otherwise tasks files won't be found.
     # TODO: Check: Why editable install causes issues in some cases?
     _install_lmms_eval(
@@ -131,7 +129,7 @@ def install_vendored_lmms_eval(
 
 def setup_env_hf(data_dir):
     # Safeguard data_dir: you can use relative path with this function
-    data_dir = os.path.abspath(data_dir) 
+    data_dir = os.path.abspath(data_dir)
 
     # Set Hugging Face dataset and cache directories
     os.environ["HF_DATASETS_CACHE"] = os.path.join(
@@ -161,10 +159,11 @@ def setup_env_medvision_ds(
         os.environ["MedVision_FORCE_DOWNLOAD_DATA"] = "true"
 
 
-def setup_env_hf_medvision_ds(data_dir,
-                              force_install_code=True,
-                              force_download_data=False,
-                              ):
+def setup_env_hf_medvision_ds(
+    data_dir,
+    force_install_code=True,
+    force_download_data=False,
+):
     # Set environment variables for medvision_ds
     setup_env_medvision_ds(
         data_dir=data_dir,
@@ -183,7 +182,7 @@ def install_medvision_ds(
     if local_dir is None:
         # Safeguard data_dir: you can use relative path with this function
         data_dir = os.path.abspath(data_dir)
-        
+
         os.makedirs(data_dir, exist_ok=True)
         snapshot_download(
             repo_id="YongchengYAO/MedVision",
@@ -209,7 +208,7 @@ def install_medvision_ds(
         f"latest_wheel=$(ls -t {shlex.quote(wheel_dir)}/medvision_ds-*.whl | head -n1) && "
         f'pip install --no-cache-dir --force-reinstall "$latest_wheel"\''
     )
-    
+
     # Try with flock, fallback to without flock if it fails
     try:
         subprocess.run(cmd_w_flock, check=True, shell=True)
@@ -231,7 +230,9 @@ def install_medvision_ds(
 
 def pip_install_medvision_ds():
     try:
-        print(f'\n[Info] Installing medvision_ds from Hugging Face Datasets repo: pip install "git+https://huggingface.co/datasets/YongchengYAO/MedVision.git#subdirectory=src"')
+        print(
+            '\n[Info] Installing medvision_ds from Hugging Face Datasets repo: pip install "git+https://huggingface.co/datasets/YongchengYAO/MedVision.git#subdirectory=src"'
+        )
         subprocess.run(
             'pip install "git+https://huggingface.co/datasets/YongchengYAO/MedVision.git#subdirectory=src"',
             check=True,
@@ -244,7 +245,9 @@ def pip_install_medvision_ds():
 
 def pip_install_medvision_bm():
     try:
-        print(f'\n[Info] Installing medvision_bm from GitHub repo: pip install "git+https://github.com/YongchengYAO/MedVision.git"')
+        print(
+            '\n[Info] Installing medvision_bm from GitHub repo: pip install "git+https://github.com/YongchengYAO/MedVision.git"'
+        )
         subprocess.run(
             'pip install "git+https://github.com/YongchengYAO/MedVision.git"',
             check=True,

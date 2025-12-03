@@ -1,0 +1,3 @@
+include: HNTSMRG24_TumorLesionSize_base-CoT.yaml
+task: HNTSMRG24_TumorLesionSize_Task02_Coronal-CoT
+dataset_name: HNTSMRG24_TumorLesionSize_Task02_Coronal_Test

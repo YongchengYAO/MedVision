@@ -1,4 +1,4 @@
-tag: MedVision-TumorLesionSize,MSD
+tag: MedVision-TumorLesionSize,autoPET-III
 dataset_path: YongchengYAO/MedVision
 dataset_kwargs:
   token: True
@@ -8,7 +8,7 @@ fewshot_split: test
 num_fewshot: 0
 output_type: generate_until
 doc_to_visual: !function utils.doc_to_visual
-doc_to_text: !function utils.doc_to_text_TumorLesionSize
+doc_to_text: !function utils.doc_to_text_TumorLesionSize_CoT
 doc_to_target: !function utils.doc_to_target_TumorLesionSize
 process_results: !function utils.process_results_TumorLesionSize
 metric_list:
@@ -28,7 +28,7 @@ metric_list:
 lmms_eval_specific_kwargs:
   lingshu:
     model: "lingshu"
-    sample_model_hf: "lingshu-medical-mllm/Lingshu-32B"
+    sample_model_hf: "lingshu-medical-mllm/Lingshu-32B" 
   medgemma:
     model: "medgemma"
     sample_model_hf: "google/medgemma-4b-it"
@@ -63,7 +63,7 @@ lmms_eval_specific_kwargs:
     model: "gemma3"
     sample_model_hf: "google/gemma-3-27b-it"
   vllm_internvl3:
-    model: "internvl3"
+    model : "internvl3"
     sample_model_hf: "OpenGVLab/InternVL3-38B"
   vllm_llama_3_2_vision:
     model: "llama_3_2_vision"
