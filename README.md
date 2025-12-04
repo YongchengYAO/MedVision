@@ -44,30 +44,37 @@ pip install "git+https://github.com/YongchengYAO/MedVision.git"
 
 <br/>
 
+# 🔧 Install `medvision_ds` (Optional)
+
+`medvision_ds` is the dataset codebase. It can be installed from `medvision_bm`:
+
+```bash
+# Replace <local-data-folder>
+python -m medvision_bm.benchmark.install_medvision_ds --data_dir <local-data-folder>  
+```
+
+<br/>
+
 # 🐳 Use Docker
 
 📝 Docker images are built from these [dockerfiles](https://github.com/YongchengYAO/MedVision/tree/master/dockerfile)
 
 1. Choose the docker image for a specific model: https://hub.docker.com/r/vincentycyao/medvision/tags
-2. Map local volumes and GPUs
+2. Map local volumes and GPUs, use docker image `vincentycyao/medvision:<tag>`
 
 ```bash
-# NOTE: replace </path/to/local/Data>, </path/to/local/Results>, </path/to/local/SFT> </path/to/completed_tasks>, <tag>
+# NOTE: replace </path/to/working/folder>, <tag>
 docker run -it --rm \
 	--gpus '"device=0,1"' \
-	-v </path/to/local/Data>:/root/Documents/MedVision/Data \
-	-v </path/to/local/Results>:/root/Documents/MedVision/Results \
-	-v </path/to/local/SFT>:/root/Documents/MedVision/SFT \
-	-v </path/to/completed_tasks>:/root/Documents/MedVision/completed_tasks \
+	-v </path/to/working/folder>:/root/Documents/MedVision \
 	vincentycyao/medvision:<tag> \
 	bash
 ```
 
 ```bash
 # In the container
-cd /root/Documents/MedVision
-git pull
-# Run the scripts in script/
+git clone https://github.com/YongchengYAO/MedVision.git /root/Documents/MedVision
+# Run the scripts in /root/Documents/MedVision/script/
 ```
 
 [File structure](https://github.com/YongchengYAO/MedVision/tree/master/docs/file-structure.md): imaging data, benchmark results, and model checkpoints are automatically saved
