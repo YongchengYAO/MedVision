@@ -74,8 +74,21 @@ docker run -it --rm \
 ```bash
 # In the container
 git clone https://github.com/YongchengYAO/MedVision.git /root/Documents/MedVision
-# Run the scripts in /root/Documents/MedVision/script/
 ```
+
+Next:
+
+- Check the conda env name and activate: `conda env list`, `conda activate <env>`
+
+- Skip environment setup:
+
+  - Benchmarking: use `--skip_env_setup` for scripts in /root/Documents/MedVision/script/benchmark-*
+
+  - SFT: disable this line in /root/Documents/MedVision/script/sft-*
+
+    ```bash
+    python -m medvision_bm.sft.env_setup --data_dir ${data_dir}
+    ```
 
 [File structure](https://github.com/YongchengYAO/MedVision/tree/master/docs/file-structure.md): imaging data, benchmark results, and model checkpoints are automatically saved
 
