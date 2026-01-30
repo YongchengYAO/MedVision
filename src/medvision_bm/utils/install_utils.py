@@ -58,7 +58,9 @@ def _install_lmms_eval(
     os.makedirs(wheel_dir, exist_ok=True)
 
     # Common pip flags
-    base_pip_flags = "--no-cache-dir --force-reinstall"
+    # Removed --force-reinstall to avoid dependency conflicts during installation
+    # This prevents pip from reinstalling all dependencies which could cause version mismatches
+    base_pip_flags = "--no-cache-dir"
 
     # Case A: Editable install (always from source; extras allowed)
     if editable_install:
