@@ -189,6 +189,19 @@ def parse_arguments():
         default=-1,
         help="Limit the number of testing samples, -1 means no limit",
     )
+    # Dataset limit per subset (i.e., dataset config)
+    parser.add_argument(
+        "--train_sample_limit_per_subset",
+        type=int,
+        default=-1,
+        help="Limit training samples per HF dataset config (subset) before merging, -1 means no limit",
+    )
+    parser.add_argument(
+        "--test_sample_limit_per_subset",
+        type=int,
+        default=-1,
+        help="Limit test samples per HF dataset config (subset) before merging, -1 means no limit",
+    )
 
     args = parser.parse_args()
 
@@ -244,6 +257,14 @@ def build_parquet_dataset(**kwargs):
     )
     print(f"\nPrepared Verl parquet dataset directory: {parquet_ds_dir}")
 
+    # Convert -1 sentinel → None for per-subset limits (matching load_split_limit_dataset_tr_val_ts convention)
+    _per_subset_train = kwargs.get("train_sample_limit_per_subset") or None
+    if _per_subset_train is not None and _per_subset_train < 0:
+        _per_subset_train = None
+    _per_subset_test = kwargs.get("test_sample_limit_per_subset") or None
+    if _per_subset_test is not None and _per_subset_test < 0:
+        _per_subset_test = None
+
     # Prepare datasets for Verl
     train_ds_list = []
     val_ds_list = []
@@ -255,6 +276,8 @@ def build_parquet_dataset(**kwargs):
             limit_train_sample=train_limit_AD,
             limit_val_sample=val_limit_AD,
             limit_test_sample=kwargs.get("test_sample_limit_task_AD"),
+            limit_train_sample_per_subset=_per_subset_train,
+            limit_test_sample_per_subset=_per_subset_test,
             mapping_func=format_func,
             model_family_name=model_family_name,
             model_hf=kwargs.get("model_hf"),
@@ -275,6 +298,8 @@ def build_parquet_dataset(**kwargs):
             limit_train_sample=train_limit_TL,
             limit_val_sample=val_limit_TL,
             limit_test_sample=kwargs.get("test_sample_limit_task_TL"),
+            limit_train_sample_per_subset=_per_subset_train,
+            limit_test_sample_per_subset=_per_subset_test,
             mapping_func=format_func,
             model_family_name=model_family_name,
             model_hf=kwargs.get("model_hf"),
@@ -296,6 +321,8 @@ def build_parquet_dataset(**kwargs):
             limit_train_sample=train_limit_detect,
             limit_val_sample=val_limit_detect,
             limit_test_sample=kwargs.get("test_sample_limit_task_Detection"),
+            limit_train_sample_per_subset=_per_subset_train,
+            limit_test_sample_per_subset=_per_subset_test,
             mapping_func=format_func,
             model_family_name=model_family_name,
             model_hf=kwargs.get("model_hf"),

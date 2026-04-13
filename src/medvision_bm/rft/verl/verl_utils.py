@@ -597,8 +597,12 @@ def prepare_dataset_for_verl(
         "model_hf": model_hf,
         "new_shape_hw": new_shape_hw,
     }
-    # Use small writer_batch_size because images are embedded as PIL objects (not paths).
-    # Each worker buffers writer_batch_size PIL images in RAM before flushing to Arrow.
+    # writer_batch_size=50: each worker holds at most 50 PIL images in RAM before flushing
+    # to Arrow. PIL images at 512×512 RGB are ~0.75 MB each, so 50 images = ~37 MB per worker.
+    # This is the key parameter for controlling peak RAM:
+    #   - At writer_batch_size=1000: 128 workers × 1000 × 0.75 MB = 96 GB for buffers alone
+    #   - At writer_batch_size=50:   256 workers × 50  × 0.75 MB = ~10 GB for buffers
+    # Keeping this value at 50 allows scaling num_workers up to ~256 within a 200 GB RAM pod.
     dataset = format_dataset(
         dataset=dataset,
         mapping_func=mapping_func,
@@ -635,6 +639,8 @@ def prepare_dataset_for_verl_with_testset(
     model_family_name,
     model_hf,
     limit_test_sample=None,
+    limit_train_sample_per_subset=None,
+    limit_test_sample_per_subset=None,
     num_workers_concat_datasets=4,
     num_workers_format_dataset=32,
     tag_ds=None,
@@ -647,6 +653,8 @@ def prepare_dataset_for_verl_with_testset(
         limit_train_sample=limit_train_sample,
         limit_val_sample=limit_val_sample,
         limit_test_sample=limit_test_sample,
+        limit_train_sample_per_subset=limit_train_sample_per_subset,
+        limit_test_sample_per_subset=limit_test_sample_per_subset,
         num_workers_concat_datasets=num_workers_concat_datasets,
         tag_ds=tag_ds,
         download_mode=download_mode,
