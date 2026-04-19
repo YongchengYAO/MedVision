@@ -211,8 +211,11 @@ class InternVLChatModel(PreTrainedModel):
         template.append_message(template.roles[1], None)
         query = template.get_prompt()
         model_inputs = tokenizer(query, return_tensors='pt')
-        input_ids = model_inputs['input_ids'].cuda()
-        attention_mask = model_inputs['attention_mask'].cuda()
+        # Use the device of the first parameter instead of hardcoding .cuda(),
+        # so inputs land on the correct device when using device_map="auto".
+        device = next(self.parameters()).device
+        input_ids = model_inputs['input_ids'].to(device)
+        attention_mask = model_inputs['attention_mask'].to(device)
 
         generation_output = self.generate(
             pixel_values=pixel_values,
