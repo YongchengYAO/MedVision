@@ -1,0 +1,7 @@
+{
+    "Ceph-Biometrics-400_BiometricsFromLandmarks_Distance_Task01_Sagittal-CoT-scaledPS": 240,
+    "Ceph-Biometrics-400_BiometricsFromLandmarks_Angle_Task01_Sagittal-CoT-scaledPS": 960,
+    "FeTA24_BiometricsFromLandmarks_Task01_Sagittal-CoT-scaledPS": 40,
+    "FeTA24_BiometricsFromLandmarks_Task01_Coronal-CoT-scaledPS": 20,
+    "FeTA24_BiometricsFromLandmarks_Task01_Axial-CoT-scaledPS": 40
+}

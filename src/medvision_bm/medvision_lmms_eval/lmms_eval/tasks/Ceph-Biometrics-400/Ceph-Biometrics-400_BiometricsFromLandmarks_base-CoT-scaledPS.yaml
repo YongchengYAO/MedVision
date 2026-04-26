@@ -1,0 +1,27 @@
+include:
+  - ../medvision/metadata.yaml
+  - ../medvision/lmms_eval_specific_kwargs.yaml
+tag: MedVision-BiometricsFromLandmarks,Ceph-Biometrics-400
+dataset_path: YongchengYAO/MedVision
+dataset_kwargs:
+  token: True
+  trust_remote_code: True
+test_split: test
+fewshot_split: test
+num_fewshot: 0
+output_type: generate_until
+doc_to_visual: !function utils.doc_to_visual
+doc_to_text: !function utils.doc_to_text_BiometricsFromLandmarks_CoT_scaledPS
+doc_to_target: !function utils.doc_to_target_BiometricsFromLandmarks_scaledPS
+process_results: !function utils.process_results_BiometricsFromLandmarks_scaledPS
+metric_list:
+- metric: MAE
+  aggregation: !function utils.aggregate_results_MAE
+  higher_is_better: false
+- metric: MRE
+  aggregation: !function utils.aggregate_results_MRE
+  higher_is_better: false
+- metric: SuccessRate
+  aggregation: !function utils.aggregate_results_SuccessRate
+  higher_is_better: true
+  

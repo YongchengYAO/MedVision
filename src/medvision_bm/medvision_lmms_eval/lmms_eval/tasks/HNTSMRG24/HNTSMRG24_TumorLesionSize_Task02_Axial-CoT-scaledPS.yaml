@@ -1,0 +1,3 @@
+include: HNTSMRG24_TumorLesionSize_base-CoT-scaledPS.yaml
+task: HNTSMRG24_TumorLesionSize_Task02_Axial-CoT-scaledPS
+dataset_name: HNTSMRG24_TumorLesionSize_Task02_Axial_Test

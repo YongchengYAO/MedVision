@@ -2903,3 +2903,427 @@ def parser_last_k_nums(text, k):
     if len(numbers) < k:
         return ""
     return ",".join(numbers[-k:])
+
+
+# ============================================================================
+# Pixel-size-scaled (scaledPS) variants of TL and AD tasks.
+#
+# Per sample, a deterministic scaling factor is drawn from [1, 5] and applied
+# to the pixel_size shown in the prompt. The ground-truth metric is recomputed
+# under the scaled pixel_size so that a model that correctly reasons about
+# pixel_size gets credit, while a model that ignores pixel_size (and produces
+# an answer matching the unscaled metric) is penalized proportionally to S.
+#
+# - TL: uniform scaling (single S). Major/minor-axis GT scale by S.
+# - AD: anisotropic (S_h, S_w). Distance/angle GT are recomputed from raw
+#       landmark coordinates (retrieved via sft_utils._get_landmarks_coords)
+#       in physical space (pixel_coord * pixel_size_hw * (S_h, S_w)).
+#       Angle convention matches benchmark_planner._cal_angle: acute angle in
+#       degrees via arccos(|v1·v2| / (|v1|·|v2|)).
+# ============================================================================
+
+_SCALED_PS_LOW = 0.5   # default; overridable via MEDVISION_SCALED_PS_LOW env var
+_SCALED_PS_HIGH = 3.0  # default; overridable via MEDVISION_SCALED_PS_HIGH env var
+
+
+def _get_pixel_size_scale_factor(doc, mode):
+    """Return a deterministic pixel-size scale factor for a doc.
+
+    mode="uniform"      -> returns float S
+    mode="anisotropic"  -> returns tuple (S_h, S_w)
+
+    The range [low, high] is read from MEDVISION_SCALED_PS_LOW / MEDVISION_SCALED_PS_HIGH
+    env vars at call time (defaults 0.5 / 3.0), so callers can control it via the
+    --scaled_ps_low / --scaled_ps_high CLI args of the eval scripts.
+
+    The seed is a stable hash of fields that uniquely identify the sample,
+    so the prompt (via doc_to_text) and the ground truth (via doc_to_target)
+    always agree even though they are computed by independent calls.
+    """
+    import hashlib
+    import os
+
+    low = float(os.environ.get("MEDVISION_SCALED_PS_LOW", str(_SCALED_PS_LOW)))
+    high = float(os.environ.get("MEDVISION_SCALED_PS_HIGH", str(_SCALED_PS_HIGH)))
+    key_parts = [
+        str(doc.get("image_file", "")),
+        str(doc.get("slice_dim", "")),
+        str(doc.get("slice_idx", "")),
+        str(doc.get("taskID", "")),
+        str(doc.get("label", "")),
+    ]
+    key = "|".join(key_parts).encode("utf-8")
+    seed = int.from_bytes(hashlib.blake2b(key, digest_size=8).digest(), "big") % (2**32)
+    rng = np.random.RandomState(seed)
+    if mode == "uniform":
+        return float(rng.uniform(low, high))
+    elif mode == "anisotropic":
+        return float(rng.uniform(low, high)), float(rng.uniform(low, high))
+    else:
+        raise ValueError(f"Unknown scale mode: {mode}")
+
+
+def create_doc_to_text_TumorLesionSize_CoT_scaledPS(preprocess_biometry_module):
+    """Factory mirroring create_doc_to_text_TumorLesionSize_CoT; only the
+    pixel_size shown in the prompt is scaled by a uniform factor S."""
+
+    def doc_to_text_TumorLesionSize_CoT_scaledPS(doc, lmms_eval_specific_kwargs=None):
+        from medvision_bm.sft.sft_prompts import (
+            COT_INSTRUCT_TL_NORM,
+            FORMAT_PROMPT_TL_REASONING,
+        )
+
+        taskID = doc["taskID"]
+        bm_plan = preprocess_biometry_module.benchmark_plan
+        task_info = bm_plan["tasks"][int(taskID) - 1]
+
+        label = str(doc["label"])
+        labels_map = task_info["labels_map"]
+        if label not in labels_map:
+            raise ValueError(f"Label {label} not found in labels_map.")
+        label_name = labels_map.get(label)
+
+        image_description = task_info["image_description"]
+
+        img_path = doc["image_file"]
+        slice_dim = doc["slice_dim"]
+        slice_idx = doc["slice_idx"]
+
+        reshape_image_hw = lmms_eval_specific_kwargs.get("reshape_image_hw") if lmms_eval_specific_kwargs is not None else None
+        if reshape_image_hw is not None:
+            pixel_size_hw, img_2d_raw = _load_nifti_2d(img_path, slice_dim, slice_idx, new_shape_hw=reshape_image_hw)
+        else:
+            pixel_size_hw, img_2d_raw = _load_nifti_2d(img_path, slice_dim, slice_idx)
+
+        img_shape_hw = img_2d_raw.shape
+
+        biometric_profile = doc["biometric_profile"]
+        metric_unit = biometric_profile["metric_unit"]
+        if isinstance(metric_unit, list):
+            assert len(metric_unit) == 1, "metric_unit list should have only one element."
+            metric_unit = metric_unit[0]
+        elif isinstance(metric_unit, str):
+            if metric_unit == "mm":
+                metric_unit = "millimeters"
+            elif metric_unit == "cm":
+                metric_unit = "centimeters"
+        else:
+            raise ValueError(f"Unsupported metric_unit type: {type(metric_unit)}")
+
+        model_name = lmms_eval_specific_kwargs.get("model_name")
+        img_shape_resized_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
+
+        original_height, original_width = img_shape_hw
+        pixel_height, pixel_width = pixel_size_hw
+        resized_img_h, resized_img_w = img_shape_resized_hw
+        resize_ratio_h = resized_img_h / original_height
+        resize_ratio_w = resized_img_w / original_width
+        adjusted_pixel_height = pixel_height / resize_ratio_h
+        adjusted_pixel_width = pixel_width / resize_ratio_w
+
+        # scaledPS: multiply the displayed pixel size by a deterministic uniform factor S
+        S = _get_pixel_size_scale_factor(doc, "uniform")
+        adjusted_pixel_height = adjusted_pixel_height * S
+        adjusted_pixel_width = adjusted_pixel_width * S
+
+        image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} mm (width) x {adjusted_pixel_height:.3f} mm (height)."
+
+        if image_description != "" and image_description is not None:
+            image_prompt = ": " + image_description
+        else:
+            image_prompt = ""
+        question = (
+            f"Task:\n"
+            f"Given the input medical image{image_prompt}, "
+            f"estimate the major and minor axis lengths of the ellipse enclosing the {label_name}, in {metric_unit}.\n"
+            f"Additional information:\n"
+            f"{image_size_text}\n"
+            f"{pixel_size_text}\n"
+            f"Format requirement:\n"
+            f"{FORMAT_PROMPT_TL_REASONING}\n"
+            f"Reasoning steps:\n"
+            f"{COT_INSTRUCT_TL_NORM}\n"
+            f"Follow the reasoning steps to get the final answer in the required format."
+        )
+        return question
+
+    return doc_to_text_TumorLesionSize_CoT_scaledPS
+
+
+def create_doc_to_target_TumorLesionSize_scaledPS():
+    """Factory returning a target function that scales the stored major/minor
+    axis GT by the uniform pixel-size scale factor."""
+
+    def doc_to_target_TumorLesionSize_scaledPS(doc):
+        S = _get_pixel_size_scale_factor(doc, "uniform")
+        biometric_profile = doc["biometric_profile"]
+        return [
+            biometric_profile["metric_value_major_axis"][0] * S,
+            biometric_profile["metric_value_minor_axis"][0] * S,
+        ]
+
+    return doc_to_target_TumorLesionSize_scaledPS
+
+
+# Module-level scaledPS TL target (no factory state needed).
+doc_to_target_TumorLesionSize_scaledPS = create_doc_to_target_TumorLesionSize_scaledPS()
+
+
+def process_results_TumorLesionSize_scaledPS(doc, results):
+    """Same shape as process_results_TumorLesionSize but compares to
+    doc_to_target_TumorLesionSize_scaledPS."""
+    pred = results[0]
+    pred = parser_last_k_nums(pred, 2)
+    target_metric = np.array(doc_to_target_TumorLesionSize_scaledPS(doc))
+    try:
+        prd_parts = pred.strip().split(",")
+        pred_metrics = np.array([np.float32(part.strip()) for part in prd_parts])
+        if len(pred_metrics) != 2:
+            mean_absolute_error = np.nan
+            mean_relative_error = np.nan
+            success = False
+        else:
+            absolute_error = np.abs(pred_metrics - target_metric)
+            mean_absolute_error = np.mean(absolute_error)
+            mean_relative_error = np.mean(absolute_error / (target_metric + 1e-15))
+            success = True
+    except Exception:
+        mean_absolute_error = np.nan
+        mean_relative_error = np.nan
+        success = False
+
+    return {
+        "avgMAE": {"MAE": mean_absolute_error, "success": success},
+        "avgMRE": {"MRE": mean_relative_error, "success": success},
+        "SuccessRate": {"success": success},
+    }
+
+
+def create_doc_to_text_BiometricsFromLandmarks_CoT_scaledPS(preprocess_biometry_module):
+    """Factory mirroring create_doc_to_text_BiometricsFromLandmarks_CoT; only
+    the pixel_size shown in the prompt is scaled by an anisotropic pair
+    (S_h, S_w). The image is NOT resized."""
+
+    def doc_to_text_BiometricsFromLandmarks_CoT_scaledPS(doc, lmms_eval_specific_kwargs=None):
+        from medvision_bm.sft.sft_prompts import (
+            COT_INSTRUCT_ANGLE,
+            COT_INSTRUCT_DISTANCE,
+            FORMAT_PROMPT_AD_REASONING,
+        )
+
+        taskID = doc["taskID"]
+        bm_plan = preprocess_biometry_module.benchmark_plan
+        task_info = bm_plan["tasks"][int(taskID) - 1]
+
+        biometric_profile = doc["biometric_profile"]
+        metric_type = biometric_profile["metric_type"]
+        metric_map_name = biometric_profile["metric_map_name"]
+        metric_key = biometric_profile["metric_key"]
+        metric_unit = biometric_profile["metric_unit"]
+
+        image_description = task_info["image_description"]
+
+        img_path = doc["image_file"]
+        slice_dim = doc["slice_dim"]
+        slice_idx = doc["slice_idx"]
+
+        reshape_image_hw = lmms_eval_specific_kwargs.get("reshape_image_hw") if lmms_eval_specific_kwargs is not None else None
+        if reshape_image_hw is not None:
+            pixel_size_hw, img_2d_raw = _load_nifti_2d(img_path, slice_dim, slice_idx, new_shape_hw=reshape_image_hw)
+        else:
+            pixel_size_hw, img_2d_raw = _load_nifti_2d(img_path, slice_dim, slice_idx)
+
+        img_shape_hw = img_2d_raw.shape
+
+        model_name = lmms_eval_specific_kwargs.get("model_name")
+        img_shape_resized_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
+
+        original_height, original_width = img_shape_hw
+        pixel_height, pixel_width = pixel_size_hw
+        resized_img_h, resized_img_w = img_shape_resized_hw
+        resize_ratio_h = resized_img_h / original_height
+        resize_ratio_w = resized_img_w / original_width
+        adjusted_pixel_height = pixel_height / resize_ratio_h
+        adjusted_pixel_width = pixel_width / resize_ratio_w
+
+        # scaledPS: anisotropic factors
+        S_h, S_w = _get_pixel_size_scale_factor(doc, "anisotropic")
+        adjusted_pixel_height = adjusted_pixel_height * S_h
+        adjusted_pixel_width = adjusted_pixel_width * S_w
+
+        image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} mm (width) x {adjusted_pixel_height:.3f} mm (height)."
+
+        if metric_type == "distance":
+            cot_instruction = COT_INSTRUCT_DISTANCE
+            lines_map = task_info[metric_map_name]
+            line_dict = lines_map[metric_key]
+            lms_map_name = line_dict["element_map_name"]
+            lms_map = task_info[lms_map_name]
+            lms = line_dict["element_keys"]
+            p1_name = lms_map[lms[0]]
+            p2_name = lms_map[lms[1]]
+            biometrics_name = line_dict["name"]
+            task_prompt = _get_biometric_prompt_distance(biometrics_name, p1_name, p2_name, metric_unit)
+        if metric_type == "angle":
+            cot_instruction = COT_INSTRUCT_ANGLE
+            angles_map = task_info[metric_map_name]
+            angle_dict = angles_map[metric_key]
+            lines_map_name = angle_dict["element_map_name"]
+            line_keys = angle_dict["element_keys"]
+            lines_map = task_info[lines_map_name]
+            line1_dict = lines_map[line_keys[0]]
+            line1_lms = line1_dict["element_keys"]
+            line1_lms_map_name = line1_dict["element_map_name"]
+            line1_lms_map = task_info[line1_lms_map_name]
+            line1_p1_name = line1_lms_map[line1_lms[0]]
+            line1_p2_name = line1_lms_map[line1_lms[1]]
+            line2_dict = lines_map[line_keys[1]]
+            line2_lms = line2_dict["element_keys"]
+            line2_lms_map_name = line2_dict["element_map_name"]
+            line2_lms_map = task_info[line2_lms_map_name]
+            line2_p1_name = line2_lms_map[line2_lms[0]]
+            line2_p2_name = line2_lms_map[line2_lms[1]]
+            biometrics_name = angle_dict["name"]
+            task_prompt = _get_biometric_prompt_angle(
+                biometrics_name,
+                line1_p1_name,
+                line1_p2_name,
+                line2_p1_name,
+                line2_p2_name,
+                metric_unit,
+            )
+
+        if image_description != "" and image_description is not None:
+            image_prompt = ": " + image_description
+        else:
+            image_prompt = ""
+        question = (
+            f"Task:\n"
+            f"Given the input medical image{image_prompt}, "
+            f"{task_prompt}"
+            f"Additional information:\n"
+            f"{image_size_text}\n"
+            f"{pixel_size_text}\n"
+            f"Format requirement:\n"
+            f"{FORMAT_PROMPT_AD_REASONING}\n"
+            f"Reasoning steps:\n"
+            f"{cot_instruction}\n"
+            f"Follow the reasoning steps to get the final answer in the required format."
+        )
+        return question
+
+    return doc_to_text_BiometricsFromLandmarks_CoT_scaledPS
+
+
+def create_doc_to_target_BiometricsFromLandmarks_scaledPS(preprocess_biometry_module):
+    """Factory returning a target function that recomputes AD metric from raw
+    landmark coords under anisotropic pixel-size scaling (S_h, S_w).
+
+    - Loads original pixel_size via _load_nifti_2d (no reshape).
+    - Loads raw landmark coords via sft_utils._get_landmarks_coords.
+    - For distance: L2 norm of (dh*px_h*S_h, dw*px_w*S_w).
+    - For angle: acute angle in degrees between physical-space line vectors,
+      matching benchmark_planner._cal_angle.
+    """
+
+    def doc_to_target_BiometricsFromLandmarks_scaledPS(doc):
+        from medvision_bm.sft.sft_utils import _get_landmarks_coords
+
+        taskID = doc["taskID"]
+        bm_plan = preprocess_biometry_module.benchmark_plan
+        task_info = bm_plan["tasks"][int(taskID) - 1]
+
+        biometric_profile = doc["biometric_profile"]
+        metric_type = biometric_profile["metric_type"]
+        metric_map_name = biometric_profile["metric_map_name"]
+        metric_key = biometric_profile["metric_key"]
+
+        # Original pixel_size (height_mm, width_mm), no image reshape.
+        pixel_size_hw, _ = _load_nifti_2d(doc["image_file"], doc["slice_dim"], doc["slice_idx"])
+        px_h, px_w = float(pixel_size_hw[0]), float(pixel_size_hw[1])
+
+        S_h, S_w = _get_pixel_size_scale_factor(doc, "anisotropic")
+
+        if metric_type == "distance":
+            line_dict = task_info[metric_map_name][metric_key]
+            lms = line_dict["element_keys"]  # list of 2 landmark keys
+            coords = _get_landmarks_coords(doc, lms)
+            p1 = np.array(coords["landmark_" + lms[0]], dtype=np.float64)
+            p2 = np.array(coords["landmark_" + lms[1]], dtype=np.float64)
+            dh = p1[0] - p2[0]
+            dw = p1[1] - p2[1]
+            distance = float(np.sqrt((dh * px_h * S_h) ** 2 + (dw * px_w * S_w) ** 2))
+            return distance
+
+        if metric_type == "angle":
+            angle_dict = task_info[metric_map_name][metric_key]
+            lines_map_name = angle_dict["element_map_name"]
+            line_keys = angle_dict["element_keys"]
+            lines_map = task_info[lines_map_name]
+
+            line1 = lines_map[line_keys[0]]
+            line2 = lines_map[line_keys[1]]
+            line1_lms = line1["element_keys"]
+            line2_lms = line2["element_keys"]
+
+            # Load all 4 landmarks in one call (_get_landmarks_coords accepts a list).
+            all_lms = list(dict.fromkeys(line1_lms + line2_lms))
+            coords = _get_landmarks_coords(doc, all_lms)
+
+            def _vec_phys(lm_keys):
+                p1 = np.array(coords["landmark_" + lm_keys[0]], dtype=np.float64)
+                p2 = np.array(coords["landmark_" + lm_keys[1]], dtype=np.float64)
+                dh = p2[0] - p1[0]
+                dw = p2[1] - p1[1]
+                return np.array([dh * px_h * S_h, dw * px_w * S_w], dtype=np.float64)
+
+            v1 = _vec_phys(line1_lms)
+            v2 = _vec_phys(line2_lms)
+            n1 = np.linalg.norm(v1)
+            n2 = np.linalg.norm(v2)
+            cos_abs = np.abs(np.dot(v1, v2)) / (n1 * n2)
+            # Clip for numerical safety (|dot|/... should be in [0,1])
+            cos_abs = float(np.clip(cos_abs, 0.0, 1.0))
+            angle_deg = float(np.degrees(np.arccos(cos_abs)))
+            return angle_deg
+
+        raise ValueError(f"Unsupported metric_type: {metric_type}")
+
+    return doc_to_target_BiometricsFromLandmarks_scaledPS
+
+
+def create_process_results_BiometricsFromLandmarks_scaledPS(preprocess_biometry_module):
+    """Factory returning process_results that compares predictions to the
+    factory-bound scaledPS target."""
+
+    _target_fn = create_doc_to_target_BiometricsFromLandmarks_scaledPS(preprocess_biometry_module)
+
+    def process_results_BiometricsFromLandmarks_scaledPS(doc, results):
+        pred = results[0]
+        pred = parser_last_k_nums(pred, 1)
+        target_metric = np.array(_target_fn(doc))
+        try:
+            prd_parts = pred.strip().split(",")
+            pred_metrics = np.array([np.float32(part.strip()) for part in prd_parts])
+            if pred_metrics < 0 or len(pred_metrics) != 1:
+                absolute_error = np.nan
+                relative_error = np.nan
+                success = False
+            else:
+                absolute_error = np.abs(pred_metrics - target_metric)
+                relative_error = absolute_error / (target_metric + 1e-15)
+                success = True
+        except Exception:
+            absolute_error = np.nan
+            relative_error = np.nan
+            success = False
+
+        return {
+            "MAE": {"AE": absolute_error, "success": success},
+            "MRE": {"RE": relative_error, "success": success},
+            "SuccessRate": {"success": success},
+        }
+
+    return process_results_BiometricsFromLandmarks_scaledPS

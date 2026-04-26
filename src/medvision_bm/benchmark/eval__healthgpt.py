@@ -261,11 +261,25 @@ def parse_args():
         type=str,
         help="Reshape images to this height and width (format: H,W) before feeding into the model. Default is None.",
     )
+    parser.add_argument(
+        "--scaled_ps_low",
+        default=0.5,
+        type=float,
+        help="Lower bound of the pixel-size scaling factor range for -scaledPS task variants.",
+    )
+    parser.add_argument(
+        "--scaled_ps_high",
+        default=3.0,
+        type=float,
+        help="Upper bound of the pixel-size scaling factor range for -scaledPS task variants.",
+    )
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
+    os.environ["MEDVISION_SCALED_PS_LOW"] = str(args.scaled_ps_low)
+    os.environ["MEDVISION_SCALED_PS_HIGH"] = str(args.scaled_ps_high)
 
     # Configuration
     model_name = args.model_name

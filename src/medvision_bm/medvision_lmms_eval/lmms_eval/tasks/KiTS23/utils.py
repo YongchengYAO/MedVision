@@ -12,12 +12,14 @@ from lmms_eval.tasks.medvision.medvision_utils import (
     doc_to_text_MaskSize_wMask_woMedImg,
     create_doc_to_text_TumorLesionSize,
     create_doc_to_text_TumorLesionSize_CoT,
+    create_doc_to_text_TumorLesionSize_CoT_scaledPS,
     create_doc_to_text_TumorLesionSize_CoT_woInstruct,
     create_doc_to_text_TumorLesionSize_wVisualPrompt,
     doc_to_text_TumorLesionSize_wVisualPrompt_woMedImg,
     doc_to_target_BoxCoordinate,
     doc_to_target_MaskSize,
     doc_to_target_TumorLesionSize,
+    doc_to_target_TumorLesionSize_scaledPS,
     doc_to_visual,
     doc_to_visual_wBox,
     doc_to_visual_wBox_woMedImg,
@@ -28,6 +30,7 @@ from lmms_eval.tasks.medvision.medvision_utils import (
     process_results_BoxCoordinate,
     process_results_MaskSize,
     process_results_TumorLesionSize,
+    process_results_TumorLesionSize_scaledPS,
 )
 from medvision_ds.datasets.KiTS23 import (
     preprocess_biometry,
@@ -45,3 +48,4 @@ doc_to_text_MaskSize_wMask = create_doc_to_text_MaskSize_wMask(preprocess_segmen
 
 doc_to_text_TumorLesionSize_CoT = create_doc_to_text_TumorLesionSize_CoT(preprocess_biometry)
 doc_to_text_TumorLesionSize_CoT_woInstruct = create_doc_to_text_TumorLesionSize_CoT_woInstruct(preprocess_biometry)
+doc_to_text_TumorLesionSize_CoT_scaledPS = create_doc_to_text_TumorLesionSize_CoT_scaledPS(preprocess_biometry)

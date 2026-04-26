@@ -12,13 +12,13 @@ license = { text = "CC-BY-NC 4.0" }
 dependencies = [
     "datasets==3.6.0",
     "huggingface_hub==0.36.0",
-    "nibabel",
-    "torch",
-    "torchvision",
-    "accelerate",
-    "psutil",
-    "scipy",
-    "matplotlib",
+    "nibabel==5.4.2",
+    "torch==2.6.0",
+    "torchvision==0.21.0",
+    "accelerate==1.9.0",
+    "psutil==7.2.2",
+    "scipy==1.17.1",
+    "matplotlib>=3.10.9",
 ]
 
 [project.urls]
