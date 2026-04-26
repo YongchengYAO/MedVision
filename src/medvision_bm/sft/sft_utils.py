@@ -2429,7 +2429,7 @@ def prepare_trainer(
 
     # PEFT configuration
     peft_config = LoraConfig(
-        lora_alpha=16,
+        lora_alpha=32, # scaling factor = lora_alpha / r, controls the strength of the LoRA update
         lora_dropout=0.05,
         r=16,
         bias="none",
@@ -2466,7 +2466,7 @@ def prepare_trainer(
         lr_scheduler_type="linear",  # Use linear learning rate scheduler
         push_to_hub=push_LoRA,  # Push model to Hub
         hub_private_repo=True,  # Push to a private repository
-        report_to="wandb",  # Report metrics to tensorboard
+        report_to="wandb",  # Report metrics to Weights & Biases
         gradient_checkpointing_kwargs={
             "use_reentrant": False
         },  # Set gradient checkpointing to non-reentrant to avoid issues

@@ -145,6 +145,7 @@ class MedDr(lmms):
 
             response = self.eval_model(question=contexts, pil_img=visual, max_new_tokens=gen_kwargs.get("max_new_tokens"))
             res.append(response)
+            torch.cuda.empty_cache()
             pbar.update(1)
 
         pbar.close()

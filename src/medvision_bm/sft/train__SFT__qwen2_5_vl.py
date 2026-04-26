@@ -368,7 +368,7 @@ def main(
 
     # Free VRAM
     # Safe delete trainer only if it exists (prevents NameError when trainer was never created)
-    if "trainer" in globals() or "trainer" in locals():
+    if "trainer" in locals():
         try:
             del trainer
         except Exception:

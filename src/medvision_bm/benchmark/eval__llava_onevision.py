@@ -108,6 +108,14 @@ def parse_args():
         type=float,
         help="GPU memory utilization fraction, used in vllm",
     )
+    parser.add_argument(
+        "--max_model_len",
+        default=None,
+        type=int,
+        help="Maximum model sequence length for vLLM KV cache allocation. "
+        "Set to a value smaller than the model default (e.g. 16384) when GPU "
+        "memory is insufficient for the full context length.",
+    )
     # task-specific arguments
     parser.add_argument(
         "--tasks_list_json_path",
@@ -227,6 +235,7 @@ def main():
             f"max_num_seqs={batch_size},"  # maximum batch size
             f"max_new_tokens={max_new_tokens},"
             f"dtype={dtype}"
+            + (f",max_model_len={args.max_model_len}" if args.max_model_len is not None else "")
         )
 
         # add reshape_image_hw to modle args if specified, with normalization to ensure correct parsing
