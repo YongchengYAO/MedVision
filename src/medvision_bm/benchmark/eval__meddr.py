@@ -234,11 +234,25 @@ def parse_args():
         action="store_true",
         help="Only perform environment setup and exit.",
     )
+    parser.add_argument(
+        "--scaled_ps_low",
+        default=0.5,
+        type=float,
+        help="Lower bound of the pixel-size scaling factor range for -scaledPS task variants.",
+    )
+    parser.add_argument(
+        "--scaled_ps_high",
+        default=3.0,
+        type=float,
+        help="Upper bound of the pixel-size scaling factor range for -scaledPS task variants.",
+    )
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
+    os.environ["MEDVISION_SCALED_PS_LOW"] = str(args.scaled_ps_low)
+    os.environ["MEDVISION_SCALED_PS_HIGH"] = str(args.scaled_ps_high)
 
     # Configuration
     model_hf = args.model_hf_id
