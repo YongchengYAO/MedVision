@@ -335,6 +335,7 @@ def _doc_to_visual(doc, new_shape_hw=None):
 def _doc_to_text_AngleDistanceTask(doc, model_name, model_hf, new_shape_hw=None):
     """Convert document to text."""
     from medvision_bm.medvision_lmms_eval.lmms_eval.tasks.medvision.medvision_utils import (
+        _normalize_metric_unit,
         get_resized_img_shape,
     )
     from medvision_bm.sft.sft_prompts import FORMAT_PROMPT_1_DECIMAL_NUMBER
@@ -358,7 +359,7 @@ def _doc_to_text_AngleDistanceTask(doc, model_name, model_hf, new_shape_hw=None)
     metric_type = biometric_profile["metric_type"]
     metric_map_name = biometric_profile["metric_map_name"]
     metric_key = biometric_profile["metric_key"]
-    metric_unit = biometric_profile["metric_unit"]
+    metric_unit = _normalize_metric_unit(biometric_profile["metric_unit"])
 
     # Get 2D image info
     image_description = task_info["image_description"]
@@ -390,7 +391,7 @@ def _doc_to_text_AngleDistanceTask(doc, model_name, model_hf, new_shape_hw=None)
     image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
     # Include pixel size information in question text
-    pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} mm (width) x {adjusted_pixel_height:.3f} mm (height)."
+    pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
 
     # Question
     if metric_type == "distance":
@@ -461,6 +462,7 @@ def _doc_to_text_AngleDistanceTask(doc, model_name, model_hf, new_shape_hw=None)
 def _doc_to_text_AngleDistanceTask_CoT(doc, model_name, model_hf, new_shape_hw=None):
     """Convert document to text."""
     from medvision_bm.medvision_lmms_eval.lmms_eval.tasks.medvision.medvision_utils import (
+        _normalize_metric_unit,
         get_resized_img_shape,
     )
     from medvision_bm.sft.sft_prompts import (
@@ -488,7 +490,7 @@ def _doc_to_text_AngleDistanceTask_CoT(doc, model_name, model_hf, new_shape_hw=N
     metric_type = biometric_profile["metric_type"]
     metric_map_name = biometric_profile["metric_map_name"]
     metric_key = biometric_profile["metric_key"]
-    metric_unit = biometric_profile["metric_unit"]
+    metric_unit = _normalize_metric_unit(biometric_profile["metric_unit"])
 
     # Get 2D image info
     image_description = task_info["image_description"]
@@ -505,7 +507,7 @@ def _doc_to_text_AngleDistanceTask_CoT(doc, model_name, model_hf, new_shape_hw=N
     # [!] Get resized image shape (implicit/dynamic resizing from VLM)
     img_shape_implicit_resize = get_resized_img_shape(
         model_name, img_explicit_resize_2d, {"model_hf":model_hf}
-    ) 
+    )
 
     # Adjust pixel size based on the resize ratio
     original_height, original_width = img_shape
@@ -520,7 +522,7 @@ def _doc_to_text_AngleDistanceTask_CoT(doc, model_name, model_hf, new_shape_hw=N
     image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
     # Include pixel size information in question text
-    pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} mm (width) x {adjusted_pixel_height:.3f} mm (height)."
+    pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
 
     # Question
     if metric_type == "distance":
@@ -924,6 +926,7 @@ def _format_data_AngleDistanceTask_CoT(
 def _doc_to_text_TumorLesionTask(doc, model_name, model_hf, new_shape_hw=None):
     """Convert document to text."""
     from medvision_bm.medvision_lmms_eval.lmms_eval.tasks.medvision.medvision_utils import (
+        _normalize_metric_unit,
         get_resized_img_shape,
     )
     from medvision_bm.sft.sft_prompts import FORMAT_PROMPT_TUMOR_LESION_SIZE
@@ -964,17 +967,7 @@ def _doc_to_text_TumorLesionTask(doc, model_name, model_hf, new_shape_hw=None):
 
     # Get biometrics profile for this case
     biometric_profile = doc["biometric_profile"]
-    metric_unit = biometric_profile["metric_unit"]
-    if isinstance(metric_unit, list):
-        assert len(metric_unit) == 1, "metric_unit list should have only one element."
-        metric_unit = metric_unit[0]
-    elif isinstance(metric_unit, str):
-        if metric_unit == "mm":
-            metric_unit = "millimeters"
-        elif metric_unit == "cm":
-            metric_unit = "centimeters"
-    else:
-        raise ValueError(f"Unsupported metric_unit type: {type(metric_unit)}")
+    metric_unit = _normalize_metric_unit(biometric_profile["metric_unit"])
 
     # Get resized image shape
     img_shape_resized = get_resized_img_shape(
@@ -1134,6 +1127,7 @@ def _get_landmarks_coords(example, landmark_keys):
 def _doc_to_text_TumorLesionTask_CoT(doc, model_name, model_hf, new_shape_hw=None):
     """Convert document to text."""
     from medvision_bm.medvision_lmms_eval.lmms_eval.tasks.medvision.medvision_utils import (
+        _normalize_metric_unit,
         get_resized_img_shape,
     )
     from medvision_bm.sft.sft_prompts import (
@@ -1177,17 +1171,7 @@ def _doc_to_text_TumorLesionTask_CoT(doc, model_name, model_hf, new_shape_hw=Non
 
     # Get biometrics profile for this case
     biometric_profile = doc["biometric_profile"]
-    metric_unit = biometric_profile["metric_unit"]
-    if isinstance(metric_unit, list):
-        assert len(metric_unit) == 1, "metric_unit list should have only one element."
-        metric_unit = metric_unit[0]
-    elif isinstance(metric_unit, str):
-        if metric_unit == "mm":
-            metric_unit = "millimeters"
-        elif metric_unit == "cm":
-            metric_unit = "centimeters"
-    else:
-        raise ValueError(f"Unsupported metric_unit type: {type(metric_unit)}")
+    metric_unit = _normalize_metric_unit(biometric_profile["metric_unit"])
 
     # [!] Get resized image shape (implicit resizing from VLM)
     img_shape_implicit_resize = get_resized_img_shape(

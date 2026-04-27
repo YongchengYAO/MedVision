@@ -309,7 +309,6 @@ def _get_prompt_angle(biometrics_name, l1p1, l1p2, l2p1, l2p2, metric_unit):
 
 def _get_prompt_distance(biometrics_name, p1, p2, metric_unit):
     """Prepare prompt for distance estimate VQA. Inputs are names."""
-    metric_unit = metric_unit.strip().replace("mm", "millimeters")
     if biometrics_name is not None and biometrics_name != "":
         return (
             f"estimate the distance of {biometrics_name} in {metric_unit}, "

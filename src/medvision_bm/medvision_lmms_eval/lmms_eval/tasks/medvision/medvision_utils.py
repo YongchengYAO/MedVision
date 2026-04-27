@@ -1225,17 +1225,7 @@ def create_doc_to_text_TumorLesionSize(preprocess_biometry_module):
 
         # Get biometrics profile for this case
         biometric_profile = doc["biometric_profile"]
-        metric_unit = biometric_profile["metric_unit"]
-        if isinstance(metric_unit, list):
-            assert len(metric_unit) == 1, "metric_unit list should have only one element."
-            metric_unit = metric_unit[0]
-        elif isinstance(metric_unit, str):
-            if metric_unit == "mm":
-                metric_unit = "millimeters"
-            elif metric_unit == "cm":
-                metric_unit = "centimeters"
-        else:
-            raise ValueError(f"Unsupported metric_unit type: {type(metric_unit)}")
+        metric_unit = _normalize_metric_unit(biometric_profile["metric_unit"])
 
         # -------------
         # NOTE: To get the reshaped image size and adjust pixel size information in the prompt, a model-specific processing is needed
@@ -1258,7 +1248,7 @@ def create_doc_to_text_TumorLesionSize(preprocess_biometry_module):
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
         # Include pixel size information in question text
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} mm (width) x {adjusted_pixel_height:.3f} mm (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
         # -------------
 
         # Question
@@ -1308,17 +1298,7 @@ def doc_to_text_TumorLesionSize_woMedImg(doc, lmms_eval_specific_kwargs=None):
 
     # Get biometrics profile for this case
     biometric_profile = doc["biometric_profile"]
-    metric_unit = biometric_profile["metric_unit"]
-    if isinstance(metric_unit, list):
-        assert len(metric_unit) == 1, "metric_unit list should have only one element."
-        metric_unit = metric_unit[0]
-    elif isinstance(metric_unit, str):
-        if metric_unit == "mm":
-            metric_unit = "millimeters"
-        elif metric_unit == "cm":
-            metric_unit = "centimeters"
-    else:
-        raise ValueError(f"Unsupported metric_unit type: {type(metric_unit)}")
+    metric_unit = _normalize_metric_unit(biometric_profile["metric_unit"])
 
     # -------------
     # NOTE: To get the reshaped image size and adjust pixel size information in the prompt, a model-specific processing is needed
@@ -1341,7 +1321,7 @@ def doc_to_text_TumorLesionSize_woMedImg(doc, lmms_eval_specific_kwargs=None):
     image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
     # Include pixel size information in question text
-    pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} mm (width) x {adjusted_pixel_height:.3f} mm (height)."
+    pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
     # -------------
 
     # Question
@@ -1392,17 +1372,7 @@ def create_doc_to_text_TumorLesionSize_wVisualPrompt(preprocess_biometry_module)
 
         # Get biometrics profile for this case
         biometric_profile = doc["biometric_profile"]
-        metric_unit = biometric_profile["metric_unit"]
-        if isinstance(metric_unit, list):
-            assert len(metric_unit) == 1, "metric_unit list should have only one element."
-            metric_unit = metric_unit[0]
-        elif isinstance(metric_unit, str):
-            if metric_unit == "mm":
-                metric_unit = "millimeters"
-            elif metric_unit == "cm":
-                metric_unit = "centimeters"
-        else:
-            raise ValueError(f"Unsupported metric_unit type: {type(metric_unit)}")
+        metric_unit = _normalize_metric_unit(biometric_profile["metric_unit"])
 
         # -------------
         # NOTE: To get the reshaped image size and adjust pixel size information in the prompt, a model-specific processing is needed
@@ -1425,7 +1395,7 @@ def create_doc_to_text_TumorLesionSize_wVisualPrompt(preprocess_biometry_module)
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
         # Include pixel size information in question text
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} mm (width) x {adjusted_pixel_height:.3f} mm (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
         # -------------
 
         # Question
@@ -1475,17 +1445,7 @@ def doc_to_text_TumorLesionSize_wVisualPrompt_woMedImg(doc, lmms_eval_specific_k
 
     # Get biometrics profile for this case
     biometric_profile = doc["biometric_profile"]
-    metric_unit = biometric_profile["metric_unit"]
-    if isinstance(metric_unit, list):
-        assert len(metric_unit) == 1, "metric_unit list should have only one element."
-        metric_unit = metric_unit[0]
-    elif isinstance(metric_unit, str):
-        if metric_unit == "mm":
-            metric_unit = "millimeters"
-        elif metric_unit == "cm":
-            metric_unit = "centimeters"
-    else:
-        raise ValueError(f"Unsupported metric_unit type: {type(metric_unit)}")
+    metric_unit = _normalize_metric_unit(biometric_profile["metric_unit"])
 
     # -------------
     # NOTE: To get the reshaped image size and adjust pixel size information in the prompt, a model-specific processing is needed
@@ -1508,7 +1468,7 @@ def doc_to_text_TumorLesionSize_wVisualPrompt_woMedImg(doc, lmms_eval_specific_k
     image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
     # Include pixel size information in question text
-    pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} mm (width) x {adjusted_pixel_height:.3f} mm (height)."
+    pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
     # -------------
 
     # Question
@@ -1562,17 +1522,7 @@ def create_doc_to_text_TumorLesionSize_CoT_woInstruct(preprocess_biometry_module
 
         # Get biometrics profile for this case
         biometric_profile = doc["biometric_profile"]
-        metric_unit = biometric_profile["metric_unit"]
-        if isinstance(metric_unit, list):
-            assert len(metric_unit) == 1, "metric_unit list should have only one element."
-            metric_unit = metric_unit[0]
-        elif isinstance(metric_unit, str):
-            if metric_unit == "mm":
-                metric_unit = "millimeters"
-            elif metric_unit == "cm":
-                metric_unit = "centimeters"
-        else:
-            raise ValueError(f"Unsupported metric_unit type: {type(metric_unit)}")
+        metric_unit = _normalize_metric_unit(biometric_profile["metric_unit"])
 
         # -------------
         # NOTE: To get the reshaped image size and adjust pixel size information in the prompt, a model-specific processing is needed
@@ -1595,7 +1545,7 @@ def create_doc_to_text_TumorLesionSize_CoT_woInstruct(preprocess_biometry_module
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
         # Include pixel size information in question text
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} mm (width) x {adjusted_pixel_height:.3f} mm (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
         # -------------
 
         # Question
@@ -1659,17 +1609,7 @@ def create_doc_to_text_TumorLesionSize_CoT(preprocess_biometry_module):
 
         # Get biometrics profile for this case
         biometric_profile = doc["biometric_profile"]
-        metric_unit = biometric_profile["metric_unit"]
-        if isinstance(metric_unit, list):
-            assert len(metric_unit) == 1, "metric_unit list should have only one element."
-            metric_unit = metric_unit[0]
-        elif isinstance(metric_unit, str):
-            if metric_unit == "mm":
-                metric_unit = "millimeters"
-            elif metric_unit == "cm":
-                metric_unit = "centimeters"
-        else:
-            raise ValueError(f"Unsupported metric_unit type: {type(metric_unit)}")
+        metric_unit = _normalize_metric_unit(biometric_profile["metric_unit"])
 
         # -------------
         # NOTE: To get the reshaped image size and adjust pixel size information in the prompt, a model-specific processing is needed
@@ -1692,7 +1632,7 @@ def create_doc_to_text_TumorLesionSize_CoT(preprocess_biometry_module):
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
         # Include pixel size information in question text
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} mm (width) x {adjusted_pixel_height:.3f} mm (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
         # -------------
 
         # Question
@@ -1772,7 +1712,8 @@ def create_doc_to_text_MaskSize(preprocess_segmentation_module):
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
         # Include pixel size information in question text
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} mm (width) x {adjusted_pixel_height:.3f} mm (height)."
+        # NOTE: We hardcode the unit to millimeters here because there is no metric_unit field for mask size task in MedVision v1.0.0 (https://huggingface.co/datasets/YongchengYAO/MedVision)
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} millimeters (width) x {adjusted_pixel_height:.3f} millimeters (height)."
         # -------------
 
         # Question
@@ -1849,8 +1790,9 @@ def create_doc_to_text_MaskSize_wMask(preprocess_segmentation_module):
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
         # Include pixel size information in question text
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} mm (width) x {adjusted_pixel_height:.3f} mm (height)."
-        # ------------- 
+        # NOTE: We hardcode the unit to millimeters here because there is no metric_unit field for mask size task in MedVision v1.0.0 (https://huggingface.co/datasets/YongchengYAO/MedVision)
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} millimeters (width) x {adjusted_pixel_height:.3f} millimeters (height)."
+        # -------------
 
         # Question
         if image_description != "" and image_description is not None:
@@ -1918,7 +1860,8 @@ def doc_to_text_MaskSize_wMask_woMedImg(doc, lmms_eval_specific_kwargs=None):
     image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
     # Include pixel size information in question text
-    pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} mm (width) x {adjusted_pixel_height:.3f} mm (height)."
+    # NOTE: We hardcode the unit to millimeters here because there is no metric_unit field for mask size task in MedVision v1.0.0 (https://huggingface.co/datasets/YongchengYAO/MedVision)
+    pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} millimeters (width) x {adjusted_pixel_height:.3f} millimeters (height)."
     # -------------
 
     # Question
@@ -1944,7 +1887,6 @@ def _get_biometric_prompt_angle(biometrics_name, l1p1, l1p2, l2p1, l2p2, metric_
 
 def _get_biometric_prompt_distance(biometrics_name, p1, p2, metric_unit):
     """Prepare prompt for distance estimate VQA. Inputs are names."""
-    metric_unit = metric_unit.strip().replace("mm", "millimeters")
     if biometrics_name is not None and biometrics_name != "":
         return f"estimate the distance of {biometrics_name} in {metric_unit}, which is the distance between 2 landmark points: (landmark 1) {p1}, (landmark 2) {p2}.\n"
     else:
@@ -1964,7 +1906,7 @@ def create_doc_to_text_BiometricsFromLandmarks(preprocess_biometry_module):
         metric_type = biometric_profile["metric_type"]
         metric_map_name = biometric_profile["metric_map_name"]
         metric_key = biometric_profile["metric_key"]
-        metric_unit = biometric_profile["metric_unit"]
+        metric_unit = _normalize_metric_unit(biometric_profile["metric_unit"])
 
         # Get 2D image info
         image_description = task_info["image_description"]
@@ -2004,7 +1946,7 @@ def create_doc_to_text_BiometricsFromLandmarks(preprocess_biometry_module):
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
         # Include pixel size information in question text
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} mm (width) x {adjusted_pixel_height:.3f} mm (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
         # -------------
 
         # Question
@@ -2073,7 +2015,7 @@ def create_doc_to_text_BiometricsFromLandmarks_wVisualPrompt(preprocess_biometry
         metric_type = biometric_profile["metric_type"]
         metric_map_name = biometric_profile["metric_map_name"]
         metric_key = biometric_profile["metric_key"]
-        metric_unit = biometric_profile["metric_unit"]
+        metric_unit = _normalize_metric_unit(biometric_profile["metric_unit"])
 
         # Get 2D image info
         image_description = task_info["image_description"]
@@ -2113,7 +2055,7 @@ def create_doc_to_text_BiometricsFromLandmarks_wVisualPrompt(preprocess_biometry
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
         # Include pixel size information in question text
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} mm (width) x {adjusted_pixel_height:.3f} mm (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
         # -------------
 
         # Question
@@ -2192,7 +2134,7 @@ def doc_to_text_BiometricsFromLandmarks_wVisualPrompt_woMedImg(doc, lmms_eval_sp
     # Get biometrics profile for this case
     biometric_profile = doc["biometric_profile"]
     metric_type = biometric_profile["metric_type"]
-    metric_unit = biometric_profile["metric_unit"]
+    metric_unit = _normalize_metric_unit(biometric_profile["metric_unit"])
 
     # Read NIfTI image
     img_path = doc["image_file"]
@@ -2211,7 +2153,7 @@ def doc_to_text_BiometricsFromLandmarks_wVisualPrompt_woMedImg(doc, lmms_eval_sp
     # -------------
     # NOTE: To get the reshaped image size and adjust pixel size information in the prompt, a model-specific processing is needed
     # -------------
-    # NOTE: img_shape_resized_hw is the shape of image after model-specific processing, which could be dynamic or fixed depending on the model. 
+    # NOTE: img_shape_resized_hw is the shape of image after model-specific processing, which could be dynamic or fixed depending on the model.
     # We will use img_shape_resized_hw to adjust the pixel size information in the prompt to make it consistent with the image size input to the model.
     model_name = lmms_eval_specific_kwargs.get("model_name")
     img_shape_resized_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
@@ -2229,14 +2171,14 @@ def doc_to_text_BiometricsFromLandmarks_wVisualPrompt_woMedImg(doc, lmms_eval_sp
     image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
     # Include pixel size information in question text
-    pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} mm (width) x {adjusted_pixel_height:.3f} mm (height)."
+    pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
     # -------------
 
     # Question
     if metric_type == "distance":
         # Task description for distance measurement with visual prompt
         task_description = (
-            f"Task:\n" 
+            f"Task:\n"
             f"Estimate the physical distance of the line in {metric_unit}.\n"
             )
     if metric_type == "angle":
@@ -2272,7 +2214,7 @@ def create_doc_to_text_BiometricsFromLandmarks_CoT_woInstruct(preprocess_biometr
         metric_type = biometric_profile["metric_type"]
         metric_map_name = biometric_profile["metric_map_name"]
         metric_key = biometric_profile["metric_key"]
-        metric_unit = biometric_profile["metric_unit"]
+        metric_unit = _normalize_metric_unit(biometric_profile["metric_unit"])
 
         # Get 2D image info
         image_description = task_info["image_description"]
@@ -2312,7 +2254,7 @@ def create_doc_to_text_BiometricsFromLandmarks_CoT_woInstruct(preprocess_biometr
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
         # Include pixel size information in question text
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} mm (width) x {adjusted_pixel_height:.3f} mm (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
         # -------------
 
         # Question
@@ -2400,7 +2342,7 @@ def create_doc_to_text_BiometricsFromLandmarks_CoT(preprocess_biometry_module):
         metric_type = biometric_profile["metric_type"]
         metric_map_name = biometric_profile["metric_map_name"]
         metric_key = biometric_profile["metric_key"]
-        metric_unit = biometric_profile["metric_unit"]
+        metric_unit = _normalize_metric_unit(biometric_profile["metric_unit"])
 
         # Get 2D image info
         image_description = task_info["image_description"]
@@ -2440,7 +2382,7 @@ def create_doc_to_text_BiometricsFromLandmarks_CoT(preprocess_biometry_module):
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
         # Include pixel size information in question text
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} mm (width) x {adjusted_pixel_height:.3f} mm (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
         # ------------- 
 
         # Question
@@ -2875,6 +2817,21 @@ def _load_nifti_2d(nii_path, slice_dim, slice_idx, new_shape_hw=None):
     return (pixel_size_hw, image_2d)
 
 
+def _normalize_metric_unit(metric_unit):
+    """Return the long-form unit string for biometric_profile.metric_unit.
+    Accepts str or single-element list.
+    NIfTI voxel sizes are already in the same unit as metric_unit —
+    no numeric conversion is needed here."""
+    if isinstance(metric_unit, list):
+        assert len(metric_unit) == 1, "metric_unit list must have one element"
+        metric_unit = metric_unit[0]
+    if metric_unit == "mm":
+        return "millimeters"
+    if metric_unit == "cm":
+        return "centimeters"
+    raise ValueError(f"Unsupported metric_unit: {metric_unit}")
+
+
 def parser_last_4_nums(text):
     # Find all numbers in the text
     numbers = re.findall(r"-?\d+\.?\d*", text)
@@ -2998,17 +2955,7 @@ def create_doc_to_text_TumorLesionSize_CoT_scaledPS(preprocess_biometry_module):
         img_shape_hw = img_2d_raw.shape
 
         biometric_profile = doc["biometric_profile"]
-        metric_unit = biometric_profile["metric_unit"]
-        if isinstance(metric_unit, list):
-            assert len(metric_unit) == 1, "metric_unit list should have only one element."
-            metric_unit = metric_unit[0]
-        elif isinstance(metric_unit, str):
-            if metric_unit == "mm":
-                metric_unit = "millimeters"
-            elif metric_unit == "cm":
-                metric_unit = "centimeters"
-        else:
-            raise ValueError(f"Unsupported metric_unit type: {type(metric_unit)}")
+        metric_unit = _normalize_metric_unit(biometric_profile["metric_unit"])
 
         model_name = lmms_eval_specific_kwargs.get("model_name")
         img_shape_resized_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
@@ -3027,7 +2974,7 @@ def create_doc_to_text_TumorLesionSize_CoT_scaledPS(preprocess_biometry_module):
         adjusted_pixel_width = adjusted_pixel_width * S
 
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} mm (width) x {adjusted_pixel_height:.3f} mm (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
 
         if image_description != "" and image_description is not None:
             image_prompt = ": " + image_description
@@ -3120,7 +3067,7 @@ def create_doc_to_text_BiometricsFromLandmarks_CoT_scaledPS(preprocess_biometry_
         metric_type = biometric_profile["metric_type"]
         metric_map_name = biometric_profile["metric_map_name"]
         metric_key = biometric_profile["metric_key"]
-        metric_unit = biometric_profile["metric_unit"]
+        metric_unit = _normalize_metric_unit(biometric_profile["metric_unit"])
 
         image_description = task_info["image_description"]
 
@@ -3153,7 +3100,7 @@ def create_doc_to_text_BiometricsFromLandmarks_CoT_scaledPS(preprocess_biometry_
         adjusted_pixel_width = adjusted_pixel_width * S_w
 
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} mm (width) x {adjusted_pixel_height:.3f} mm (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
 
         if metric_type == "distance":
             cot_instruction = COT_INSTRUCT_DISTANCE
@@ -3240,7 +3187,7 @@ def create_doc_to_target_BiometricsFromLandmarks_scaledPS(preprocess_biometry_mo
         metric_map_name = biometric_profile["metric_map_name"]
         metric_key = biometric_profile["metric_key"]
 
-        # Original pixel_size (height_mm, width_mm), no image reshape.
+        # Original pixel_size in native NIfTI unit (matches metric_unit), no image reshape.
         pixel_size_hw, _ = _load_nifti_2d(doc["image_file"], doc["slice_dim"], doc["slice_idx"])
         px_h, px_w = float(pixel_size_hw[0]), float(pixel_size_hw[1])
 
