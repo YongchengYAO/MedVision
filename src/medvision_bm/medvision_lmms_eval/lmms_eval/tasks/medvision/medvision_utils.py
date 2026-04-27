@@ -1562,7 +1562,6 @@ def create_doc_to_text_TumorLesionSize_CoT_woInstruct(preprocess_biometry_module
             f"{pixel_size_text}\n"
             f"Format requirement:\n"
             f"{FORMAT_PROMPT_TL_REASONING}\n"
-            f"Follow the reasoning steps to get the final answer in the required format."
         )
         return question
 
@@ -2315,7 +2314,6 @@ def create_doc_to_text_BiometricsFromLandmarks_CoT_woInstruct(preprocess_biometr
             f"{pixel_size_text}\n"
             f"Format requirement:\n"
             f"{FORMAT_PROMPT_AD_REASONING}\n"
-            f"Follow the reasoning steps to get the final answer in the required format."
         )
 
         return question
@@ -2829,6 +2827,8 @@ def _normalize_metric_unit(metric_unit):
         return "millimeters"
     if metric_unit == "cm":
         return "centimeters"
+    if metric_unit == "degree":
+        return "degrees"
     raise ValueError(f"Unsupported metric_unit: {metric_unit}")
 
 

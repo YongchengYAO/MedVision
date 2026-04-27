@@ -1496,7 +1496,7 @@ def _doc_to_text_DetectionTask_CoT(doc):
         f"Given the input medical image{image_prompt}, "
         f"return the coordinates of the lower-left and upper-right corner of the bounding box for the {label_name}.\n"
         f"Format requirement:\n"
-        f"{FORMAT_PROMPT_DETECTION_REASONING}"
+        f"{FORMAT_PROMPT_DETECTION_REASONING}\n"
         f"Reasoning steps:\n"
         f"{COT_INSTRUCT_DETECTION}\n"
         f"Follow the reasoning steps to get the final answer in the required format."
