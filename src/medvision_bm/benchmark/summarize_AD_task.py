@@ -7,6 +7,9 @@ import re
 
 import numpy as np
 
+from medvision_bm.medvision_lmms_eval.lmms_eval.tasks.medvision.medvision_utils import (
+    _compute_physical_diagonal,
+)
 from medvision_bm.utils.configs import (
     SUMMARY_FILENAME_AD_METRICS,
     SUMMARY_FILENAME_AD_VALUES,
@@ -63,10 +66,24 @@ def cal_metrics_AD_task(results):
         mean_relative_error = np.nan
         success = False
 
+    doc_meta = results.get("doc_meta")
+    if success and doc_meta is not None and doc_meta.get("metric_type") == "distance":
+        try:
+            diagonal = _compute_physical_diagonal(doc_meta, scale_mode=doc_meta.get("scale_mode"))
+            nmae = float(mean_absolute_error) / diagonal
+            nmae_success = True
+        except Exception:
+            nmae = np.nan
+            nmae_success = False
+    else:
+        nmae = np.nan
+        nmae_success = False
+
     return {
         "avgMAE": {"MAE": mean_absolute_error, "success": success},
         "avgMRE": {"MRE": mean_relative_error, "success": success},
         "SuccessRate": {"success": success},
+        "nMAE": {"NMAE": nmae, "success": nmae_success},
     }
 
 
@@ -90,9 +107,11 @@ def _initialize_metric_counters_AD_task():
     return {
         "sum_MAE": 0,
         "sum_MRE": 0,
+        "sum_NMAE": 0,
         "num_success": 0,
         "count_valid_AE": 0,
         "count_valid_RE": 0,
+        "count_valid_NMAE": 0,
         "count_AE_thresholds": [0] * 10,
         "count_RE_thresholds": [0] * 10,
     }
@@ -168,6 +187,12 @@ def _update_metric_counters_AD_task(metrics_dict, counters):
     if np.isfinite(metrics_dict["avgMRE"]["MRE"]):
         _update_mre_counters(metrics_dict["avgMRE"]["MRE"], counters)
 
+    # Update nMAE counters
+    nmae_entry = metrics_dict.get("nMAE", {})
+    if nmae_entry.get("success") and np.isfinite(nmae_entry.get("NMAE", np.nan)):
+        counters["sum_NMAE"] += nmae_entry["NMAE"]
+        counters["count_valid_NMAE"] += 1
+
     # Update success count
     counters["num_success"] += metrics_dict["SuccessRate"]["success"]
 
@@ -206,6 +231,11 @@ def _calculate_final_metrics_AD_task(counters, count_total):
             if counters["count_valid_RE"] > 0
             else np.nan
         ),
+        "avgNMAE": (
+            counters["sum_NMAE"] / counters["count_valid_NMAE"]
+            if counters["count_valid_NMAE"] > 0
+            else np.nan
+        ),
         "SuccessRate": (
             counters["num_success"] / count_total if count_total > 0 else 0.0
         ),
@@ -232,6 +262,7 @@ def process_label_group(label, data):
     """
     targets = data["targets"]
     responses = data["responses"]
+    doc_metas = data.get("doc_metas", [None] * len(targets))
 
     # Skip empty groups
     if not targets or not responses:
@@ -242,8 +273,8 @@ def process_label_group(label, data):
     count_total = len(targets)
 
     # Process each target-response pair
-    for target, response in zip(targets, responses):
-        mock_results = {"filtered_resps": [response], "target": target}
+    for target, response, doc_meta in zip(targets, responses, doc_metas):
+        mock_results = {"filtered_resps": [response], "target": target, "doc_meta": doc_meta}
         metrics_dict = cal_metrics_AD_task(mock_results)
         _update_metric_counters_AD_task(metrics_dict, counters)
 
@@ -282,12 +313,14 @@ def calculate_summary_metrics_per_anatomy_AD_task(all_data, processes=None):
         label = item["label"]
         target = item["targets"]
         response = item["responses"][0]
+        doc_meta = item.get("doc_meta")
 
         if label not in grouped_data:
-            grouped_data[label] = {"targets": [], "responses": []}
+            grouped_data[label] = {"targets": [], "responses": [], "doc_metas": []}
 
         grouped_data[label]["targets"].append(target)
         grouped_data[label]["responses"].append(response)
+        grouped_data[label]["doc_metas"].append(doc_meta)
     summary_metrics = {}
 
     # Prepare items for processing
@@ -410,11 +443,21 @@ def process_jsonl_file(
                 # Construct label: dataset_metricType_metricKey
                 # Example: "FeTA24_distance_BPD" or "Ceph-Biometrics-400_angle_SNA"
                 label_name = f"{dataset_name}_{metric_type}_{metric_key}"
+                scale_mode = "anisotropic" if "scaledPS" in os.path.basename(jsonl_path) else None
+                doc_meta = {
+                    "image_file": doc.get("image_file"),
+                    "slice_dim": doc.get("slice_dim"),
+                    "slice_idx": doc.get("slice_idx"),
+                    "image_size_2d": doc.get("image_size_2d"),
+                    "metric_type": metric_type,
+                    "scale_mode": scale_mode,
+                }
                 results.append(
                     {
                         "label": label_name,
                         "targets": target,
                         "responses": filtered_resps,
+                        "doc_meta": doc_meta,
                     }
                 )
 
@@ -592,6 +635,8 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
             "weighted_avg_mae": None,
             "weighted_sum_mre": 0.0,
             "weighted_avg_mre": None,
+            "weighted_sum_nmae": 0.0,
+            "weighted_avg_nmae": None,
             "weighted_sum_sr": 0.0,
             "weighted_avg_sr": None,
             "weighted_mre<0.1": None,
@@ -599,10 +644,12 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
             "weighted_mre<0.3": None,
         }
 
-        # Process metrics: each label maps to {avgMAE, avgMRE, SuccessRate, MRE<k, num_samples}
+        # Process metrics: each label maps to {avgMAE, avgMRE, avgNMAE, SuccessRate, MRE<k, num_samples}
+        nmae_valid_samples = 0
         for label, label_metrics in metrics.items():
             mae = label_metrics.get("avgMAE")
             mre = label_metrics.get("avgMRE")
+            nmae = label_metrics.get("avgNMAE")
             sr = label_metrics.get("SuccessRate")
             samples = label_metrics.get("num_samples", 0)
             mre_lt_01 = label_metrics.get("MRE<0.1")
@@ -616,6 +663,7 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
             model_summary["labels"][label] = {
                 "MAE": mae,
                 "MRE": mre,
+                "nMAE": nmae,
                 "SR": sr,
                 "samples": samples,
                 "task_type": "A/D",  # Angle/Distance task type
@@ -629,11 +677,14 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
                 model_summary["weighted_sum_mae"] += mae * samples
             if mre is not None and not np.isnan(mre):
                 model_summary["weighted_sum_mre"] += mre * samples
+            if nmae is not None and not np.isnan(nmae):
+                model_summary["weighted_sum_nmae"] += nmae * samples
+                nmae_valid_samples += samples
             if sr is not None and not np.isnan(sr):
                 model_summary["weighted_sum_sr"] += sr * samples
             model_summary["total_samples"] += samples
 
-        # Compute weighted averages for MAE / MRE / SR
+        # Compute weighted averages for MAE / MRE / nMAE / SR
         if model_summary["total_samples"] > 0:
             denom = model_summary["total_samples"]
             model_summary["weighted_avg_mae"] = (
@@ -643,6 +694,10 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
                 model_summary["weighted_sum_mre"] / denom
             )
             model_summary["weighted_avg_sr"] = model_summary["weighted_sum_sr"] / denom
+        if nmae_valid_samples > 0:
+            model_summary["weighted_avg_nmae"] = (
+                model_summary["weighted_sum_nmae"] / nmae_valid_samples
+            )
 
         # Compute weighted (micro-averaged) MRE<0.1/0.2/0.3 across all labels
         wsum_re01 = wsum_re02 = wsum_re03 = 0.0
@@ -678,6 +733,8 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
             f"{(summary['weighted_avg_mae'] if summary['weighted_avg_mae'] is not None else float('nan')):.4f}, "
             f"MRE: "
             f"{(summary['weighted_avg_mre'] if summary['weighted_avg_mre'] is not None else float('nan')):.4f}, "
+            f"nMAE: "
+            f"{(summary['weighted_avg_nmae'] if summary['weighted_avg_nmae'] is not None else float('nan')):.4f}, "
             f"SR: "
             f"{(summary['weighted_avg_sr'] if summary['weighted_avg_sr'] is not None else float('nan')):.4f} "
             f"(Total Samples: {summary['total_samples']})"
@@ -730,6 +787,7 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
                 return {
                     "MAE": float("nan"),
                     "MRE": float("nan"),
+                    "nMAE": float("nan"),
                     "SR": float("nan"),
                     "MRE<0.1": float("nan"),
                     "MRE<0.2": float("nan"),
@@ -744,6 +802,7 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
                 return {
                     "MAE": float("nan"),
                     "MRE": float("nan"),
+                    "nMAE": float("nan"),
                     "SR": float("nan"),
                     "MRE<0.1": float("nan"),
                     "MRE<0.2": float("nan"),
@@ -753,6 +812,7 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
 
             weighted_sum_mae = 0
             weighted_sum_mre = 0
+            weighted_sum_nmae = 0
             weighted_sum_sr = 0
             weighted_sum_re01 = 0
             weighted_sum_re02 = 0
@@ -760,6 +820,7 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
 
             valid_samples_mae = 0
             valid_samples_mre = 0
+            valid_samples_nmae = 0
             valid_samples_sr = 0
             valid_samples_re01 = 0
             valid_samples_re02 = 0
@@ -773,6 +834,9 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
                 if l["MRE"] is not None and not np.isnan(l["MRE"]):
                     weighted_sum_mre += l["MRE"] * samples
                     valid_samples_mre += samples
+                if l.get("nMAE") is not None and not np.isnan(l["nMAE"]):
+                    weighted_sum_nmae += l["nMAE"] * samples
+                    valid_samples_nmae += samples
                 if l["SR"] is not None and not np.isnan(l["SR"]):
                     weighted_sum_sr += l["SR"] * samples
                     valid_samples_sr += samples
@@ -795,6 +859,11 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
                 "MRE": (
                     weighted_sum_mre / valid_samples_mre
                     if valid_samples_mre > 0
+                    else float("nan")
+                ),
+                "nMAE": (
+                    weighted_sum_nmae / valid_samples_nmae
+                    if valid_samples_nmae > 0
                     else float("nan")
                 ),
                 "SR": (
@@ -829,10 +898,10 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
         # Group averages output
         group_header = "\nGroup averages:"
         group_table_header = (
-            f"{'Group':<15} | {'MAE':<8} | {'MRE':<8} | {'SR':<8} | "
+            f"{'Group':<15} | {'MAE':<8} | {'MRE':<8} | {'nMAE':<8} | {'SR':<8} | "
             f"{'MRE<0.1':<8} | {'MRE<0.2':<8} | {'MRE<0.3':<8} | {'Samples':<8}"
         )
-        group_separator = "-" * 88
+        group_separator = "-" * 99
 
         print_and_capture(model_header)
         print_and_capture(weighted_avg)
@@ -846,6 +915,7 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
                 f"{group_name:<15} | "
                 f"{group_avg['MAE']:<8.4f} | "
                 f"{group_avg['MRE']:<8.4f} | "
+                f"{group_avg['nMAE']:<8.4f} | "
                 f"{group_avg['SR']:<8.4f} | "
                 f"{group_avg['MRE<0.1']:<8.4f} | "
                 f"{group_avg['MRE<0.2']:<8.4f} | "
@@ -856,10 +926,10 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
 
         label_header = "\nLabel-specific metrics:"
         table_header = (
-            f"{'Label':<50} | {'MAE':<8} | {'MRE':<8} | {'SR':<8} | "
+            f"{'Label':<50} | {'MAE':<8} | {'MRE':<8} | {'nMAE':<8} | {'SR':<8} | "
             f"{'MRE<0.1':<8} | {'MRE<0.2':<8} | {'MRE<0.3':<8} | {'Samples':<8}"
         )
-        separator = "-" * 128
+        separator = "-" * 139
 
         print_and_capture(label_header)
         print_and_capture(table_header)
@@ -870,6 +940,7 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
             summary["labels"].items(), key=lambda x: x[1]["samples"], reverse=True
         )
         for label, m in sorted_labels:
+            nmae = m.get("nMAE")
             re01 = m.get("MRE<0.1")
             re02 = m.get("MRE<0.2")
             re03 = m.get("MRE<0.3")
@@ -877,6 +948,7 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
                 f"{label:<50} | "
                 f"{(m['MAE'] if m['MAE'] is not None else float('nan')):<8.4f} | "
                 f"{(m['MRE'] if m['MRE'] is not None else float('nan')):<8.4f} | "
+                f"{(nmae if nmae is not None else float('nan')):<8.4f} | "
                 f"{(m['SR'] if m['SR'] is not None else float('nan')):<8.4f} | "
                 f"{(re01 if re01 is not None else float('nan')):<8.4f} | "
                 f"{(re02 if re02 is not None else float('nan')):<8.4f} | "
