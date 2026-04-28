@@ -711,6 +711,44 @@ def create_doc_to_text_BoxCoordinate(preprocess_detection_module):
     return doc_to_text_BoxCoordinate
 
 
+def create_doc_to_text_BoxCoordinate_CoT(preprocess_detection_module):
+    def doc_to_text_BoxCoordinate_CoT(doc, lmms_eval_specific_kwargs=None):
+        """Convert document to text."""
+        from medvision_bm.sft.sft_prompts import COT_INSTRUCT_DETECTION
+
+        # Get task info
+        taskID = doc["taskID"]
+        bm_plan = preprocess_detection_module.benchmark_plan
+        task_info = bm_plan["tasks"][int(taskID) - 1]
+        # Get label info
+        label = str(doc["label"])
+        labels_map = task_info["labels_map"]
+        if label not in labels_map:
+            raise ValueError(f"Label {label} not found in labels_map.")
+        else:
+            label_name = labels_map.get(label)
+        # Get image info
+        image_description = task_info["image_description"]
+        # Question
+        if image_description != "" and image_description is not None:
+            image_prompt = ": " + image_description
+        else:
+            image_prompt = ""
+        question = (
+            f"Task:\n"
+            f"Given the input medical image{image_prompt}, "
+            f"return the coordinates of the lower-left and upper-right corners of the bounding box for the {label_name}.\n"
+            f"Format requirement:\n"
+            f"{FORMAT_PROMPT_BOX_COORDINATES}\n"
+            f"Reasoning steps:\n"
+            f"{COT_INSTRUCT_DETECTION}\n"
+            f"Follow the reasoning steps to get the final answer in the required format."
+        )
+        return question
+
+    return doc_to_text_BoxCoordinate_CoT
+
+
 def create_doc_to_text_BoxCoordinate_wBox(preprocess_detection_module):
     def doc_to_text_BoxCoordinate_wBox(doc, lmms_eval_specific_kwargs=None):
         """Convert document to text."""
