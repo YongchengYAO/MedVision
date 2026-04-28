@@ -1,3 +1,4 @@
+import functools
 import importlib
 import os
 import re
@@ -2672,8 +2673,21 @@ def process_results_TumorLesionSize(doc, results):
         mean_relative_error = np.nan
         success = False
 
+    if success:
+        diagonal = _compute_physical_diagonal(doc, scale_mode=None)
+        nmae = float(mean_absolute_error) / diagonal
+        nmae_success = True
+    else:
+        nmae = np.nan
+        nmae_success = False
+
     # NOTE: The key name is important. It is referred in the "metric" field of the yaml file for this task.
-    return {"avgMAE": {"MAE": mean_absolute_error, "success": success}, "avgMRE": {"MRE": mean_relative_error, "success": success}, "SuccessRate": {"success": success}}
+    return {
+        "avgMAE": {"MAE": mean_absolute_error, "success": success},
+        "avgMRE": {"MRE": mean_relative_error, "success": success},
+        "SuccessRate": {"success": success},
+        "nMAE": {"NMAE": nmae, "success": nmae_success},
+    }
 
 
 def process_results_MaskSize(doc, results):
@@ -2728,8 +2742,22 @@ def process_results_BiometricsFromLandmarks(doc, results):
         relative_error = np.nan
         success = False
 
+    metric_type = doc["biometric_profile"]["metric_type"]
+    if success and metric_type == "distance":
+        diagonal = _compute_physical_diagonal(doc, scale_mode=None)
+        nmae = absolute_error.item() / diagonal
+        nmae_success = True
+    else:
+        nmae = np.nan
+        nmae_success = False
+
     # NOTE: The key name is important. It is referred in the "metric" field of the yaml file for this task.
-    return {"MAE": {"AE": absolute_error, "success": success}, "MRE": {"RE": relative_error, "success": success}, "SuccessRate": {"success": success}}
+    return {
+        "MAE": {"AE": absolute_error, "success": success},
+        "MRE": {"RE": relative_error, "success": success},
+        "SuccessRate": {"success": success},
+        "nMAE": {"NMAE": nmae, "success": nmae_success},
+    }
 
 
 def aggregate_results_MAE(results):
@@ -2813,6 +2841,15 @@ def aggregate_results_SuccessRate(results):
             success_count += 1
     success_rate = success_count / len(results) if len(results) > 0 else np.nan
     return success_rate
+
+
+def aggregate_results_NMAE(results):
+    sum_NMAE, n = 0.0, 0
+    for r in results:
+        if r["success"]:
+            sum_NMAE += r["NMAE"]
+            n += 1
+    return sum_NMAE / n if n > 0 else np.nan
 
 
 def _load_nifti_2d(nii_path, slice_dim, slice_idx, new_shape_hw=None):
@@ -2958,6 +2995,51 @@ def _get_pixel_size_scale_factor(doc, mode):
         raise ValueError(f"Unknown scale mode: {mode}")
 
 
+@functools.lru_cache(maxsize=512)
+def _read_nifti_zooms(nii_path):
+    """Return voxel dimensions from a NIfTI header without loading voxel data.
+    lru_cache avoids re-reading files shared across multiple slices/samples."""
+    if not os.path.exists(nii_path):
+        raise FileNotFoundError(f"Image file {nii_path} does not exist.")
+    return nib.load(nii_path).header.get_zooms()
+
+
+def _compute_physical_diagonal(doc, scale_mode=None):
+    """Physical diagonal of the 2D image slice, in the dataset's native unit.
+
+    NIfTI voxel sizes are in the same unit as biometric_profile.metric_unit —
+    no unit conversion needed. Returns diagonal in that same unit.
+
+    scale_mode:
+      None          -> regular variant (no pixel-size scaling)
+      "uniform"     -> TL scaledPS: single scalar S (both axes)
+      "anisotropic" -> AD scaledPS: independent S_h, S_w
+    """
+    voxel_size = _read_nifti_zooms(doc["image_file"])
+    slice_dim = doc["slice_dim"]
+    if slice_dim == 0:
+        px_h, px_w = float(voxel_size[1]), float(voxel_size[2])
+    elif slice_dim == 1:
+        px_h, px_w = float(voxel_size[0]), float(voxel_size[2])
+    elif slice_dim == 2:
+        px_h, px_w = float(voxel_size[0]), float(voxel_size[1])
+    else:
+        raise ValueError(f"slice_dim must be 0, 1, or 2, got {slice_dim}")
+    H, W = doc["image_size_2d"]
+
+    if scale_mode is None:
+        s_h = s_w = 1.0
+    elif scale_mode == "uniform":
+        s = _get_pixel_size_scale_factor(doc, "uniform")
+        s_h = s_w = s
+    elif scale_mode == "anisotropic":
+        s_h, s_w = _get_pixel_size_scale_factor(doc, "anisotropic")
+    else:
+        raise ValueError(f"Unsupported scale_mode: {scale_mode}")
+
+    return float(np.sqrt((H * px_h * s_h) ** 2 + (W * px_w * s_w) ** 2))
+
+
 def create_doc_to_text_TumorLesionSize_CoT_scaledPS(preprocess_biometry_module):
     """Factory mirroring create_doc_to_text_TumorLesionSize_CoT; only the
     pixel_size shown in the prompt is scaled by a uniform factor S."""
@@ -3078,10 +3160,19 @@ def process_results_TumorLesionSize_scaledPS(doc, results):
         mean_relative_error = np.nan
         success = False
 
+    if success:
+        diagonal = _compute_physical_diagonal(doc, scale_mode="uniform")
+        nmae = float(mean_absolute_error) / diagonal
+        nmae_success = True
+    else:
+        nmae = np.nan
+        nmae_success = False
+
     return {
         "avgMAE": {"MAE": mean_absolute_error, "success": success},
         "avgMRE": {"MRE": mean_relative_error, "success": success},
         "SuccessRate": {"success": success},
+        "nMAE": {"NMAE": nmae, "success": nmae_success},
     }
 
 
@@ -3305,10 +3396,20 @@ def create_process_results_BiometricsFromLandmarks_scaledPS(preprocess_biometry_
             relative_error = np.nan
             success = False
 
+        metric_type = doc["biometric_profile"]["metric_type"]
+        if success and metric_type == "distance":
+            diagonal = _compute_physical_diagonal(doc, scale_mode="anisotropic")
+            nmae = absolute_error.item() / diagonal
+            nmae_success = True
+        else:
+            nmae = np.nan
+            nmae_success = False
+
         return {
             "MAE": {"AE": absolute_error, "success": success},
             "MRE": {"RE": relative_error, "success": success},
             "SuccessRate": {"success": success},
+            "nMAE": {"NMAE": nmae, "success": nmae_success},
         }
 
     return process_results_BiometricsFromLandmarks_scaledPS

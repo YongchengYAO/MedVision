@@ -25,4 +25,7 @@ metric_list:
 - metric: SuccessRate
   aggregation: !function utils.aggregate_results_SuccessRate
   higher_is_better: true
+- metric: nMAE
+  aggregation: !function utils.aggregate_results_NMAE
+  higher_is_better: false
   

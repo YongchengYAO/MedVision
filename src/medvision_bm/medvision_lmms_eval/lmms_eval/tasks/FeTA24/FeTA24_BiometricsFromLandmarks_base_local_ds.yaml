@@ -23,6 +23,9 @@ metric_list:
 - metric: SuccessRate
   aggregation: !function utils.aggregate_results_SuccessRate
   higher_is_better: true
+- metric: nMAE
+  aggregation: !function utils.aggregate_results_NMAE
+  higher_is_better: false
 
 # Order: <model name>, default, dataset
 # code: https://github.com/EvolvingLMMs-Lab/lmms-eval/blob/978eb7f1ccb994f580f9c74309321ad1cf2a5d7e/lmms_eval/api/task.py#L790
