@@ -149,6 +149,7 @@ class VLLM_Qwen3VL(lmms):
         chat_template: Optional[str] = None,
         enable_thinking: bool = False,
         stop_strings: Optional[str] = None,
+        system_prompt: Optional[str] = None,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -163,6 +164,7 @@ class VLLM_Qwen3VL(lmms):
         self.enable_thinking = enable_thinking
         self.lora_path = lora_path
         self.stop_strings: List[str] = json.loads(stop_strings) if stop_strings else []
+        self.system_prompt: Optional[str] = json.loads(system_prompt)[0] if system_prompt else None
 
         # Convert any string arguments that start with { and end with } to dictionaries
         for key, value in kwargs.items():
@@ -309,11 +311,17 @@ class VLLM_Qwen3VL(lmms):
                         for future in all_tasks:
                             imgs.append(future.result())
 
-                messages = [{"role": "user", "content": []}]
+                if self.system_prompt:
+                    messages = [
+                        {"role": "system", "content": [{"type": "text", "text": self.system_prompt}]},
+                        {"role": "user", "content": []},
+                    ]
+                else:
+                    messages = [{"role": "user", "content": []}]
                 # Images must come before text (per Qwen3-VL chat template requirements)
                 for img in imgs:
-                    messages[0]["content"].append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img}"}})
-                messages[0]["content"].append({"type": "text", "text": contexts})
+                    messages[-1]["content"].append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img}"}})
+                messages[-1]["content"].append({"type": "text", "text": contexts})
 
                 batched_messages.append(messages)
 

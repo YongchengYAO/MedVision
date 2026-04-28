@@ -148,6 +148,7 @@ class VLLM_Llava_OneVision(lmms):
         trust_remote_code: Optional[bool] = True,
         chat_template: Optional[str] = None,
         stop_strings: Optional[str] = None,
+        system_prompt: Optional[str] = None,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -161,6 +162,7 @@ class VLLM_Llava_OneVision(lmms):
         self.chat_template = chat_template
         self.lora_path = lora_path
         self.stop_strings: List[str] = json.loads(stop_strings) if stop_strings else []
+        self.system_prompt: Optional[str] = json.loads(system_prompt)[0] if system_prompt else None
 
         # Convert any string arguments that start with { and end with } to dictionaries
         for key, value in kwargs.items():
@@ -296,14 +298,20 @@ class VLLM_Llava_OneVision(lmms):
                             elif isinstance(visual, Image.Image):
                                 all_tasks.append(executor.submit(self.encode_image, visual))
 
-                        for task in all_tasks:
-                            imgs.append(task.result())
+                        for future in all_tasks:
+                            imgs.append(future.result())
 
-                messages = [{"role": "user", "content": []}]
+                if self.system_prompt:
+                    messages = [
+                        {"role": "system", "content": [{"type": "text", "text": self.system_prompt}]},
+                        {"role": "user", "content": []},
+                    ]
+                else:
+                    messages = [{"role": "user", "content": []}]
                 # When there is no image token in the context, append the image to the text
-                messages[0]["content"].append({"type": "text", "text": contexts})
+                messages[-1]["content"].append({"type": "text", "text": contexts})
                 for img in imgs:
-                    messages[0]["content"].append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img}"}})
+                    messages[-1]["content"].append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img}"}})
 
                 batched_messages.append(messages)
 

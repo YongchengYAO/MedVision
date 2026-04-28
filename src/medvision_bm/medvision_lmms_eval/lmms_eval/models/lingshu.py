@@ -1,5 +1,6 @@
 import base64
 import concurrent.futures
+import json
 from functools import partial
 from io import BytesIO
 from typing import List, Optional, Tuple, Union
@@ -34,6 +35,8 @@ class Lingshu(lmms):
         use_flash_attention_2: Optional[bool] = False,
         max_new_tokens: int = 4096,
         num_workers: int = 8,
+        stop_strings: Optional[str] = None,
+        system_prompt: Optional[str] = None,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -42,6 +45,8 @@ class Lingshu(lmms):
         self.use_flash_attention_2 = use_flash_attention_2
         self.max_new_tokens = max_new_tokens
         self.num_workers = num_workers
+        self.stop_strings: List[str] = json.loads(stop_strings) if stop_strings else []
+        self.system_prompt: Optional[str] = json.loads(system_prompt)[0] if system_prompt else None
         self.model_dtype = torch.bfloat16 # use model dtype (https://huggingface.co/lingshu-medical-mllm/Lingshu-32B)
         self.prepare_model()
 
@@ -102,6 +107,18 @@ class Lingshu(lmms):
         base64_string = base64_bytes.decode("utf-8")
         return base64_string
 
+    def _apply_stop_strings(self, text: str) -> str:
+        if not self.stop_strings:
+            return text
+        earliest_pos, earliest_stop = len(text), None
+        for stop in self.stop_strings:
+            pos = text.find(stop)
+            if pos != -1 and pos < earliest_pos:
+                earliest_pos, earliest_stop = pos, stop
+        if earliest_stop is not None:
+            return text[: earliest_pos + len(earliest_stop)]
+        return text
+
     # Code adapted from https://huggingface.co/lingshu-medical-mllm/Lingshu-32B
     def infer(self, questions: Union[str, List[str]], pil_imgs: Union[Image.Image, List[Image.Image]], max_new_tokens: int = None) -> Union[str, List[str]]:
         _max_new_tokens = max_new_tokens if max_new_tokens is not None else self.max_new_tokens
@@ -129,7 +146,11 @@ class Lingshu(lmms):
             # messages = [{"role": "user", "content": [{"type": "image", "image": f"data:image/jpeg;base64,{base64_string}"}, {"type": "text", "text": question}]}]
 
             # [option 2] Use PIL image directly
-            messages = [{"role": "user", "content": [{"type": "image", "image": pil_img}, {"type": "text", "text": question}]}]
+            user_msg = {"role": "user", "content": [{"type": "image", "image": pil_img}, {"type": "text", "text": question}]}
+            if self.system_prompt:
+                messages = [{"role": "system", "content": [{"type": "text", "text": self.system_prompt}]}, user_msg]
+            else:
+                messages = [user_msg]
 
             # NOTE: batch_messages must be a list of messages, where each messages is a list of dict
             batch_messages.append(messages)
@@ -255,6 +276,7 @@ class Lingshu(lmms):
             if isinstance(batch_responses, str):
                 batch_responses = [batch_responses]
 
+            batch_responses = [self._apply_stop_strings(r) for r in batch_responses]
             res.extend(batch_responses)
             pbar.update(batch_size)
 

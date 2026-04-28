@@ -1,4 +1,5 @@
 import concurrent.futures
+import json
 from functools import partial
 from typing import List, Optional, Tuple, Union
 
@@ -39,6 +40,8 @@ class MedGemma(lmms):
         num_workers: int = 8,
         device: Optional[str] = "cuda",
         device_map: Optional[str] = "auto",
+        stop_strings: Optional[str] = None,
+        system_prompt: Optional[str] = None,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -49,6 +52,9 @@ class MedGemma(lmms):
         self.use_pipeline = use_pipeline
         self.max_new_tokens = max_new_tokens
         self.num_workers = num_workers
+        self.stop_strings: List[str] = json.loads(stop_strings) if stop_strings else []
+        # Default preserves the original "You are an expert radiologist." behaviour.
+        self.system_prompt: Optional[str] = json.loads(system_prompt)[0] if system_prompt else "You are an expert radiologist."
 
         # NOTE: google/medgemma-4b-it only supports bfloat16, setting data type to others will cause empty output
         self.model_dtype = torch.bfloat16
@@ -171,6 +177,18 @@ class MedGemma(lmms):
         )
         self.pipe.model.generation_config.do_sample = False
 
+    def _apply_stop_strings(self, text: str) -> str:
+        if not self.stop_strings:
+            return text
+        earliest_pos, earliest_stop = len(text), None
+        for stop in self.stop_strings:
+            pos = text.find(stop)
+            if pos != -1 and pos < earliest_pos:
+                earliest_pos, earliest_stop = pos, stop
+        if earliest_stop is not None:
+            return text[: earliest_pos + len(earliest_stop)]
+        return text
+
     # Code adapted from https://huggingface.co/google/medgemma-4b-it
     def infer(self, questions: Union[str, List[str]], pil_imgs: Union[Image.Image, List[Image.Image]], max_new_tokens: int = None) -> Union[str, List[str]]:
         _max_new_tokens = max_new_tokens if max_new_tokens is not None else self.max_new_tokens
@@ -182,7 +200,11 @@ class MedGemma(lmms):
 
         batch_messages = []
         for question, pil_img in zip(questions, pil_imgs):
-            messages = [{"role": "system", "content": [{"type": "text", "text": "You are an expert radiologist."}]}, {"role": "user", "content": [{"type": "text", "text": question}, {"type": "image", "image": pil_img}]}]
+            user_msg = {"role": "user", "content": [{"type": "text", "text": question}, {"type": "image", "image": pil_img}]}
+            if self.system_prompt:
+                messages = [{"role": "system", "content": [{"type": "text", "text": self.system_prompt}]}, user_msg]
+            else:
+                messages = [user_msg]
             batch_messages.append(messages)
 
         if self.use_pipeline:
@@ -261,6 +283,7 @@ class MedGemma(lmms):
             if isinstance(batch_responses, str):
                 batch_responses = [batch_responses]
 
+            batch_responses = [self._apply_stop_strings(r) for r in batch_responses]
             res.extend(batch_responses)
             pbar.update(batch_size)
 
