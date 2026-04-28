@@ -56,6 +56,7 @@ class Gemini__2_5(lmms):
         json_fields: Optional[Union[List[str], str, Dict[str, str]]] = ["Thought", "Answer"],
         ignore_thoughts: Optional[bool] = False,  # only return final answer in the output
         ignore_code: Optional[bool] = True,  # ignore code blocks in the output (only for use_tool=True)
+        stop_strings: Optional[Union[List[str], str]] = None,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -83,6 +84,7 @@ class Gemini__2_5(lmms):
             raise ValueError("The 'Answer' key must be present in json_fields")
 
         self.ignore_thoughts = ignore_thoughts
+        self.stop_strings: List[str] = json.loads(stop_strings) if isinstance(stop_strings, str) else (stop_strings or [])
 
         # Prepare the Gemini client and configuration
         self.prepare_model()
@@ -111,12 +113,14 @@ class Gemini__2_5(lmms):
                 response_mime_type="application/json" if self.json_output else "text/plain",
                 response_schema=JSON_format if self.json_output else None,
                 tools=[types.Tool(code_execution=types.ToolCodeExecution)],
+                stop_sequences=self.stop_strings if self.stop_strings else None,
             )
         else:
             self.config = types.GenerateContentConfig(
                 thinking_config=types.ThinkingConfig(thinking_budget=self.thinkingBudget),
                 response_mime_type="application/json" if self.json_output else "text/plain",
                 response_schema=JSON_format if self.json_output else None,
+                stop_sequences=self.stop_strings if self.stop_strings else None,
             )
 
     @backoff.on_exception(backoff.expo, Exception, max_tries=10, base=1.0, jitter=backoff.random_jitter)

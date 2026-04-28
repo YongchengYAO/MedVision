@@ -124,6 +124,17 @@ def parse_args():
             "When set, overrides --sample_limit for sample selection."
         ),
     )
+    parser.add_argument(
+        "--stop_strings",
+        nargs="*",
+        default=None,
+        metavar="STRING",
+        help=(
+            "Stop strings for generation (e.g. '</answer>'). "
+            "Generation halts at the first match. "
+            "Passed to the model as stop sequences for all tasks."
+        ),
+    )
     # debugging and control arguments
     parser.add_argument(
         "--skip_env_setup",
@@ -217,6 +228,9 @@ def main():
             else:
                 s = raw
             model_args += f",reshape_image_hw={s}"
+
+        if args.stop_strings:
+            model_args += f",stop_strings={json.dumps(args.stop_strings, separators=(',', ':'))}"
 
         parsed_sample_indices = None
         if args.sample_indices is not None:

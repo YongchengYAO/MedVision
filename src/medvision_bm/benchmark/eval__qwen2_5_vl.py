@@ -150,6 +150,17 @@ def parse_args():
         type=int,
         help="Maximum number of new tokens to generate per sample.",
     )
+    parser.add_argument(
+        "--stop_strings",
+        nargs="*",
+        default=None,
+        metavar="STRING",
+        help=(
+            "Stop strings for generation (e.g. '</answer>'). "
+            "Generation halts at the first match. "
+            "Passed to the model as stop sequences for all tasks."
+        ),
+    )
     # resource-specific arguments
     parser.add_argument(
         "--batch_size_per_gpu",
@@ -305,6 +316,11 @@ def main():
             f"hf_overrides={hf_overrides_json},"
             f"max_new_tokens={max_new_tokens},"
             f"dtype={dtype}"
+            + (
+                f",stop_strings={json.dumps(args.stop_strings, separators=(',', ':'))}"
+                if args.stop_strings
+                else ""
+            )
         )
 
         # add reshape_image_hw to model args if specified, with normalization to ensure correct parsing

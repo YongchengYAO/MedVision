@@ -1,3 +1,4 @@
+import json
 import os
 from typing import List, Optional, Tuple
 
@@ -48,6 +49,7 @@ class LLaVA_Med(lmms):
         top_p: float = None,
         num_beams: int = 1,
         max_new_tokens: int = 4096,
+        stop_strings: Optional[str] = None,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -58,6 +60,7 @@ class LLaVA_Med(lmms):
         self.top_p = top_p
         self.num_beams = num_beams
         self.max_new_tokens = max_new_tokens
+        self.stop_strings: List[str] = json.loads(stop_strings) if stop_strings else []
         self.model_dtype = torch.bfloat16 # use model dtype (https://huggingface.co/microsoft/llava-med-v1.5-mistral-7b/blob/main/config.json)
         self.prepare_model()
 
@@ -177,7 +180,7 @@ class LLaVA_Med(lmms):
         image_tensor = image_tensor.unsqueeze(0).to(torch.bfloat16).to(self.device)
 
         stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
-        keywords = [stop_str]
+        keywords = [stop_str] + self.stop_strings
         stopping_criteria = KeywordsStoppingCriteria(keywords, self._tokenizer, input_ids)
 
         with torch.inference_mode():
@@ -193,4 +196,9 @@ class LLaVA_Med(lmms):
             )
 
         outputs = self._tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0].strip()
+        for stop_str in self.stop_strings:
+            idx = outputs.find(stop_str)
+            if idx != -1:
+                outputs = outputs[:idx + len(stop_str)]
+                break
         return outputs

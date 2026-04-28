@@ -147,6 +147,7 @@ class VLLM_Llava_OneVision(lmms):
         threads: int = 16,  # Threads to use for decoding visuals
         trust_remote_code: Optional[bool] = True,
         chat_template: Optional[str] = None,
+        stop_strings: Optional[str] = None,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -159,6 +160,7 @@ class VLLM_Llava_OneVision(lmms):
         self.threads = threads
         self.chat_template = chat_template
         self.lora_path = lora_path
+        self.stop_strings: List[str] = json.loads(stop_strings) if stop_strings else []
 
         # Convert any string arguments that start with { and end with } to dictionaries
         for key, value in kwargs.items():
@@ -261,12 +263,21 @@ class VLLM_Llava_OneVision(lmms):
                 if "top_p" not in gen_kwargs:
                     gen_kwargs["top_p"] = 0.95
 
+                until = gen_kwargs.get("until") or []
+                if isinstance(until, str):
+                    until = [until]
+                until_list = [s for s in until if s is not None]
+                stop = list(dict.fromkeys(until_list + self.stop_strings))
+
                 params = {
                     "temperature": gen_kwargs["temperature"],
                     "max_tokens": gen_kwargs["max_new_tokens"],
                     "top_p": gen_kwargs["top_p"],
                 }
-                sampling_params = SamplingParams(**params)
+                if stop:
+                    params["stop"] = stop
+                if self.stop_strings:
+                    params["include_stop_str_in_output"] = True
 
                 visuals = [doc_to_visual(self.task_dict[task][split][doc_id])]
                 if None in visuals:
