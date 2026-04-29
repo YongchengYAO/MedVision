@@ -80,6 +80,7 @@ def simple_evaluate(
     datetime_str: str = get_datetime_str(),
     cli_args=None,
     sample_indices: Optional[str] = None,
+    log_sys_prompt: bool = False,
 ):
     """Instantiate and evaluate a model on a list of tasks.
 
@@ -280,6 +281,7 @@ def simple_evaluate(
         verbosity=verbosity,
         cli_args=cli_args,
         sample_indices=parsed_sample_indices,
+        log_sys_prompt=log_sys_prompt,
     )
 
     if lm.rank == 0:
@@ -342,6 +344,7 @@ def evaluate(
     verbosity: str = "INFO",
     cli_args=None,
     sample_indices: Optional[Set[int]] = None,
+    log_sys_prompt: bool = False,
 ):
     """Instantiate and evaluate a model on a list of tasks.
 
@@ -636,6 +639,8 @@ def evaluate(
                         "prompt_hash": hash_string(requests[0].arguments[0]),
                         "target_hash": hash_string(str(target)),
                     }
+                    if log_sys_prompt and hasattr(lm, "system_prompt") and lm.system_prompt is not None:
+                        example["system_prompt"] = lm.system_prompt
                     example.update(metrics)
                     task_output.logged_samples.append(example)
                 for metric, value in metrics.items():

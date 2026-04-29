@@ -48,6 +48,7 @@ def run_evaluation_for_task_vllm_proxy(
     sample_limit: int,
     output_path: str,
     sample_indices: list = None,
+    log_sys_prompt: bool = False,
 ):
     print(f"\nRunning task: {task}\n")
     subprocess.run("conda env list", check=True, shell=True)
@@ -71,6 +72,8 @@ def run_evaluation_for_task_vllm_proxy(
     ]
     if sample_indices is not None:
         cmd += ["--sample_indices", json.dumps(sample_indices)]
+    if log_sys_prompt:
+        cmd += ["--log_sys_prompt"]
     cmd_result = subprocess.run(cmd, check=False)
     print(f"Command executed with return code: {cmd_result.returncode}")
     return cmd_result.returncode
@@ -214,6 +217,12 @@ def parse_args():
             "When set, overrides --sample_limit for sample selection."
         ),
     )
+    parser.add_argument(
+        "--log-sys-prompt",
+        action="store_true",
+        default=False,
+        help="If set, log the system prompt (if any) in the per-sample JSONL output files.",
+    )
     # debugging and control arguments
     parser.add_argument(
         "--skip_env_setup",
@@ -348,6 +357,7 @@ def main():
             sample_limit=sample_limit,
             output_path=os.path.join(result_dir, model_name),
             sample_indices=parsed_sample_indices,
+            log_sys_prompt=args.log_sys_prompt,
         )
 
         if rc == 0:

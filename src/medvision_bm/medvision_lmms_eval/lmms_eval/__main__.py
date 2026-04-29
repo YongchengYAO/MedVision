@@ -275,6 +275,12 @@ def parse_eval_args() -> argparse.Namespace:
             "Typically produced by eval__*.py from --sample_indices [start:stop] or [start,stop,step]."
         ),
     )
+    parser.add_argument(
+        "--log_sys_prompt",
+        action="store_true",
+        default=False,
+        help="If set, log the system prompt (if any) in the per-sample JSONL output files.",
+    )
     args = parser.parse_args()
     return args
 
@@ -506,6 +512,7 @@ def cli_evaluate_single(args: Union[argparse.Namespace, None] = None) -> None:
         cli_args=args,
         datetime_str=datetime_str,
         sample_indices=args.sample_indices,
+        log_sys_prompt=args.log_sys_prompt,
         **request_caching_args,
     )
 
