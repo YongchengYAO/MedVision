@@ -4,6 +4,7 @@ from lmms_eval.tasks.medvision.medvision_utils import (
     aggregate_results_MAE,
     aggregate_results_MRE,
     aggregate_results_SuccessRate,
+    aggregate_results_NMAE,
     create_doc_to_text_BiometricsFromLandmarks,
     create_doc_to_text_BiometricsFromLandmarks_CoT,
     create_doc_to_text_BiometricsFromLandmarks_CoT_scaledPS,
