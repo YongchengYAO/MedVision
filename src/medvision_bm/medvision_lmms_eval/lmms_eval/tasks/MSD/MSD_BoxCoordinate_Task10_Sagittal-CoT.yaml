@@ -1,0 +1,3 @@
+include: MSD_BoxCoordinate_base-CoT.yaml
+task: MSD_BoxCoordinate_Task10_Sagittal-CoT
+dataset_name: MSD_BoxSize_Task10_Sagittal_Test

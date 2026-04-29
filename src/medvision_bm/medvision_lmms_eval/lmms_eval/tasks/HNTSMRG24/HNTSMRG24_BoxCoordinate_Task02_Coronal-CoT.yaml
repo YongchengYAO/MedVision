@@ -1,0 +1,3 @@
+include: HNTSMRG24_BoxCoordinate_base-CoT.yaml
+task: HNTSMRG24_BoxCoordinate_Task02_Coronal-CoT
+dataset_name: HNTSMRG24_BoxSize_Task02_Coronal_Test
