@@ -58,9 +58,24 @@ def cal_metrics_TL_task(results):
         success = False
 
     doc_meta = results.get("doc_meta")
-    if success and doc_meta is not None:
+    nmae_precomputed = doc_meta.get("nmae_precomputed") if doc_meta else None
+
+    if nmae_precomputed is not None:
+        nmae_raw = nmae_precomputed.get("NMAE")
+        nmae = float(nmae_raw) if nmae_raw is not None else np.nan
+        nmae_success = bool(nmae_precomputed.get("success", False)) and np.isfinite(nmae)
+    elif success and doc_meta is not None:
+        # Fallback: recompute diagonal from stored or hash-derived scale.
+        # Tier 2 (pixel_size_scale present): uses the scale factor stored at eval time — guaranteed correct.
+        # Tier 3 (pixel_size_scale absent, old pre-fix JSONL): hash-based derivation; requires
+        #   MEDVISION_SCALED_PS_LOW/HIGH env vars to match eval-time values for scaledPS tasks.
+        pixel_size_scale = doc_meta.get("pixel_size_scale")
         try:
-            diagonal = _compute_physical_diagonal(doc_meta, scale_mode=doc_meta.get("scale_mode"))
+            diagonal = _compute_physical_diagonal(
+                doc_meta,
+                scale_mode=doc_meta.get("scale_mode"),
+                explicit_scale=pixel_size_scale,
+            )
             nmae = float(mean_absolute_error) / diagonal
             nmae_success = True
         except Exception:
@@ -325,6 +340,10 @@ def process_jsonl_file_TL_task(
                             "slice_idx": doc.get("slice_idx"),
                             "image_size_2d": doc.get("image_size_2d"),
                             "scale_mode": scale_mode,
+                            "nmae_precomputed": data.get("nMAE"),
+                            "taskID": doc.get("taskID"),
+                            "label": doc.get("label"),
+                            "pixel_size_scale": data.get("pixel_size_scale"),
                         }
                         results.append(
                             (
