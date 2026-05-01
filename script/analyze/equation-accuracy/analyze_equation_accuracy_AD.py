@@ -362,6 +362,166 @@ def _collect_from_jsonl_args(jsonl_args):
 
 
 # ---------------------------------------------------------------------------
+# Per-model aggregation and cross-model summary
+# ---------------------------------------------------------------------------
+
+SUMMARY_EQ_ACC_AD_METRICS_FILENAME = "summary_eq_acc_AD_metrics.json"
+
+
+def _get_ad_label(record):
+    dataset = record.get("dataset", "")
+    metric_type = record.get("metric_type", "")
+    metric_key = record.get("metric_key", "")
+    if not (dataset and metric_type and metric_key):
+        return None
+    return f"{dataset}_{metric_type}_{metric_key}"
+
+
+def _aggregate_by_label_AD(all_results):
+    """Aggregate per-sample results by label; return {label: averaged equation MRE}."""
+    grouped = {}
+    for r in all_results:
+        label = _get_ad_label(r)
+        if label is None:
+            continue
+        if label not in grouped:
+            grouped[label] = {"metric_type": r.get("metric_type"), "eq_mre": [], "n_samples": 0}
+        g = grouped[label]
+        g["n_samples"] += 1
+        v = r.get("step3_equation_MRE")
+        if v is not None:
+            g["eq_mre"].append(v)
+
+    def _avg(vals):
+        return float(np.mean(vals)) if vals else float("nan")
+
+    return {
+        label: {
+            "metric_type": g["metric_type"],
+            "step3_avg_equation_MRE": _avg(g["eq_mre"]),
+            "n_samples": g["n_samples"],
+            "n_valid": len(g["eq_mre"]),
+        }
+        for label, g in grouped.items()
+    }
+
+
+def _process_model_dir(model_dir, output_suffix):
+    """Process all JSONL files in model's parsed/ dir; save per-label summary JSON."""
+    model_dir = Path(model_dir)
+    parsed_dir = model_dir / "parsed"
+    if not parsed_dir.is_dir():
+        print(f"[skip] no parsed/ dir: {model_dir}")
+        return None
+    jsonl_paths = [p for p in sorted(parsed_dir.glob("*.jsonl")) if output_suffix not in p.stem]
+    if not jsonl_paths:
+        print(f"[skip] no JSONL files in: {parsed_dir}")
+        return None
+
+    print(f"\nProcessing model: {model_dir.name}")
+    all_results = []
+    for jp in jsonl_paths:
+        all_results.extend(process_jsonl(jp, output_suffix))
+
+    summary = _aggregate_by_label_AD(all_results)
+    out_path = parsed_dir / SUMMARY_EQ_ACC_AD_METRICS_FILENAME
+    with open(out_path, "w") as f:
+        json.dump(summary, f, indent=2)
+    print(f"  [saved] per-label summary → {out_path}")
+    return summary
+
+
+def _group_classify_AD(label):
+    if "FeTA24_distance" in label:
+        return "FeTA-Distance"
+    if "Ceph-Biometrics-400_angle" in label:
+        return "Ceph-Angle"
+    if "Ceph-Biometrics-400_distance" in label:
+        return "Ceph-Distance"
+    return "Other"
+
+
+def _calc_group_avg_AD(label_metrics_list):
+    def _wavg(key):
+        s, n = 0.0, 0
+        for m in label_metrics_list:
+            v = m.get(key, float("nan"))
+            if v is not None and not np.isnan(v):
+                s += v * m["n_samples"]
+                n += m["n_samples"]
+        return s / n if n > 0 else float("nan")
+
+    return {
+        "step3_avg_equation_MRE": _wavg("step3_avg_equation_MRE"),
+        "n_samples": sum(m.get("n_samples", 0) for m in label_metrics_list),
+    }
+
+
+def _print_cross_model_summaries_AD(task_dir):
+    """Read per-model summary JSONs, print group/label tables, save summary TXT."""
+    task_dir = Path(task_dir)
+    out_path = task_dir / "summary_eq_acc_AD_task.txt"
+    lines = []
+
+    def _p(text):
+        print(text)
+        lines.append(text)
+
+    _p("\n\n========== MODEL SUMMARIES (Equation Accuracy - AD Task) ==========\n")
+
+    for model_dir in sorted(d for d in task_dir.iterdir() if d.is_dir()):
+        summary_json = model_dir / "parsed" / SUMMARY_EQ_ACC_AD_METRICS_FILENAME
+        if not summary_json.exists():
+            continue
+        with open(summary_json) as f:
+            metrics = json.load(f)
+
+        _p(f"\nModel: {model_dir.name}")
+
+        total_n = 0
+        wsum, wcount = 0.0, 0
+        groups = {"FeTA-Distance": [], "Ceph-Angle": [], "Ceph-Distance": [], "Other": []}
+
+        for label, lm in metrics.items():
+            n = lm.get("n_samples", 0)
+            if n <= 0:
+                continue
+            total_n += n
+            groups[_group_classify_AD(label)].append(lm)
+            v = lm.get("step3_avg_equation_MRE", float("nan"))
+            if v is not None and not np.isnan(v):
+                wsum += v * n
+                wcount += n
+
+        overall = wsum / wcount if wcount > 0 else float("nan")
+        _p(f"Weighted Average → Step3_eq_MRE: {overall:.4f} (Total Samples: {total_n})")
+
+        _p("\nGroup averages:")
+        _p(f"{'Group':<15} | {'Step3_eq_MRE':<14} | {'Samples':<8}")
+        _p("-" * 45)
+        for gname in ("FeTA-Distance", "Ceph-Angle", "Ceph-Distance"):
+            ga = _calc_group_avg_AD(groups[gname])
+            _p(f"{gname:<15} | {ga['step3_avg_equation_MRE']:<14.4f} | {ga['n_samples']:<8}")
+
+        _p("\nLabel-specific metrics:")
+        _p(f"{'Label':<50} | {'Type':<8} | {'Step3_eq_MRE':<14} | {'Valid':<6} | {'Samples':<8}")
+        _p("-" * 100)
+        for label, lm in sorted(metrics.items(), key=lambda x: x[1].get("n_samples", 0), reverse=True):
+            _p(
+                f"{label:<50} | "
+                f"{lm.get('metric_type', ''):<8} | "
+                f"{lm.get('step3_avg_equation_MRE', float('nan')):<14.4f} | "
+                f"{lm.get('n_valid', 0):<6} | "
+                f"{lm.get('n_samples', 0):<8}"
+            )
+        _p("\n" + "=" * 100 + "\n")
+
+    with open(out_path, "w") as f:
+        f.write("\n".join(lines))
+    print(f"\nSummary saved to {out_path}")
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -390,27 +550,24 @@ def main():
     if args.task_dir is None and args.model_dir is None and args.jsonl is None:
         parser.error("Provide at least one of --task_dir, --model_dir, or --jsonl.")
 
-    jsonl_paths = []
-    if args.model_dir:
-        discovered = _collect_from_model_dir(args.model_dir)
-        print(f"[Info] Discovered {len(discovered)} JSONL file(s) under: {args.model_dir}")
-        jsonl_paths.extend(discovered)
-    if args.task_dir:
-        discovered = _collect_from_task_dir(args.task_dir)
-        print(f"[Info] Discovered {len(discovered)} JSONL file(s) under: {args.task_dir}")
-        jsonl_paths.extend(discovered)
     if args.jsonl:
-        jsonl_paths.extend(_collect_from_jsonl_args(args.jsonl))
+        paths = _collect_from_jsonl_args(args.jsonl)
+        if not paths:
+            print("Error: no valid JSONL files found.", file=sys.stderr)
+            sys.exit(1)
+        for jp in paths:
+            process_jsonl(jp, args.output_suffix)
 
-    seen = set()
-    jsonl_paths = [p for p in jsonl_paths if not (p in seen or seen.add(p))]
+    if args.model_dir:
+        print(f"[Info] Processing model dir: {args.model_dir}")
+        _process_model_dir(args.model_dir, args.output_suffix)
 
-    if not jsonl_paths:
-        print("Error: no valid JSONL files found.", file=sys.stderr)
-        sys.exit(1)
-
-    for jp in jsonl_paths:
-        process_jsonl(jp, args.output_suffix)
+    if args.task_dir:
+        model_dirs = sorted(d for d in Path(args.task_dir).iterdir() if d.is_dir())
+        print(f"[Info] Discovered {len(model_dirs)} model dir(s) under: {args.task_dir}")
+        for model_dir in model_dirs:
+            _process_model_dir(model_dir, args.output_suffix)
+        _print_cross_model_summaries_AD(args.task_dir)
 
 
 if __name__ == "__main__":

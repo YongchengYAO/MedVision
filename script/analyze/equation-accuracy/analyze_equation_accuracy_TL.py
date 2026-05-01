@@ -29,6 +29,12 @@ from pathlib import Path
 
 import numpy as np
 
+from medvision_bm.utils.configs import label_map_rename
+from medvision_bm.utils.parse_utils import (
+    get_labelsMap_imgModality_from_biometry_benchmark_plan,
+    get_targetLabel_imgModality_from_biometry_benchmark_plan,
+)
+
 
 # ---------------------------------------------------------------------------
 # Metric
@@ -257,6 +263,7 @@ def process_jsonl(jsonl_path, output_suffix):
                 "taskID":    doc.get("taskID"),
                 "taskType":  task_type,
                 "image_file": doc.get("image_file"),
+                "slice_dim": doc.get("slice_dim"),
             }
 
             try:
@@ -339,6 +346,159 @@ def _collect_from_jsonl_args(jsonl_args):
 
 
 # ---------------------------------------------------------------------------
+# Per-model aggregation and cross-model summary
+# ---------------------------------------------------------------------------
+
+SUMMARY_EQ_ACC_TL_METRICS_FILENAME = "summary_eq_acc_TL_metrics.json"
+
+_IMGMOD_MAP = {"MRI": "MR", "CT": "CT", "ultrasound": "US", "X-ray": "XR", "PET": "PET"}
+_SLICE_MAP = {0: "S", 1: "C", 2: "A"}
+
+
+def _get_tl_label(record):
+    """Derive anatomy label key from a TL record (requires dataset, taskID, slice_dim)."""
+    dataset = record.get("dataset")
+    task_id = record.get("taskID")
+    slice_dim = record.get("slice_dim")
+    if dataset is None or task_id is None or slice_dim is None:
+        return None
+    try:
+        label, _ = get_targetLabel_imgModality_from_biometry_benchmark_plan(dataset, int(task_id))
+        labels_map, img_modality = get_labelsMap_imgModality_from_biometry_benchmark_plan(dataset, int(task_id))
+        label_name = labels_map.get(str(label))
+        if label_name is None:
+            return None
+        new_label = label_map_rename.get(label_name)
+        if new_label is None:
+            return None
+        img_mod = _IMGMOD_MAP.get(img_modality, img_modality)
+        slicetype = _SLICE_MAP.get(int(slice_dim))
+        if slicetype is None:
+            return None
+        return f"{new_label} @ {img_mod} ({slicetype})"
+    except Exception:
+        return None
+
+
+def _aggregate_by_label_TL(all_results):
+    """Aggregate per-sample results by anatomy label; return {label: averaged equation MREs}."""
+    grouped = {}
+    for r in all_results:
+        if r.get("error"):
+            continue
+        label = _get_tl_label(r)
+        if label is None:
+            continue
+        if label not in grouped:
+            grouped[label] = {"eq3": [], "eq4": [], "n_samples": 0}
+        g = grouped[label]
+        g["n_samples"] += 1
+        v3 = r.get("step3_equation_MRE")
+        v4 = r.get("step4_equation_MRE")
+        if v3 is not None: g["eq3"].append(v3)
+        if v4 is not None: g["eq4"].append(v4)
+
+    def _avg(vals):
+        return float(np.mean(vals)) if vals else float("nan")
+
+    return {
+        label: {
+            "step3_avg_equation_MRE": _avg(g["eq3"]),
+            "step4_avg_equation_MRE": _avg(g["eq4"]),
+            "n_samples": g["n_samples"],
+            "n_valid_3": len(g["eq3"]),
+            "n_valid_4": len(g["eq4"]),
+        }
+        for label, g in grouped.items()
+    }
+
+
+def _process_model_dir(model_dir, output_suffix):
+    """Process all JSONL files in model's parsed/ dir; save per-label summary JSON."""
+    model_dir = Path(model_dir)
+    parsed_dir = model_dir / "parsed"
+    if not parsed_dir.is_dir():
+        print(f"[skip] no parsed/ dir: {model_dir}")
+        return None
+    jsonl_paths = [p for p in sorted(parsed_dir.glob("*.jsonl")) if output_suffix not in p.stem]
+    if not jsonl_paths:
+        print(f"[skip] no JSONL files in: {parsed_dir}")
+        return None
+
+    print(f"\nProcessing model: {model_dir.name}")
+    all_results = []
+    for jp in jsonl_paths:
+        all_results.extend(process_jsonl(jp, output_suffix))
+
+    summary = _aggregate_by_label_TL(all_results)
+    out_path = parsed_dir / SUMMARY_EQ_ACC_TL_METRICS_FILENAME
+    with open(out_path, "w") as f:
+        json.dump(summary, f, indent=2)
+    print(f"  [saved] per-label summary → {out_path}")
+    return summary
+
+
+def _print_cross_model_summaries_TL(task_dir):
+    """Read per-model summary JSONs, print label table, save summary TXT."""
+    task_dir = Path(task_dir)
+    out_path = task_dir / "summary_eq_acc_TL_task.txt"
+    lines = []
+
+    def _p(text):
+        print(text)
+        lines.append(text)
+
+    _p("\n\n========== MODEL SUMMARIES (Equation Accuracy - TL Task) ==========\n")
+
+    for model_dir in sorted(d for d in task_dir.iterdir() if d.is_dir()):
+        summary_json = model_dir / "parsed" / SUMMARY_EQ_ACC_TL_METRICS_FILENAME
+        if not summary_json.exists():
+            continue
+        with open(summary_json) as f:
+            metrics = json.load(f)
+
+        _p(f"\nModel: {model_dir.name}")
+
+        total_n = 0
+        wsum3 = wsum4 = 0.0
+        wcount3 = wcount4 = 0
+
+        for label, lm in metrics.items():
+            n = lm.get("n_samples", 0)
+            if n <= 0:
+                continue
+            total_n += n
+            v3 = lm.get("step3_avg_equation_MRE", float("nan"))
+            v4 = lm.get("step4_avg_equation_MRE", float("nan"))
+            if v3 is not None and not np.isnan(v3):
+                wsum3 += v3 * n; wcount3 += n
+            if v4 is not None and not np.isnan(v4):
+                wsum4 += v4 * n; wcount4 += n
+
+        avg3 = wsum3 / wcount3 if wcount3 > 0 else float("nan")
+        avg4 = wsum4 / wcount4 if wcount4 > 0 else float("nan")
+        _p(f"Weighted Average → Step3_eq_MRE: {avg3:.4f}, Step4_eq_MRE: {avg4:.4f} (Total Samples: {total_n})")
+
+        _p("\nLabel-specific metrics:")
+        _p(f"{'Label':<52} | {'S3_eq_MRE':<12} | {'S4_eq_MRE':<12} | {'Valid3':<7} | {'Valid4':<7} | {'Samples':<8}")
+        _p("-" * 110)
+        for label, lm in sorted(metrics.items(), key=lambda x: x[1].get("n_samples", 0), reverse=True):
+            _p(
+                f"{label:<52} | "
+                f"{lm.get('step3_avg_equation_MRE', float('nan')):<12.4f} | "
+                f"{lm.get('step4_avg_equation_MRE', float('nan')):<12.4f} | "
+                f"{lm.get('n_valid_3', 0):<7} | "
+                f"{lm.get('n_valid_4', 0):<7} | "
+                f"{lm.get('n_samples', 0):<8}"
+            )
+        _p("\n" + "=" * 100 + "\n")
+
+    with open(out_path, "w") as f:
+        f.write("\n".join(lines))
+    print(f"\nSummary saved to {out_path}")
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -367,27 +527,24 @@ def main():
     if args.task_dir is None and args.model_dir is None and args.jsonl is None:
         parser.error("Provide at least one of --task_dir, --model_dir, or --jsonl.")
 
-    jsonl_paths = []
-    if args.model_dir:
-        discovered = _collect_from_model_dir(args.model_dir)
-        print(f"[Info] Discovered {len(discovered)} JSONL file(s) under: {args.model_dir}")
-        jsonl_paths.extend(discovered)
-    if args.task_dir:
-        discovered = _collect_from_task_dir(args.task_dir)
-        print(f"[Info] Discovered {len(discovered)} JSONL file(s) under: {args.task_dir}")
-        jsonl_paths.extend(discovered)
     if args.jsonl:
-        jsonl_paths.extend(_collect_from_jsonl_args(args.jsonl))
+        paths = _collect_from_jsonl_args(args.jsonl)
+        if not paths:
+            print("Error: no valid JSONL files found.", file=sys.stderr)
+            sys.exit(1)
+        for jp in paths:
+            process_jsonl(jp, args.output_suffix)
 
-    seen = set()
-    jsonl_paths = [p for p in jsonl_paths if not (p in seen or seen.add(p))]
+    if args.model_dir:
+        print(f"[Info] Processing model dir: {args.model_dir}")
+        _process_model_dir(args.model_dir, args.output_suffix)
 
-    if not jsonl_paths:
-        print("Error: no valid JSONL files found.", file=sys.stderr)
-        sys.exit(1)
-
-    for jp in jsonl_paths:
-        process_jsonl(jp, args.output_suffix)
+    if args.task_dir:
+        model_dirs = sorted(d for d in Path(args.task_dir).iterdir() if d.is_dir())
+        print(f"[Info] Discovered {len(model_dirs)} model dir(s) under: {args.task_dir}")
+        for model_dir in model_dirs:
+            _process_model_dir(model_dir, args.output_suffix)
+        _print_cross_model_summaries_TL(args.task_dir)
 
 
 if __name__ == "__main__":
