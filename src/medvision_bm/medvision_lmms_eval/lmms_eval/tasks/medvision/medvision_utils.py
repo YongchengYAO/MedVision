@@ -1164,7 +1164,7 @@ def get_resized_img_shape(model_name, img_2d_raw, extra_kwargs):
     # Get reshaped image size so that we can adjust the pixel size dynamically
     if model_name in ["qwen3vl", "vllm_qwen3vl"]:
         img_shape_resized_hw = _process_img_qwen3vl(img_2d_raw, extra_kwargs) 
-    elif model_name in ["vllm_qwen25vl", "qwen25vl"]:
+    elif model_name in ["vllm_qwen25vl", "vllm_qwen25vl_tooluse", "qwen25vl"]:
         # NOTE: Qwen2.5-VL resizes images to a size divisible by patch_size (default 14) * merge_size (default 2) = 28
         # Preprocessor config: https://huggingface.co/Qwen/Qwen2.5-VL-32B-Instruct/blob/main/preprocessor_config.json
         # Image processor - Qwen2VLImageProcessor: https://github.com/huggingface/transformers/blob/v4.56.1/src/transformers/models/qwen2_vl/image_processing_qwen2_vl.py#L84

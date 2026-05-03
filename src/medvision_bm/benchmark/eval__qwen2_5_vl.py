@@ -116,6 +116,12 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Run MedVision benchmarking.")
     # model-specific arguments
     parser.add_argument(
+        "--lmmseval_module",
+        default="vllm_qwen25vl",
+        type=str,
+        help="lmms-eval model module name (e.g. vllm_qwen25vl_tooluse for tool-use SFT models).",
+    )
+    parser.add_argument(
         "--model_hf_id",
         default="Qwen/Qwen2.5-VL-7B-Instruct",
         type=str,
@@ -350,7 +356,7 @@ def main():
             parsed_sample_indices = parse_sample_indices(args.sample_indices)
 
         rc = run_evaluation_for_task_vllm_proxy(
-            lmmseval_module="vllm_qwen25vl",
+            lmmseval_module=args.lmmseval_module,
             model_args=vllm_model_args,
             task=task,
             batch_size=batch_size,

@@ -29,6 +29,7 @@ from medvision_bm.sft.sft_prompts import (
 )
 from medvision_bm.utils import str2bool
 from medvision_bm.utils.configs import DATASETS_NAME2PACKAGE, SEED
+from medvision_bm.utils.tool_execution import safe_exec_python
 
 
 def is_main_process():
@@ -3230,3 +3231,180 @@ def parse_sample_limits(**kwargs):
         val_limit_TL,
         train_limit_total,
     )
+
+
+def mask_non_assistant_turns(input_ids, labels, tokenizer):
+    """Set labels to -100 for all non-assistant turns (system, user, tool)."""
+    im_start_id = tokenizer.convert_tokens_to_ids("<|im_start|>")
+    assistant_id = tokenizer.convert_tokens_to_ids("assistant")
+
+    seq_len = input_ids.shape[0]
+    in_assistant_turn = False
+    i = 0
+    while i < seq_len:
+        tok = input_ids[i].item()
+        if tok == im_start_id:
+            role_pos = i + 1
+            if role_pos < seq_len and input_ids[role_pos].item() == assistant_id:
+                in_assistant_turn = True
+            else:
+                in_assistant_turn = False
+        if not in_assistant_turn:
+            labels[i] = -100
+        i += 1
+    return labels
+
+
+def _build_tooluse_messages_AD(prompt, values_dict):
+    """Build 5-turn messages list for one AD tool-use training sample."""
+    import json
+    from medvision_bm.sft.sft_prompts_tooluse import (
+        TOOL_DEF,
+        PYTHON_TEMPLATE_DISTANCE,
+        PYTHON_TEMPLATE_ANGLE,
+        COT_THINK_DISTANCE_TOOLUSE,
+        COT_THINK_ANGLE_TOOLUSE,
+        COT_INSTRUCT_DISTANCE_TOOLUSE,
+        COT_INSTRUCT_ANGLE_TOOLUSE,
+    )
+
+    metric_type = values_dict["metric_type"]
+
+    if metric_type == "distance":
+        code = PYTHON_TEMPLATE_DISTANCE.format(
+            x1=values_dict["<x1>"],
+            y1=values_dict["<y1>"],
+            x2=values_dict["<x2>"],
+            y2=values_dict["<y2>"],
+            W=values_dict["<image_width>"],
+            H=values_dict["<image_height>"],
+            pw=values_dict["<pixel_width>"],
+            ph=values_dict["<pixel_height>"],
+        )
+        think_text = fill_in_template(COT_THINK_DISTANCE_TOOLUSE, values_dict)
+        user_instruct = COT_INSTRUCT_DISTANCE_TOOLUSE
+    else:  # angle
+        code = PYTHON_TEMPLATE_ANGLE.format(
+            x1=values_dict["<x1_line1>"],
+            y1=values_dict["<y1_line1>"],
+            x2=values_dict["<x2_line1>"],
+            y2=values_dict["<y2_line1>"],
+            x3=values_dict["<x1_line2>"],
+            y3=values_dict["<y1_line2>"],
+            x4=values_dict["<x2_line2>"],
+            y4=values_dict["<y2_line2>"],
+            W=values_dict["<image_width>"],
+            H=values_dict["<image_height>"],
+            pw=values_dict["<pixel_width>"],
+            ph=values_dict["<pixel_height>"],
+        )
+        think_text = fill_in_template(COT_THINK_ANGLE_TOOLUSE, values_dict)
+        user_instruct = COT_INSTRUCT_ANGLE_TOOLUSE
+
+    tool_result = safe_exec_python(code)
+    tool_call_json = json.dumps({"name": "execute_python", "arguments": {"code": code}})
+    assistant_turn3 = f"<think> {think_text} </think><tool_call>{tool_call_json}</tool_call>"
+    assistant_turn5 = f"<answer> {tool_result} </answer>"
+
+    prompt_base = prompt.rsplit("Report the reasoning process", 1)[0].rstrip()
+    user_text = prompt_base + " " + user_instruct
+
+    return [
+        {"role": "system", "content": [{"type": "text", "text": json.dumps(TOOL_DEF)}]},
+        {
+            "role": "user",
+            "content": [{"type": "image"}, {"type": "text", "text": user_text}],
+        },
+        {"role": "assistant", "content": [{"type": "text", "text": assistant_turn3}]},
+        {
+            "role": "tool",
+            "content": [{"type": "text", "text": f"<tool_response>{tool_result}</tool_response>"}],
+        },
+        {"role": "assistant", "content": [{"type": "text", "text": assistant_turn5}]},
+    ]
+
+
+def _build_tooluse_messages_TL(prompt, values_dict):
+    """Build 5-turn messages list for one TL tool-use training sample."""
+    import json
+    from medvision_bm.sft.sft_prompts_tooluse import (
+        TOOL_DEF,
+        PYTHON_TEMPLATE_TL,
+        COT_THINK_TL_TOOLUSE,
+        COT_INSTRUCT_TL_TOOLUSE,
+    )
+
+    code = PYTHON_TEMPLATE_TL.format(
+        x1=values_dict["<x1_major>"],
+        y1=values_dict["<y1_major>"],
+        x2=values_dict["<x2_major>"],
+        y2=values_dict["<y2_major>"],
+        x3=values_dict["<x1_minor>"],
+        y3=values_dict["<y1_minor>"],
+        x4=values_dict["<x2_minor>"],
+        y4=values_dict["<y2_minor>"],
+        W=values_dict["<image_width>"],
+        H=values_dict["<image_height>"],
+        pw=values_dict["<pixel_width>"],
+        ph=values_dict["<pixel_height>"],
+    )
+    think_text = fill_in_template(COT_THINK_TL_TOOLUSE, values_dict)
+    tool_result = safe_exec_python(code)
+    tool_call_json = json.dumps({"name": "execute_python", "arguments": {"code": code}})
+    assistant_turn3 = f"<think> {think_text} </think><tool_call>{tool_call_json}</tool_call>"
+    assistant_turn5 = f"<answer> {tool_result} </answer>"
+
+    prompt_base = prompt.rsplit("Report the reasoning process", 1)[0].rstrip()
+    user_text = prompt_base + " " + COT_INSTRUCT_TL_TOOLUSE
+
+    return [
+        {"role": "system", "content": [{"type": "text", "text": json.dumps(TOOL_DEF)}]},
+        {
+            "role": "user",
+            "content": [{"type": "image"}, {"type": "text", "text": user_text}],
+        },
+        {"role": "assistant", "content": [{"type": "text", "text": assistant_turn3}]},
+        {
+            "role": "tool",
+            "content": [{"type": "text", "text": f"<tool_response>{tool_result}</tool_response>"}],
+        },
+        {"role": "assistant", "content": [{"type": "text", "text": assistant_turn5}]},
+    ]
+
+
+def _format_data_AngleDistanceTask_tooluse(
+    example,
+    model_name,
+    model_hf,
+    process_img=False,
+    save_processed_img_to_disk=False,
+    new_shape_hw=None,
+):
+    prompt, values_dict = _doc_to_text_AngleDistanceTask_CoT(
+        example, model_name, model_hf, new_shape_hw
+    )
+    example["messages"] = _build_tooluse_messages_AD(prompt, values_dict)
+    if process_img:
+        example["processed_images"] = img_proccessor_nii2png_save2dataset(example, new_shape_hw)
+    if save_processed_img_to_disk:
+        example["image_file_png"] = img_proccessor_nii2png_save2disk(example, new_shape_hw)
+    return example
+
+
+def _format_data_TumorLesionTask_tooluse(
+    example,
+    model_name,
+    model_hf,
+    process_img=False,
+    save_processed_img_to_disk=False,
+    new_shape_hw=None,
+):
+    prompt, values_dict = _doc_to_text_TumorLesionTask_CoT(
+        example, model_name, model_hf, new_shape_hw
+    )
+    example["messages"] = _build_tooluse_messages_TL(prompt, values_dict)
+    if process_img:
+        example["processed_images"] = img_proccessor_nii2png_save2dataset(example, new_shape_hw)
+    if save_processed_img_to_disk:
+        example["image_file_png"] = img_proccessor_nii2png_save2disk(example, new_shape_hw)
+    return example

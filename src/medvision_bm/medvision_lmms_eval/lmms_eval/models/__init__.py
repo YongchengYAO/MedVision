@@ -49,6 +49,7 @@ AVAILABLE_MODELS = {
     # Qwen2.5-VL
     # "qwen2_5_vl": "Qwen2_5_VL",
     "vllm_qwen25vl": "VLLM_Qwen25VL",
+    "vllm_qwen25vl_tooluse": "VLLM_Qwen25VL_ToolUse",
     # Qwen3-VL
     "qwen3vl": "Qwen3VL",
     # "vllm_qwen3vl": "VLLM_Qwen3VL",
