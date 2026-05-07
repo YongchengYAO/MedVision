@@ -350,8 +350,8 @@ def parse_arguments():
     parser.add_argument(
         "--val_sample_limit",
         type=int,
-        default=100,
-        help="Limit the number of validation samples",
+        default=-1,
+        help="Limit the number of total validation samples, -1 (default) means no limit",
     )
     parser.add_argument(
         "--test_sample_limit",
@@ -655,7 +655,7 @@ def build_parquet_dataset_checkpointed(**kwargs):
         gc.collect()
 
         # Apply global val limit (mirror build_parquet_ds_with_testset.py logic).
-        val_limit = kwargs.get("val_sample_limit", 100)
+        val_limit = kwargs.get("val_sample_limit", -1)
         if val_limit > 0:
             val_size = len(val_cleaned)
             if val_limit > val_size:

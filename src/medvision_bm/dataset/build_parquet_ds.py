@@ -148,8 +148,8 @@ def parse_arguments():
     parser.add_argument(
         "--val_sample_limit",
         type=int,
-        default=100,
-        help="Limit the number of total validation samples",
+        default=-1,
+        help="Limit the number of total validation samples, -1 (default) means no limit",
     )
     parser.add_argument(
         "--test_sample_limit",

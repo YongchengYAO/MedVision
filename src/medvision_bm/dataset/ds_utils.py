@@ -25,10 +25,9 @@ def parse_sample_limits_tr_val_ts(**kwargs):
 
     Returns:
         A tuple of sample limits:
-        (train_limit_AD, val_limit_AD,
-         train_limit_detect, val_limit_detect,
-         train_limit_TL, val_limit_TL,
-         train_limit_total)
+        (train_limit_AD, val_limit_AD, test_limit_AD,
+         train_limit_detect, val_limit_detect, test_limit_detect,
+         train_limit_TL, val_limit_TL, test_limit_TL)
     """
 
     # Determine sample limits for each task
@@ -292,6 +291,7 @@ def load_split_limit_dataset_tr_val_ts(
         group_column="image_file",
         test_size=limit_val_sample,
         seed=SEED,
+        stratify_column="dataset_name",
     )
 
     # Limit the number of training and validation samples if specified

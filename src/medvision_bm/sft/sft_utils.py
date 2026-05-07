@@ -1867,7 +1867,7 @@ def safe_concatenate_datasets(datasets_list):
     return combined_dataset
 
 
-def group_train_test_split(dataset, group_column, test_size, seed=None):
+def group_train_test_split(dataset, group_column, test_size, seed=None, stratify_column=None):
     """
     Splits a HF Dataset into train and validation sets ensuring samples with the
     same value in 'group_column' are in the same split.
@@ -1878,6 +1878,14 @@ def group_train_test_split(dataset, group_column, test_size, seed=None):
         test_size: If float < 1.0, represents fraction of *samples* to aim for.
                    If int >= 1, represents exact number of *samples* to aim for.
         seed: Random seed for shuffling.
+        stratify_column: Optional column name to stratify by (e.g., 'dataset_name').
+            A stratum is the set of volumes belonging to one unique value of this
+            column (e.g., all volumes from 'BraTS24' form one stratum, all volumes
+            from 'AMOS22' form another). When provided, volumes are interleaved
+            round-robin across strata — one volume per stratum per round — before
+            the greedy allocation loop runs. This guarantees every stratum
+            contributes at least one volume to val before any stratum gets a second,
+            preventing a few large-volume datasets from monopolising the val quota.
 
     Returns:
         DatasetDict containing 'train' and 'validation'.
@@ -1891,9 +1899,39 @@ def group_train_test_split(dataset, group_column, test_size, seed=None):
 
     unique_groups = list(group_to_indices.keys())
 
-    # 2. Shuffle groups
+    # 2. Shuffle groups (and optionally interleave across strata for dataset diversity)
     rng = np.random.default_rng(seed)
-    rng.shuffle(unique_groups)
+
+    if stratify_column is not None:
+        # Map each volume (group) to its stratum value
+        stratum_vals = dataset[stratify_column]
+        group_to_stratum = {}
+        for idx, g_val in enumerate(groups):
+            if g_val not in group_to_stratum:
+                group_to_stratum[g_val] = stratum_vals[idx]
+
+        # Bucket volumes by stratum, shuffle within each bucket
+        stratum_to_groups = defaultdict(list)
+        for g in unique_groups:
+            stratum_to_groups[group_to_stratum[g]].append(g)
+        for sg in stratum_to_groups.values():
+            rng.shuffle(sg)
+
+        # Round-robin interleave: one volume per stratum per round
+        # This guarantees every stratum contributes before any stratum gets a 2nd volume
+        strata_iters = [iter(v) for v in stratum_to_groups.values()]
+        unique_groups = []
+        while strata_iters:
+            next_iters = []
+            for it in strata_iters:
+                try:
+                    unique_groups.append(next(it))
+                    next_iters.append(it)
+                except StopIteration:
+                    pass
+            strata_iters = next_iters
+    else:
+        rng.shuffle(unique_groups)
 
     # 3. Determine target sample count
     total_samples = len(dataset)
@@ -2077,6 +2115,7 @@ def load_split_limit_dataset(
         group_column="image_file",
         test_size=limit_val_sample,
         seed=SEED,
+        stratify_column="dataset_name",
     )
 
     # Limit the number of training and validation samples if specified
