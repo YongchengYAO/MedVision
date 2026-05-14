@@ -28,6 +28,9 @@ from pathlib import Path
 
 import numpy as np
 
+from medvision_bm.utils.configs import AD_NEAR_ZERO_GT_THRESHOLD
+from medvision_bm.utils.tool_execution import safe_exec_python
+
 
 # ---------------------------------------------------------------------------
 # Metric
@@ -183,6 +186,42 @@ def _extract_step_answer(solution, k):
 
 
 # ---------------------------------------------------------------------------
+# Tooluse helpers
+# ---------------------------------------------------------------------------
+
+def _extract_tool_call_code(solution):
+    m = re.search(r"<tool_call>(.*?)</tool_call>", solution, re.DOTALL)
+    if not m:
+        return None
+    try:
+        parsed = json.loads(m.group(1))
+        return (parsed.get("arguments") or {}).get("code")
+    except (json.JSONDecodeError, AttributeError):
+        return None
+
+
+def _exec_tool_and_parse(solution):
+    """Execute <tool_call> code; return (python_eval, model_answer) from <answer> tag."""
+    code = _extract_tool_call_code(solution)
+    if code is None:
+        return None, None
+    stdout = safe_exec_python(code)
+    if not stdout or stdout.startswith("ERROR:"):
+        return None, None
+    m_ans = re.search(r"<answer>(.*?)</answer>", solution, re.DOTALL)
+    if not m_ans:
+        return None, None
+    py_nums  = re.findall(r"\d+(?:\.\d+)?", stdout)
+    ans_nums = re.findall(r"\d+(?:\.\d+)?", m_ans.group(1))
+    if not py_nums or not ans_nums:
+        return None, None
+    try:
+        return float(py_nums[0]), float(ans_nums[0])
+    except ValueError:
+        return None, None
+
+
+# ---------------------------------------------------------------------------
 # Per-sample analyzers
 # ---------------------------------------------------------------------------
 
@@ -204,6 +243,11 @@ def analyze_distance_sample(solution):
     raw = _extract_func_call(reasoning, "sqrt")
     result["step3_raw_expr"] = raw
     if raw is None or model_val is None:
+        py_val, tu_val = _exec_tool_and_parse(solution)
+        if py_val is not None and tu_val is not None:
+            result["step3_model_answer"] = tu_val
+            result["step3_python_eval"]  = py_val
+            result["step3_equation_MRE"] = _cal_equation_MRE(tu_val, py_val)
         return result
 
     try:
@@ -234,6 +278,11 @@ def analyze_angle_sample(solution):
     raw = _extract_func_call(reasoning, "arccos")
     result["step3_raw_expr"] = raw
     if raw is None or model_val is None:
+        py_val, tu_val = _exec_tool_and_parse(solution)
+        if py_val is not None and tu_val is not None:
+            result["step3_model_answer"] = tu_val
+            result["step3_python_eval"]  = py_val
+            result["step3_equation_MRE"] = _cal_equation_MRE(tu_val, py_val)
         return result
 
     try:
@@ -366,6 +415,7 @@ def _collect_from_jsonl_args(jsonl_args):
 # ---------------------------------------------------------------------------
 
 SUMMARY_EQ_ACC_AD_METRICS_FILENAME = "summary_eq_acc_AD_metrics.json"
+SUMMARY_EQ_ACC_AD_MODEL_FILENAME = "summary_eq_acc_AD_model.txt"
 
 
 def _get_ad_label(record):
@@ -385,12 +435,16 @@ def _aggregate_by_label_AD(all_results):
         if label is None:
             continue
         if label not in grouped:
-            grouped[label] = {"metric_type": r.get("metric_type"), "eq_mre": [], "n_samples": 0}
+            grouped[label] = {"metric_type": r.get("metric_type"), "eq_mre": [], "n_samples": 0, "n_ignored": 0}
         g = grouped[label]
         g["n_samples"] += 1
         v = r.get("step3_equation_MRE")
         if v is not None:
-            g["eq_mre"].append(v)
+            py_val = r.get("step3_python_eval")
+            if py_val is not None and py_val < AD_NEAR_ZERO_GT_THRESHOLD:
+                g["n_ignored"] += 1
+            else:
+                g["eq_mre"].append(v)
 
     def _avg(vals):
         return float(np.mean(vals)) if vals else float("nan")
@@ -401,6 +455,7 @@ def _aggregate_by_label_AD(all_results):
             "step3_avg_equation_MRE": _avg(g["eq_mre"]),
             "n_samples": g["n_samples"],
             "n_valid": len(g["eq_mre"]),
+            "n_ignored": g["n_ignored"],
         }
         for label, g in grouped.items()
     }
@@ -428,7 +483,60 @@ def _process_model_dir(model_dir, output_suffix):
     with open(out_path, "w") as f:
         json.dump(summary, f, indent=2)
     print(f"  [saved] per-label summary → {out_path}")
+    _print_model_summary_AD(model_dir, summary)
     return summary
+
+
+def _print_model_summary_AD(model_dir, summary):
+    """Write a weighted-average + group + label-table summary TXT for a single model."""
+    model_dir = Path(model_dir)
+    out_path  = model_dir / SUMMARY_EQ_ACC_AD_MODEL_FILENAME
+    lines = []
+
+    def _p(text):
+        print(text)
+        lines.append(text)
+
+    _p(f"\nModel: {model_dir.name}")
+
+    total_n = wsum = wcount = 0
+    groups = {"FeTA-Distance": [], "Ceph-Angle": [], "Ceph-Distance": [], "Other": []}
+    for label, lm in summary.items():
+        n_valid = lm.get("n_valid", 0)
+        if n_valid <= 0:
+            continue
+        total_n += lm.get("n_samples", 0)
+        groups[_group_classify_AD(label)].append(lm)
+        v = lm.get("step3_avg_equation_MRE", float("nan"))
+        if v is not None and not np.isnan(v):
+            wsum += v * n_valid; wcount += n_valid
+
+    overall = wsum / wcount if wcount > 0 else float("nan")
+    _p(f"Weighted Average → Step3_eq_MRE: {overall:.4f} (Valid: {wcount}, Total: {total_n})")
+
+    _p("\nGroup averages:")
+    _p(f"{'Group':<15} | {'Step3_eq_MRE':<14} | {'Valid':<8} | {'Samples':<8}")
+    _p("-" * 53)
+    for gname in ("FeTA-Distance", "Ceph-Angle", "Ceph-Distance"):
+        ga = _calc_group_avg_AD(groups[gname])
+        _p(f"{gname:<15} | {ga['step3_avg_equation_MRE']:<14.4f} | {ga.get('n_valid', 0):<8} | {ga['n_samples']:<8}")
+
+    _p("\nLabel-specific metrics:")
+    _p(f"{'Label':<50} | {'Type':<8} | {'Step3_eq_MRE':<14} | {'Valid':<6} | {'Ignored':<7} | {'Samples':<8}")
+    _p("-" * 112)
+    for label, lm in sorted(summary.items(), key=lambda x: x[1].get("n_samples", 0), reverse=True):
+        _p(
+            f"{label:<50} | "
+            f"{lm.get('metric_type', ''):<8} | "
+            f"{lm.get('step3_avg_equation_MRE', float('nan')):<14.4f} | "
+            f"{lm.get('n_valid', 0):<6} | "
+            f"{lm.get('n_ignored', 0):<7} | "
+            f"{lm.get('n_samples', 0):<8}"
+        )
+
+    with open(out_path, "w") as f:
+        f.write("\n".join(lines))
+    print(f"  [saved] model summary → {out_path}")
 
 
 def _group_classify_AD(label):
@@ -447,12 +555,13 @@ def _calc_group_avg_AD(label_metrics_list):
         for m in label_metrics_list:
             v = m.get(key, float("nan"))
             if v is not None and not np.isnan(v):
-                s += v * m["n_samples"]
-                n += m["n_samples"]
+                s += v * m.get("n_valid", 0)
+                n += m.get("n_valid", 0)
         return s / n if n > 0 else float("nan")
 
     return {
         "step3_avg_equation_MRE": _wavg("step3_avg_equation_MRE"),
+        "n_valid": sum(m.get("n_valid", 0) for m in label_metrics_list),
         "n_samples": sum(m.get("n_samples", 0) for m in label_metrics_list),
     }
 
@@ -483,35 +592,36 @@ def _print_cross_model_summaries_AD(task_dir):
         groups = {"FeTA-Distance": [], "Ceph-Angle": [], "Ceph-Distance": [], "Other": []}
 
         for label, lm in metrics.items():
-            n = lm.get("n_samples", 0)
-            if n <= 0:
+            n_valid = lm.get("n_valid", 0)
+            if n_valid <= 0:
                 continue
-            total_n += n
+            total_n += lm.get("n_samples", 0)
             groups[_group_classify_AD(label)].append(lm)
             v = lm.get("step3_avg_equation_MRE", float("nan"))
             if v is not None and not np.isnan(v):
-                wsum += v * n
-                wcount += n
+                wsum += v * n_valid
+                wcount += n_valid
 
         overall = wsum / wcount if wcount > 0 else float("nan")
-        _p(f"Weighted Average → Step3_eq_MRE: {overall:.4f} (Total Samples: {total_n})")
+        _p(f"Weighted Average → Step3_eq_MRE: {overall:.4f} (Valid: {wcount}, Total: {total_n})")
 
         _p("\nGroup averages:")
-        _p(f"{'Group':<15} | {'Step3_eq_MRE':<14} | {'Samples':<8}")
-        _p("-" * 45)
+        _p(f"{'Group':<15} | {'Step3_eq_MRE':<14} | {'Valid':<8} | {'Samples':<8}")
+        _p("-" * 53)
         for gname in ("FeTA-Distance", "Ceph-Angle", "Ceph-Distance"):
             ga = _calc_group_avg_AD(groups[gname])
-            _p(f"{gname:<15} | {ga['step3_avg_equation_MRE']:<14.4f} | {ga['n_samples']:<8}")
+            _p(f"{gname:<15} | {ga['step3_avg_equation_MRE']:<14.4f} | {ga.get('n_valid', 0):<8} | {ga['n_samples']:<8}")
 
         _p("\nLabel-specific metrics:")
-        _p(f"{'Label':<50} | {'Type':<8} | {'Step3_eq_MRE':<14} | {'Valid':<6} | {'Samples':<8}")
-        _p("-" * 100)
+        _p(f"{'Label':<50} | {'Type':<8} | {'Step3_eq_MRE':<14} | {'Valid':<6} | {'Ignored':<7} | {'Samples':<8}")
+        _p("-" * 112)
         for label, lm in sorted(metrics.items(), key=lambda x: x[1].get("n_samples", 0), reverse=True):
             _p(
                 f"{label:<50} | "
                 f"{lm.get('metric_type', ''):<8} | "
                 f"{lm.get('step3_avg_equation_MRE', float('nan')):<14.4f} | "
                 f"{lm.get('n_valid', 0):<6} | "
+                f"{lm.get('n_ignored', 0):<7} | "
                 f"{lm.get('n_samples', 0):<8}"
             )
         _p("\n" + "=" * 100 + "\n")

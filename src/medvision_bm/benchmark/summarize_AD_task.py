@@ -11,6 +11,7 @@ from medvision_bm.medvision_lmms_eval.lmms_eval.tasks.medvision.medvision_utils 
     _compute_physical_diagonal,
 )
 from medvision_bm.utils.configs import (
+    AD_NEAR_ZERO_GT_THRESHOLD,
     SUMMARY_FILENAME_AD_METRICS,
     SUMMARY_FILENAME_AD_VALUES,
 )
@@ -285,13 +286,25 @@ def process_label_group(label, data):
 
     # Initialize counters for this group
     counters = _initialize_metric_counters_AD_task()
-    count_total = len(targets)
+    count_total = 0
 
     # Process each target-response pair
     for target, response, doc_meta in zip(targets, responses, doc_metas):
+        try:
+            parsed = json.loads(target)
+            gt_val = float(parsed[0]) if isinstance(parsed, list) else float(parsed)
+        except Exception:
+            gt_val = None
+        if gt_val is not None and gt_val < AD_NEAR_ZERO_GT_THRESHOLD:
+            continue
+
+        count_total += 1
         mock_results = {"filtered_resps": [response], "target": target, "doc_meta": doc_meta}
         metrics_dict = cal_metrics_AD_task(mock_results)
         _update_metric_counters_AD_task(metrics_dict, counters)
+
+    if count_total == 0:
+        return label, None
 
     # Calculate and store final metrics for this label
     task_metrics = _calculate_final_metrics_AD_task(counters, count_total)

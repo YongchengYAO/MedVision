@@ -24,7 +24,7 @@ from medvision_bm.sft.sft_prompts import (
     FORMAT_PROMPT_TUMOR_LESION_SIZE,
 )
 from medvision_bm.sft.sft_utils import normalize_img
-from medvision_bm.utils.configs import DATASETS_NAME2PACKAGE
+from medvision_bm.utils.configs import AD_NEAR_ZERO_GT_THRESHOLD, DATASETS_NAME2PACKAGE
 
 # NOTE:
 # For all tasks in the MedVision-Bench, we use these units for tasks:
@@ -2725,6 +2725,13 @@ def process_results_BiometricsFromLandmarks(doc, results):
     pred = results[0]
     pred = parser_last_k_nums(pred, 1)
     target_metric = np.array(doc_to_target_BiometricsFromLandmarks(doc))
+    if float(target_metric.flat[0]) < AD_NEAR_ZERO_GT_THRESHOLD:
+        return {
+            "MAE": {"AE": np.nan, "success": False},
+            "MRE": {"RE": np.nan, "success": False},
+            "SuccessRate": {"success": False, "near_zero_gt": True},
+            "nMAE": {"NMAE": np.nan, "success": False},
+        }
     try:
         # Convert the result string to float32
         prd_parts = pred.strip().split(",")
@@ -2836,11 +2843,14 @@ def aggregate_results_SuccessRate(results):
         success_rate: the percentage of successful results
     """
     success_count = 0
+    total_count = 0
     for result in results:
+        if result.get("near_zero_gt", False):
+            continue
+        total_count += 1
         if result["success"]:
             success_count += 1
-    success_rate = success_count / len(results) if len(results) > 0 else np.nan
-    return success_rate
+    return success_count / total_count if total_count > 0 else np.nan
 
 
 def aggregate_results_NMAE(results):

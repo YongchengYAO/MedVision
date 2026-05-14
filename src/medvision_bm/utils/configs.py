@@ -19,6 +19,9 @@ SUMMARY_FILENAME_TL_VALUES = "summary_values_TL_Task.json"
 # Mainly used in summarize_AD_task.py
 SUMMARY_FILENAME_AD_METRICS = "summary_metrics_AD_Task.json"
 SUMMARY_FILENAME_AD_VALUES = "summary_values_AD_Task.json"
+# Samples whose ground-truth angle/distance is below this threshold are excluded
+# from metric aggregation — near-zero GT causes unbounded MRE.
+AD_NEAR_ZERO_GT_THRESHOLD = 0.1
 # ----------------------------------------------------------------
 
 # ----------------------------------------------------------------
