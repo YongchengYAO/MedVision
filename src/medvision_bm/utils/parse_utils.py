@@ -76,8 +76,8 @@ def convert_numpy_to_python(obj):
 
 def cal_IoU(pred, target):
     # Ensure inputs are 1D numpy arrays with 4 numbers
-    pred = np.asarray(pred).flatten()
-    target = np.asarray(target).flatten()
+    pred = np.asarray(pred, dtype=np.float64).flatten()
+    target = np.asarray(target, dtype=np.float64).flatten()
 
     if len(pred) != 4 or len(target) != 4:
         raise ValueError(
@@ -122,8 +122,8 @@ def cal_IoU(pred, target):
 
 def cal_F1(pred, target):
     # Ensure inputs are 1D numpy arrays with 4 numbers
-    pred = np.asarray(pred).flatten()
-    target = np.asarray(target).flatten()
+    pred = np.asarray(pred, dtype=np.float64).flatten()
+    target = np.asarray(target, dtype=np.float64).flatten()
 
     if len(pred) != 4 or len(target) != 4:
         raise ValueError(
