@@ -4,6 +4,7 @@ import json
 import multiprocessing
 import os
 import re
+from pathlib import Path
 
 import numpy as np
 
@@ -276,9 +277,28 @@ def calculate_summary_metrics_per_anatomy_TL_task(grouped_data, processes=None):
     return summary_metrics
 
 
+def _build_removed_set(json_path):
+    """Load a removed-samples JSON file and return a frozenset of (relative_image_file, slice_dim_int, slice_idx, task_id) keys."""
+    _dim_map = {"x": 0, "y": 1, "z": 2}
+    with open(json_path) as f:
+        entries = json.load(f)
+    return frozenset(
+        (e["image_file"], _dim_map[e["slice_dim"]], int(e["slice_idx"]), int(e["task_ID"]))
+        for e in entries
+    )
+
+
+def _relative_image_file(full_path, dataset_name):
+    """Extract the relative image file path (after the dataset-name component) from an absolute path."""
+    marker = f"/{dataset_name}/"
+    idx = full_path.find(marker)
+    return full_path[idx + len(marker):] if idx >= 0 else Path(full_path).name
+
+
 def process_jsonl_file_TL_task(
     jsonl_path,
     limit=None,
+    removed_set=None,
 ):
     """
     Process a JSONL file and extract relevant fields for TL task evaluation.
@@ -314,6 +334,14 @@ def process_jsonl_file_TL_task(
                 task_id = int(doc.get("taskID"))
                 filtered_resps = data.get("filtered_resps")
                 target = data.get("target")
+
+                # Skip samples removed in the updated dataset
+                if removed_set is not None:
+                    _img = doc.get("image_file", "")
+                    _key = (_relative_image_file(_img, dataset_name), slice_dim, doc.get("slice_idx"), task_id)
+                    if _key in removed_set:
+                        count += 1
+                        continue
 
                 # Get label from benchmark plan
                 label, _ = get_targetLabel_imgModality_from_biometry_benchmark_plan(
@@ -369,6 +397,8 @@ def process_parsed_file_in_model_folder(
     model_dir,
     limit=None,
     processes=None,
+    removed_samples_dir=None,
+    removed_samples_filename=None,
 ):
     """
     Process all JSONL files in a model folder and generate summary metrics.
@@ -377,6 +407,10 @@ def process_parsed_file_in_model_folder(
         model_dir: Path to the model folder
         limit: Maximum number of samples to process per file (None for no limit)
         processes (int, optional): Number of processes to use for parallel calculation.
+        removed_samples_dir (str, optional): Root directory containing per-dataset
+            removed_samples JSON files. When provided, matching samples are excluded.
+        removed_samples_filename (str, optional): Filename within each dataset subdirectory.
+            Defaults to "removed_samples_v1.0.0_to_v1.1.0.json".
     """
     # Find parsed JSONL files
     parsed_files_dir = os.path.join(model_dir, "parsed")
@@ -394,9 +428,19 @@ def process_parsed_file_in_model_folder(
     jsonl_files = glob.glob(os.path.join(parsed_files_dir, "*.jsonl"))
 
     # Collect all data from the parsed JSONL files
+    _removed_cache = {}  # dataset_name → frozenset | None
     all_data = []
     for jsonl_file in jsonl_files:
-        file_data = process_jsonl_file_TL_task(jsonl_file, limit)
+        removed_set = None
+        if removed_samples_dir:
+            match = re.search(r"samples_([^_]+)_", os.path.basename(jsonl_file))
+            ds_name = match.group(1) if match else None
+            if ds_name and ds_name not in _removed_cache:
+                fname = removed_samples_filename or "removed_samples_v1.0.0_to_v1.1.0.json"
+                json_path = os.path.join(removed_samples_dir, ds_name, fname)
+                _removed_cache[ds_name] = _build_removed_set(json_path) if os.path.exists(json_path) else None
+            removed_set = _removed_cache.get(ds_name) if ds_name else None
+        file_data = process_jsonl_file_TL_task(jsonl_file, limit, removed_set=removed_set)
         all_data.extend(file_data)
 
     # Skip processing if no data was collected
@@ -434,22 +478,25 @@ def process_parsed_file_in_model_folder(
         grouped_data, processes=processes
     )
 
+    # Build filename suffix: _filtered and/or _limit{N}
+    _suffix = ("_filtered" if removed_samples_dir else "") + (f"_limit{limit}" if limit is not None else "")
+
     # Save values JSON file
-    values_filename = SUMMARY_FILENAME_TL_VALUES if limit is None else f"{SUMMARY_FILENAME_TL_VALUES.removesuffix('.json')}_limit{limit}.json" 
+    values_filename = f"{SUMMARY_FILENAME_TL_VALUES.removesuffix('.json')}{_suffix}.json"
     values_path = os.path.join(parsed_files_dir, values_filename)
     with open(values_path, "w") as f:
         json.dump(convert_numpy_to_python(grouped_data), f, indent=2)
     print(f"Saved target and model-predicted values to {values_path}")
 
     # Save summary metrics JSON file
-    metrics_filename = SUMMARY_FILENAME_TL_METRICS if limit is None else f"{SUMMARY_FILENAME_TL_METRICS.removesuffix('.json')}_limit{limit}.json"
+    metrics_filename = f"{SUMMARY_FILENAME_TL_METRICS.removesuffix('.json')}{_suffix}.json"
     metrics_path = os.path.join(parsed_files_dir, metrics_filename)
     with open(metrics_path, "w") as f:
         json.dump(convert_numpy_to_python(summary_metrics), f, indent=2)
     print(f"Saved summary metrics to {metrics_path}")
 
 
-def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False):
+def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False, removed_samples_dir=None):
     """
     Print and save summary metrics for all models in a task directory.
 
@@ -457,12 +504,16 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
         task_dir: Path to the task directory containing model folders
         limit: Maximum number of samples to process per file (None for no limit)
         skip_model_wo_parsed_files: Whether to skip models without parsed folders
+        removed_samples_dir (str, optional): When provided, reads filtered metrics files.
     """
     # Get list of model folders within task_dir
     model_dirs = get_subfolders(task_dir)
 
+    # Build filename suffix consistent with process_parsed_file_in_model_folder
+    _suffix = ("_filtered" if removed_samples_dir else "") + (f"_limit{limit}" if limit is not None else "")
+
     # Prepare output file path
-    output_filename = f"summary_TL_task{'_limit' + str(limit) if limit is not None else ''}.txt"
+    output_filename = f"summary_TL_task{_suffix}.txt"
     output_file_path = os.path.join(task_dir, output_filename)
 
     # Collect all output lines
@@ -485,7 +536,7 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
             print(f"\nSkipping model directory (no parsed folder): {model_dir}")
             continue
 
-        metrics_filename = SUMMARY_FILENAME_TL_METRICS if limit is None else f"{SUMMARY_FILENAME_TL_METRICS.removesuffix('.json')}_limit{limit}.json"
+        metrics_filename = f"{SUMMARY_FILENAME_TL_METRICS.removesuffix('.json')}{_suffix}.json"
         metrics_file = os.path.join(parsed_dir, metrics_filename)
 
         with open(metrics_file, "r") as f:
@@ -694,7 +745,8 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
 
 
 def _process_task_directory(
-    task_dir, limit, processes=None, skip_model_wo_parsed_files=False
+    task_dir, limit, processes=None, skip_model_wo_parsed_files=False,
+    removed_samples_dir=None, removed_samples_filename=None,
 ):
     """
     Process all model directories within a task directory.
@@ -704,6 +756,8 @@ def _process_task_directory(
         limit: Maximum number of samples to process per file
         processes (int, optional): Number of processes to use for parallel calculation
         skip_model_wo_parsed_files: Whether to skip model directories without parsed folders
+        removed_samples_dir (str, optional): Root directory with per-dataset removed_samples JSON files.
+        removed_samples_filename (str, optional): Filename within each dataset subdirectory.
     """
     # Get list of model folders within task_dir
     model_dirs = get_subfolders(task_dir)
@@ -723,13 +777,18 @@ def _process_task_directory(
             continue
 
         print(f"\nProcessing model directory: {model_dir}")
-        process_parsed_file_in_model_folder(model_dir, limit, processes=processes)
+        process_parsed_file_in_model_folder(
+            model_dir, limit, processes=processes,
+            removed_samples_dir=removed_samples_dir,
+            removed_samples_filename=removed_samples_filename,
+        )
 
     # Print summary metrics at the end
-    print_model_summaries(task_dir, limit, skip_model_wo_parsed_files)
+    print_model_summaries(task_dir, limit, skip_model_wo_parsed_files, removed_samples_dir=removed_samples_dir)
 
 
-def _process_single_model_directory(model_dir, limit, processes=None):
+def _process_single_model_directory(model_dir, limit, processes=None,
+                                    removed_samples_dir=None, removed_samples_filename=None):
     """
     Process a single model directory.
 
@@ -737,9 +796,15 @@ def _process_single_model_directory(model_dir, limit, processes=None):
         model_dir: Path to the model directory
         limit: Maximum number of samples to process per file
         processes (int, optional): Number of processes to use for parallel calculation
+        removed_samples_dir (str, optional): Root directory with per-dataset removed_samples JSON files.
+        removed_samples_filename (str, optional): Filename within each dataset subdirectory.
     """
     print(f"\nProcessing model directory: {model_dir}")
-    process_parsed_file_in_model_folder(model_dir, limit, processes=processes)
+    process_parsed_file_in_model_folder(
+        model_dir, limit, processes=processes,
+        removed_samples_dir=removed_samples_dir,
+        removed_samples_filename=removed_samples_filename,
+    )
 
 
 def main(**kwargs):
@@ -752,26 +817,37 @@ def main(**kwargs):
         limit: Maximum number of samples to process per file
         skip_model_wo_parsed_files: Whether to skip model directories without parsed folders
         processes: Number of processes to use for parallel calculation
+        removed_samples_dir: Root directory with per-dataset removed_samples JSON files
+        removed_samples_filename: Filename within each dataset subdirectory
     """
     task_dir = kwargs.get("task_dir")
     model_dir = kwargs.get("model_dir")
     limit = kwargs.get("limit")
     skip_model_wo_parsed_files = kwargs.get("skip_model_wo_parsed_files", False)
     processes = kwargs.get("processes")
+    removed_samples_dir = kwargs.get("removed_samples_dir")
+    removed_samples_filename = kwargs.get("removed_samples_filename")
 
     if task_dir is not None:
         print(
             f"Using task_dir: {task_dir}\nModel directories within this folder will be looped over."
         )
         _process_task_directory(
-            task_dir, limit, processes=processes, skip_model_wo_parsed_files=skip_model_wo_parsed_files
+            task_dir, limit, processes=processes,
+            skip_model_wo_parsed_files=skip_model_wo_parsed_files,
+            removed_samples_dir=removed_samples_dir,
+            removed_samples_filename=removed_samples_filename,
         )
 
     elif model_dir is not None:
         print(
             f"Using model_dir: {model_dir}\nProcessing all JSONL files within this directory."
         )
-        _process_single_model_directory(model_dir, limit, processes=processes)
+        _process_single_model_directory(
+            model_dir, limit, processes=processes,
+            removed_samples_dir=removed_samples_dir,
+            removed_samples_filename=removed_samples_filename,
+        )
 
     else:
         raise ValueError("Either 'task_dir' or 'model_dir' must be provided.")
@@ -809,6 +885,22 @@ def parse_args():
         type=int,
         default=None,
         help="Number of worker processes for metric calculation.",
+    )
+    parser.add_argument(
+        "--removed_samples_dir",
+        type=str,
+        default=None,
+        help=(
+            "Root directory containing per-dataset removed_samples JSON files "
+            "(e.g. .../Data/Datasets). When provided, samples listed in those files "
+            "are excluded from metric computation and output filenames get a '_filtered' suffix."
+        ),
+    )
+    parser.add_argument(
+        "--removed_samples_filename",
+        type=str,
+        default="multi_cluster_samples_v1.0.0_to_v1.1.0.json",
+        help="Filename of the removed-samples JSON within each dataset subdirectory.",
     )
 
     args = parser.parse_args()

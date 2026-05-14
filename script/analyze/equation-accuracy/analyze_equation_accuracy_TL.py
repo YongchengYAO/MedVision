@@ -34,6 +34,7 @@ from medvision_bm.utils.parse_utils import (
     get_labelsMap_imgModality_from_biometry_benchmark_plan,
     get_targetLabel_imgModality_from_biometry_benchmark_plan,
 )
+from medvision_bm.utils.tool_execution import safe_exec_python
 
 
 # ---------------------------------------------------------------------------
@@ -187,6 +188,21 @@ def _extract_step_answer(solution, k):
 
 
 # ---------------------------------------------------------------------------
+# Tooluse helpers
+# ---------------------------------------------------------------------------
+
+def _extract_tool_call_code(solution):
+    m = re.search(r"<tool_call>(.*?)</tool_call>", solution, re.DOTALL)
+    if not m:
+        return None
+    try:
+        parsed = json.loads(m.group(1))
+        return (parsed.get("arguments") or {}).get("code")
+    except (json.JSONDecodeError, AttributeError):
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Per-sample analyzer
 # ---------------------------------------------------------------------------
 
@@ -218,6 +234,23 @@ def analyze_tl_sample(solution):
             result[f"step{step}_equation_MRE"] = _cal_equation_MRE(model_val, py_val)
         except Exception as e:
             result[f"step{step}_eval_error"] = str(e)
+
+    # Tooluse fallback: single <tool_call> prints "major, minor" on one line
+    if result["step3_equation_MRE"] is None and result["step3_model_answer"] is None:
+        code = _extract_tool_call_code(solution)
+        if code is not None:
+            stdout = safe_exec_python(code)
+            m_ans = re.search(r"<answer>(.*?)</answer>", solution, re.DOTALL)
+            if stdout and not stdout.startswith("ERROR:") and m_ans:
+                py_nums  = [float(x) for x in re.findall(r"\d+(?:\.\d+)?", stdout)]
+                ans_nums = [float(x) for x in re.findall(r"\d+(?:\.\d+)?", m_ans.group(1))]
+                if len(py_nums) >= 2 and len(ans_nums) >= 2:
+                    result["step3_model_answer"] = ans_nums[0]
+                    result["step4_model_answer"] = ans_nums[1]
+                    result["step3_python_eval"]  = py_nums[0]
+                    result["step4_python_eval"]  = py_nums[1]
+                    result["step3_equation_MRE"] = _cal_equation_MRE(ans_nums[0], py_nums[0])
+                    result["step4_equation_MRE"] = _cal_equation_MRE(ans_nums[1], py_nums[1])
 
     return result
 
@@ -350,6 +383,7 @@ def _collect_from_jsonl_args(jsonl_args):
 # ---------------------------------------------------------------------------
 
 SUMMARY_EQ_ACC_TL_METRICS_FILENAME = "summary_eq_acc_TL_metrics.json"
+SUMMARY_EQ_ACC_TL_MODEL_FILENAME = "summary_eq_acc_TL_model.txt"
 
 _IMGMOD_MAP = {"MRI": "MR", "CT": "CT", "ultrasound": "US", "X-ray": "XR", "PET": "PET"}
 _SLICE_MAP = {0: "S", 1: "C", 2: "A"}
@@ -435,7 +469,55 @@ def _process_model_dir(model_dir, output_suffix):
     with open(out_path, "w") as f:
         json.dump(summary, f, indent=2)
     print(f"  [saved] per-label summary → {out_path}")
+    _print_model_summary_TL(model_dir, summary)
     return summary
+
+
+def _print_model_summary_TL(model_dir, summary):
+    """Write a weighted-average + label-table summary TXT for a single model."""
+    model_dir = Path(model_dir)
+    out_path  = model_dir / SUMMARY_EQ_ACC_TL_MODEL_FILENAME
+    lines = []
+
+    def _p(text):
+        print(text)
+        lines.append(text)
+
+    _p(f"\nModel: {model_dir.name}")
+
+    total_n = wsum3 = wsum4 = wcount3 = wcount4 = 0
+    for lm in summary.values():
+        n = lm.get("n_samples", 0)
+        if n <= 0:
+            continue
+        total_n += n
+        v3 = lm.get("step3_avg_equation_MRE", float("nan"))
+        v4 = lm.get("step4_avg_equation_MRE", float("nan"))
+        if v3 is not None and not np.isnan(v3):
+            wsum3 += v3 * n; wcount3 += n
+        if v4 is not None and not np.isnan(v4):
+            wsum4 += v4 * n; wcount4 += n
+
+    avg3 = wsum3 / wcount3 if wcount3 > 0 else float("nan")
+    avg4 = wsum4 / wcount4 if wcount4 > 0 else float("nan")
+    _p(f"Weighted Average → Step3_eq_MRE: {avg3:.4f}, Step4_eq_MRE: {avg4:.4f} (Total Samples: {total_n})")
+
+    _p("\nLabel-specific metrics:")
+    _p(f"{'Label':<52} | {'S3_eq_MRE':<12} | {'S4_eq_MRE':<12} | {'Valid3':<7} | {'Valid4':<7} | {'Samples':<8}")
+    _p("-" * 110)
+    for label, lm in sorted(summary.items(), key=lambda x: x[1].get("n_samples", 0), reverse=True):
+        _p(
+            f"{label:<52} | "
+            f"{lm.get('step3_avg_equation_MRE', float('nan')):<12.4f} | "
+            f"{lm.get('step4_avg_equation_MRE', float('nan')):<12.4f} | "
+            f"{lm.get('n_valid_3', 0):<7} | "
+            f"{lm.get('n_valid_4', 0):<7} | "
+            f"{lm.get('n_samples', 0):<8}"
+        )
+
+    with open(out_path, "w") as f:
+        f.write("\n".join(lines))
+    print(f"  [saved] model summary → {out_path}")
 
 
 def _print_cross_model_summaries_TL(task_dir):
