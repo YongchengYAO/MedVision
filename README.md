@@ -30,6 +30,11 @@
 
 # 🔥 News
 
+- [May 14, 2026] 🚀 Release **MedVision** dataset v1.1.0 [release v1.1.0](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.0.md)
+  - Highlight: new T/L samples filtering (with ambiguous cases removed), more T/L samples with a single small target (cluster size > 20)
+  - The codebase `medvision_ds` will be automatically updated to the latest (v1.1.0)
+  - Backward compatibility: the env var `MedVision_PLANNER_VERSION` is required (v1.1.0+) to specify the annotation data version. Setting `MedVision_PLANNER_VERSION='1.0.0'` will fall back to **MedVision** dataset v1.0.0.
+
 - [Dec 21, 2025] 🩻 Data & tasks preview: MedVision includes [area-estimation (`MaskSize`) tasks](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/info/ConfigurationsList_All.csv)
 - [Dec 20, 2025] 🎯 New recipe: [SFT with CoT data](https://github.com/YongchengYAO/MedVision/tree/master/script/sft), [build parquet dataset for RFT in verl](https://github.com/YongchengYAO/MedVision/tree/master/script/rft)
 - [Dec 10, 2025] Add preprint, training code, docker images, released models, new tasks/models guide
@@ -865,5 +870,7 @@ python -m medvision_bm.sft.env_setup --data_dir <local-data-folder>
 MedVision is based on some open-source projects:
 - [EvolvingLMMs-Lab/lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval): VLM evaluation framework
 - [EleutherAI/lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness): LLM evaluation framework
+- [vllm-project/vllm](https://github.com/vllm-project/vllm): LLM/VLM inference
+- [verl-project/verl](https://github.com/verl-project/verl): Volcano Engine Reinforcement Learning for LLMs
 
 <br/>
