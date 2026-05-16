@@ -17,7 +17,7 @@
 
 - **Image normalization for visualization.** A complete normalization module (`src/medvision_ds/utils/image_normalization.py`) is added to the codebase, enabling correct image display in landmark visualization figures. CT images use HU window-based normalization selected by anatomy group; all other modalities use percentile min-max normalization. See [Image Normalization](#image-normalization) for details.
 
-- **Versioned landmark and figure folders.** The data generation pipeline now appends `-v{version}` to `landmark_folder` and `landmark_figure_folder` paths (e.g. `Landmarks-Label1-v1.1.0/`), making every generated file traceable to the codebase version that produced it. This applies to the `preprocess_biometry.py` scripts. See [Annotation Data Generation](#annotation-data-generation) for details.
+- **Versioned landmark and figure folders.** The data generation pipeline now appends `-v{version}` to `landmark_folder` and `landmark_figure_folder` paths (e.g. `Landmarks-Label1-v1.1.0/`), making every generated file traceable to the codebase version that produced it. This applies to the `preprocess_biometry.py` scripts. See [New T/L Annotation Data Generation](#new-tl-annotation-data-generation) for details.
 
 - **Version-aware download state tracker.** The `.downloaded_datasets.json` cache file now stores version strings instead of booleans, tracking codebase and annotation data versions independently. Users upgrading from v1.0.0 automatically receive the new annotation files; users who set `MedVision_PLANNER_VERSION=1.0.0` are not forced to re-download. Legacy boolean entries are treated as v1.0.0. See [Download State Tracker](#download-state-tracker) for details.
 

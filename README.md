@@ -32,9 +32,13 @@
 
 - [May 15, 2026] 🚀 Release benchmarking/finetuning codebase (i.e., `medvision_bm`) v1.1.0 [release v1.1.0](https://github.com/YongchengYAO/MedVision/blob/master/docs/codebase-release/release-v1.1.0.md) 
 - [May 14, 2026] 🚀 Release **MedVision** dataset v1.1.0 (i.e., `medvision_ds`) [release v1.1.0](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.0.md)
-  - Highlight: new T/L samples filtering (with ambiguous cases removed), more T/L samples with a single small target (cluster size > 20)
+  - 🌟 Highlight: new T/L samples filtering (with ambiguous cases removed), more T/L samples with a single small target (cluster size > 20)
   - The codebase `medvision_ds` will be automatically updated to the latest (v1.1.0)
   - Backward compatibility: the env var `MedVision_PLANNER_VERSION` is required (v1.1.0+) to specify the annotation data version. Setting `MedVision_PLANNER_VERSION='1.0.0'` will fall back to **MedVision** dataset v1.0.0.
+  - 🧪 Testing backward compatibility: 
+  ```python
+  python unit-test/medvision-ds-planner-version/test_planner_switch_medvision_ds_v1.1.0.py --data_dir <local-data-folder>
+  ```
 
 - [Dec 21, 2025] 🩻 Data & tasks preview: MedVision includes [area-estimation (`MaskSize`) tasks](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/info/ConfigurationsList_All.csv)
 - [Dec 20, 2025] 🎯 New recipe: [SFT with CoT data](https://github.com/YongchengYAO/MedVision/tree/master/script/sft), [build parquet dataset for RFT in verl](https://github.com/YongchengYAO/MedVision/tree/master/script/rft)
