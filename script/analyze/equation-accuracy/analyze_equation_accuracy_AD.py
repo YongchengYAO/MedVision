@@ -388,7 +388,7 @@ def _collect_from_model_dir(model_dir):
     parsed_dir = Path(model_dir) / "parsed"
     if parsed_dir.is_dir():
         for p in sorted(parsed_dir.glob("*.jsonl")):
-            if "_eq_acc" not in p.stem:
+            if "_eq_acc" not in p.stem and "_proc_acc" not in p.stem:
                 paths.append(p)
     return paths
 
@@ -468,7 +468,7 @@ def _process_model_dir(model_dir, output_suffix):
     if not parsed_dir.is_dir():
         print(f"[skip] no parsed/ dir: {model_dir}")
         return None
-    jsonl_paths = [p for p in sorted(parsed_dir.glob("*.jsonl")) if output_suffix not in p.stem]
+    jsonl_paths = [p for p in sorted(parsed_dir.glob("*.jsonl")) if "_eq_acc" not in p.stem and "_proc_acc" not in p.stem]
     if not jsonl_paths:
         print(f"[skip] no JSONL files in: {parsed_dir}")
         return None
