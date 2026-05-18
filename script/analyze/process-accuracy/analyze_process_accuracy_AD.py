@@ -8,13 +8,13 @@ of the parquet dataset and works for any model regardless of image size or promp
 
 For each sample in the input JSONL file(s):
   - Distance tasks (3 steps):
-      Step 1: landmark 1 relative coords  → MAE vs GT
-      Step 2: landmark 2 relative coords  → MAE vs GT
-      Step 3: computed distance           → MRE vs GT
+      Step 1: landmark 1 relative coords  → norm-L2
+      Step 2: landmark 2 relative coords  → norm-L2
+      Step 3: computed distance           → MRE
   - Angle tasks (3 steps):
-      Step 1: line 1 endpoints (2 coords) → MAE vs GT
-      Step 2: line 2 endpoints (2 coords) → MAE vs GT
-      Step 3: computed angle              → MRE vs GT
+      Step 1: line 1 endpoints (2 coords) → norm-L2
+      Step 2: line 2 endpoints (2 coords) → norm-L2
+      Step 3: computed angle              → MRE
 
 Usage:
     python analyze_process_accuracy_AD.py \
@@ -36,8 +36,8 @@ import numpy as np
 
 from medvision_bm.utils.configs import AD_NEAR_ZERO_GT_THRESHOLD
 
-def _cal_point_dist(pred_xy, gt_xy):
-    return float(np.sqrt((pred_xy[0] - gt_xy[0])**2 + (pred_xy[1] - gt_xy[1])**2))
+def _cal_norm_L2_dist(pred_xy, gt_xy):
+    return float(np.sqrt((pred_xy[0] - gt_xy[0])**2 + (pred_xy[1] - gt_xy[1])**2) / np.sqrt(2))
 
 
 def _cal_nMAE(pred, gt, scale):
@@ -283,17 +283,17 @@ def analyze_distance_sample(solution, gt, scale):
     if m1:
         p1 = [float(m1.group(1)), float(m1.group(2))]
         result["step1_pred"] = p1
-        result["step1_MAE"]  = _cal_point_dist(p1, gp1)
+        result["step1_normL2"]  = _cal_norm_L2_dist(p1, gp1)
     else:
-        result["step1_pred"] = result["step1_MAE"] = None
+        result["step1_pred"] = result["step1_normL2"] = None
 
     m2 = _search(PATTERNS_DIST_GROUP[2], solution) or _search(PATTERNS_DIST_ANSWER_ONLY[2], solution)
     if m2:
         p2 = [float(m2.group(1)), float(m2.group(2))]
         result["step2_pred"] = p2
-        result["step2_MAE"]  = _cal_point_dist(p2, gp2)
+        result["step2_normL2"]  = _cal_norm_L2_dist(p2, gp2)
     else:
-        result["step2_pred"] = result["step2_MAE"] = None
+        result["step2_pred"] = result["step2_normL2"] = None
 
     m3 = (_search(PATTERNS_DIST_GROUP[3], solution)
           or _search(PATTERNS_DIST_ANSWER_ONLY[3], solution)
@@ -331,22 +331,22 @@ def analyze_angle_sample(solution, gt):
         p = [float(m1.group(i)) for i in range(1, 5)]
         result["step1_pred"] = p
         pred_pts = [[p[0], p[1]], [p[2], p[3]]]
-        d1 = (_cal_point_dist(pred_pts[0], gl1p1) + _cal_point_dist(pred_pts[1], gl1p2)) / 2
-        d2 = (_cal_point_dist(pred_pts[0], gl1p2) + _cal_point_dist(pred_pts[1], gl1p1)) / 2
-        result["step1_MAE"] = min(d1, d2)
+        d1 = (_cal_norm_L2_dist(pred_pts[0], gl1p1) + _cal_norm_L2_dist(pred_pts[1], gl1p2)) / 2
+        d2 = (_cal_norm_L2_dist(pred_pts[0], gl1p2) + _cal_norm_L2_dist(pred_pts[1], gl1p1)) / 2
+        result["step1_normL2"] = min(d1, d2)
     else:
-        result["step1_pred"] = result["step1_MAE"] = None
+        result["step1_pred"] = result["step1_normL2"] = None
 
     m2 = _search(PATTERNS_ANGLE_GROUP[2], solution) or _search(PATTERNS_ANGLE_ANSWER_ONLY[2], solution)
     if m2:
         p = [float(m2.group(i)) for i in range(1, 5)]
         result["step2_pred"] = p
         pred_pts = [[p[0], p[1]], [p[2], p[3]]]
-        d1 = (_cal_point_dist(pred_pts[0], gl2p1) + _cal_point_dist(pred_pts[1], gl2p2)) / 2
-        d2 = (_cal_point_dist(pred_pts[0], gl2p2) + _cal_point_dist(pred_pts[1], gl2p1)) / 2
-        result["step2_MAE"] = min(d1, d2)
+        d1 = (_cal_norm_L2_dist(pred_pts[0], gl2p1) + _cal_norm_L2_dist(pred_pts[1], gl2p2)) / 2
+        d2 = (_cal_norm_L2_dist(pred_pts[0], gl2p2) + _cal_norm_L2_dist(pred_pts[1], gl2p1)) / 2
+        result["step2_normL2"] = min(d1, d2)
     else:
-        result["step2_pred"] = result["step2_MAE"] = None
+        result["step2_pred"] = result["step2_normL2"] = None
 
     m3 = (_search(PATTERNS_ANGLE_GROUP[3], solution)
           or _search(PATTERNS_ANGLE_ANSWER_ONLY[3], solution)
@@ -416,12 +416,12 @@ def process_jsonl(jsonl_path, output_suffix):
                     pixel_size = doc.get("pixel_size")
                     image_diagonal = np.sqrt((image_size_2d[0]*pixel_size[0])**2 + (image_size_2d[1]*pixel_size[1])**2)
                     record.update(analyze_distance_sample(solution, gt, image_diagonal))
-                    if all(record.get(k) is not None for k in ("step1_MAE", "step2_MAE", "step3_MRE")):
+                    if all(record.get(k) is not None for k in ("step1_normL2", "step2_normL2", "step3_MRE")):
                         n_dist_success += 1
                 elif gt["metric_type"] == "angle":
                     n_angle += 1
                     record.update(analyze_angle_sample(solution, gt))
-                    if all(record.get(k) is not None for k in ("step1_MAE", "step2_MAE", "step3_MRE")):
+                    if all(record.get(k) is not None for k in ("step1_normL2", "step2_normL2", "step3_MRE")):
                         n_angle_success += 1
             except Exception as e:
                 n_parse_fail += 1
@@ -450,12 +450,12 @@ def process_jsonl(jsonl_path, output_suffix):
     print(f"  Total: {n_total}  (distance={n_distance}, angle={n_angle}, gt_fail={n_gt_fail}, parse_fail={n_parse_fail}{success_str})")
     mtype_total = {"distance": n_distance, "angle": n_angle}
     for key, label, mtype in [
-        ("step1_MAE", "Step1 MAE (landmark 1)",    "distance"),
-        ("step2_MAE", "Step2 MAE (landmark 2)",    "distance"),
+        ("step1_normL2", "Step1 normalized L2 distance (landmark 1)",    "distance"),
+        ("step2_normL2", "Step2 normalized L2 distance (landmark 2)",    "distance"),
         ("step3_MRE", "Step3 MRE (distance)",      "distance"),
         ("step3_nMAE", "nMAE (step 3) (distance)", "distance"),
-        ("step1_MAE", "Step1 MAE (line-1 endpts)", "angle"),
-        ("step2_MAE", "Step2 MAE (line-2 endpts)", "angle"),
+        ("step1_normL2", "Step1 normalized L2 distance (line-1 endpts)", "angle"),
+        ("step2_normL2", "Step2 normalized L2 distance (line-2 endpts)", "angle"),
         ("step3_MRE", "Step3 MRE (angle)",         "angle"),
     ]:
         if mtype_total[mtype] == 0:
@@ -543,7 +543,7 @@ def _aggregate_by_label_AD(all_results):
         else:
             g["n_valid"] += 1
 
-        s1, s2, s3_mre, s3_msc = r.get("step1_MAE"), r.get("step2_MAE"), r.get("step3_MRE"), r.get("step3_nMAE")
+        s1, s2, s3_mre, s3_msc = r.get("step1_normL2"), r.get("step2_normL2"), r.get("step3_MRE"), r.get("step3_nMAE")
         if s1 is not None: g["s1"].append(s1)
         if s2 is not None: g["s2"].append(s2)
         if s3_mre is not None and not skip_s3: g["s3_mre"].append(s3_mre)
@@ -557,8 +557,8 @@ def _aggregate_by_label_AD(all_results):
     return {
         label: {
             "metric_type": g["metric_type"],
-            "step1_avg_MAE": _avg(g["s1"]),
-            "step2_avg_MAE": _avg(g["s2"]),
+            "step1_avg_normL2": _avg(g["s1"]),
+            "step2_avg_normL2": _avg(g["s2"]),
             "step3_avg_MRE": _avg(g["s3_mre"]),
             "step3_avg_nMAE": _avg(g["s3_msc"]),
             "n_samples": g["n_samples"],
@@ -620,8 +620,8 @@ def _calc_group_avg_AD(label_metrics_list):
     total_samples = sum(m.get("n_samples", 0) for m in label_metrics_list)
     total_valid   = sum(m.get("n_valid", m.get("n_samples", 0)) for m in label_metrics_list)
     return {
-        "step1_avg_MAE":        _wavg("step1_avg_MAE"),
-        "step2_avg_MAE":        _wavg("step2_avg_MAE"),
+        "step1_avg_normL2":        _wavg("step1_avg_normL2"),
+        "step2_avg_normL2":        _wavg("step2_avg_normL2"),
         "step3_avg_MRE":        _wavg("step3_avg_MRE",        "n_valid"),
         "step3_avg_nMAE": _wavg("step3_avg_nMAE", "n_valid"),
         "n_samples": total_samples,
@@ -639,7 +639,7 @@ def _print_model_summary_AD(model_dir, summary):
         lines.append(text)
 
     total_n = total_v = 0
-    wsum    = {k: 0.0 for k in ("step1_avg_MAE", "step2_avg_MAE", "step3_avg_MRE", "step3_avg_nMAE")}
+    wsum    = {k: 0.0 for k in ("step1_avg_normL2", "step2_avg_normL2", "step3_avg_MRE", "step3_avg_nMAE")}
     wcount  = {k: 0   for k in wsum}
     groups  = {"FeTA-Distance": [], "Ceph-Angle": [], "Ceph-Distance": [], "Other": []}
 
@@ -663,22 +663,22 @@ def _print_model_summary_AD(model_dir, summary):
 
     _p(f"\nModel: {model_dir.name}")
     _p(
-        f"Weighted Average → Step1_MAE: {_wf('step1_avg_MAE'):.4f}, "
-        f"Step2_MAE: {_wf('step2_avg_MAE'):.4f}, "
+        f"Weighted Average → Step1_normL2: {_wf('step1_avg_normL2'):.4f}, "
+        f"Step2_normL2: {_wf('step2_avg_normL2'):.4f}, "
         f"Step3_MRE: {_wf('step3_avg_MRE'):.4f}, "
         f"nMAE (step 3): {_wf('step3_avg_nMAE'):.4f} "
         f"(Valid: {total_v}, Total: {total_n})"
     )
 
     _p("\nGroup averages:")
-    _p(f"{'Group':<15} | {'Step1_MAE':<10} | {'Step2_MAE':<10} | {'Step3_MRE':<10} | {'nMAE (step 3)':<14} | {'Valid':<7} | {'Samples':<8}")
+    _p(f"{'Group':<15} | {'Step1_normL2':<10} | {'Step2_normL2':<10} | {'Step3_MRE':<10} | {'nMAE (step 3)':<14} | {'Valid':<7} | {'Samples':<8}")
     _p("-" * 87)
     for gname in ("FeTA-Distance", "Ceph-Angle", "Ceph-Distance"):
         ga = _calc_group_avg_AD(groups[gname])
         _p(
             f"{gname:<15} | "
-            f"{ga['step1_avg_MAE']:<10.4f} | "
-            f"{ga['step2_avg_MAE']:<10.4f} | "
+            f"{ga['step1_avg_normL2']:<10.4f} | "
+            f"{ga['step2_avg_normL2']:<10.4f} | "
             f"{ga['step3_avg_MRE']:<10.4f} | "
             f"{ga['step3_avg_nMAE']:<14.4f} | "
             f"{ga['n_valid']:<7} | "
@@ -687,7 +687,7 @@ def _print_model_summary_AD(model_dir, summary):
 
     _p("\nLabel-specific metrics:")
     _p(
-        f"{'Label':<50} | {'Type':<8} | {'Step1_MAE':<10} | {'Step2_MAE':<10} | "
+        f"{'Label':<50} | {'Type':<8} | {'Step1_normL2':<10} | {'Step2_normL2':<10} | "
         f"{'Step3_MRE':<10} | {'nMAE (step 3)':<14} | {'SR':<6} | {'Ignored':<8} | {'Samples':<8}"
     )
     _p("-" * 144)
@@ -695,8 +695,8 @@ def _print_model_summary_AD(model_dir, summary):
         _p(
             f"{label:<50} | "
             f"{lm.get('metric_type', ''):<8} | "
-            f"{lm.get('step1_avg_MAE', float('nan')):<10.4f} | "
-            f"{lm.get('step2_avg_MAE', float('nan')):<10.4f} | "
+            f"{lm.get('step1_avg_normL2', float('nan')):<10.4f} | "
+            f"{lm.get('step2_avg_normL2', float('nan')):<10.4f} | "
             f"{lm.get('step3_avg_MRE', float('nan')):<10.4f} | "
             f"{lm.get('step3_avg_nMAE', float('nan')):<10.4f} | "
             f"{lm.get('success_rate', float('nan')):<6.4f} | "
@@ -731,7 +731,7 @@ def _print_cross_model_summaries_AD(task_dir):
         _p(f"\nModel: {model_dir.name}")
 
         total_n = total_v = 0
-        wsum = {k: 0.0 for k in ("step1_avg_MAE", "step2_avg_MAE", "step3_avg_MRE", "step3_avg_nMAE")}
+        wsum = {k: 0.0 for k in ("step1_avg_normL2", "step2_avg_normL2", "step3_avg_MRE", "step3_avg_nMAE")}
         wcount = {k: 0 for k in wsum}
         groups = {"FeTA-Distance": [], "Ceph-Angle": [], "Ceph-Distance": [], "Other": []}
 
@@ -754,22 +754,22 @@ def _print_cross_model_summaries_AD(task_dir):
             return wsum[k] / wcount[k] if wcount[k] > 0 else float("nan")
 
         _p(
-            f"Weighted Average → Step1_MAE: {_wf('step1_avg_MAE'):.4f}, "
-            f"Step2_MAE: {_wf('step2_avg_MAE'):.4f}, "
+            f"Weighted Average → Step1_normL2: {_wf('step1_avg_normL2'):.4f}, "
+            f"Step2_normL2: {_wf('step2_avg_normL2'):.4f}, "
             f"Step3_MRE: {_wf('step3_avg_MRE'):.4f}, "
             f"nMAE (step 3): {_wf('step3_avg_nMAE'):.4f} "
             f"(Valid: {total_v}, Total: {total_n})"
         )
 
         _p("\nGroup averages:")
-        _p(f"{'Group':<15} | {'Step1_MAE':<10} | {'Step2_MAE':<10} | {'Step3_MRE':<10} | {'nMAE':<10} | {'Valid':<7} | {'Samples':<8}")
+        _p(f"{'Group':<15} | {'Step1_normL2':<10} | {'Step2_normL2':<10} | {'Step3_MRE':<10} | {'nMAE':<10} | {'Valid':<7} | {'Samples':<8}")
         _p("-" * 83)
         for gname in ("FeTA-Distance", "Ceph-Angle", "Ceph-Distance"):
             ga = _calc_group_avg_AD(groups[gname])
             _p(
                 f"{gname:<15} | "
-                f"{ga['step1_avg_MAE']:<10.4f} | "
-                f"{ga['step2_avg_MAE']:<10.4f} | "
+                f"{ga['step1_avg_normL2']:<10.4f} | "
+                f"{ga['step2_avg_normL2']:<10.4f} | "
                 f"{ga['step3_avg_MRE']:<10.4f} | "
                 f"{ga['step3_avg_nMAE']:<14.4f} | "
                 f"{ga['n_valid']:<7} | "
@@ -778,7 +778,7 @@ def _print_cross_model_summaries_AD(task_dir):
 
         _p("\nLabel-specific metrics:")
         _p(
-            f"{'Label':<50} | {'Type':<8} | {'Step1_MAE':<10} | {'Step2_MAE':<10} | "
+            f"{'Label':<50} | {'Type':<8} | {'Step1_normL2':<10} | {'Step2_normL2':<10} | "
             f"{'Step3_MRE':<10} | {'nMAE':<10} | {'SR':<6} | {'Ignored':<8} | {'Samples':<8}"
         )
         _p("-" * 140)
@@ -786,8 +786,8 @@ def _print_cross_model_summaries_AD(task_dir):
             _p(
                 f"{label:<50} | "
                 f"{lm.get('metric_type', ''):<8} | "
-                f"{lm.get('step1_avg_MAE', float('nan')):<10.4f} | "
-                f"{lm.get('step2_avg_MAE', float('nan')):<10.4f} | "
+                f"{lm.get('step1_avg_normL2', float('nan')):<10.4f} | "
+                f"{lm.get('step2_avg_normL2', float('nan')):<10.4f} | "
                 f"{lm.get('step3_avg_MRE', float('nan')):<10.4f} | "
                 f"{lm.get('step3_avg_nMAE', float('nan')):<14.4f} | "
                 f"{lm.get('success_rate', float('nan')):<6.4f} | "

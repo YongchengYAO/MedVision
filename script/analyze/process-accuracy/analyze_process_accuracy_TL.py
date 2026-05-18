@@ -34,8 +34,8 @@ from medvision_bm.utils.parse_utils import (
     get_targetLabel_imgModality_from_biometry_benchmark_plan,
 )
 
-def _cal_point_dist(pred_xy, gt_xy):
-    return float(np.sqrt((pred_xy[0] - gt_xy[0])**2 + (pred_xy[1] - gt_xy[1])**2))
+def _cal_norm_L2_dist(pred_xy, gt_xy):
+    return float(np.sqrt((pred_xy[0] - gt_xy[0])**2 + (pred_xy[1] - gt_xy[1])**2) / np.sqrt(2))
 
 def _cal_nMAE(pred, gt, scale):
     return float(np.mean(np.abs(np.array(pred, float) - np.array(gt, float))/(scale + 1e-15)))
@@ -204,8 +204,8 @@ def analyze_tl_sample(solution, gt, scale):
     Compute per-step metrics for a T/L sample.
 
     GT:
-      - P1, P2 (major axis endpoints) → step 1 MAE
-      - P3, P4 (minor axis endpoints) → step 2 MAE
+      - P1, P2 (major axis endpoints) → step 1 norm-L2
+      - P3, P4 (minor axis endpoints) → step 2 norm-L2
       - gt_major (major axis length)  → step 3 MRE
       - gt_minor (minor axis length)  → step 4 MRE
     """
@@ -229,11 +229,11 @@ def analyze_tl_sample(solution, gt, scale):
         pred = [float(m1.group(i)) for i in range(1, 5)]
         result["step1_pred"] = pred
         pred_pts = [[pred[0], pred[1]], [pred[2], pred[3]]]
-        d1 = (_cal_point_dist(pred_pts[0], p1) + _cal_point_dist(pred_pts[1], p2)) / 2
-        d2 = (_cal_point_dist(pred_pts[0], p2) + _cal_point_dist(pred_pts[1], p1)) / 2
-        result["step1_MAE"] = min(d1, d2)
+        d1 = (_cal_norm_L2_dist(pred_pts[0], p1) + _cal_norm_L2_dist(pred_pts[1], p2)) / 2
+        d2 = (_cal_norm_L2_dist(pred_pts[0], p2) + _cal_norm_L2_dist(pred_pts[1], p1)) / 2
+        result["step1_normL2"] = min(d1, d2)
     else:
-        result["step1_pred"] = result["step1_MAE"] = None
+        result["step1_pred"] = result["step1_normL2"] = None
 
     # --- Step 2: minor axis (P3, P4) ---
     m2 = _search(PATTERNS_TL_GROUP[2], solution) or _search(PATTERNS_TL_ANSWER_ONLY[2], solution)
@@ -241,11 +241,11 @@ def analyze_tl_sample(solution, gt, scale):
         pred = [float(m2.group(i)) for i in range(1, 5)]
         result["step2_pred"] = pred
         pred_pts = [[pred[0], pred[1]], [pred[2], pred[3]]]
-        d1 = (_cal_point_dist(pred_pts[0], p3) + _cal_point_dist(pred_pts[1], p4)) / 2
-        d2 = (_cal_point_dist(pred_pts[0], p4) + _cal_point_dist(pred_pts[1], p3)) / 2
-        result["step2_MAE"] = min(d1, d2)
+        d1 = (_cal_norm_L2_dist(pred_pts[0], p3) + _cal_norm_L2_dist(pred_pts[1], p4)) / 2
+        d2 = (_cal_norm_L2_dist(pred_pts[0], p4) + _cal_norm_L2_dist(pred_pts[1], p3)) / 2
+        result["step2_normL2"] = min(d1, d2)
     else:
-        result["step2_pred"] = result["step2_MAE"] = None
+        result["step2_pred"] = result["step2_normL2"] = None
 
     # --- Step 3: major axis length ---
     m3 = _search(PATTERNS_TL_GROUP[3], solution) or _search(PATTERNS_TL_ANSWER_ONLY[3], solution)
@@ -333,7 +333,7 @@ def process_jsonl(jsonl_path, output_suffix):
                 pixel_size = doc.get("pixel_size")
                 image_diagonal = np.sqrt((image_size_2d[0]*pixel_size[0])**2 + (image_size_2d[1]*pixel_size[1])**2)
                 record.update(analyze_tl_sample(solution, gt, image_diagonal))
-                if all(record.get(k) is not None for k in ("step1_MAE", "step2_MAE", "step3_MRE", "step4_MRE")):
+                if all(record.get(k) is not None for k in ("step1_normL2", "step2_normL2", "step3_MRE", "step4_MRE")):
                     n_success += 1
             except Exception as e:
                 n_parse_fail += 1
@@ -357,8 +357,8 @@ def process_jsonl(jsonl_path, output_suffix):
     print(f"\n[{jsonl_path.name}]")
     print(f"  Total: {n_total}  (gt_fail={n_gt_fail}, parse_fail={n_parse_fail}{success_str})")
     for key, label in [
-        ("step1_MAE", "Step1 MAE (major endpts)"),
-        ("step2_MAE", "Step2 MAE (minor endpts)"),
+        ("step1_normL2", "Step1 normalized L2 distance (major endpts)"),
+        ("step2_normL2", "Step2 normalized L2 distance (minor endpts)"),
         ("step3_MRE", "Step3 MRE (major length)"),
         ("step3_nMAE", "nMAE (step 3) (major length)"),
         ("step4_MRE", "Step4 MRE (minor length)"),
@@ -458,7 +458,7 @@ def _aggregate_by_label_TL(all_results):
             }
         g = grouped[label]
         g["n_samples"] += 1
-        s1, s2 = r.get("step1_MAE"), r.get("step2_MAE")
+        s1, s2 = r.get("step1_normL2"), r.get("step2_normL2")
         s3_mre, s4_mre = r.get("step3_MRE"), r.get("step4_MRE")
         s3_msc, s4_msc = r.get("step3_nMAE"), r.get("step4_nMAE")
         if s1 is not None: g["s1"].append(s1)
@@ -475,8 +475,8 @@ def _aggregate_by_label_TL(all_results):
 
     return {
         label: {
-            "step1_avg_MAE": _avg(g["s1"]),
-            "step2_avg_MAE": _avg(g["s2"]),
+            "step1_avg_normL2": _avg(g["s1"]),
+            "step2_avg_normL2": _avg(g["s2"]),
             "step3_avg_MRE": _avg(g["s3_mre"]),
             "step4_avg_MRE": _avg(g["s4_mre"]),
             "step3_avg_nMAE": _avg(g["s3_msc"]),
@@ -498,7 +498,7 @@ def _print_model_summary_TL(model_dir, summary):
         lines.append(text)
 
     total_n = 0
-    wsum    = {k: 0.0 for k in ("step1_avg_MAE", "step2_avg_MAE", "step3_avg_MRE", "step4_avg_MRE", "step3_avg_nMAE", "step4_avg_nMAE")}
+    wsum    = {k: 0.0 for k in ("step1_avg_normL2", "step2_avg_normL2", "step3_avg_MRE", "step4_avg_MRE", "step3_avg_nMAE", "step4_avg_nMAE")}
     wcount  = {k: 0   for k in wsum}
 
     for label, lm in summary.items():
@@ -517,8 +517,8 @@ def _print_model_summary_TL(model_dir, summary):
 
     _p(f"\nModel: {model_dir.name}")
     _p(
-        f"Weighted Average → Step1_MAE: {_wf('step1_avg_MAE'):.4f}, "
-        f"Step2_MAE: {_wf('step2_avg_MAE'):.4f}, "
+        f"Weighted Average → Step1_normL2: {_wf('step1_avg_normL2'):.4f}, "
+        f"Step2_normL2: {_wf('step2_avg_normL2'):.4f}, "
         f"Step3_MRE: {_wf('step3_avg_MRE'):.4f}, Step4_MRE: {_wf('step4_avg_MRE'):.4f}, "
         f"nMAE (step 3): {_wf('step3_avg_nMAE'):.4f}, nMAE (step 4): {_wf('step4_avg_nMAE'):.4f} "
         f"(Total Samples: {total_n})"
@@ -533,8 +533,8 @@ def _print_model_summary_TL(model_dir, summary):
     for label, lm in sorted(summary.items(), key=lambda x: x[1].get("n_samples", 0), reverse=True):
         _p(
             f"{label:<52} | "
-            f"{lm.get('step1_avg_MAE', float('nan')):<8.4f} | "
-            f"{lm.get('step2_avg_MAE', float('nan')):<8.4f} | "
+            f"{lm.get('step1_avg_normL2', float('nan')):<8.4f} | "
+            f"{lm.get('step2_avg_normL2', float('nan')):<8.4f} | "
             f"{lm.get('step3_avg_MRE', float('nan')):<8.4f} | "
             f"{lm.get('step4_avg_MRE', float('nan')):<8.4f} | "
             f"{lm.get('step3_avg_nMAE', float('nan')):<8.4f} | "
@@ -596,7 +596,7 @@ def _print_cross_model_summaries_TL(task_dir):
         _p(f"\nModel: {model_dir.name}")
 
         total_n = 0
-        wsum = {k: 0.0 for k in ("step1_avg_MAE", "step2_avg_MAE", "step3_avg_MRE", "step4_avg_MRE", "step3_avg_nMAE", "step4_avg_nMAE")}
+        wsum = {k: 0.0 for k in ("step1_avg_normL2", "step2_avg_normL2", "step3_avg_MRE", "step4_avg_MRE", "step3_avg_nMAE", "step4_avg_nMAE")}
         wcount = {k: 0 for k in wsum}
 
         for label, lm in metrics.items():
@@ -614,8 +614,8 @@ def _print_cross_model_summaries_TL(task_dir):
             return wsum[k] / wcount[k] if wcount[k] > 0 else float("nan")
 
         _p(
-            f"Weighted Average → Step1_MAE: {_wf('step1_avg_MAE'):.4f}, "
-            f"Step2_MAE: {_wf('step2_avg_MAE'):.4f}, "
+            f"Weighted Average → Step1_normL2: {_wf('step1_avg_normL2'):.4f}, "
+            f"Step2_normL2: {_wf('step2_avg_normL2'):.4f}, "
             f"Step3_MRE: {_wf('step3_avg_MRE'):.4f}, Step4_MRE: {_wf('step4_avg_MRE'):.4f}, "
             f"nMAE (step 3): {_wf('step3_avg_nMAE'):.4f}, nMAE (step 4): {_wf('step4_avg_nMAE'):.4f} "
             f"(Total Samples: {total_n})"
@@ -630,8 +630,8 @@ def _print_cross_model_summaries_TL(task_dir):
         for label, lm in sorted(metrics.items(), key=lambda x: x[1].get("n_samples", 0), reverse=True):
             _p(
                 f"{label:<52} | "
-                f"{lm.get('step1_avg_MAE', float('nan')):<8.4f} | "
-                f"{lm.get('step2_avg_MAE', float('nan')):<8.4f} | "
+                f"{lm.get('step1_avg_normL2', float('nan')):<8.4f} | "
+                f"{lm.get('step2_avg_normL2', float('nan')):<8.4f} | "
                 f"{lm.get('step3_avg_MRE', float('nan')):<8.4f} | "
                 f"{lm.get('step4_avg_MRE', float('nan')):<8.4f} | "
                 f"{lm.get('step3_avg_nMAE', float('nan')):<14.4f} | "
