@@ -10,6 +10,9 @@ from functools import partial
 import numpy as np
 from tqdm import tqdm
 
+from medvision_bm.medvision_lmms_eval.lmms_eval.tasks.medvision.medvision_utils import (
+    _compute_physical_diagonal,
+)
 from medvision_bm.utils.parse_utils import (
     cal_metrics,
     convert_numpy_to_python,
@@ -215,12 +218,57 @@ def _process_jsonl_file(jsonl_file, temp_file, task_type, limit, verbose=True):
             data["SuccessRate"] = metrics_dict["SuccessRate"]
             if task_type == "Detection":
                 data["avgIoU"] = metrics_dict["avgIoU"]
+                data["F1"] = metrics_dict["F1"]
+                data["Precision"] = metrics_dict["Precision"]
+                data["Recall"] = metrics_dict["Recall"]
             elif task_type == "AD" or task_type == "TL":
                 data["avgMRE"] = metrics_dict["avgMRE"]
             else:
                 raise ValueError(
                     f"Invalid task_type: {task_type}. Must be 'Detection', 'TL', or 'AD'"
                 )
+
+            # Compute per-sample nMAE for TL/AD tasks.
+            # Guard: skip if nMAE already present in raw JSONL (Tier 1 passthrough).
+            # For scaledPS files without stored pixel_size_scale: leave absent to preserve
+            # Tier 3 hash-based fallback in summarize scripts for old JSONL files.
+            # For regular (non-scaledPS) files: pixel_size_scale=None is correct —
+            # _compute_physical_diagonal handles it with s_h=s_w=1.0.
+            if task_type in ("TL", "AD") and "nMAE" not in data:
+                is_scaledPS = "scaledPS" in os.path.basename(jsonl_file)
+                pixel_size_scale = data.get("pixel_size_scale")
+                if not (is_scaledPS and pixel_size_scale is None):
+                    doc = data["doc"]
+                    metric_type = (
+                        doc.get("biometric_profile", {}).get("metric_type", "")
+                        if task_type == "AD"
+                        else "distance"
+                    )
+                    if metric_type == "distance" and metrics_dict["avgMAE"]["success"]:
+                        scale_mode = (
+                            ("anisotropic" if task_type == "AD" else "uniform")
+                            if is_scaledPS
+                            else None
+                        )
+                        doc_meta = {
+                            "image_file": doc.get("image_file"),
+                            "slice_dim": doc.get("slice_dim"),
+                            "image_size_2d": doc.get("image_size_2d"),
+                        }
+                        try:
+                            diagonal = _compute_physical_diagonal(
+                                doc_meta,
+                                scale_mode=scale_mode,
+                                explicit_scale=pixel_size_scale,
+                            )
+                            data["nMAE"] = {
+                                "NMAE": float(metrics_dict["avgMAE"]["MAE"]) / diagonal,
+                                "success": True,
+                            }
+                        except Exception:
+                            data["nMAE"] = {"NMAE": np.nan, "success": False}
+                    else:
+                        data["nMAE"] = {"NMAE": np.nan, "success": False}
 
             # Update the summary dictionary: metrics
             if "avgMAE" in metrics_dict:

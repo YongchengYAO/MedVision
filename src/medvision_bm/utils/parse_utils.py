@@ -368,6 +368,9 @@ def cal_metrics(results, task_type):
             mean_absolute_error = np.nan
             mean_relative_error = np.nan
             IoU = np.nan
+            f1 = np.nan
+            precision = np.nan
+            recall = np.nan
             success = False
         else:
             absolute_error = np.abs(pred_metrics - target_metrics)
@@ -375,6 +378,9 @@ def cal_metrics(results, task_type):
 
             if task_type == "Detection":
                 IoU = cal_IoU(pred_metrics, target_metrics)
+                f1 = cal_F1(pred_metrics, target_metrics)
+                precision = cal_Precision(pred_metrics, target_metrics)
+                recall = cal_Recall(pred_metrics, target_metrics)
             else:
                 mean_relative_error = np.mean(absolute_error / (target_metrics + 1e-15))
 
@@ -383,6 +389,9 @@ def cal_metrics(results, task_type):
         mean_absolute_error = np.nan
         mean_relative_error = np.nan
         IoU = np.nan
+        f1 = np.nan
+        precision = np.nan
+        recall = np.nan
         success = False
 
     # NOTE: The key name is important. It is referred in the "metric" field of the yaml file for this task.
@@ -390,6 +399,9 @@ def cal_metrics(results, task_type):
         return {
             "avgMAE": {"MAE": mean_absolute_error, "success": success},
             "avgIoU": {"IoU": IoU},
+            "F1": {"F1": f1},
+            "Precision": {"Precision": precision},
+            "Recall": {"Recall": recall},
             "SuccessRate": {"success": success},
         }
     else:  # TL or AD
