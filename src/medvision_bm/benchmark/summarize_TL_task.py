@@ -410,7 +410,6 @@ def process_parsed_file_in_model_folder(
         removed_samples_dir (str, optional): Root directory containing per-dataset
             removed_samples JSON files. When provided, matching samples are excluded.
         removed_samples_filename (str, optional): Filename within each dataset subdirectory.
-            Defaults to "removed_samples_v1.0.0_to_v1.1.0.json".
     """
     # Find parsed JSONL files
     parsed_files_dir = os.path.join(model_dir, "parsed")
@@ -436,7 +435,7 @@ def process_parsed_file_in_model_folder(
             match = re.search(r"samples_([^_]+)_", os.path.basename(jsonl_file))
             ds_name = match.group(1) if match else None
             if ds_name and ds_name not in _removed_cache:
-                fname = removed_samples_filename or "removed_samples_v1.0.0_to_v1.1.0.json"
+                fname = removed_samples_filename
                 json_path = os.path.join(removed_samples_dir, ds_name, fname)
                 _removed_cache[ds_name] = _build_removed_set(json_path) if os.path.exists(json_path) else None
             removed_set = _removed_cache.get(ds_name) if ds_name else None
