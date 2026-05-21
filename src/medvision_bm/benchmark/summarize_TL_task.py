@@ -424,7 +424,10 @@ def process_parsed_file_in_model_folder(
         print(f"Parsed files directory does not exist: {parsed_files_dir}, skipping...")
         return
 
-    jsonl_files = glob.glob(os.path.join(parsed_files_dir, "*.jsonl"))
+    jsonl_files = [
+        f for f in glob.glob(os.path.join(parsed_files_dir, "*.jsonl"))
+        if not (f.endswith("_proc_acc.jsonl") or f.endswith("_eq_acc.jsonl"))
+    ]
 
     # Collect all data from the parsed JSONL files
     _removed_cache = {}  # dataset_name → frozenset | None

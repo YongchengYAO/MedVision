@@ -390,8 +390,11 @@ def find_and_group_jsonl_files(model_path):
                 'FeTA24_BiometricsFromLandmarks_Task01_combined': ['path/to/file1.jsonl', 'path/to/file2.jsonl']
             }
     """
-    # Find all JSONL files in the model folder
-    jsonl_files = glob.glob(os.path.join(model_path, "*.jsonl"))
+    # Find all JSONL files in the model folder (exclude analysis output files)
+    jsonl_files = [
+        f for f in glob.glob(os.path.join(model_path, "*.jsonl"))
+        if not (f.endswith("_proc_acc.jsonl") or f.endswith("_eq_acc.jsonl"))
+    ]
 
     # Group files by dataset and task
     grouped_files = {}
