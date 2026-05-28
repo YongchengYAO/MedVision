@@ -256,10 +256,32 @@ def analyze_tl_sample(solution):
 
 
 # ---------------------------------------------------------------------------
+# Removed-samples filtering helpers (mirrors summarize_TL_task.py)
+# ---------------------------------------------------------------------------
+
+_DIM_MAP = {"x": 0, "y": 1, "z": 2}
+
+
+def _build_removed_set(json_path):
+    with open(json_path) as f:
+        entries = json.load(f)
+    return frozenset(
+        (e["image_file"], _DIM_MAP[e["slice_dim"]], int(e["slice_idx"]), int(e["task_ID"]))
+        for e in entries
+    )
+
+
+def _relative_image_file(full_path, dataset_name):
+    marker = f"/{dataset_name}/"
+    idx = full_path.find(marker)
+    return full_path[idx + len(marker):] if idx >= 0 else Path(full_path).name
+
+
+# ---------------------------------------------------------------------------
 # Process a single JSONL file
 # ---------------------------------------------------------------------------
 
-def process_jsonl(jsonl_path, output_suffix):
+def process_jsonl(jsonl_path, output_suffix, removed_set=None, dataset_name=None):
     jsonl_path = Path(jsonl_path)
     out_path   = jsonl_path.with_name(jsonl_path.stem + output_suffix + ".jsonl")
 
@@ -279,6 +301,17 @@ def process_jsonl(jsonl_path, output_suffix):
             solution = sample.get("resps", [[""]])[0]
             if isinstance(solution, list):
                 solution = solution[0] if solution else ""
+
+            if removed_set is not None and dataset_name is not None:
+                _img = doc.get("image_file", "")
+                _key = (
+                    _relative_image_file(_img, dataset_name),
+                    doc.get("slice_dim"),
+                    doc.get("slice_idx"),
+                    int(doc.get("taskID", 0)),
+                )
+                if _key in removed_set:
+                    continue
 
             task_type = doc.get("taskType", "")
             if "Tumor" not in task_type and "Lesion" not in task_type:
@@ -447,7 +480,7 @@ def _aggregate_by_label_TL(all_results):
     }
 
 
-def _process_model_dir(model_dir, output_suffix):
+def _process_model_dir(model_dir, output_suffix, removed_samples_dir=None, removed_samples_filename=None):
     """Process all JSONL files in model's parsed/ dir; save per-label summary JSON."""
     model_dir = Path(model_dir)
     parsed_dir = model_dir / "parsed"
@@ -459,24 +492,37 @@ def _process_model_dir(model_dir, output_suffix):
         print(f"[skip] no JSONL files in: {parsed_dir}")
         return None
 
+    filtered = removed_samples_dir is not None
+    effective_suffix = output_suffix + ("_filtered" if filtered else "")
+
     print(f"\nProcessing model: {model_dir.name}")
     all_results = []
+    _removed_cache = {}
     for jp in jsonl_paths:
-        all_results.extend(process_jsonl(jp, output_suffix))
+        m = re.search(r"samples_([^_]+)_", jp.name)
+        ds_name = m.group(1) if m else None
+        removed_set = None
+        if filtered and ds_name is not None:
+            if ds_name not in _removed_cache:
+                json_path = Path(removed_samples_dir) / ds_name / removed_samples_filename
+                _removed_cache[ds_name] = _build_removed_set(json_path) if json_path.exists() else None
+            removed_set = _removed_cache.get(ds_name)
+        all_results.extend(process_jsonl(jp, effective_suffix, removed_set=removed_set, dataset_name=ds_name))
 
     summary = _aggregate_by_label_TL(all_results)
-    out_path = parsed_dir / SUMMARY_EQ_ACC_TL_METRICS_FILENAME
+    metrics_fname = "summary_eq_acc_TL_metrics_filtered.json" if filtered else SUMMARY_EQ_ACC_TL_METRICS_FILENAME
+    out_path = parsed_dir / metrics_fname
     with open(out_path, "w") as f:
         json.dump(summary, f, indent=2)
     print(f"  [saved] per-label summary → {out_path}")
-    _print_model_summary_TL(model_dir, summary)
+    _print_model_summary_TL(model_dir, summary, filtered=filtered)
     return summary
 
 
-def _print_model_summary_TL(model_dir, summary):
+def _print_model_summary_TL(model_dir, summary, filtered=False):
     """Write a weighted-average + label-table summary TXT for a single model."""
     model_dir = Path(model_dir)
-    out_path  = model_dir / SUMMARY_EQ_ACC_TL_MODEL_FILENAME
+    out_path  = model_dir / ("summary_eq_acc_TL_model_filtered.txt" if filtered else SUMMARY_EQ_ACC_TL_MODEL_FILENAME)
     lines = []
 
     def _p(text):
@@ -520,10 +566,11 @@ def _print_model_summary_TL(model_dir, summary):
     print(f"  [saved] model summary → {out_path}")
 
 
-def _print_cross_model_summaries_TL(task_dir):
+def _print_cross_model_summaries_TL(task_dir, filtered=False):
     """Read per-model summary JSONs, print label table, save summary TXT."""
     task_dir = Path(task_dir)
-    out_path = task_dir / "summary_eq_acc_TL_task.txt"
+    metrics_fname = "summary_eq_acc_TL_metrics_filtered.json" if filtered else SUMMARY_EQ_ACC_TL_METRICS_FILENAME
+    out_path = task_dir / ("summary_eq_acc_TL_task_filtered.txt" if filtered else "summary_eq_acc_TL_task.txt")
     lines = []
 
     def _p(text):
@@ -533,7 +580,7 @@ def _print_cross_model_summaries_TL(task_dir):
     _p("\n\n========== MODEL SUMMARIES (Equation Accuracy - TL Task) ==========\n")
 
     for model_dir in sorted(d for d in task_dir.iterdir() if d.is_dir()):
-        summary_json = model_dir / "parsed" / SUMMARY_EQ_ACC_TL_METRICS_FILENAME
+        summary_json = model_dir / "parsed" / metrics_fname
         if not summary_json.exists():
             continue
         with open(summary_json) as f:
@@ -604,6 +651,22 @@ def main():
         "--output_suffix", default="_eq_acc",
         help="Suffix appended before .jsonl in the output filename (default: _eq_acc).",
     )
+    parser.add_argument(
+        "--removed_samples_dir",
+        type=str,
+        default=None,
+        help=(
+            "Root directory containing per-dataset removed_samples JSON files "
+            "(e.g. .../Data/Datasets). When provided, samples listed in those files "
+            "are excluded and output filenames get a '_filtered' suffix."
+        ),
+    )
+    parser.add_argument(
+        "--removed_samples_filename",
+        type=str,
+        default="multi_cluster_samples_v1.0.0_to_v1.1.0.json",
+        help="Filename of the removed-samples JSON within each dataset subdirectory.",
+    )
     args = parser.parse_args()
 
     if args.task_dir is None and args.model_dir is None and args.jsonl is None:
@@ -619,14 +682,23 @@ def main():
 
     if args.model_dir:
         print(f"[Info] Processing model dir: {args.model_dir}")
-        _process_model_dir(args.model_dir, args.output_suffix)
+        _process_model_dir(
+            args.model_dir, args.output_suffix,
+            removed_samples_dir=args.removed_samples_dir,
+            removed_samples_filename=args.removed_samples_filename,
+        )
 
     if args.task_dir:
+        filtered = args.removed_samples_dir is not None
         model_dirs = sorted(d for d in Path(args.task_dir).iterdir() if d.is_dir())
         print(f"[Info] Discovered {len(model_dirs)} model dir(s) under: {args.task_dir}")
         for model_dir in model_dirs:
-            _process_model_dir(model_dir, args.output_suffix)
-        _print_cross_model_summaries_TL(args.task_dir)
+            _process_model_dir(
+                model_dir, args.output_suffix,
+                removed_samples_dir=args.removed_samples_dir,
+                removed_samples_filename=args.removed_samples_filename,
+            )
+        _print_cross_model_summaries_TL(args.task_dir, filtered=filtered)
 
 
 if __name__ == "__main__":
