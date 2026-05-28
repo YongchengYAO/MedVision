@@ -4,372 +4,348 @@ import json
 import multiprocessing
 import os
 import re
+from collections import defaultdict
 
-import pandas as pd
+import numpy as np
 from tqdm import tqdm
 
 from medvision_bm.utils.configs import (
-    SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_MEAN_METRICS,
-    SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_METRICS,
+    SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_DETECT_METRICS,
+    SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_DETECT_VALUES,
 )
 from medvision_bm.utils.parse_utils import (
-    cal_metrics_detection_task,
+    convert_numpy_to_python,
     get_labelsMap_imgModality_from_seg_benchmark_plan,
     get_subfolders,
 )
 
+_BINS = [
+    (0.05, "Box/Image < 5%"),
+    (0.10, "5% <= Box/Image < 10%"),
+    (0.15, "10% <= Box/Image < 15%"),
+    (0.20, "15% <= Box/Image < 20%"),
+    (0.25, "20% <= Box/Image < 25%"),
+    (0.30, "25% <= Box/Image < 30%"),
+    (0.35, "30% <= Box/Image < 35%"),
+    (0.40, "35% <= Box/Image < 40%"),
+    (0.45, "40% <= Box/Image < 45%"),
+    (0.50, "45% <= Box/Image < 50%"),
+    (0.55, "50% <= Box/Image < 55%"),
+    (0.60, "55% <= Box/Image < 60%"),
+    (0.65, "60% <= Box/Image < 65%"),
+    (0.70, "65% <= Box/Image < 70%"),
+    (0.75, "70% <= Box/Image < 75%"),
+    (0.80, "75% <= Box/Image < 80%"),
+    (0.85, "80% <= Box/Image < 85%"),
+    (0.90, "85% <= Box/Image < 90%"),
+]
 
-def process_jsonl_file_detection_task_w_boxSize(
-    jsonl_path,
-    limit=None,
-):
+
+def _find_boxcoordinate_jsonl_files(model_dir):
+    parsed_dir = os.path.join(model_dir, "parsed")
+    all_jsonl = glob.glob(os.path.join(parsed_dir, "*.jsonl"))
+    return [f for f in all_jsonl if "_BoxCoordinate_" in os.path.basename(f)]
+
+
+def _group_by_boxImgRatio(data):
+    result = defaultdict(
+        lambda: {"mae": [], "iou": [], "f1": [], "precision": [], "recall": [], "success": []}
+    )
+    for box_img_ratio, mae, iou, f1, precision, recall, success in data:
+        label = "Box/Image >= 90%"
+        for threshold, name in _BINS:
+            if box_img_ratio < threshold:
+                label = name
+                break
+        result[label]["mae"].append(mae)
+        result[label]["iou"].append(iou)
+        result[label]["f1"].append(f1)
+        result[label]["precision"].append(precision)
+        result[label]["recall"].append(recall)
+        result[label]["success"].append(success)
+    return dict(result)
+
+
+def _initialize_metric_counters():
+    return {
+        "sum_MAE": 0,
+        "sum_IoU": 0,
+        "sum_F1": 0,
+        "sum_Precision": 0,
+        "sum_Recall": 0,
+        "num_success": 0,
+        "count_valid_AE": 0,
+        "count_valid_IoU": 0,
+        "count_valid_F1": 0,
+        "count_valid_Precision": 0,
+        "count_valid_Recall": 0,
+        "count_AE_thresholds": [0] * 10,
+        "count_IoU_thresholds": [0] * 5,
+        "count_F1_thresholds": [0] * 5,
+        "count_Precision_thresholds": [0] * 5,
+        "count_Recall_thresholds": [0] * 5,
+    }
+
+
+def _update_threshold_counters(metric_value, threshold_counts):
+    for i, t in enumerate([0.5, 0.6, 0.7, 0.8, 0.9]):
+        if metric_value >= t:
+            threshold_counts[i] += 1
+
+
+def _update_metric_counters(metrics_dict, counters):
+    mae = metrics_dict["avgMAE"]["MAE"]
+    if not np.isnan(mae):
+        counters["sum_MAE"] += mae
+        counters["count_valid_AE"] += 1
+        counters["count_AE_thresholds"][min(int(mae * 10), 9)] += 1
+
+    iou = metrics_dict["avgIoU"]["IoU"]
+    if not np.isnan(iou):
+        counters["sum_IoU"] += iou
+        counters["count_valid_IoU"] += 1
+        _update_threshold_counters(iou, counters["count_IoU_thresholds"])
+
+    f1 = metrics_dict["F1"]["F1"]
+    if not np.isnan(f1):
+        counters["sum_F1"] += f1
+        counters["count_valid_F1"] += 1
+        _update_threshold_counters(f1, counters["count_F1_thresholds"])
+
+    precision = metrics_dict["Precision"]["Precision"]
+    if not np.isnan(precision):
+        counters["sum_Precision"] += precision
+        counters["count_valid_Precision"] += 1
+        _update_threshold_counters(precision, counters["count_Precision_thresholds"])
+
+    recall = metrics_dict["Recall"]["Recall"]
+    if not np.isnan(recall):
+        counters["sum_Recall"] += recall
+        counters["count_valid_Recall"] += 1
+        _update_threshold_counters(recall, counters["count_Recall_thresholds"])
+
+    counters["num_success"] += metrics_dict["SuccessRate"]["success"]
+
+
+def _calculate_final_metrics(counters, count_total):
+    m = {
+        "avgMAE": (
+            counters["sum_MAE"] / counters["count_valid_AE"]
+            if counters["count_valid_AE"] > 0
+            else np.nan
+        ),
+        "IoU": (
+            counters["sum_IoU"] / counters["count_valid_IoU"]
+            if counters["count_valid_IoU"] > 0
+            else np.nan
+        ),
+        "F1": (
+            counters["sum_F1"] / counters["count_valid_F1"]
+            if counters["count_valid_F1"] > 0
+            else np.nan
+        ),
+        "Precision": (
+            counters["sum_Precision"] / counters["count_valid_Precision"]
+            if counters["count_valid_Precision"] > 0
+            else np.nan
+        ),
+        "Recall": (
+            counters["sum_Recall"] / counters["count_valid_Recall"]
+            if counters["count_valid_Recall"] > 0
+            else np.nan
+        ),
+        "SuccessRate": (
+            counters["num_success"] / count_total if count_total > 0 else 0.0
+        ),
+        "num_samples": count_total,
+    }
+
+    for k in range(1, 11):
+        m[f"MAE<{k/10:.1f}"] = (
+            sum(counters["count_AE_thresholds"][0:k]) / count_total
+            if count_total > 0
+            else 0.0
+        )
+
+    for metric_name in ["IoU", "F1", "Precision", "Recall"]:
+        for k in range(5, 10):
+            count = counters[f"count_{metric_name}_thresholds"][k - 5]
+            m[f"{metric_name}>{k/10:.1f}"] = (
+                count / count_total if count_total > 0 else 0.0
+            )
+
+    return m
+
+
+def calculate_summary_metrics_per_boxImgRatio(grouped_data):
+    summary_metrics = {}
+
+    for bin_label, data in grouped_data.items():
+        if bin_label is None:
+            continue
+
+        f1s = data["f1"]
+        if not f1s:
+            continue
+
+        counters = _initialize_metric_counters()
+        count_total = len(f1s)
+
+        for mae, iou, f1, prec, rec, success in zip(
+            data["mae"], data["iou"], f1s, data["precision"], data["recall"], data["success"]
+        ):
+            metrics_dict = {
+                "avgMAE": {"MAE": mae, "success": success},
+                "avgIoU": {"IoU": iou},
+                "F1": {"F1": f1},
+                "Precision": {"Precision": prec},
+                "Recall": {"Recall": rec},
+                "SuccessRate": {"success": success},
+            }
+            _update_metric_counters(metrics_dict, counters)
+
+        summary_metrics[bin_label] = _calculate_final_metrics(counters, count_total)
+
+    return summary_metrics
+
+
+def process_jsonl_file(jsonl_path, limit=None):
     """
-    Parse a JSONL results file and extract detection task data with box size information.
+    Parse a JSONL results file, reading pre-computed detection metrics.
 
-    This function:
-    1. Extracts dataset name from filename pattern
-    2. Parses each line to extract label, target, response, task_id, and box-to-image ratio
-    3. Resolves label names and image modality using benchmark plan configuration
-    4. Returns structured data for downstream box size analysis
-
-    Args:
-        jsonl_path: Path to the JSONL file
-        limit: Maximum number of samples to process (None = process all)
+    Requires JSONL records to contain F1, Precision, Recall, avgIoU, avgMAE,
+    SuccessRate fields (written by parse_outputs.py).
 
     Returns:
-        List of tuples: (imgModality, label_name, target,
-                        filtered_resps, box_img_ratio, task_id)
+        List of tuples: (box_img_ratio, mae, iou, f1, precision, recall, success)
     """
     results = []
-    # Extract dataset name from filename pattern: "samples_{dataset}_..."
     match = re.search(r"samples_([^_]+)_", os.path.basename(jsonl_path))
     dataset_name = match.group(1)
 
     count = 0
     with open(jsonl_path, "r") as f:
-        for _, line in enumerate(f):
+        for line in f:
             if not line.strip():
                 continue
 
-            try:
-                data = json.loads(line.strip())
+            data = json.loads(line.strip())
+            if not data:
+                continue
 
-                if not data:
-                    continue
+            doc = data.get("doc", {})
+            task_id = int(doc.get("taskID"))
+            target = data.get("target")
+            image_size_2d = doc.get("image_size_2d")
+            label = doc.get("label")
 
-                # Extract fields from JSONL entry
-                doc = data.get("doc", {})
-                task_id = int(doc.get("taskID"))
-                filtered_resps = data.get("filtered_resps")
-                target = data.get("target")
+            if None in (label, task_id, target, image_size_2d):
+                continue
+
+            # Read pre-computed per-sample metrics
+            mae = data.get("avgMAE", {}).get("MAE")
+            iou = data.get("avgIoU", {}).get("IoU")
+            f1 = data.get("F1", {}).get("F1")
+            precision = data.get("Precision", {}).get("Precision")
+            recall = data.get("Recall", {}).get("Recall")
+            success = data.get("SuccessRate", {}).get("success", False)
+
+            if None in (mae, iou, f1, precision, recall):
+                continue
+
+            # Resolve box-to-image ratio: prefer explicit field, fall back to
+            # bounding_boxes dimensions, then compute from relative target coords.
+            if "box_img_ratio" in data:
                 box_img_ratio = data["box_img_ratio"]
+            elif "bounding_boxes" in doc:
+                dims = doc["bounding_boxes"]["dimensions"][0]
+                box_img_ratio = (dims[0] * dims[1]) / (
+                    image_size_2d[0] * image_size_2d[1]
+                )
+            else:
+                coords = target if isinstance(target, list) else json.loads(target)
+                box_img_ratio = abs(coords[2] - coords[0]) * abs(coords[3] - coords[1])
 
-                # Get label
-                label = doc.get("label")
+            labels_map, _ = get_labelsMap_imgModality_from_seg_benchmark_plan(
+                dataset_name, task_id
+            )
+            label_name = labels_map.get(str(label))
+            if label_name:
+                results.append((box_img_ratio, mae, iou, f1, precision, recall, success))
 
-                if (
-                    label is not None
-                    and task_id is not None
-                    and filtered_resps is not None
-                    and target is not None
-                ):
-
-                    # Resolve label name and image modality from benchmark plan
-                    labels_map, imgModality = (
-                        get_labelsMap_imgModality_from_seg_benchmark_plan(
-                            dataset_name, task_id
-                        )
-                    )
-                    label_name = labels_map.get(str(label))
-                    if label_name:
-                        results.append(
-                            (
-                                imgModality,
-                                label_name,
-                                target,
-                                filtered_resps,
-                                box_img_ratio,
-                                task_id,
-                            )
-                        )
-                count += 1
-                if limit is not None and count >= limit:
-                    break
-            except json.JSONDecodeError:
-                raise ValueError(f"Error in parsing the JSON file {jsonl_path}")
+            count += 1
+            if limit is not None and count >= limit:
+                break
 
     return results
 
 
-def _normalize_modality(img_modality):
-    """
-    Normalize image modality names to standardized abbreviations.
-
-    Converts full modality names (e.g., "MRI", "ultrasound") to their
-    standard abbreviated forms (e.g., "MR", "US").
-
-    Args:
-        img_modality: Original modality name
-
-    Returns:
-        Standardized modality abbreviation (e.g., "MR", "CT", "US", "XR", "PET")
-    """
-    modality_map = {
-        "MRI": "MR",
-        "CT": "CT",
-        "ultrasound": "US",
-        "X-ray": "XR",
-        "PET": "PET",
-    }
-    return modality_map.get(img_modality, img_modality)
-
-
-def _get_box_img_group(box_img_ratio):
-    """
-    Categorize box-to-image ratio into predefined size groups.
-
-    Groups are defined in 0.05 increments from <0.05 to >=0.90, allowing
-    for fine-grained analysis of detection performance by relative object size.
-
-    Args:
-        box_img_ratio: Ratio of bounding box size to image size (float between 0 and 1)
-
-    Returns:
-        String representing the ratio group (e.g., "<0.05", "0.05~0.10", ">=0.90")
-    """
-    thresholds = [
-        (0.05, "<0.05"),
-        (0.10, "0.05~0.10"),
-        (0.15, "0.10~0.15"),
-        (0.20, "0.15~0.20"),
-        (0.25, "0.20~0.25"),
-        (0.30, "0.25~0.30"),
-        (0.35, "0.30~0.35"),
-        (0.40, "0.35~0.40"),
-        (0.45, "0.40~0.45"),
-        (0.50, "0.45~0.50"),
-        (0.55, "0.50~0.55"),
-        (0.60, "0.55~0.60"),
-        (0.65, "0.60~0.65"),
-        (0.70, "0.65~0.70"),
-        (0.75, "0.70~0.75"),
-        (0.80, "0.75~0.80"),
-        (0.85, "0.80~0.85"),
-        (0.90, "0.85~0.90"),
-    ]
-
-    for threshold, group_label in thresholds:
-        if box_img_ratio < threshold:
-            return group_label
-    return ">=0.90"
-
-
-def collect_data(data):
-    """
-    Convert collected detection data to a pandas DataFrame with computed metrics.
-
-    This function processes raw detection results and:
-    1. Normalizes image modalities
-    2. Creates composite labels combining anatomy and modality
-    3. Categorizes box sizes into groups
-    4. Calculates IoU, F1, Precision, and Recall metrics for each sample
-    5. Returns a structured DataFrame for analysis
-
-    Args:
-        data: List of tuples containing (imgModality, task_type, label_name, target,
-              filtered_resps, box_img_ratio, taskID)
-
-    Returns:
-        pandas DataFrame with columns: task_type, box_img_group, label, box_img_ratio,
-        IoU, F1, Precision, Recall
-    """
-    from medvision_bm.utils.configs import label_map_regroup
-
-    df_data = []
-
-    for (
-        imgModality,
-        label_name,
-        target,
-        filtered_resps,
-        box_img_ratio,
-        task_id,
-    ) in data:
-        # Normalize modality and create composite label
-        parent_class = label_map_regroup.get(label_name)
-        normalized_modality = _normalize_modality(imgModality)
-        new_parent_class = f"{parent_class} @ {normalized_modality}"
-
-        # Categorize box size
-        box_img_group = _get_box_img_group(box_img_ratio)
-
-        # Process each response
-        for response in filtered_resps:
-            # Calculate metrics
-            mock_results = {"filtered_resps": [response], "target": target}
-            metrics_dict = cal_metrics_detection_task(mock_results)
-
-            # Append row data
-            df_data.append(
-                {
-                    "box_img_group": box_img_group,
-                    "label": new_parent_class,
-                    "box_img_ratio": box_img_ratio,
-                    "IoU": metrics_dict["avgIoU"]["IoU"],
-                    "F1": metrics_dict["F1"]["F1"],
-                    "Precision": metrics_dict["Precision"]["Precision"],
-                    "Recall": metrics_dict["Recall"]["Recall"],
-                }
-            )
-
-    return pd.DataFrame(df_data)
-
-
-def group_data_by_boxSize_label(df):
-    """
-    Aggregate metrics by box size group and anatomical label.
-
-    Computes mean values for IoU, F1, Precision, and Recall, along with
-    sample counts for each combination of box size group and label.
-
-    Args:
-        df: DataFrame with individual sample metrics
-
-    Returns:
-        DataFrame with aggregated metrics grouped by box_img_group and label,
-        including columns: box_img_group, label, IoU (mean), sample_size,
-        F1 (mean), Precision (mean), Recall (mean)
-    """
-    # Group by box_img_group and label, then calculate averages and sample size
-    result = (
-        df.groupby(["box_img_group", "label"])
-        .agg(
-            {
-                "IoU": ["mean", "count"],
-                "F1": "mean",
-                "Precision": "mean",
-                "Recall": "mean",
-            }
-        )
-        .round(6)
-    )
-
-    # Flatten the column names
-    result.columns = ["IoU", "sample_size", "F1", "Precision", "Recall"]
-
-    # Reset index to make box_img_group and label regular columns
-    result = result.reset_index()
-
-    return result
-
-
 def _process_wrapper(args):
-    """Result unpacking wrapper for multiprocessing with tqdm"""
-    return process_jsonl_file_detection_task_w_boxSize(*args)
+    return process_jsonl_file(*args)
 
 
-def process_parsed_file_in_model_folder(
-    model_dir,
-    limit=None,
-    processes=None,
-):
+def process_parsed_file_in_model_folder(model_dir, limit=None, processes=None):
     """
-    Process all JSONL files in a model's parsed folder and generate box size analysis metrics.
-
-    This function performs the complete analysis pipeline:
-    1. Finds all JSONL files in model_dir/parsed/
-    2. Parses each file to extract detection data with box size information
-    3. Computes detection metrics (IoU, F1, Precision, Recall) for each sample
-    4. Groups data by box size ranges and anatomical labels
-    5. Saves both fine-grained and summary metrics as CSV files:
-       - SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_METRICS: Individual sample metrics
-       - SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_MEAN_METRICS: Aggregated statistics
+    Process all BoxCoordinate JSONL files in a model's parsed folder and generate
+    box-to-image-ratio grouped detection metrics.
 
     Args:
         model_dir: Path to the model folder containing a 'parsed' subdirectory
         limit: Maximum number of samples to process per file (None = process all)
-        processes (int, optional): Number of processes to use for parallel calculation.
+        processes: Number of processes to use for parallel calculation
     """
-    # Find parsed JSONL files
+    jsonl_files = _find_boxcoordinate_jsonl_files(model_dir)
     parsed_files_dir = os.path.join(model_dir, "parsed")
-    assert os.path.exists(
-        parsed_files_dir
-    ), f"Parsed files directory does not exist: {parsed_files_dir}"
-    jsonl_files = glob.glob(os.path.join(parsed_files_dir, "*.jsonl"))
 
-    # Collect all data from the parsed JSONL files
+    if not jsonl_files:
+        print(f"  No BoxCoordinate JSONL files found in {parsed_files_dir}, skipping.")
+        return
+
     all_data = []
-
     if processes is not None and processes > 1:
         print(f"Processing JSONL files with {processes} processes...")
-        items = [(jsonl_file, limit) for jsonl_file in jsonl_files]
+        items = [(f, limit) for f in jsonl_files]
         with multiprocessing.Pool(processes=processes) as pool:
-            # Use imap to allow tqdm tracking
             results = pool.imap_unordered(_process_wrapper, items)
             for file_data in tqdm(results, total=len(items), desc="Processing files"):
                 all_data.extend(file_data)
     else:
         for jsonl_file in tqdm(jsonl_files, desc="Processing files"):
-            file_data = process_jsonl_file_detection_task_w_boxSize(jsonl_file, limit)
-            all_data.extend(file_data)
+            all_data.extend(process_jsonl_file(jsonl_file, limit))
 
-    # Early exit if no valid data found
     if not all_data:
-        print(f"No valid data found in {parsed_files_dir}, skipping...")
+        print(f"  No valid samples parsed in {parsed_files_dir}, skipping.")
         return
 
-    # Collect data and return a DataFrame
-    path_metrics_csv = os.path.join(
-        parsed_files_dir, SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_METRICS
-    )
-    df = collect_data(all_data)
-    df.to_csv(
-        path_metrics_csv,
-        index=False,
-        na_rep="NaN",
-    )
-    print(f"Saved metrics grouped by boxSize and label to CSV: {path_metrics_csv}")
+    grouped_data = _group_by_boxImgRatio(all_data)
+    if not grouped_data:
+        print(f"  Grouping produced no bins for {parsed_files_dir}, skipping.")
+        return
 
-    # Group data by boxSize and label, then calculate summary metrics
-    path_metrics_summary_csv = os.path.join(
-        parsed_files_dir,
-        SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_MEAN_METRICS,
+    summary_metrics = calculate_summary_metrics_per_boxImgRatio(grouped_data)
+
+    values_path = os.path.join(
+        parsed_files_dir, SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_DETECT_VALUES
     )
-    result_df = group_data_by_boxSize_label(df)
-    result_df.to_csv(
-        path_metrics_summary_csv,
-        index=False,
-        na_rep="NaN",
+    with open(values_path, "w") as f:
+        json.dump(convert_numpy_to_python(grouped_data), f, indent=2)
+    print(f"Saved values to {values_path}")
+
+    metrics_path = os.path.join(
+        parsed_files_dir, SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_DETECT_METRICS
     )
-    print(
-        f"Saved summary (average) metrics grouped by boxSize and label to CSV: {path_metrics_summary_csv}"
-    )
+    with open(metrics_path, "w") as f:
+        json.dump(convert_numpy_to_python(summary_metrics), f, indent=2)
+    print(f"Saved metrics to {metrics_path}")
 
 
 def _process_task_directory(
     task_dir, limit, processes=None, skip_model_wo_parsed_files=False
 ):
-    """
-    Process all model directories within a task directory for box size analysis.
-
-    This function loops through all model subdirectories in the task folder,
-    processing each model's detection results and generating box size metrics.
-
-    Args:
-        task_dir: Path to task directory containing model result folders
-        limit: Maximum samples to process per JSONL file (None = all)
-        processes (int, optional): Number of processes to use for parallel calculation
-        skip_model_wo_parsed_files: If True, skip models without parsed folders
-    """
-    # Get list of model folders within task_dir
     model_dirs = get_subfolders(task_dir)
-
-    # Exclude "random_detection" folder if it exists
     model_dirs = [d for d in model_dirs if os.path.basename(d) != "random_detection"]
 
-    # Process each model directory
     for model_dir in model_dirs:
-        # Skip models without parsed results if requested
         parsed_files_dir = os.path.join(model_dir, "parsed")
         if skip_model_wo_parsed_files and not os.path.exists(parsed_files_dir):
             print(f"\nSkipping model directory (no parsed folder): {model_dir}")
@@ -380,34 +356,11 @@ def _process_task_directory(
 
 
 def _process_single_model_directory(model_dir, limit, processes=None):
-    """
-    Process a single model directory for box size analysis.
-
-    Args:
-        model_dir: Path to the model directory containing parsed results
-        limit: Maximum number of samples to process per JSONL file (None = all)
-        processes (int, optional): Number of processes to use for parallel calculation
-    """
     print(f"\nProcessing model directory: {model_dir}")
     process_parsed_file_in_model_folder(model_dir, limit, processes=processes)
 
 
 def main(**kwargs):
-    """
-    Main function to analyze detection task performance by box size.
-
-    Processes model results to generate metrics grouped by bounding box size
-    relative to image size. Supports two modes:
-    - Task mode: Process all models in a task directory
-    - Model mode: Process a single model directory
-
-    Args:
-        task_dir: Path to task directory containing model folders (mutually exclusive with model_dir)
-        model_dir: Path to single model directory (mutually exclusive with task_dir)
-        limit: Maximum number of samples to process per JSONL file (None = all)
-        skip_model_wo_parsed_files: Whether to skip model directories without parsed folders
-        processes: Number of processes to use for parallel calculation
-    """
     task_dir = kwargs.get("task_dir")
     model_dir = kwargs.get("model_dir")
     limit = kwargs.get("limit")
@@ -419,32 +372,27 @@ def main(**kwargs):
             f"Using task_dir: {task_dir}\nModel directories within this folder will be looped over."
         )
         _process_task_directory(
-            task_dir, limit, processes=processes, skip_model_wo_parsed_files=skip_model_wo_parsed_files
+            task_dir, limit, processes=processes,
+            skip_model_wo_parsed_files=skip_model_wo_parsed_files,
         )
-
     elif model_dir is not None:
         print(
-            f"Using model_dir: {model_dir}\nProcessing all JSONL files within this directory."
+            f"Using model_dir: {model_dir}\nProcessing all BoxCoordinate JSONL files within this directory."
         )
         _process_single_model_directory(model_dir, limit, processes=processes)
-
     else:
         raise ValueError("Either 'task_dir' or 'model_dir' must be provided.")
 
 
 def parse_args():
-    """
-    Parse command line arguments for box size analysis.
-
-    Supports two mutually exclusive modes:
-    - Task mode (--task_dir): Process all model subdirectories within a task folder
-    - Model mode (--model_dir): Process a single model directory
-
-    Returns:
-        Parsed command line arguments as argparse.Namespace
-    """
     parser = argparse.ArgumentParser(
-        description="Analyze detection task performance grouped by bounding box size and anatomical label."
+        description=(
+            "Analyze detection task performance grouped by bounding box size relative to image size. "
+            "Reads BoxCoordinate JSONL files from model_dir/parsed/. Outputs "
+            f"{SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_DETECT_METRICS} and "
+            f"{SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_DETECT_VALUES} "
+            "into each model's parsed/ folder."
+        )
     )
     parser.add_argument(
         "--task_dir",
@@ -454,7 +402,7 @@ def parse_args():
     parser.add_argument(
         "--model_dir",
         type=str,
-        help="Path to a specific model directory containing JSONL files.",
+        help="Path to a specific model directory containing a parsed/ subfolder.",
     )
     parser.add_argument(
         "--limit",
@@ -477,11 +425,9 @@ def parse_args():
 
     args = parser.parse_args()
 
-    # Validate mutually exclusive arguments
     if args.task_dir is None and args.model_dir is None:
         parser.error("Either --task_dir or --model_dir must be provided.")
 
-    # Validate skip flag only with task_dir
     if args.skip_model_wo_parsed_files and args.task_dir is None:
         parser.error("--skip_model_wo_parsed_files can only be used with --task_dir")
 
