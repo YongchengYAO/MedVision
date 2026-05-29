@@ -40,6 +40,9 @@ flock "${lockfile}" bash -c '
     python -m pip install --force-reinstall "${latest_wheel}"
 '
 
+# Use MedVision dataset v1.0.0 
+export MedVision_PLANNER_VERSION='1.0.0'
+
 # Export PYTHONPATH to include HuatuoGPT-Vision directory for proper imports
 export PYTHONPATH="${dir_third_party}/HuatuoGPT-Vision:$PYTHONPATH"
 
@@ -48,8 +51,6 @@ export PYTHONPATH="${dir_third_party}/HuatuoGPT-Vision:$PYTHONPATH"
 # --env_setup_only \
 # --skip_env_setup \
 # --skip_update_status \
-
-export MedVision_PLANNER_VERSION='1.0.0'
 
 python -m  medvision_bm.benchmark.eval__huatuogpt_vision \
 --model_hf_id $model_hf_id \

@@ -19,9 +19,9 @@ model_name="LLaVA-Med"
 batch_size_per_gpu=20
 
 # Other configs (safe to leave as is)
-task_tag="MedVision-detect"
+task_tag="MedVision-detect-CoT"
 result_dir="${benchmark_dir}/Results/${task_tag}"
-tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-detect.json"
+tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-detect-CoT.json"
 task_status_json_path="${benchmark_dir}/completed_tasks/completed_tasks_${task_tag}.json"
 sample_limit=1000
 
@@ -40,13 +40,14 @@ flock "${lockfile}" bash -c '
     python -m pip install --force-reinstall "${latest_wheel}"
 '
 
+# Use MedVision dataset v1.0.0 
+export MedVision_PLANNER_VERSION='1.0.0'
+
 # Run
 # Add these arguments for debugging:
 # --env_setup_only \
 # --skip_env_setup \
 # --skip_update_status \
-
-export MedVision_PLANNER_VERSION='1.0.0'
 
 python -m  medvision_bm.benchmark.eval__llava_med \
 --model_hf_id $model_hf_id \

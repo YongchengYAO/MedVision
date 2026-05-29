@@ -40,13 +40,14 @@ flock "${lockfile}" bash -c '
     python -m pip install --force-reinstall "${latest_wheel}"
 '
 
+# Use MedVision dataset v1.0.0 
+export MedVision_PLANNER_VERSION='1.0.0'
+
 # Run
 # Add these arguments for debugging:
 # --env_setup_only \
 # --skip_env_setup \
 # --skip_update_status \
-
-export MedVision_PLANNER_VERSION='1.0.0'
 
 python -m  medvision_bm.benchmark.eval__llava_med \
 --model_hf_id $model_hf_id \

@@ -39,6 +39,9 @@ flock "${lockfile}" bash -c '
     python -m pip install --force-reinstall "${latest_wheel}"
 '
 
+# Use MedVision dataset v1.0.0 
+export MedVision_PLANNER_VERSION='1.0.0'
+
 # (Method 1) Manually install requirements before running the eval script (more robust)
 # ---
 # - use requirements_*.txt
@@ -48,8 +51,6 @@ flock "${lockfile}" bash -c '
 python -m medvision_bm.benchmark.install_medvision_ds --data_dir "${data_dir}"
 python -m medvision_bm.benchmark.install_vendored_lmms_eval
 pip install -r "${benchmark_dir}/requirements/requirements_eval_medgemma.txt" --no-deps
-
-export MedVision_PLANNER_VERSION='1.0.0'
 
 python -m  medvision_bm.benchmark.eval__medgemma \
 --skip_env_setup \

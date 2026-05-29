@@ -1,4 +1,4 @@
-ENV_NAME="eval-huatuogpt-vision"
+ENV_NAME="eval-medvision-v0"
 
 # Only create the env if it doesn't already exist
 source activate base
@@ -13,15 +13,16 @@ conda activate "${ENV_NAME}"
 # Set paths and configs
 benchmark_dir="/root/Documents/MedVision"
 data_dir="${benchmark_dir}/Data"
-dir_third_party="${benchmark_dir}/third_party"
-model_hf_id="FreedomIntelligence/HuatuoGPT-Vision-34B"
-model_name="HuatuoGPT-Vision-34B"
-batch_size_per_gpu=2
+model_hf_id="YongchengYAO/MedVision-V0-7B"
+model_name="MedVision-V0-7B"
+batch_size_per_gpu=10
+gpu_memory_utilization=0.9
+reshape_image_hw="512x512"
 
 # Other configs (safe to leave as is)
-task_tag="MedVision-detect-CoT"
+task_tag="MedVision-TL-CoT"
 result_dir="${benchmark_dir}/Results/${task_tag}"
-tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-detect-CoT.json"
+tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-TL-CoT.json"
 task_status_json_path="${benchmark_dir}/completed_tasks/completed_tasks_${task_tag}.json"
 sample_limit=1000
 
@@ -43,25 +44,44 @@ flock "${lockfile}" bash -c '
 # Use MedVision dataset v1.0.0 
 export MedVision_PLANNER_VERSION='1.0.0'
 
-# Important: Fix module import failure in distributed subprocess
-export PYTHONPATH="${dir_third_party}/HuatuoGPT-Vision:$PYTHONPATH"
+# (Method 1) Manually install requirements before running the eval script (more robust)
+# ---
+python -m medvision_bm.benchmark.install_medvision_ds --data_dir "${data_dir}"
+python -m medvision_bm.benchmark.install_vendored_lmms_eval --lmms_eval_opt_deps medvision_v0
+pip install -r "${benchmark_dir}/requirements/requirements_eval_medvision-v0.txt" --no-deps
 
-# Run
-# Add these arguments for debugging:
-# --env_setup_only \
-# --skip_env_setup \
-# --skip_update_status \
-
-python -m  medvision_bm.benchmark.eval__huatuogpt_vision \
+python -m medvision_bm.benchmark.eval__medvision-model-rft \
+--skip_env_setup \
 --model_hf_id $model_hf_id \
 --model_name $model_name \
 --results_dir $result_dir \
---dir_third_party $dir_third_party \
 --data_dir $data_dir \
 --tasks_list_json_path $tasks_list_json_path \
 --task_status_json_path $task_status_json_path \
 --batch_size_per_gpu $batch_size_per_gpu \
+--gpu_memory_utilization $gpu_memory_utilization \
 --sample_limit $sample_limit \
+--reshape_image_hw $reshape_image_hw \
+--use_system_prompt
+# ---
+
+# # (Method 2) Automatically install requirements in the eval script (simpler, but may incur package version conflicts or bugs introduced by new versions of packages)
+# # Add these arguments for debugging:
+# # --env_setup_only \
+# # --skip_env_setup \
+# # --skip_update_status \
+# python -m medvision_bm.benchmark.eval__medvision-model-rft \
+# --model_hf_id $model_hf_id \
+# --model_name $model_name \
+# --results_dir $result_dir \
+# --data_dir $data_dir \
+# --tasks_list_json_path $tasks_list_json_path \
+# --task_status_json_path $task_status_json_path \
+# --batch_size_per_gpu $batch_size_per_gpu \
+# --gpu_memory_utilization $gpu_memory_utilization \
+# --sample_limit $sample_limit \
+# --reshape_image_hw $reshape_image_hw \
+# --use_system_prompt
 
 conda deactivate
 # conda remove -n $ENV_NAME --all -y

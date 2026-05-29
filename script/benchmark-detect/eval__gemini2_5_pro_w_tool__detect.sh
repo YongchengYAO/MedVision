@@ -20,9 +20,9 @@ batch_size=1
 google_model_code="gemini-2.5-pro"
 
 # Other configs (safe to leave as is)
-task_tag="MedVision-detect"
+task_tag="MedVision-detect-CoT"
 result_dir="${benchmark_dir}/Results/${task_tag}"
-tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-detect.json"
+tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-detect-CoT.json"
 task_status_json_path="${benchmark_dir}/completed_tasks/completed_tasks_${task_tag}.json"
 sample_limit=1000
 
@@ -41,13 +41,14 @@ flock "${lockfile}" bash -c '
     python -m pip install --force-reinstall "${latest_wheel}"
 '
 
+# Use MedVision dataset v1.0.0 
+export MedVision_PLANNER_VERSION='1.0.0'
+
 # (Method 1) Manually install requirements before running the eval script (more robust)
 # ---
 python -m medvision_bm.benchmark.install_medvision_ds --data_dir "${data_dir}"
 python -m medvision_bm.benchmark.install_vendored_lmms_eval --lmms_eval_opt_deps gemini
 pip install -r "${benchmark_dir}/requirements/requirements_eval_gemini25.txt" --no-deps
-
-export MedVision_PLANNER_VERSION='1.0.0'
 
 python -m medvision_bm.benchmark.eval__gemini2_5_w_tool \
 --skip_env_setup \

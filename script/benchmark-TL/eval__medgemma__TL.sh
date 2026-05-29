@@ -39,17 +39,18 @@ flock "${lockfile}" bash -c '
     python -m pip install --force-reinstall "${latest_wheel}"
 '
 
-# Temp fix: "cannot import name 'is_offline_mode' from 'huggingface_hub'" 
+# Use MedVision dataset v1.0.0 
+export MedVision_PLANNER_VERSION='1.0.0'
+
+# (Method 1) Manually install requirements before running the eval script (more robust)
 # ---
-# - use requirements_eval_medgemma.txt below to install the correct version of huggingface_hub
-# - install medvision_bm, medvision_ds, and vendored_lmms_eval, since they are not included in the requirements file
-# - use '--skip_env_setup' in the eval__medgemma script to skip re-installing packages
+# - use requirements_*.txt
+# - install medvision_ds and vendored_lmms_eval, since they are not included in the requirements file
+# - use '--skip_env_setup' to skip re-installing packages
 # ---
 python -m medvision_bm.benchmark.install_medvision_ds --data_dir "${data_dir}"
 python -m medvision_bm.benchmark.install_vendored_lmms_eval
 pip install -r "${benchmark_dir}/requirements/requirements_eval_medgemma.txt" --no-deps
-
-export MedVision_PLANNER_VERSION='1.0.0'
 
 python -m  medvision_bm.benchmark.eval__medgemma \
 --skip_env_setup \
@@ -63,7 +64,7 @@ python -m  medvision_bm.benchmark.eval__medgemma \
 --sample_limit $sample_limit \
 # ---
 
-# # Run
+# # (Method 2) Automatically install requirements in the eval script (simpler, but may incur package version conflicts or bugs introduced by new versions of packages)
 # # Add these arguments for debugging:
 # # --env_setup_only \
 # # --skip_env_setup \

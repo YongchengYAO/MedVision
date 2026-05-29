@@ -173,7 +173,7 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "--system_prompt",
+        "--use_system_prompt",
         action="store_true",
         default=False,
         help=(
@@ -349,7 +349,7 @@ def main():
             )
             + (
                 f",system_prompt={json.dumps([SYSTEM_PROMPT], separators=(',', ':'))}"
-                if args.system_prompt
+                if args.use_system_prompt
                 else ""
             )
         )

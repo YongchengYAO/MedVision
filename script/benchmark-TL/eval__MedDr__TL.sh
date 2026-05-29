@@ -40,6 +40,9 @@ flock "${lockfile}" bash -c '
     python -m pip install --force-reinstall "${latest_wheel}"
 '
 
+# Use MedVision dataset v1.0.0 
+export MedVision_PLANNER_VERSION='1.0.0'
+
 # (Method 1) Manually install requirements before running the eval script (more robust)
 # ---
 python -m medvision_bm.benchmark.install_medvision_ds --data_dir "${data_dir}"
@@ -48,8 +51,6 @@ pip install -r "${benchmark_dir}/requirements/requirements_eval_meddr.txt" --no-
 
 # Important: Fix module import failure in distributed subprocess
 export PYTHONPATH="${dir_third_party}/MedDr:$PYTHONPATH"
-
-export MedVision_PLANNER_VERSION='1.0.0'
 
 python -m medvision_bm.benchmark.eval__meddr \
 --skip_env_setup \

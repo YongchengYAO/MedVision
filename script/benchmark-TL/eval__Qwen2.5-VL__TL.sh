@@ -40,13 +40,14 @@ flock "${lockfile}" bash -c '
     python -m pip install --force-reinstall "${latest_wheel}"
 '
 
+# Use MedVision dataset v1.0.0 
+export MedVision_PLANNER_VERSION='1.0.0'
+
 # (Method 1) Manually install requirements before running the eval script (more robust)
 # ---
 python -m medvision_bm.benchmark.install_medvision_ds --data_dir "${data_dir}"
 python -m medvision_bm.benchmark.install_vendored_lmms_eval --lmms_eval_opt_deps qwen2_5_vl
 pip install -r "${benchmark_dir}/requirements/requirements_eval_qwen25vl.txt" --no-deps
-
-export MedVision_PLANNER_VERSION='1.0.0'
 
 python -m medvision_bm.benchmark.eval__qwen2_5_vl \
 --skip_env_setup \
