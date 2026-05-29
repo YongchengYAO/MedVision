@@ -49,7 +49,7 @@
 
 # 🌟 Quick Start
 
-For benchmarking and model post-training in this project, install `medvision_bm` and use the GitHub repo (`MedVision`) as working folder.
+For benchmarking and model post-training in this project, install `medvision_bm` and use the GitHub repo (`MedVision`) as the working folder.
 
 ```bash
 git clone https://github.com/YongchengYAO/MedVision.git MedVision
@@ -69,7 +69,7 @@ pip show medvision_bm
 
 # 🐳 Use Docker
 
-📝 Docker images are built from these [dockerfiles](https://github.com/YongchengYAO/MedVision/tree/master/dockerfile)
+Docker images are built from these [dockerfiles](https://github.com/YongchengYAO/MedVision/tree/master/dockerfile)
 
 1. Choose the docker image for a specific model: https://hub.docker.com/r/vincentycyao/medvision/tags
 
@@ -77,7 +77,7 @@ pip show medvision_bm
    docker pull vincentycyao/medvision:<tag>
    ```
 
-2. Map local volumes and GPUs, use docker image `vincentycyao/medvision:<tag>`
+2. Map local volumes and GPUs, then use the docker image `vincentycyao/medvision:<tag>`
 
    ```bash
    # NOTE: replace </path/to/working/folder>, <tag>
@@ -129,7 +129,7 @@ Next (in the container):
 
 - **[Usage]** 
 
-  1. The scripts in `script/benchmark-*/eval__*` should be sufficient for dependencies installation, data processing, and benchmarking
+  1. The scripts in `script/benchmark-*/eval__*` should be sufficient for dependency installation, data processing, and benchmarking
 
      > ⚠️
      >
@@ -142,18 +142,9 @@ Next (in the container):
      >   - `batch_size_per_gpu`
      >   - `CUDA_VISIBLE_DEVICES=0,1` 
 
-  2. After evaluating all models in step 1, parse model outputs and calculate metrics (e.g., MRE, MAE, IoU, Success Rate):
+  2. After evaluating all models in step 1, parse model outputs and calculate metrics (e.g., MRE, MAE, nMAE, IoU, F1, Precision, Recall, Success Rate):
 
-     > ⚠️
-     >
-     > Known issue for some models: gemini-2.5
-     >
-     > Issue: Have to ensure no subfolder in each model folder before running the command below
-     >
-     > e.g.
-     > 
-     >`mv gemini-2.5-pro-woTool/gemini-2.5-pro/* gemini-2.5-pro-woTool/`
-
+    
      ```bash
      # CLI command: 
      # python -m medvision_bm.benchmark.parse_outputs
@@ -209,7 +200,7 @@ Next (in the container):
       # example 3: summarize one model for the detection task
       python -m medvision_bm.benchmark.summarize_detection_task --model_dir Results/MedVision-detect/Qwen2.5-VL-32B-Instruct -p 32
       
-      # example 4: analyze how target size affect detection performance
+      # example 4: analyze how target size affects detection performance
       python -m medvision_bm.benchmark.analyze_detection_task_boxsize --task_dir Results/MedVision-detect -p 32
       
       # example 5: compare detection performance with random guessing
@@ -243,13 +234,19 @@ Next (in the container):
   │   │   │   ├── summary_TL_task.txt                 # <== [step 3] summary
   ```
 
+- **[Analysis & Visualization]** (optional) Beyond the summaries above:
+
+  - **Detection target-size analysis**: `medvision_bm.benchmark.analyze_detection_task_boxsize` and `medvision_bm.benchmark.analyze_detection_task_boxsize_vs_random` (see step-3 examples 4–5) study how target size affects detection performance.
+  - **Equation- / process-accuracy analysis**: scripts in [`script/analyze`](https://github.com/YongchengYAO/MedVision/tree/master/script/analyze) — `analyze_equation_accuracy_{AD,TL}.py` and `analyze_process_accuracy_{AD,TL}.py`.
+  - **Visualization**: scripts in [`script/visualization`](https://github.com/YongchengYAO/MedVision/tree/master/script/visualization) — radar charts (`viz_radar.py`) and per-sample overlays (`viz_ad_landmarks.py`, `viz_tl_axes.py`, `viz_detection_boxes.py`, `viz_*_responses.py`).
+
 - **[Troubleshooting]** [here](https://github.com/YongchengYAO/MedVision/tree/master/docs/debug_env_setup.md)
 
 <br/>
 
 # 🎯 Training: SFT
 
-- **[Usage]** The scripts in `script/sft-*/train__SFT__*` should be sufficient for dependencies installation, data processing, and training.
+- **[Usage]** The scripts in `script/sft-*/train__SFT__*` should be sufficient for dependency installation, data processing, and training.
 
   > ⚠️
   >
@@ -273,6 +270,28 @@ Next (in the container):
 
 <br/>
 
+# 🎯 Training: RFT
+
+RL fine-tuning uses the [verl](https://github.com/volcengine/verl) framework. MedVision provides **parquet dataset builders** (`medvision_bm.rft.verl`) that turn the MedVision tasks into verl-ready parquet datasets; the RL training loop itself runs in verl.
+
+- **[Usage]** Build the verl parquet dataset with the scripts in [`script/rft`](https://github.com/YongchengYAO/MedVision/tree/master/script/rft) (e.g. `build_parquet_ds__verl__D110k-AD5.5k-TL5.5k.sh`), which call:
+
+  ```bash
+  # CLI command:
+  python -m medvision_bm.rft.verl.build_parquet_ds
+  ```
+
+  For large datasets (e.g. ~1M detection samples), use the checkpointed builders to avoid OOM via shard-level checkpointing:
+
+  - `medvision_bm.rft.verl.build_parquet_ds__checkpointed` (train + val)
+  - `medvision_bm.rft.verl.build_parquet_ds_with_testset__checkpointed` (train + val + test)
+
+  Then run RL training in verl, and evaluate the trained model with `eval__medvision-model-rft.py` (in `script/benchmark-*/`).
+
+- **[Troubleshooting]** [here](https://github.com/YongchengYAO/MedVision/tree/master/docs/debug_env_setup.md)
+
+<br/>
+
 # 📚 New Tasks/Models Guide
 
 [New tasks guide](https://github.com/YongchengYAO/MedVision/blob/master/docs/New-Tasks-Guide.md) | [New models guide](https://github.com/YongchengYAO/MedVision/blob/master/docs/New-Models-Guide.md) 
@@ -281,12 +300,12 @@ Next (in the container):
 
 # 📖 Essential Dataset Concept
 
-We cover some essential concepts that help we use the MedVision dataset with ease.
+We cover some essential concepts that help you use the MedVision dataset with ease.
 
 ## Concepts: Dataset & Data Configuration
 
 - `MedVision`: the collection of public imaging data and our annotations
-- `dataset`: name of the public datasets, such `BraTS24`, `MSD`, `OAIZIB-CM`
+- `dataset`: name of the public datasets, such as `BraTS24`, `MSD`, `OAIZIB-CM`
 - `data-config`: name of predefined subsets
   - naming convention: `{dataset}_{annotation-type}_{task-ID}_{slice}_{split}`
     - `dataset`: [details](https://huggingface.co/datasets/YongchengYAO/MedVision#datasets)
@@ -294,16 +313,17 @@ We cover some essential concepts that help we use the MedVision dataset with eas
       - `BoxSize`: detection annotations (bounding box)
       - `TumorLesionSize`: tumor/lesion size annotations
       - `BiometricsFromLandmarks`: angle/distance annotations
-    - `task-ID`: `Task[xx]` (Note, this is a local ID in the dataset, not a glocal ID in MedVision.)
+      - `MaskSize`: area / mask-size annotations
+    - `task-ID`: `Task[xx]` (Note, this is a local ID in the dataset, not a global ID in MedVision.)
       - For datasets with multiple image-mask pairs, we defined tasks in `medvision_ds/datasets/*/preprocess_*.py`
       - source: [medvision_ds](https://huggingface.co/datasets/YongchengYAO/MedVision/tree/main/src)
-      - e.g., detection tasks for the `BraTS24` dataset is defined in the `benchmark_plan` in `medvision_ds/datasets/BraTS24/preprocess_detection.py`
+      - e.g., detection tasks for the `BraTS24` dataset are defined in the `benchmark_plan` in `medvision_ds/datasets/BraTS24/preprocess_detection.py`
     - `slice`: [`Sagittal`, `Coronal`, `Axial`]
     - `split`: [`Train`, `Test`]
 
 ## What's returned from MedVision Dataset?
 
-We only share the annotations (https://huggingface.co/datasets/YongchengYAO/MedVision/tree/main/Datasets). The data loading script [`MedVision.py`](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/MedVision.py) will handle raw image downloading and processing. The returned fields in each sample is defined as followed.
+We only share the annotations (https://huggingface.co/datasets/YongchengYAO/MedVision/tree/main/Datasets). The data loading script [`MedVision.py`](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/MedVision.py) will handle raw image downloading and processing. The returned fields in each sample are defined as follows.
 
 In `MedVision.py`, the class `MedVision(GeneratorBasedBuilder)` defines the feature dict and the method `_generate_examples()` builds the dataset.
 
@@ -618,28 +638,33 @@ In `MedVision.py`, the class `MedVision(GeneratorBasedBuilder)` defines the feat
               biometricData, slice_dim
           )
           for idx, case in enumerate(slice_profile_flattened):
-              # Skip cases with multiple fitted ellipses in the same slice
-              if len(case["biometric_profile"]) > 1:
-                  continue
+              n_total_clusters = case["n_total_clusters"]
+              if n_total_clusters is not None:
+                  # New JSON (v1.1.0+): filter on raw cluster count
+                  if n_total_clusters > 1:
+                      continue
               else:
-                  yield idx, {
-                      "dataset_name": dataset_name,
-                      "taskID": taskID,
-                      "taskType": taskType,
-                      "image_file": os.path.join(dataset_dir, case["image_file"]),
-                      "mask_file": os.path.join(dataset_dir, case["mask_file"]),
-                      "landmark_file": os.path.join(
-                          dataset_dir, case["landmark_file"]
-                      ),
-                      "slice_dim": case["slice_dim"],
-                      "slice_idx": case["slice_idx"],
-                      "label": target_label,
-                      "image_size_2d": case["image_size_2d"],
-                      "pixel_size": case["pixel_size"],
-                      "image_size_3d": case["image_size_3d"],
-                      "voxel_size": case["voxel_size"],
-                      "biometric_profile": case["biometric_profile"],
-                  }
+                  # Old JSON (v1.0.0): fall back to above-threshold cluster count
+                  if len(case["biometric_profile"]) > 1:
+                      continue
+              yield idx, {
+                  "dataset_name": dataset_name,
+                  "taskID": taskID,
+                  "taskType": taskType,
+                  "image_file": os.path.join(dataset_dir, case["image_file"]),
+                  "mask_file": os.path.join(dataset_dir, case["mask_file"]),
+                  "landmark_file": os.path.join(
+                      dataset_dir, case["landmark_file"]
+                  ),
+                  "slice_dim": case["slice_dim"],
+                  "slice_idx": case["slice_idx"],
+                  "label": target_label,
+                  "image_size_2d": case["image_size_2d"],
+                  "pixel_size": case["pixel_size"],
+                  "image_size_3d": case["image_size_3d"],
+                  "voxel_size": case["voxel_size"],
+                  "biometric_profile": case["biometric_profile"],
+              }
 
   ```
 </details>
@@ -660,7 +685,7 @@ In `MedVision.py`, the class `MedVision(GeneratorBasedBuilder)` defines the feat
 
 </br>
 
-There are a few venues to control the dataset loading and building behavior:
+There are a few ways to control the dataset loading and building behavior:
 
 - **Rebuild Dataset (Arrow files)**: Use the `download_mode` argument in `load_dataset()` ([docs](https://huggingface.co/docs/datasets/v3.6.0/en/package_reference/builder_classes#datasets.DownloadMode)).
   - **[1]** Set `download_mode="force_redownload"` to ignore the cached Arrow files and trigger the data loading script `MedVision.py` to rebuild the dataset.
@@ -668,7 +693,7 @@ There are a few venues to control the dataset loading and building behavior:
   - **[2]** `MedVision_FORCE_DOWNLOAD_DATA`: Set this environment variable to `True` to force re-downloading raw images and annotations.
   - **[3]** `.downloaded_datasets.json`: This tracker file records downloaded status. Removing a dataset's entry here will trigger a re-download of the raw data for that dataset.
   
-> [!Note] ⚠️ 
+> [!NOTE] ⚠️ 
 > **How to properly update/redownload raw data?**
 >
 > If you need to update raw data (images, masks, landmarks) using [2] or [3], you **MUST ALSO** use [1] (`download_mode="force_redownload"`).
@@ -685,7 +710,7 @@ There are a few venues to control the dataset loading and building behavior:
 ### Examples
 
 <details>
-<summary> Run this for the first time will download the raw data and build the dataset </summary>
+<summary> Running this for the first time will download the raw data and build the dataset </summary>
 
 ```python
 import os
@@ -711,7 +736,7 @@ ds = load_dataset(
 </details>
 
 <details>
-<summary> Run the same script again will use the cached dataset </summary>
+<summary> Running the same script again will use the cached dataset </summary>
 
 ```python
 import os
@@ -823,7 +848,7 @@ ds = load_dataset(
 
 # 💿 Data Downloading (Optional)
 
-Since data downloading and processing takes time, you can download datasets from the tasks list (example [here](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list)) or configs list (example [here](https://huggingface.co/datasets/YongchengYAO/MedVision/tree/main/info)) in advance.
+Since data downloading and processing take time, you can download datasets from the tasks list (example [here](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list)) or configs list (example [here](https://huggingface.co/datasets/YongchengYAO/MedVision/tree/main/info)) in advance.
 
 > [!NOTE]
 > ⚠️ You need to set API token for these datasets (see [detailed instructions](https://huggingface.co/datasets/YongchengYAO/MedVision#datasets)): FeTA24, SKM-TEA, and ToothFairy2
@@ -848,25 +873,6 @@ or
 ```bash
 # NOTE: replace <config-list-csv>, <data-folder>
 python -m medvision_bm.benchmark.download_datasets --configs_csv <config-list-csv> --data_dir <data-folder>
-```
-
-<br/>
-
-# 🔧 Install `medvision_ds` (Optional)
-
-`medvision_ds` is the dataset codebase. It can be installed from `medvision_bm`:
-
-```bash
-# Replace <local-data-folder>
-python -m medvision_bm.benchmark.install_medvision_ds --data_dir <local-data-folder>  
-```
-
-<br/>
-
-# 📝 Miscellaneous
-If you encounter "missing package" error when using modules in `src/medvision_bm/sft`, install dependencies with
-```bash
-python -m medvision_bm.sft.env_setup --data_dir <local-data-folder>
 ```
 
 <br/>
