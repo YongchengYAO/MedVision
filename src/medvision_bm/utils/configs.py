@@ -46,11 +46,19 @@ SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_DETECT_METRICS = (
 )
 
 # Used in analyze_detection_task_boxsize.py
+# Anatomy-level: fine-grained labels collapsed via label_map_regroup → "<AnatomyGroup> @ <Modality>"
 SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_METRICS = (
     "summary_metrics_per_sample_detect_Task.csv"
 )
 SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_MEAN_METRICS = (
     "summary_metrics_boxImgRatio_x_label_detect_Task.csv"
+)
+# Label-level: raw fine-grained labels kept as-is → "<label_name> @ <Modality>"
+SUMMARY_FILENAME_PER_BOX_IMG_RATIO_FINELABEL_DETECT_METRICS = (
+    "summary_metrics_per_sample_fineLabel_detect_Task.csv"
+)
+SUMMARY_FILENAME_PER_BOX_IMG_RATIO_FINELABEL_DETECT_MEAN_METRICS = (
+    "summary_metrics_boxImgRatio_x_fineLabel_detect_Task.csv"
 )
 # ----------------------------------------------------------------
 
