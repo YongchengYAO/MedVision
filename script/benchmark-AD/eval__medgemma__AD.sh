@@ -14,13 +14,13 @@ conda activate "${ENV_NAME}"
 benchmark_dir="/root/Documents/MedVision"
 data_dir="${benchmark_dir}/Data"
 model_hf_id="google/medgemma-4b-it"
-model_name="medgemma-4b-it"
+model_name="MedGemma-4b-it"
 batch_size_per_gpu=10
 
 # Other configs (safe to leave as is)
-task_tag="MedVision-AD"
+task_tag="MedVision-AD-CoT"
 result_dir="${benchmark_dir}/Results/${task_tag}"
-tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-AD.json"
+tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-AD-CoT.json"
 task_status_json_path="${benchmark_dir}/completed_tasks/completed_tasks_${task_tag}.json"
 sample_limit=1000
 
@@ -48,6 +48,8 @@ flock "${lockfile}" bash -c '
 python -m medvision_bm.benchmark.install_medvision_ds --data_dir "${data_dir}"
 python -m medvision_bm.benchmark.install_vendored_lmms_eval
 pip install -r "${benchmark_dir}/requirements/requirements_eval_medgemma.txt" --no-deps
+
+export MedVision_PLANNER_VERSION='1.0.0'
 
 python -m  medvision_bm.benchmark.eval__medgemma \
 --skip_env_setup \

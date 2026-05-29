@@ -50,6 +50,8 @@ python -m medvision_bm.benchmark.install_medvision_ds --data_dir "${data_dir}"
 python -m medvision_bm.benchmark.install_vendored_lmms_eval
 pip install -r "${benchmark_dir}/requirements/requirements_eval_internvl3.txt" --no-deps
 
+export MedVision_PLANNER_VERSION='1.0.0'
+
 python -m  medvision_bm.benchmark.eval__intern_vl3 \
 --skip_env_setup \
 --model_hf_id $model_hf_id \

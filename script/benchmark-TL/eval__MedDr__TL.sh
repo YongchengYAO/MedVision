@@ -19,9 +19,9 @@ model_name="MedDr"
 batch_size_per_gpu=2
 
 # Other configs (safe to leave as is)
-task_tag="MedVision-TL"
+task_tag="MedVision-TL-CoT"
 result_dir="${benchmark_dir}/Results/${task_tag}"
-tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-TL.json"
+tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-TL-CoT.json"
 task_status_json_path="${benchmark_dir}/completed_tasks/completed_tasks_${task_tag}.json"
 sample_limit=1000
 
@@ -48,6 +48,8 @@ pip install -r "${benchmark_dir}/requirements/requirements_eval_meddr.txt" --no-
 
 # Important: Fix module import failure in distributed subprocess
 export PYTHONPATH="${dir_third_party}/MedDr:$PYTHONPATH"
+
+export MedVision_PLANNER_VERSION='1.0.0'
 
 python -m medvision_bm.benchmark.eval__meddr \
 --skip_env_setup \

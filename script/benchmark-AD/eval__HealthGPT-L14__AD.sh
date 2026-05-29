@@ -18,9 +18,9 @@ model_name="HealthGPT-L14"
 batch_size_per_gpu=10
 
 # Other configs (safe to leave as is)
-task_tag="MedVision-AD"
+task_tag="MedVision-AD-CoT"
 result_dir="${benchmark_dir}/Results/${task_tag}"
-tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-AD.json"
+tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-AD-CoT.json"
 task_status_json_path="${benchmark_dir}/completed_tasks/completed_tasks_${task_tag}.json"
 sample_limit=1000
 
@@ -47,6 +47,9 @@ export PYTHONPATH="${dir_third_party}/HealthGPT:$PYTHONPATH"
 # --env_setup_only \
 # --skip_env_setup \
 # --skip_update_status \
+
+export MedVision_PLANNER_VERSION='1.0.0'
+
 python -m  medvision_bm.benchmark.eval__healthgpt \
 --model_name $model_name \
 --results_dir $result_dir \

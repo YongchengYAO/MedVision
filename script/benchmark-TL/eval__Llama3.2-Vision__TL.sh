@@ -19,9 +19,9 @@ batch_size_per_gpu=4
 gpu_memory_utilization=0.9
 
 # Other configs (safe to leave as is)
-task_tag="MedVision-TL"
+task_tag="MedVision-TL-CoT"
 result_dir="${benchmark_dir}/Results/${task_tag}"
-tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-TL.json"
+tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-TL-CoT.json"
 task_status_json_path="${benchmark_dir}/completed_tasks/completed_tasks_${task_tag}.json"
 sample_limit=1000
 
@@ -49,6 +49,8 @@ flock "${lockfile}" bash -c '
 python -m medvision_bm.benchmark.install_medvision_ds --data_dir "${data_dir}"
 python -m medvision_bm.benchmark.install_vendored_lmms_eval
 pip install -r "${benchmark_dir}/requirements/requirements_eval_llama3_vision.txt" --no-deps
+
+export MedVision_PLANNER_VERSION='1.0.0'
 
 python -m  medvision_bm.benchmark.eval__llama3_2_vision \
 --skip_env_setup \

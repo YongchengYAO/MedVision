@@ -49,6 +49,8 @@ pip install -r "${benchmark_dir}/requirements/requirements_eval_meddr.txt" --no-
 # Important: Fix module import failure in distributed subprocess
 export PYTHONPATH="${dir_third_party}/MedDr:$PYTHONPATH"
 
+export MedVision_PLANNER_VERSION='1.0.0'
+
 python -m medvision_bm.benchmark.eval__meddr \
 --skip_env_setup \
 --model_hf_id $model_hf_id \

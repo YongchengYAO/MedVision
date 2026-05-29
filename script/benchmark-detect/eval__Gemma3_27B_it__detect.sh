@@ -14,7 +14,7 @@ conda activate "${ENV_NAME}"
 benchmark_dir="/root/Documents/MedVision"
 data_dir="${benchmark_dir}/Data"
 model_hf_id="google/gemma-3-27b-it"
-model_name="gemma-3-27b-it"
+model_name="Gemma-3-27b-it"
 batch_size_per_gpu=4
 gpu_memory_utilization=0.9
 
@@ -49,6 +49,8 @@ flock "${lockfile}" bash -c '
 python -m medvision_bm.benchmark.install_medvision_ds --data_dir "${data_dir}"
 python -m medvision_bm.benchmark.install_vendored_lmms_eval
 pip install -r "${benchmark_dir}/requirements/requirements_eval_gemma3.txt" --no-deps
+
+export MedVision_PLANNER_VERSION='1.0.0'
 
 python -m  medvision_bm.benchmark.eval__gemma3 \
 --skip_env_setup \

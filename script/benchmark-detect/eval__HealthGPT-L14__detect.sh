@@ -47,6 +47,9 @@ export PYTHONPATH="${dir_third_party}/HealthGPT:$PYTHONPATH"
 # --env_setup_only \
 # --skip_env_setup \
 # --skip_update_status \
+
+export MedVision_PLANNER_VERSION='1.0.0'
+
 python -m  medvision_bm.benchmark.eval__healthgpt \
 --model_name $model_name \
 --results_dir $result_dir \
