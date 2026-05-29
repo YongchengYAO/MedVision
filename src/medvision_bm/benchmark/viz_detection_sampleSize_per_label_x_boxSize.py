@@ -294,8 +294,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--config",
-        default=str(Path(__file__).parent / "config-detect-sampleSize-per-label-boxSize.yaml"),
-        help="Path to YAML config file (default: sibling config-detect-sampleSize-per-label-boxSize.yaml)",
+        required=True,
+        help="Path to YAML config file (model_display_name mapping)",
     )
     parser.add_argument(
         "--in_dir",

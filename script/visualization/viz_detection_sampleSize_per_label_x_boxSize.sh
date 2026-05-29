@@ -12,8 +12,8 @@
 # Optional:
 #   OUT_DIR=<path>         Output directory for the figure (default: <MEDVISION_DIR>/Figures)
 #   CONFIG_YAML=<path>     YAML file with model_display_name mapping
-#                          (default: sibling config-detect-sampleSize-per-label-boxSize.yaml
-#                           next to the Python script in src/medvision_bm/benchmark/)
+#                          (default: config-detect-sampleSize-per-label-boxSize.yaml
+#                           next to this script in script/visualization/)
 #   ANATOMY_LEVEL=1        Use anatomy-grouped label CSV instead of fine-grained label CSV
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,7 +21,7 @@ MEDVISION_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 IN_DIR="${IN_DIR:-}"
 OUT_DIR="${OUT_DIR:-$MEDVISION_DIR/Figures}"
-CONFIG_YAML="${CONFIG_YAML:-}"
+CONFIG_YAML="${CONFIG_YAML:-$SCRIPT_DIR/config-detect-sampleSize-per-label-boxSize.yaml}"
 ANATOMY_LEVEL="${ANATOMY_LEVEL:-}"
 
 if [ -z "$IN_DIR" ]; then
