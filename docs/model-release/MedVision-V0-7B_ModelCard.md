@@ -1,0 +1,461 @@
+---
+language:
+- en
+license: other
+license_name: research-only
+license_link: https://medvision-vlm.github.io
+base_model:
+- Qwen/Qwen2.5-VL-7B-Instruct
+pipeline_tag: image-text-to-text
+library_name: transformers
+tags:
+- medical
+- medical-imaging
+- vision-language-model
+- quantitative-analysis
+- detection
+- measurement
+- chain-of-thought
+- sft
+- rft
+- grpo
+datasets:
+- YongchengYAO/MedVision
+---
+
+<!--
+NOTE for maintainer: confirm the `license`/`license_name` tags before publishing.
+The code repo is MIT, but MedVision data (and its derivatives, including this model)
+is released for research/education only — see "License & Intended Use" below.
+-->
+
+# MedVision-V0-7B
+
+**MedVision-V0-7B** is a vision-language model (VLM) for **quantitative medical image
+analysis**. It is fine-tuned from `Qwen/Qwen2.5-VL-7B-Instruct` on the
+[MedVision](https://huggingface.co/datasets/YongchengYAO/MedVision) dataset to perform
+three clinically relevant quantitative tasks **end-to-end**, without relying on external
+tools or specialist segmentation models:
+
+1. **Detection** — localization and identification of anatomical structures and abnormalities (bounding boxes).
+2. **Tumor/Lesion (T/L) size estimation** — bidirectional (major/minor axis) measurements.
+3. **Angle/Distance (A/D) measurement** — e.g. joint angles and inter-structure distances.
+
+A distinguishing feature is that the model reasons about **physical units** (e.g. `mm`):
+it estimates landmark/endpoint coordinates, then converts them to real-world
+measurements using the pixel size and image size provided in the prompt. Its internal
+reasoning is exposed inside `<think>...</think>` tags, with the final structured output
+in `<answer>...</answer>` tags.
+
+| | |
+|---|---|
+| **Project page** | https://medvision-vlm.github.io |
+| **Code** | https://github.com/YongchengYAO/MedVision |
+| **Dataset** | https://huggingface.co/datasets/YongchengYAO/MedVision |
+| **Model collection** | https://huggingface.co/collections/YongchengYAO/medvision-v0 |
+
+---
+
+## 1. Base Model
+
+| Property | Value |
+|---|---|
+| **Backbone** | [`Qwen/Qwen2.5-VL-7B-Instruct`](https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct) |
+| **Parameters** | ~7B (8.3B including the vision encoder) |
+| **Modality** | Image + text → text (open-ended VQA) |
+| **Frameworks** | [TRL](https://github.com/huggingface/trl) (SFT), [verl](https://github.com/volcengine/verl) (RFT/GRPO) |
+
+The base model's own license and usage terms (Qwen2.5-VL) also apply in addition to the
+restrictions stated below.
+
+---
+
+## 2. Training Data
+
+The model is trained on the **[MedVision](https://huggingface.co/datasets/YongchengYAO/MedVision)** dataset (v1.0.0),
+a large-scale, multi-anatomy, multi-modality medical imaging dataset with quantitative annotations:
+
+- **30.8 million** image–annotation pairs aggregated from **22 public datasets**.
+- Modalities: **CT, MRI, X-ray, ultrasound (US), PET** — restricted to modalities that carry
+  physical spacing (pixel size) information in their file headers, which is essential for
+  generating ground-truth real-world measurements.
+- Anatomies: abdomen, brain, heart, kidney, knee, head & neck, tooth, fetal brain, whole body, and more.
+- Annotation types: **bounding boxes**, **bidirectional T/L size** (major/minor axis of a fitted ellipse),
+  and **angle/distance** (derived from human-annotated landmarks).
+- All measurements are in **clinically relevant real-world units (e.g. `mm`)** rather than pixels.
+- Volumes are oriented to the **RAS+** convention; the dataset supports slicing along axial, coronal, and sagittal planes.
+- Subject-level split: **70% train / 30% test**.
+
+**Training subset used for MedVision-V0:** A multi-task subset of **121K samples** drawn
+from the MedVision *training* split:
+
+| Task | Samples |
+|---|---|
+| Detection | 110K |
+| T/L size estimation | 5.5K |
+| A/D measurement | 5.5K |
+| **Total** | **121K** |
+
+Only **axial** slices were used for training; **coronal and sagittal** slices are
+deliberately held out to evaluate out-of-distribution (OOD) generalization to unseen
+imaging planes. A weighted random sampler oversamples minority tasks to mitigate the
+strong class imbalance toward detection. Each sample is an image reshaped to **512×512**
+paired with a prompt–answer pair.
+
+> ⚠️ **Data terms:** MedVision and its derivatives (including this model) are released for
+> **research and education only**, consistent with the research-only access conditions of
+> the underlying source datasets. See [License & Intended Use](#license--intended-use).
+
+---
+
+## 3. Training Recipe
+
+MedVision-V0 is produced by a **two-stage post-training** pipeline: supervised fine-tuning
+(SFT) with chain-of-thought, followed by reinforcement fine-tuning (RFT) with GRPO.
+
+### Stage 1 — SFT with Chain-of-Thought
+
+The model learns the required answer formats and reasoning patterns. Each target answer is
+structured as an internal reasoning trace wrapped in `<think>...</think>` followed by the
+final structured result in `<answer>...</answer>`. The reasoning text is constructed by
+filling intermediate ground-truth values (e.g. landmark coordinates) into task-specific
+CoT instruction templates, so the model learns to *first localize, then compute*.
+
+| Setting | Value |
+|---|---|
+| Method | Full fine-tuning (all parameters) |
+| Data | 121K multi-task CoT samples (110K detect / 5.5K T/L / 5.5K A/D) |
+| Image size | 512×512 |
+| Epochs | 3 |
+| Per-device batch size | 8 |
+| Gradient accumulation | 8 |
+| GPUs | 4 |
+| Effective batch size | 256 |
+| Precision | bf16 mixed precision (FSDP `FULL_SHARD`) |
+| Optimizations | Flash-Attention 2, gradient checkpointing |
+| Sampler | Custom weighted random sampler (oversamples minority tasks) |
+
+### Stage 2 — RFT via GRPO
+
+The SFT model is further refined with the **GRPO** algorithm (implemented in
+[verl](https://github.com/volcengine/verl)). The **same 121K samples** are reused, but the
+CoT answer is removed — the model now learns from reward signals. A separate RFT dataset is
+built per task and the tasks are trained **sequentially**: **A/D → T/L → Detection**.
+
+In addition to the standard GRPO **format** and **answer** rewards, **process rewards** are
+designed for the T/L and A/D tasks to encourage accurate intermediate estimates (e.g.
+landmark coordinates). Both process and answer rewards are computed as `exp(-x)`, where `x`
+is the error of the model's prediction. The final reward combines them as:
+
+```
+r = r_format + r_process * r_answer
+```
+
+This coupling means the answer reward only contributes meaningfully when the intermediate
+reasoning (localization) is also correct.
+
+> SFT yields large gains over the base model on detection precision, T/L size, and A/D
+> accuracy; the additional RFT stage produces further consistent gains across all three
+> tasks, both in-distribution and on plane-/target-OOD evaluation.
+
+---
+
+## 4. Usage
+
+MedVision-V0-7B is a `Qwen2.5-VL-7B` model, so it loads with the standard
+`Qwen2_5_VLForConditionalGeneration` / `AutoProcessor` API. What is **specific to this
+model** is the input/output contract it was post-trained on. Get these three things right
+and the model behaves as benchmarked:
+
+1. **Always set the system prompt** below. It defines the `<think>…</think>` /
+   `<answer>…</answer>` contract; omitting it diverges from the training distribution.
+2. **Feed 504×504 RGB images.** Training used 512×512, but Qwen2.5-VL resizes to a
+   multiple of 28, so it actually processes images at 504×504; feeding 504×504 directly
+   skips the internal resize so the image/pixel size you state match what the model sees.
+   For measurement tasks, the pixel size you state in the prompt must correspond to the
+   image *as the model sees it* (see note below).
+3. **Read the final values from inside `<answer>…</answer>`** — the `<think>` block is
+   intermediate reasoning, not the result.
+
+### 4.1 The output contract (shared by all three tasks)
+
+Use this system prompt for every request (it is the same one used at benchmark time, via
+the `--use_system_prompt` flag):
+
+```text
+A conversation between a User and an Assistant. The User asks a question, and the Assistant solves it. The Assistant first thinks through the reasoning process internally, then provides the User with the answer. The reasoning process and the final answer must be enclosed within <think> </think> and <answer> </answer> tags, respectively. For example: <think> reasoning process here </think> <answer> answer here </answer>. Within the <think> </think> tags, report the reasoning process for each step inside <step-k-reasoning> </step-k-reasoning> tags, followed by the intermediate results in <step-k-answer> </step-k-answer> tags. For example: <think> <step-1-reasoning> reasoning for step 1 </step-1-reasoning> <step-1-answer> intermediate result from step 1 </step-1-answer> </think>.
+```
+
+The model emits its step-by-step localization/arithmetic inside `<think>` (with
+`<step-k-reasoning>` / `<step-k-answer>` sub-tags) and the final, parseable values inside
+`<answer>`.
+
+### 4.2 The three tasks — prompt and answer formats
+
+The released model was trained and benchmarked with the **chain-of-thought (CoT)** prompts
+below. Each prompt has up to four blocks — `Task:` / `Additional information:` /
+`Format requirement:` / `Reasoning steps:` — and the model is queried **one target (label)
+at a time**. The exact templates come from
+[`medvision_utils.py`](https://github.com/YongchengYAO/MedVision/blob/main/src/medvision_bm/medvision_lmms_eval/lmms_eval/tasks/medvision/medvision_utils.py)
+(`doc_to_text_*_CoT`) and the prompt constants in
+[`sft_prompts.py`](https://github.com/YongchengYAO/MedVision/blob/main/src/medvision_bm/sft/sft_prompts.py).
+
+Quick reference (the `<answer>` payload the parser must read):
+
+| Task | `Additional information:`? | `<answer>` payload | Example answer |
+|---|---|---|---|
+| **Detection** | no | 4 comma-separated decimals `x0,y0,x1,y1` — **relative** coords in `[0,1]`, origin at the image's lower-left corner (lower-left then upper-right). No units. | `<answer>0.31,0.42,0.55,0.68</answer>` |
+| **T/L size** | yes | 2 numbers: major axis, then minor axis, in real-world units. | `<answer>(24.13, 11.07)</answer>` |
+| **A/D measurement** | yes | a single number (angle in degrees, or distance in mm). | `<answer>3.42</answer>` |
+
+> **Note on the answer form.** The `Format requirement:` asks for bare comma-separated
+> numbers, but with the CoT prompt the model usually wraps T/L answers in parentheses, e.g.
+> `<answer> (24.13, 11.07) </answer>`. Parse defensively — take the last *k* numbers inside
+> the tag (see §4.3), as the benchmark's `parse_outputs.py` does. Units in the rendered
+> prompt are **full words** (`mm` → `millimeters`, `degree` → `degrees`); `<unit>` and the
+> `<...>` placeholders below are filled in per sample. `image_description` is optional and
+> prepended as `: <image_description>` when present.
+
+**Detection** (`doc_to_text_BoxCoordinate_CoT`) — no `Additional information:` block:
+
+```text
+Task:
+Given the input medical image: <image_description>, return the coordinates of the lower-left and upper-right corners of the bounding box for the <label>.
+Format requirement:
+The reasoning process and the final answer must be enclosed within <think> </think> and <answer> </answer> tags, respectively. For example: <think> reasoning process here </think> <answer> answer here </answer>. The answer should be four decimal numbers separated by commas without any units or additional text. The first two numbers are the coordinates of the lower-left corner and the last two numbers are the coordinates of the upper-right corner of the bounding box. Use relative coordinates in the image space, where the origin is at the lower-left corner of the image. Relative coordinates should be values between 0 and 1, representing the relative positions in the image.
+Reasoning steps:
+Step 1: Identify the relative coordinates of the bounding box. The relative coordinates must be written as (x, y), where x is the relative position in width and y is the relative position in height. Report the reasoning process and final answer within <think> </think> and <answer> </answer> tags, respectively. Inside <think> </think>, include reasoning and step results using <step-k-reasoning> </step-k-reasoning> and <step-k-answer> </step-k-answer> tags.
+Follow the reasoning steps to get the final answer in the required format.
+```
+
+**T/L size** (`doc_to_text_TumorLesionSize_CoT`):
+
+```text
+Task:
+Given the input medical image: <image_description>, estimate the major and minor axis lengths of the ellipse enclosing the <label>, in <unit>.
+Additional information:
+The image size is <W> pixels (width) x <H> pixels (height).
+The pixel size for this image is <pw> <unit> (width) x <ph> <unit> (height).
+Format requirement:
+The final answer must be enclosed within <answer> </answer> tags. The answer should consist of two decimal numbers separated by a comma, without units or extra text. The first number is the major axis length, and the second is the minor axis length.
+Reasoning steps:
+Step 1: Identify the major axis (the longest diameter) of the ellipse enclosing the target region. Find its two endpoints and record their relative coordinates in the format (x, y) = (relative position in width direction, relative position in height direction). Denote the endpoints as (x1_major, y1_major) and (x2_major, y2_major). Step 2: Identify the minor axis (the shortest diameter) of the ellipse. Find its two endpoints and record their relative coordinates in the same (x, y) format. Denote them as (x1_minor, y1_minor) and (x2_minor, y2_minor). Step 3: Given the pixel dimensions (pixel_width, pixel_height) and image size (image_width, image_height), compute the physical length of the major axis using: major_axis_length = sqrt(((x2_major - x1_major) * image_width * pixel_width)^2 + ((y2_major - y1_major) * image_height * pixel_height)^2). Step 4: Similarly, compute the physical length of the minor axis using: minor_axis_length = sqrt(((x2_minor - x1_minor) * image_width * pixel_width)^2 + ((y2_minor - y1_minor) * image_height * pixel_height)^2). Report the reasoning process and final answer within <think> </think> and <answer> </answer> tags, respectively. Inside <think> </think>, include reasoning and step results using <step-k-reasoning> </step-k-reasoning> and <step-k-answer> </step-k-answer> tags.
+Follow the reasoning steps to get the final answer in the required format.
+```
+
+**A/D measurement** (`doc_to_text_BiometricsFromLandmarks_CoT`) — the `Task:` line and
+`Reasoning steps:` differ by metric type (distance vs. angle):
+
+```text
+Task:
+Given the input medical image: <image_description>, <task line>
+Additional information:
+The image size is <W> pixels (width) x <H> pixels (height).
+The pixel size for this image is <pw> <unit> (width) x <ph> <unit> (height).
+Format requirement:
+The final answer must be enclosed within <answer> </answer> tags. The answer should be a single decimal number without units or extra text.
+Reasoning steps:
+<reasoning steps>
+Follow the reasoning steps to get the final answer in the required format.
+```
+
+- **Distance**
+  - `<task line>`:
+    `estimate the distance of <name> in <unit>, which is the distance between 2 landmark points: (landmark 1) <p1>, (landmark 2) <p2>.`
+  - `<reasoning steps>`:
+    `Step 1: Identify the landmark 1 and record its relative coordinates in the format (x, y) = (relative position in width direction, relative position in height direction). Denote the coordinates as (x1, y1). Step 2: Identify the landmark 2 and record its relative coordinates in the same (x, y) format. Denote the coordinates as (x2, y2). Step 3: Given the pixel dimensions (pixel_width, pixel_height) and image size (image_width, image_height), compute the physical distance between the two landmarks using: distance = sqrt(((x2 - x1) * image_width * pixel_width)^2 + ((y2 - y1) * image_height * pixel_height)^2). Report the reasoning process and final answer within <think> </think> and <answer> </answer> tags, respectively. Inside <think> </think>, include reasoning and step results using <step-k-reasoning> </step-k-reasoning> and <step-k-answer> </step-k-answer> tags.`
+
+- **Angle**
+  - `<task line>`:
+    `estimate the angle of <name> in <unit>, which is the angle between 2 lines: (line 1) the line connecting <l1p1> and <l1p2>, (line 2) the line connecting <l2p1> and <l2p2>.`
+  - `<reasoning steps>`:
+    `Step 1: Identify line 1 and record the relative coordinates of its two endpoints in the format (x, y) = (relative position in width direction, relative position in height direction). Denote the endpoints as (x1_line1, y1_line1) and (x2_line1, y2_line1). Step 2: Identify line 2 and record the relative coordinates of its two endpoints in the same (x, y) format. Denote them as (x1_line2, y1_line2) and (x2_line2, y2_line2). Step 3: Given the pixel dimensions (pixel_width, pixel_height) and image size (image_width, image_height), compute the angle between the two lines using the formula: angle = arccos(|A · B| / (||A|| ||B||)), where A and B are the vectors of the two lines computed from the physical coordinates of their endpoints. A = ((x2_line1 - x1_line1) * image_width * pixel_width, (y2_line1 - y1_line1) * image_height * pixel_height) and B = ((x2_line2 - x1_line2) * image_width * pixel_width, (y2_line2 - y1_line2) * image_height * pixel_height). Denote A=(Ax, Ay) and B=(Bx, By). Then, angle = arccos(|Ax*Bx + Ay*By| / (sqrt(Ax^2 + Ay^2) * sqrt(Bx^2 + By^2))). Report the reasoning process and final answer within <think> </think> and <answer> </answer> tags, respectively. Inside <think> </think>, include reasoning and step results using <step-k-reasoning> </step-k-reasoning> and <step-k-answer> </step-k-answer> tags.`
+
+
+> ⚠️ **State the spacing of the image the model actually sees.** The physical extent must be
+> preserved: `image_size × pixel_size` has to equal the true physical size of the scan, but
+> measured on the image *as the model processes it internally* — not the raw file. The
+> benchmark handles this by querying Qwen2.5-VL's vision processor **up front** to learn the
+> exact size it will resize to (a multiple of 28 — e.g. a 512×512 input is processed at
+> 504×504), then rescaling the pixel size by that same ratio. The prompt therefore reports
+> the **post-resize** image size (504×504) and the **adjusted** pixel size `(s_x', s_y')`,
+> not the values of the file on disk. Because the matching is precomputed from the processor,
+> the numbers in the prompt always describe exactly what the model perceives.
+>
+> When you use the model **outside the benchmark you must mirror this matching step**: put in
+> the prompt the image size and pixel size of the image *as the model perceives it*, not your
+> raw input. The simplest way is to resize to 504×504 yourself and scale the pixel size by
+> the same factor (as in §4.3) so no further internal resize occurs; otherwise the
+> millimetre output will be off by the resize factor. Detection is exempt — it uses unitless
+> relative coordinates and carries no spacing information.
+
+### 4.3 Quick start (direct inference)
+
+```python
+import re
+from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
+from qwen_vl_utils import process_vision_info
+
+MODEL_ID = "YongchengYAO/MedVision-V0-7B"
+SYSTEM_PROMPT = (
+    "A conversation between a User and an Assistant. The User asks a question, and the Assistant solves it. "
+    "The Assistant first thinks through the reasoning process internally, then provides the User with the answer. "
+    "The reasoning process and the final answer must be enclosed within <think> </think> and <answer> </answer> tags, respectively. "
+    "For example: <think> reasoning process here </think> <answer> answer here </answer>. "
+    "Within the <think> </think> tags, report the reasoning process for each step inside <step-k-reasoning> </step-k-reasoning> tags, "
+    "followed by the intermediate results in <step-k-answer> </step-k-answer> tags. "
+    "For example: <think> <step-1-reasoning> reasoning for step 1 </step-1-reasoning> <step-1-answer> intermediate result from step 1 </step-1-answer> </think>."
+)
+
+model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+    MODEL_ID, torch_dtype="bfloat16", device_map="auto"
+)
+processor = AutoProcessor.from_pretrained(MODEL_ID)
+
+# A T/L size example. `image` should be a 504x504 RGB PIL.Image. We use 504 (= 18 x 28)
+# because Qwen2.5-VL resizes images to a multiple of 28, so a 504x504 input is processed
+# as-is and the image size / pixel size stated below match exactly what the model sees.
+# (A 512x512 input would instead be processed at 504x504; see the pixel-size note above.)
+question = (
+    "Task:\n"
+    "Given the input medical image, estimate the major and minor axis lengths of the "
+    "ellipse enclosing the tumor, in millimeters.\n"
+    "Additional information:\n"
+    "The image size is 504 pixels (width) x 504 pixels (height).\n"
+    "The pixel size for this image is 0.700 millimeters (width) x 0.700 millimeters (height).\n"
+    "Format requirement:\n"
+    "The final answer must be enclosed within <answer> </answer> tags. "
+    "The answer should consist of two decimal numbers separated by a comma, without units or extra text. "
+    "The first number is the major axis length, and the second is the minor axis length.\n"
+    "Reasoning steps:\n"
+    "Step 1: Identify the major axis (the longest diameter) of the ellipse enclosing the target region. "
+    "Find its two endpoints and record their relative coordinates in the format (x, y) = (relative position in width direction, relative position in height direction). "
+    "Denote the endpoints as (x1_major, y1_major) and (x2_major, y2_major). "
+    "Step 2: Identify the minor axis (the shortest diameter) of the ellipse. "
+    "Find its two endpoints and record their relative coordinates in the same (x, y) format. "
+    "Denote them as (x1_minor, y1_minor) and (x2_minor, y2_minor). "
+    "Step 3: Given the pixel dimensions (pixel_width, pixel_height) and image size (image_width, image_height), compute the physical length of the major axis using: "
+    "major_axis_length = sqrt(((x2_major - x1_major) * image_width * pixel_width)^2 + ((y2_major - y1_major) * image_height * pixel_height)^2). "
+    "Step 4: Similarly, compute the physical length of the minor axis using: "
+    "minor_axis_length = sqrt(((x2_minor - x1_minor) * image_width * pixel_width)^2 + ((y2_minor - y1_minor) * image_height * pixel_height)^2). "
+    "Report the reasoning process and final answer within <think> </think> and <answer> </answer> tags, respectively. "
+    "Inside <think> </think>, include reasoning and step results using "
+    "<step-k-reasoning> </step-k-reasoning> and <step-k-answer> </step-k-answer> tags.\n"
+    "Follow the reasoning steps to get the final answer in the required format."
+)
+
+messages = [
+    {"role": "system", "content": SYSTEM_PROMPT},
+    {"role": "user", "content": [
+        {"type": "image", "image": image},   # 504x504 PIL.Image
+        {"type": "text", "text": question},
+    ]},
+]
+
+text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+image_inputs, video_inputs = process_vision_info(messages)
+inputs = processor(text=[text], images=image_inputs, videos=video_inputs,
+                   padding=True, return_tensors="pt").to(model.device)
+
+generated = model.generate(**inputs, max_new_tokens=4096)
+trimmed = [out[len(inp):] for inp, out in zip(inputs.input_ids, generated)]
+output = processor.batch_decode(trimmed, skip_special_tokens=True)[0]
+
+# Parse the final values from <answer>...</answer>, using the same strategy as the
+# benchmark (medvision_bm.benchmark.parse_outputs -> extract_last_k_nums_within_answer_tag):
+# pull every number inside the <answer> tag and keep the LAST k of them (k=2 for T/L:
+# major, minor). This is robust to surrounding text/punctuation the model may add, e.g.
+# "<answer> (24.13, 11.07) </answer>", which a naive split(",") would choke on.
+EXPECTED_NUMS = 2  # T/L: major, minor. Use 1 for A/D, 4 for Detection.
+m = re.search(r"<answer>(.*?)</answer>", output, re.DOTALL)
+numbers = re.findall(r"-?\d+\.?\d*", m.group(1)) if m else []
+values = [float(x) for x in numbers[-EXPECTED_NUMS:]] if len(numbers) >= EXPECTED_NUMS else None
+print(output)            # full <think>…</think><answer>…</answer> trace
+print("major, minor:", values)
+```
+
+To switch tasks, swap in the corresponding template from §4.2 — the `Task:` line, the
+`Format requirement:`, and the `Reasoning steps:` block all change per task (and set
+`EXPECTED_NUMS` accordingly: 4 for Detection, 1 for A/D). Detection omits the
+`Additional information:` block and returns the four bounding-box corners; A/D adds the
+`Additional information:` block and returns a single number.
+
+### 4.4 Reproducing the MedVision benchmark
+
+The repository runs all three tasks through a single entry point,
+`medvision_bm.benchmark.eval__medvision-model-rft`, served with vLLM (`vllm_qwen25vl`
+backend). Ready-to-run scripts live in
+[`script/benchmark-{AD,TL,detect}/`](https://github.com/YongchengYAO/MedVision/tree/main/script):
+
+| Task | Script | `tasks_list` JSON |
+|---|---|---|
+| A/D | `script/benchmark-AD/eval__MedVision-V0-7B__AD.sh` | `tasks_MedVision-AD-CoT.json` |
+| T/L | `script/benchmark-TL/eval__MedVision-V0-7B__TL.sh` | `tasks_MedVision-TL-CoT.json` |
+| Detection | `script/benchmark-detect/eval__MedVision-V0-7B__detect.sh` | `tasks_MedVision-detect-CoT.json` |
+
+The scripts are identical apart from the task tag and tasks-list JSON; the shared
+invocation is:
+
+```bash
+export MedVision_PLANNER_VERSION='1.0.0'   # MedVision dataset v1.0.0
+
+python -m medvision_bm.benchmark.eval__medvision-model-rft \
+  --model_hf_id YongchengYAO/MedVision-V0-7B \
+  --model_name MedVision-V0-7B \
+  --results_dir <results_dir> \
+  --data_dir <data_dir> \
+  --tasks_list_json_path <tasks_list_json> \
+  --task_status_json_path <status_json> \
+  --batch_size_per_gpu 10 \
+  --gpu_memory_utilization 0.9 \
+  --sample_limit 1000 \
+  --reshape_image_hw 512x512 \
+  --use_system_prompt          # injects the §4.1 system prompt — required for this model
+```
+
+Then parse and summarize the outputs with `medvision_bm.benchmark.parse_outputs` and the
+`summarize_{AD,TL,detection}_task` modules. See the
+[code repository](https://github.com/YongchengYAO/MedVision) for the full pipeline.
+
+---
+
+## 5. Performance
+
+📊 Detailed benchmark results — including comparison against 12 off-the-shelf general and
+medical VLMs, per-label breakdowns, OOD generalization, and the SFT/RFT ablation — are
+available on the **[project page](https://medvision-vlm.github.io)**.
+
+_(Performance tables to be added — see project page for the latest results.)_
+
+---
+
+## License & Intended Use
+
+**Intended use.** MedVision-V0 is released **exclusively for research and education**.
+This is consistent with the intended use of all source datasets, which were collected and
+made available under research-only access conditions. Derivatives of MedVision data —
+including this model — **must not** be used for commercial or clinical development.
+
+**⚠️ Not for clinical use.** Current state-of-the-art VLMs are not yet capable of accurate,
+robust medical image detection and measurement. While MedVision-V0 substantially improves
+over off-the-shelf models, it remains **far from the accuracy and robustness required for
+clinical application** and **must not be used to drive any medical diagnosis or clinical
+decision-making**.
+
+**Data privacy.** All source imaging datasets were publicly released in anonymized form by
+their respective curators. MedVision's added annotations (bounding boxes, size, and
+angle/distance measurements) are purely geometric descriptors and contain no
+subject-identifying information.
+
+---
+
+## Citation
+
+```bibtex
+@article{yao2025medvision,
+  title   = {MedVision: Benchmarking Quantitative Medical Image Analysis},
+  author  = {Yao, Yongcheng and Zong, Yongshuo and Dutt, Raman and Yang, Yongxin and Tsaftaris, Sotirios A and Hospedales, Timothy},
+  journal = {arXiv preprint arXiv:2511.18676},
+  year    = {2025}
+}
+```
