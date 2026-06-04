@@ -393,7 +393,7 @@ def find_and_group_jsonl_files(model_path):
     # Find all JSONL files in the model folder (exclude analysis output files)
     jsonl_files = [
         f for f in glob.glob(os.path.join(model_path, "*.jsonl"))
-        if not (f.endswith("_proc_acc.jsonl") or f.endswith("_eq_acc.jsonl"))
+        if not ("_proc_acc" in os.path.basename(f) or "_eq_acc" in os.path.basename(f))
     ]
 
     # Group files by dataset and task

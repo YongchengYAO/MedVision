@@ -491,7 +491,7 @@ def process_parsed_file_in_model_folder(
 
     jsonl_files = [
         f for f in glob.glob(os.path.join(parsed_files_dir, "*.jsonl"))
-        if not (f.endswith("_proc_acc.jsonl") or f.endswith("_eq_acc.jsonl"))
+        if not ("_proc_acc" in os.path.basename(f) or "_eq_acc" in os.path.basename(f))
     ]
 
     # Collect all data from the parsed JSONL files
