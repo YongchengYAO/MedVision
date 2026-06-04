@@ -30,8 +30,8 @@
 
 # 🔥 News
 
-- [May 15, 2026] 🚀 Release benchmarking/finetuning codebase (i.e., `medvision_bm`) v1.1.0 [release v1.1.0](https://github.com/YongchengYAO/MedVision/blob/master/docs/codebase-release/release-v1.1.0.md) 
-- [May 14, 2026] 🚀 Release **MedVision** dataset v1.1.0 (i.e., `medvision_ds`) [release v1.1.0](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.0.md)
+- [May 15, 2026] 🚀 Released the benchmarking/fine-tuning codebase `medvision_bm` v1.1.0 — [release notes](https://github.com/YongchengYAO/MedVision/blob/master/docs/codebase-release/release-v1.1.0.md)
+- [May 14, 2026] 🚀 Released the **MedVision** dataset (`medvision_ds`) v1.1.0 — [release notes](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.0.md)
   - 🌟 Highlight: new T/L samples filtering (with ambiguous cases removed), more T/L samples with a single small target (cluster size > 20)
   - The codebase `medvision_ds` will be automatically updated to the latest (v1.1.0)
   - Backward compatibility: the env var `MedVision_PLANNER_VERSION` is required (v1.1.0+) to specify the annotation data version. Setting `MedVision_PLANNER_VERSION='1.0.0'` will fall back to **MedVision** dataset v1.0.0.
@@ -41,7 +41,6 @@
   ```
 
 - [Dec 21, 2025] 🩻 Data & tasks preview: MedVision includes [area-estimation (`MaskSize`) tasks](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/info/ConfigurationsList_All.csv)
-- [Dec 20, 2025] 🎯 New recipe: [SFT with CoT data](https://github.com/YongchengYAO/MedVision/tree/master/script/sft), [build parquet dataset for RFT in verl](https://github.com/YongchengYAO/MedVision/tree/master/script/rft)
 - [Dec 10, 2025] Add preprint, training code, docker images, released models, new tasks/models guide
 - [Oct 8, 2025] 🚀 Release **MedVision** dataset v1.0.0
 
@@ -49,7 +48,7 @@
 
 # 🌟 Quick Start
 
-For benchmarking and model post-training in this project, install `medvision_bm` and use the GitHub repo (`MedVision`) as the working folder.
+**Option 1 — run the full pipeline (benchmarking, SFT/RFT).** Clone the repo and install from the local copy. Use this when you rely on the repo's folder structure (e.g. `script/`, `tasks_list/`, `Results/`), since the scripts and configs live there.
 
 ```bash
 git clone https://github.com/YongchengYAO/MedVision.git MedVision
@@ -58,7 +57,7 @@ pip install .
 pip show medvision_bm
 ```
 
-For integration in other projects, install with
+**Option 2 — import the package in your own project.** Install `medvision_bm` directly from GitHub. Use this when you only want to `import` its modules/functions (e.g. `from medvision_bm.utils import parse_utils`) and do **not** need the repo's folder structure.
 
 ```bash
 pip install "git+https://github.com/YongchengYAO/MedVision.git"
@@ -144,7 +143,6 @@ Next (in the container):
 
   2. After evaluating all models in step 1, parse model outputs and calculate metrics (e.g., MRE, MAE, nMAE, IoU, F1, Precision, Recall, Success Rate):
 
-    
      ```bash
      # CLI command: 
      # python -m medvision_bm.benchmark.parse_outputs
@@ -156,12 +154,12 @@ Next (in the container):
      # --limit: limit sample size in the parsed files
      # --skip_existing: (store_true arg) skip parsed files
      # --processes, -p: number of processes
-     # --rm_old: remove existing "parsed" folder for each model 🔥
+     # --rm_old: remove existing "parsed" folder for each model
      
      # example 1: parse all models for the T/L task 
      python -m medvision_bm.benchmark.parse_outputs --task_type TL --task_dir Results/MedVision-TL -p 32
 
-     # example 2: parse all models for the A/D task (remove existing `parsed` folder) 🔥
+     # example 2: parse all models for the A/D task (remove existing `parsed` folder)
      python -m medvision_bm.benchmark.parse_outputs --task_type AD --task_dir Results/MedVision-AD -p 32 --rm_old
      
      # example 3: parse one model for the detection task and skip existing parsed files
@@ -173,8 +171,8 @@ Next (in the container):
       > 
       > If `medvision_ds` is missing, install with:
       > 
-      > `python -m medvision_bm.benchmark.install_medvision_ds --data_dir <local-data-folder> `
-    
+      > `python -m medvision_bm.benchmark.install_medvision_ds --data_dir <local-data-folder>`
+
       ```bash
       # CLI command: 
       # python -m medvision_bm.benchmark.summarize_AD_task 
@@ -186,14 +184,14 @@ Next (in the container):
       # args:
       # --task_dir: task folder
       # --model_dir: model folder
-      # --limit: limit sample size in the parsed files 🔥
+      # --limit: limit sample size in the parsed files
       # --skip_model_wo_parsed_files: skip model directories that don't have a 'parsed' folder
       # --processes, -p: number of processes 
       
       # example 1: summarize all models for the A/D task
       python -m medvision_bm.benchmark.summarize_AD_task --task_dir Results/MedVision-AD -p 32
 
-      # example 2: summarize all models for the T/L task (limit sample size in the parsed files) 🔥
+      # example 2: summarize all models for the T/L task (limit sample size in the parsed files)
       # e.g. Your testing set limit is 1000, and you want to analyze the first 100 samples in each subtask because you want to compare with another ablation study where the testing set limit is 100. 
       python -m medvision_bm.benchmark.summarize_TL_task --task_dir Results/MedVision-TL -p 32 --limit 100
       
@@ -882,6 +880,6 @@ MedVision is based on some open-source projects:
 - [EvolvingLMMs-Lab/lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval): VLM evaluation framework
 - [EleutherAI/lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness): LLM evaluation framework
 - [vllm-project/vllm](https://github.com/vllm-project/vllm): LLM/VLM inference
-- [verl-project/verl](https://github.com/verl-project/verl): Volcano Engine Reinforcement Learning for LLMs
+- [volcengine/verl](https://github.com/volcengine/verl): Volcano Engine Reinforcement Learning for LLMs
 
 <br/>
