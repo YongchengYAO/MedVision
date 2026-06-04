@@ -340,11 +340,13 @@ def _load_image(doc, reshape_hw):
 # ── Overlay (GT + predicted bounding boxes) ───────────────────────────────────
 
 def _parse_bbox(coords_str):
-    """Parse 'x0,y0,x1,y1' string into [x_min, y_min, x_max, y_max] floats, or None."""
+    """Parse bbox coordinate string into [x_min, y_min, x_max, y_max] floats, or None."""
+    nums = re.findall(r"-?\d+\.?\d*", coords_str or "")
+    if len(nums) < 4:
+        return None
     try:
-        vals = [float(v.strip()) for v in coords_str.split(',')]
-        return vals if len(vals) == 4 else None
-    except Exception:
+        return [float(x) for x in nums[-4:]]
+    except ValueError:
         return None
 
 

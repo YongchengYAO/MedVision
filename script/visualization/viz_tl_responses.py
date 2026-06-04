@@ -491,10 +491,13 @@ def _draw_tl_overlay_on_ax(ax, doc, proc_acc):
 # ── Sample data helpers ────────────────────────────────────────────────────────
 
 def _parse_prediction(filtered_resps):
+    text = (filtered_resps[0] if filtered_resps else "") or ""
+    nums = re.findall(r"-?\d+\.?\d*", text)
+    if len(nums) < 2:
+        return None, None
     try:
-        parts = filtered_resps[0].split(',')
-        return float(parts[0].strip()), float(parts[1].strip())
-    except Exception:
+        return float(nums[-2]), float(nums[-1])
+    except ValueError:
         return None, None
 
 

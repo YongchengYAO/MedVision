@@ -52,11 +52,19 @@ def _relative_image_file(full_path, dataset_name):
     idx = full_path.find(marker)
     return full_path[idx + len(marker):] if idx >= 0 else Path(full_path).name
 
-# Matches exactly two parenthesized (x, y) pairs where each value is in [0, 1].
-# Mirrors the regex in analyze_process_accuracy_TL.py to ensure consistent parsing.
-_RP = r"(?:0(?:\.\d+)?|1(?:\.0+)?)"
-_CG = rf"\(\s*({_RP})\s*,\s*({_RP})\s*\)"
-_COORD_PAT = re.compile(rf"{_CG}\s*,\s*{_CG}", re.DOTALL)
+def _extract_coords_from_tag(text, n):
+    """Extract the last n floats in [0, 1] from step-k-answer tag content.
+    Handles both strict format '(x1, y1), (x2, y2)' and named-variable format
+    '(x1_name, y1_name) = (0.3, 0.6); (x2_name, y2_name) = (0.7, 0.4)'."""
+    vals = []
+    for tok in re.findall(r"-?\d+\.?\d*", text):
+        try:
+            v = float(tok)
+            if 0.0 <= v <= 1.0:
+                vals.append(v)
+        except ValueError:
+            pass
+    return vals[-n:] if len(vals) >= n else None
 
 
 def _extract_resp_text(resps):
@@ -74,9 +82,9 @@ def parse_axis_coords(resp_text, image_hw):
     Extract major/minor axis endpoints from CoT response and convert to array space.
 
     Parses <step-1-answer> (major) and <step-2-answer> (minor) tags.
-    Uses a parenthesized-pair regex matching (x, y), (x, y) with values in [0, 1],
-    identical to analyze_process_accuracy_TL.py, to avoid spurious numbers in
-    the model's reasoning text corrupting the coordinate extraction.
+    Uses _extract_coords_from_tag which accepts both the strict format
+    '(x1, y1), (x2, y2)' and named-variable formats like
+    '(x1_major, y1_major) = (0.3, 0.6); (x2_major, y2_major) = (0.7, 0.4)'.
 
     Model coordinates are in image space (origin lower-left):
         idx_dim1 = x_rel * W
@@ -93,13 +101,13 @@ def parse_axis_coords(resp_text, image_hw):
     if not m1 or not m2:
         return None, None
 
-    pm1 = _COORD_PAT.search(m1.group(1))
-    pm2 = _COORD_PAT.search(m2.group(1))
-    if not pm1 or not pm2:
+    c1 = _extract_coords_from_tag(m1.group(1), 4)
+    c2 = _extract_coords_from_tag(m2.group(1), 4)
+    if c1 is None or c2 is None:
         return None, None
 
-    x1_maj, y1_maj, x2_maj, y2_maj = [float(pm1.group(i)) for i in range(1, 5)]
-    x1_min, y1_min, x2_min, y2_min = [float(pm2.group(i)) for i in range(1, 5)]
+    x1_maj, y1_maj, x2_maj, y2_maj = c1
+    x1_min, y1_min, x2_min, y2_min = c2
 
     def _to_array(x_rel, y_rel):
         return (H * (1 - y_rel), x_rel * W)

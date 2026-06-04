@@ -172,10 +172,19 @@ def _get_gt_coords(doc):
 # Model prediction parsing
 # ---------------------------------------------------------------------------
 
-_RP = r"(?:0(?:\.\d+)?|1(?:\.0+)?)"
-_CG = rf"\(\s*({_RP})\s*,\s*({_RP})\s*\)"
-_TWO_CG = re.compile(rf"{_CG}\s*,\s*{_CG}", re.DOTALL)
-_ONE_CG = re.compile(rf"{_CG}", re.DOTALL)
+def _extract_coords_from_tag(text, n):
+    """Extract the last n floats in [0, 1] from step-k-answer tag content.
+    Handles both strict format '(x, y)' and named-variable format
+    '(x_name, y_name) = (0.3, 0.6)'."""
+    vals = []
+    for tok in re.findall(r"-?\d+\.?\d*", text):
+        try:
+            v = float(tok)
+            if 0.0 <= v <= 1.0:
+                vals.append(v)
+        except ValueError:
+            pass
+    return vals[-n:] if len(vals) >= n else None
 
 
 def _extract_resp_text(resps):
@@ -202,12 +211,12 @@ def _parse_dist_preds(resp_text, H, W):
     m2 = re.search(r"<step-2-answer>(.*?)</step-2-answer>", resp_text, re.DOTALL)
     if not m1 or not m2:
         return None
-    pm1 = _ONE_CG.search(m1.group(1))
-    pm2 = _ONE_CG.search(m2.group(1))
-    if not pm1 or not pm2:
+    c1 = _extract_coords_from_tag(m1.group(1), 2)
+    c2 = _extract_coords_from_tag(m2.group(1), 2)
+    if c1 is None or c2 is None:
         return None
-    p1 = _to_array(float(pm1.group(1)), float(pm1.group(2)), H, W)
-    p2 = _to_array(float(pm2.group(1)), float(pm2.group(2)), H, W)
+    p1 = _to_array(c1[0], c1[1], H, W)
+    p2 = _to_array(c2[0], c2[1], H, W)
     return p1, p2
 
 
@@ -220,14 +229,14 @@ def _parse_angle_preds(resp_text, H, W):
     m2 = re.search(r"<step-2-answer>(.*?)</step-2-answer>", resp_text, re.DOTALL)
     if not m1 or not m2:
         return None
-    pm1 = _TWO_CG.search(m1.group(1))
-    pm2 = _TWO_CG.search(m2.group(1))
-    if not pm1 or not pm2:
+    c1 = _extract_coords_from_tag(m1.group(1), 4)
+    c2 = _extract_coords_from_tag(m2.group(1), 4)
+    if c1 is None or c2 is None:
         return None
-    l1p1 = _to_array(float(pm1.group(1)), float(pm1.group(2)), H, W)
-    l1p2 = _to_array(float(pm1.group(3)), float(pm1.group(4)), H, W)
-    l2p1 = _to_array(float(pm2.group(1)), float(pm2.group(2)), H, W)
-    l2p2 = _to_array(float(pm2.group(3)), float(pm2.group(4)), H, W)
+    l1p1 = _to_array(c1[0], c1[1], H, W)
+    l1p2 = _to_array(c1[2], c1[3], H, W)
+    l2p1 = _to_array(c2[0], c2[1], H, W)
+    l2p2 = _to_array(c2[2], c2[3], H, W)
     return l1p1, l1p2, l2p1, l2p2
 
 

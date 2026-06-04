@@ -130,56 +130,57 @@ def plot_tl_axes_on_image(
             mlines.Line2D([], [], color="#4F46E5", linestyle="--", linewidth=4, label="GT minor axis")
         )
 
-    # Predicted axes (solid)
-    # Major axis (P1→P2, orange)
-    plt.plot(
-        [major_axis_pts[0][0], major_axis_pts[1][0]],  # x: dim0
-        [major_axis_pts[0][1], major_axis_pts[1][1]],  # y: dim1
-        color="#F37020",
-        linestyle="-",
-        linewidth=3,
-        label="Pred major axis",
-        zorder=3,
-    )
-    # Minor axis (P3→P4, yellow)
-    plt.plot(
-        [minor_axis_pts[0][0], minor_axis_pts[1][0]],  # x: dim0
-        [minor_axis_pts[0][1], minor_axis_pts[1][1]],  # y: dim1
-        color="#FBBC05",
-        linestyle="-",
-        linewidth=3,
-        label="Pred minor axis",
-        zorder=3,
-    )
-
-    # Landmark dots P1–P4: scatter(x=dim0, y=dim1)
-    colors = ["#4285F4", "#EA4335", "#FDB813", "#34A853"]
-    offset_x = img_height * 0.015 if show_coords else 0
-    for j, (dim0, dim1) in enumerate(
-        [major_axis_pts[0], major_axis_pts[1], minor_axis_pts[0], minor_axis_pts[1]]
-    ):
-        plt.scatter(
-            dim0,
-            dim1,
-            color=colors[j],
-            edgecolors="black",
-            marker="o",
-            s=60,
-            linewidth=1.5,
-            zorder=4,
+    if major_axis_pts is not None:
+        # Predicted axes (solid)
+        # Major axis (P1→P2, orange)
+        plt.plot(
+            [major_axis_pts[0][0], major_axis_pts[1][0]],  # x: dim0
+            [major_axis_pts[0][1], major_axis_pts[1][1]],  # y: dim1
+            color="#F37020",
+            linestyle="-",
+            linewidth=3,
+            label="Pred major axis",
+            zorder=3,
         )
-        if show_coords:
-            x_rel = dim1 / img_width
-            y_rel = 1.0 - dim0 / img_height
-            plt.annotate(
-                f"P{j + 1} ({x_rel:.3f}, {y_rel:.3f})",
-                xy=(dim0, dim1),
-                xytext=(dim0 + offset_x, dim1),
+        # Minor axis (P3→P4, yellow)
+        plt.plot(
+            [minor_axis_pts[0][0], minor_axis_pts[1][0]],  # x: dim0
+            [minor_axis_pts[0][1], minor_axis_pts[1][1]],  # y: dim1
+            color="#FBBC05",
+            linestyle="-",
+            linewidth=3,
+            label="Pred minor axis",
+            zorder=3,
+        )
+
+        # Landmark dots P1–P4: scatter(x=dim0, y=dim1)
+        colors = ["#4285F4", "#EA4335", "#FDB813", "#34A853"]
+        offset_x = img_height * 0.015 if show_coords else 0
+        for j, (dim0, dim1) in enumerate(
+            [major_axis_pts[0], major_axis_pts[1], minor_axis_pts[0], minor_axis_pts[1]]
+        ):
+            plt.scatter(
+                dim0,
+                dim1,
                 color=colors[j],
-                fontsize=7,
-                va="center",
-                zorder=5,
+                edgecolors="black",
+                marker="o",
+                s=60,
+                linewidth=1.5,
+                zorder=4,
             )
+            if show_coords:
+                x_rel = dim1 / img_width
+                y_rel = 1.0 - dim0 / img_height
+                plt.annotate(
+                    f"P{j + 1} ({x_rel:.3f}, {y_rel:.3f})",
+                    xy=(dim0, dim1),
+                    xytext=(dim0 + offset_x, dim1),
+                    color=colors[j],
+                    fontsize=7,
+                    va="center",
+                    zorder=5,
+                )
 
     # L-shaped scale bar (lower-left corner).
     # With origin="lower", lower-left = small plot_x (dim0), small plot_y (dim1).
@@ -421,7 +422,6 @@ def plot_ad_on_image(
 
     if metric_type == "distance":
         gt_p1, gt_p2 = gt_pts["p1"], gt_pts["p2"]
-        pr_p1, pr_p2 = pred_pts
 
         plt.plot(
             [gt_p1[0], gt_p2[0]], [gt_p1[1], gt_p2[1]],
@@ -432,20 +432,29 @@ def plot_ad_on_image(
             color=[_DOT_COLORS[0], _DOT_COLORS[1]],
             edgecolors="black", s=80, linewidth=1.5, zorder=4,
         )
-        plt.plot(
-            [pr_p1[0], pr_p2[0]], [pr_p1[1], pr_p2[1]],
-            color="#F37020", linestyle="-", linewidth=3, zorder=3,
-        )
-        plt.scatter(
-            [pr_p1[0], pr_p2[0]], [pr_p1[1], pr_p2[1]],
-            color=[_DOT_COLORS[2], _DOT_COLORS[3]],
-            edgecolors="black", s=60, linewidth=1.5, zorder=4,
-        )
+
+        legend_handles = [
+            mlines.Line2D([], [], color="#A21CAF", linestyle="--", linewidth=3, label="GT landmarks"),
+        ]
+
+        if pred_pts is not None:
+            pr_p1, pr_p2 = pred_pts
+            plt.plot(
+                [pr_p1[0], pr_p2[0]], [pr_p1[1], pr_p2[1]],
+                color="#F37020", linestyle="-", linewidth=3, zorder=3,
+            )
+            plt.scatter(
+                [pr_p1[0], pr_p2[0]], [pr_p1[1], pr_p2[1]],
+                color=[_DOT_COLORS[2], _DOT_COLORS[3]],
+                edgecolors="black", s=60, linewidth=1.5, zorder=4,
+            )
+            legend_handles.append(
+                mlines.Line2D([], [], color="#F37020", linestyle="-", linewidth=3, label="Pred landmarks")
+            )
 
         if show_coords:
             offset_x = img_height * 0.015
-            for pt, color in [(gt_p1, _DOT_COLORS[0]), (gt_p2, _DOT_COLORS[1]),
-                              (pr_p1, _DOT_COLORS[2]), (pr_p2, _DOT_COLORS[3])]:
+            for pt, color in [(gt_p1, _DOT_COLORS[0]), (gt_p2, _DOT_COLORS[1])]:
                 x_rel = pt[1] / img_width
                 y_rel = 1.0 - pt[0] / img_height
                 plt.annotate(
@@ -454,16 +463,20 @@ def plot_ad_on_image(
                     xytext=(pt[0] + offset_x, pt[1]),
                     color=color, fontsize=7, va="center", zorder=5,
                 )
-
-        legend_handles = [
-            mlines.Line2D([], [], color="#A21CAF", linestyle="--", linewidth=3, label="GT landmarks"),
-            mlines.Line2D([], [], color="#F37020", linestyle="-",  linewidth=3, label="Pred landmarks"),
-        ]
+            if pred_pts is not None:
+                for pt, color in [(pr_p1, _DOT_COLORS[2]), (pr_p2, _DOT_COLORS[3])]:
+                    x_rel = pt[1] / img_width
+                    y_rel = 1.0 - pt[0] / img_height
+                    plt.annotate(
+                        f"({x_rel:.3f}, {y_rel:.3f})",
+                        xy=(pt[0], pt[1]),
+                        xytext=(pt[0] + offset_x, pt[1]),
+                        color=color, fontsize=7, va="center", zorder=5,
+                    )
 
     else:  # angle
         gt_l1p1, gt_l1p2 = gt_pts["l1p1"], gt_pts["l1p2"]
         gt_l2p1, gt_l2p2 = gt_pts["l2p1"], gt_pts["l2p2"]
-        pr_l1p1, pr_l1p2, pr_l2p1, pr_l2p2 = pred_pts
 
         plt.plot(
             [gt_l1p1[0], gt_l1p2[0]], [gt_l1p1[1], gt_l1p2[1]],
@@ -473,39 +486,45 @@ def plot_ad_on_image(
             [gt_l2p1[0], gt_l2p2[0]], [gt_l2p1[1], gt_l2p2[1]],
             color="#4F46E5", linestyle="--", linewidth=4, zorder=2,
         )
-        plt.plot(
-            [pr_l1p1[0], pr_l1p2[0]], [pr_l1p1[1], pr_l1p2[1]],
-            color="#F37020", linestyle="-", linewidth=3, zorder=3,
-        )
-        plt.plot(
-            [pr_l2p1[0], pr_l2p2[0]], [pr_l2p1[1], pr_l2p2[1]],
-            color="#FBBC05", linestyle="-", linewidth=3, zorder=3,
-        )
-
-        all_pred_pts = [pr_l1p1, pr_l1p2, pr_l2p1, pr_l2p2]
-        for j, pt in enumerate(all_pred_pts):
-            plt.scatter(
-                pt[0], pt[1],
-                color=_DOT_COLORS[j], edgecolors="black",
-                s=60, linewidth=1.5, zorder=4,
-            )
-            if show_coords:
-                offset_x = img_height * 0.015
-                x_rel = pt[1] / img_width
-                y_rel = 1.0 - pt[0] / img_height
-                plt.annotate(
-                    f"({x_rel:.3f}, {y_rel:.3f})",
-                    xy=(pt[0], pt[1]),
-                    xytext=(pt[0] + offset_x, pt[1]),
-                    color=_DOT_COLORS[j], fontsize=7, va="center", zorder=5,
-                )
 
         legend_handles = [
             mlines.Line2D([], [], color="#A21CAF", linestyle="--", linewidth=3, label="GT line 1"),
             mlines.Line2D([], [], color="#4F46E5", linestyle="--", linewidth=3, label="GT line 2"),
-            mlines.Line2D([], [], color="#F37020", linestyle="-",  linewidth=3, label="Pred line 1"),
-            mlines.Line2D([], [], color="#FBBC05", linestyle="-",  linewidth=3, label="Pred line 2"),
         ]
+
+        if pred_pts is not None:
+            pr_l1p1, pr_l1p2, pr_l2p1, pr_l2p2 = pred_pts
+            plt.plot(
+                [pr_l1p1[0], pr_l1p2[0]], [pr_l1p1[1], pr_l1p2[1]],
+                color="#F37020", linestyle="-", linewidth=3, zorder=3,
+            )
+            plt.plot(
+                [pr_l2p1[0], pr_l2p2[0]], [pr_l2p1[1], pr_l2p2[1]],
+                color="#FBBC05", linestyle="-", linewidth=3, zorder=3,
+            )
+
+            all_pred_pts = [pr_l1p1, pr_l1p2, pr_l2p1, pr_l2p2]
+            for j, pt in enumerate(all_pred_pts):
+                plt.scatter(
+                    pt[0], pt[1],
+                    color=_DOT_COLORS[j], edgecolors="black",
+                    s=60, linewidth=1.5, zorder=4,
+                )
+                if show_coords:
+                    offset_x = img_height * 0.015
+                    x_rel = pt[1] / img_width
+                    y_rel = 1.0 - pt[0] / img_height
+                    plt.annotate(
+                        f"({x_rel:.3f}, {y_rel:.3f})",
+                        xy=(pt[0], pt[1]),
+                        xytext=(pt[0] + offset_x, pt[1]),
+                        color=_DOT_COLORS[j], fontsize=7, va="center", zorder=5,
+                    )
+
+            legend_handles += [
+                mlines.Line2D([], [], color="#F37020", linestyle="-", linewidth=3, label="Pred line 1"),
+                mlines.Line2D([], [], color="#FBBC05", linestyle="-", linewidth=3, label="Pred line 2"),
+            ]
 
     # L-shaped scale bar (lower-left corner)
     min_idx = np.argmin(image_2d.shape[:2])
