@@ -106,6 +106,8 @@ flock "${lockfile}" bash -c '
 
 # Setup training env
 python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --lmms_eval_opt_deps qwen2_5_vl
+# # [Alternative] Setup training env: use a specific requirements file
+# python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --requirement "${benchmark_dir}/requirements/requirements_sft_qwen25vl.txt" --lmms_eval_opt_deps qwen2_5_vl
 
 
 # # [Debugging] Disable WANDB online logging

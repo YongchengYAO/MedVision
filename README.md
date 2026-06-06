@@ -3,7 +3,7 @@
 
   # MedVision: Dataset and Benchmark for Quantitative Medical Image Analysis
 
-  | 🌏 [**Project**](https://medvision-vlm.github.io) | 🧑🏻‍💻 [**Code**](https://github.com/YongchengYAO/MedVision) | 🩻 [**Dataset**](https://huggingface.co/datasets/YongchengYAO/MedVision) | 🐳 [**Docker**](https://hub.docker.com/r/vincentycyao/medvision/tags) | 🤗 [**Models**](https://huggingface.co/collections/YongchengYAO/medvision-sft-models) | 📖 [**arXiv**](https://arxiv.org/abs/2511.18676) |
+  | 🌏 [**Project**](https://medvision-vlm.github.io) | 🧑🏻‍💻 [**Code**](https://github.com/YongchengYAO/MedVision) | 🩻 [**Dataset**](https://huggingface.co/datasets/YongchengYAO/MedVision) | 🐳 [**Docker**](https://hub.docker.com/r/vincentycyao/medvision/tags) | 🤗 [**Models**](https://huggingface.co/collections/YongchengYAO/medvision-v0) | 📖 [**arXiv**](https://arxiv.org/abs/2511.18676) |
 
   🔎 Benchmarking VLMs for detection, tumor/lesion size estimation, and angle/distance measurement from medical images 📏
 
@@ -32,7 +32,7 @@
 
 - [May 15, 2026] 🚀 Released the benchmarking/fine-tuning codebase `medvision_bm` v1.1.0 — [release notes](https://github.com/YongchengYAO/MedVision/blob/master/docs/codebase-release/release-v1.1.0.md)
 - [May 14, 2026] 🚀 Released the **MedVision** dataset (`medvision_ds`) v1.1.0 — [release notes](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.0.md)
-  - 🌟 Highlight: new T/L samples filtering (with ambiguous cases removed), more T/L samples with a single small target (cluster size > 20)
+  - 🌟 Highlight: new T/L sample filtering (with ambiguous cases removed), more T/L samples with a single small target (cluster size > 20)
   - The codebase `medvision_ds` will be automatically updated to the latest (v1.1.0)
   - Backward compatibility: the env var `MedVision_PLANNER_VERSION` is required (v1.1.0+) to specify the annotation data version. Setting `MedVision_PLANNER_VERSION='1.0.0'` will fall back to **MedVision** dataset v1.0.0.
   - 🧪 Testing backward compatibility: 
@@ -41,7 +41,7 @@
   ```
 
 - [Dec 21, 2025] 🩻 Data & tasks preview: MedVision includes [area-estimation (`MaskSize`) tasks](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/info/ConfigurationsList_All.csv)
-- [Dec 10, 2025] Add preprint, training code, docker images, released models, new tasks/models guide
+- [Dec 10, 2025] Added preprint, training code, docker images, released models, new tasks/models guide
 - [Oct 8, 2025] 🚀 Release **MedVision** dataset v1.0.0
 
 <br/>
@@ -104,21 +104,8 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
    python -m medvision_bm.benchmark.install_medvision_ds --data_dir ./Data
    pip show medvision_ds
    ```
-
-Next (in the container):
-
-- Skip environment setup (recommended reading: [how to debug env setup error](https://github.com/YongchengYAO/MedVision/blob/master/docs/debug_env_setup.md)):
-
-  - Benchmarking: use `--skip_env_setup` for scripts in ``/root/Documents/MedVision/script/benchmark-*``
-
-  - SFT: disable this line in ``/root/Documents/MedVision/script/sft-*``
-
-    ```bash
-    python -m medvision_bm.sft.env_setup --data_dir ${data_dir}
-    ```
-
 > [!TIP]
-> Treat the `MedVision` folder as the working directory.
+> Treat the `MedVision` folder as the working directory for benchmarking and fine-tuning.
 >
 > [File structure](https://github.com/YongchengYAO/MedVision/tree/master/docs/file-structure.md): imaging data, benchmark results, and model checkpoints are automatically saved
 
@@ -126,20 +113,15 @@ Next (in the container):
 
 # 📊 Benchmark
 
-- **[Usage]** 
-
   1. The scripts in `script/benchmark-*/eval__*` should be sufficient for dependency installation, data processing, and benchmarking
 
-     > ⚠️
-     >
      > Set these variables:
      >
      > - `benchmark_dir`: the working directory
-     > - `model_hf_id`: Huggingface ID (`<user>/<model>`) of the tested model
+     > - `model_hf_id`: Hugging Face ID (`<user>/<model>`) of the tested model
      > - `model_name`: user-defined identifier for the tested model, used as folder name in `Results/MedVision-*/`
      > - resource-constrained configs, such as
      >   - `batch_size_per_gpu`
-     >   - `CUDA_VISIBLE_DEVICES=0,1` 
 
   2. After evaluating all models in step 1, parse model outputs and calculate metrics (e.g., MRE, MAE, nMAE, IoU, F1, Precision, Recall, Success Rate):
 
@@ -167,8 +149,7 @@ Next (in the container):
      ```
 
   3. Summarize model performance for each task
-      > ⚠️
-      > 
+  
       > If `medvision_ds` is missing, install with:
       > 
       > `python -m medvision_bm.benchmark.install_medvision_ds --data_dir <local-data-folder>`
@@ -178,35 +159,27 @@ Next (in the container):
       # python -m medvision_bm.benchmark.summarize_AD_task 
       # python -m medvision_bm.benchmark.summarize_detection_task
       # python -m medvision_bm.benchmark.summarize_TL_task
-      # python -m medvision_bm.benchmark.analyze_detection_task_boxsize
-      # python -m medvision_bm.benchmark.analyze_detection_task_boxsize_vs_random
       #
       # args:
       # --task_dir: task folder
       # --model_dir: model folder
       # --limit: limit sample size in the parsed files
       # --skip_model_wo_parsed_files: skip model directories that don't have a 'parsed' folder
-      # --processes, -p: number of processes 
+      # --processes, -p: number of processes
+      # --removed_samples_dir: (TL task only) root directory with per-dataset removed_samples JSON files, which are used to filter ambiguous cases
       
       # example 1: summarize all models for the A/D task
       python -m medvision_bm.benchmark.summarize_AD_task --task_dir Results/MedVision-AD -p 32
 
-      # example 2: summarize all models for the T/L task (limit sample size in the parsed files)
-      # e.g. Your testing set limit is 1000, and you want to analyze the first 100 samples in each subtask because you want to compare with another ablation study where the testing set limit is 100. 
-      python -m medvision_bm.benchmark.summarize_TL_task --task_dir Results/MedVision-TL -p 32 --limit 100
+      # example 2: summarize all models for the T/L task
+      python -m medvision_bm.benchmark.summarize_TL_task --task_dir Results/MedVision-TL -p 32 --removed_samples_dir <local-data-folder>/Datasets
       
       # example 3: summarize one model for the detection task
       python -m medvision_bm.benchmark.summarize_detection_task --model_dir Results/MedVision-detect/Qwen2.5-VL-32B-Instruct -p 32
       
-      # example 4: analyze how target size affects detection performance
-      python -m medvision_bm.benchmark.analyze_detection_task_boxsize --task_dir Results/MedVision-detect -p 32
-      
-      # example 5: compare detection performance with random guessing
-      python -m medvision_bm.benchmark.analyze_detection_task_boxsize_vs_random --task_dir Results/MedVision-detect -p 32
       ```
 
-
-  File structure after these steps:
+- **[File structure]** after steps 1-3
 
   ```text
   ├── MedVision
@@ -232,61 +205,54 @@ Next (in the container):
   │   │   │   ├── summary_TL_task.txt                 # <== [step 3] summary
   ```
 
-- **[Analysis & Visualization]** (optional) Beyond the summaries above:
 
-  - **Detection target-size analysis**: `medvision_bm.benchmark.analyze_detection_task_boxsize` and `medvision_bm.benchmark.analyze_detection_task_boxsize_vs_random` (see step-3 examples 4–5) study how target size affects detection performance.
-  - **Equation- / process-accuracy analysis**: scripts in [`script/analyze`](https://github.com/YongchengYAO/MedVision/tree/master/script/analyze) — `analyze_equation_accuracy_{AD,TL}.py` and `analyze_process_accuracy_{AD,TL}.py`.
-  - **Visualization**: scripts in [`script/visualization`](https://github.com/YongchengYAO/MedVision/tree/master/script/visualization) — radar charts (`viz_radar.py`) and per-sample overlays (`viz_ad_landmarks.py`, `viz_tl_axes.py`, `viz_detection_boxes.py`, `viz_*_responses.py`).
+- **[Analysis & Visualization]** (optional) Scripts in [`script/visualization`](https://github.com/YongchengYAO/MedVision/tree/master/script/visualization):
+  - **Radar charts** (`viz_radar.sh`, `viz_radar_batch.sh`): cross-model comparison across metrics.
+  - **Detection label × box-size** (`viz_detection_sampleSize_per_label_x_boxSize.sh`): detection metrics and sample distribution per label × box-to-image ratio group.
+  - **A/D landmark overlays** (`viz_ad_landmarks.sh`): per-sample GT vs. predicted landmarks and lines.
+  - **A/D response panels** (`viz_ad_responses.sh`): per-sample prompt/response/GT panels.
+  - **T/L axis overlays** (`viz_tl_axes.sh`): per-sample predicted vs. GT axes with mask contour.
+  - **T/L response panels** (`viz_tl_responses.sh`): per-sample prompt/response/GT panels.
+  - **Detection box overlays** (`viz_detection_boxes.sh`): per-sample GT vs. predicted bounding boxes.
+  - **Detection response panels** (`viz_detection_responses.sh`): per-sample prompt/response/GT panels.
+  - **Comparison grids** (`viz_compile_grid_batch.sh`): tile per-sample overlays across models.
 
 - **[Troubleshooting]** [here](https://github.com/YongchengYAO/MedVision/tree/master/docs/debug_env_setup.md)
 
 <br/>
 
+
 # 🎯 Training: SFT
 
-- **[Usage]** The scripts in `script/sft-*/train__SFT__*` should be sufficient for dependency installation, data processing, and training.
+- **[Script]** `script/sft/train*.sh` handles dependency installation, data processing, and training.
 
-  > ⚠️
-  >
   > Set these variables in the script:
   >
   > - `benchmark_dir`: the working directory
-  > - `base_model_hf`: Huggingface ID (`<user>/<model>`) of the base model
+  > - `base_model_hf`: Hugging Face ID (`<user>/<model>`) of the base model, or the path to a local model folder.
   > - `run_name`: an identifier for the current training
-  > - `merged_model_hf`: Huggingface model name (`<model>`) of the merged model
+  > - `merged_model_hf`: Hugging Face model name (`<model>`) of the merged model
   > - resource-constrained configs, such as
   >   - `per_device_train_batch_size`
   >   - `gradient_accumulation_steps`
   >   - `CUDA_VISIBLE_DEVICES=0,1,2,3` and `--num_processes=4`
 
-
-- **[Troubleshooting]** [here](https://github.com/YongchengYAO/MedVision/tree/master/docs/debug_env_setup.md)
-
 - **[Blog]** [Supervised Fine-Tuning (SFT) for VLMs on Medical Image Data](https://huggingface.co/blog/YongchengYAO/medvision-sft-guide)
-
-- **[SFT Model Checkpoints]** [details](https://github.com/YongchengYAO/MedVision/tree/master/docs/SFT_model_checkpoints.md)
 
 <br/>
 
 # 🎯 Training: RFT
 
-RL fine-tuning uses the [verl](https://github.com/volcengine/verl) framework. MedVision provides **parquet dataset builders** (`medvision_bm.rft.verl`) that turn the MedVision tasks into verl-ready parquet datasets; the RL training loop itself runs in verl.
+RL fine-tuning uses the verl framework. MedVision provides **parquet dataset builders** that turn the MedVision tasks into verl-ready parquet datasets.
 
-- **[Usage]** Build the verl parquet dataset with the scripts in [`script/rft`](https://github.com/YongchengYAO/MedVision/tree/master/script/rft) (e.g. `build_parquet_ds__verl__D110k-AD5.5k-TL5.5k.sh`), which call:
+- **[Data Processing]** Build the verl parquet dataset with the scripts in [`script/rft`](https://github.com/YongchengYAO/MedVision/tree/master/script/rft), which call:
+  - `medvision_bm.rft.verl.build_parquet_ds`: normal parquet dataset builder
+  - `medvision_bm.rft.verl.build_parquet_ds__checkpointed`: the checkpointed builder to avoid OOM, recommended to use when building large datasets (e.g. ~1M detection samples)
 
-  ```bash
-  # CLI command:
-  python -m medvision_bm.rft.verl.build_parquet_ds
-  ```
+- **[RFT]** RL fine-tuning in [https://github.com/YongchengYAO/verl](https://github.com/YongchengYAO/verl)
 
-  For large datasets (e.g. ~1M detection samples), use the checkpointed builders to avoid OOM via shard-level checkpointing:
+- **[Evaluation]** Evaluate the trained model with `eval__MedVision-V0-7B__detect.sh` (in `script/benchmark-*/`).
 
-  - `medvision_bm.rft.verl.build_parquet_ds__checkpointed` (train + val)
-  - `medvision_bm.rft.verl.build_parquet_ds_with_testset__checkpointed` (train + val + test)
-
-  Then run RL training in verl, and evaluate the trained model with `eval__medvision-model-rft.py` (in `script/benchmark-*/`).
-
-- **[Troubleshooting]** [here](https://github.com/YongchengYAO/MedVision/tree/master/docs/debug_env_setup.md)
 
 <br/>
 
@@ -312,12 +278,14 @@ We cover some essential concepts that help you use the MedVision dataset with ea
       - `TumorLesionSize`: tumor/lesion size annotations
       - `BiometricsFromLandmarks`: angle/distance annotations
       - `MaskSize`: area / mask-size annotations
-    - `task-ID`: `Task[xx]` (Note, this is a local ID in the dataset, not a global ID in MedVision.)
+    - `task-ID`: `Task[xx]` (Note: this is a local ID in the dataset, not a global ID in MedVision.)
       - For datasets with multiple image-mask pairs, we defined tasks in `medvision_ds/datasets/*/preprocess_*.py`
       - source: [medvision_ds](https://huggingface.co/datasets/YongchengYAO/MedVision/tree/main/src)
       - e.g., detection tasks for the `BraTS24` dataset are defined in the `benchmark_plan` in `medvision_ds/datasets/BraTS24/preprocess_detection.py`
     - `slice`: [`Sagittal`, `Coronal`, `Axial`]
     - `split`: [`Train`, `Test`]
+
+<br/>
 
 ## What's returned from MedVision Dataset?
 
@@ -667,6 +635,8 @@ In `MedVision.py`, the class `MedVision(GeneratorBasedBuilder)` defines the feat
   ```
 </details>
 
+<br/>
+
 ## Dataset Building Workflow
 
 ### Workflow
@@ -691,7 +661,7 @@ There are a few ways to control the dataset loading and building behavior:
   - **[2]** `MedVision_FORCE_DOWNLOAD_DATA`: Set this environment variable to `True` to force re-downloading raw images and annotations.
   - **[3]** `.downloaded_datasets.json`: This tracker file records downloaded status. Removing a dataset's entry here will trigger a re-download of the raw data for that dataset.
   
-> [!NOTE] ⚠️ 
+> ⚠️ 
 > **How to properly update/redownload raw data?**
 >
 > If you need to update raw data (images, masks, landmarks) using [2] or [3], you **MUST ALSO** use [1] (`download_mode="force_redownload"`).
@@ -704,6 +674,7 @@ There are a few ways to control the dataset loading and building behavior:
 >
 > 🔥 We will maintain a [change log](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/changelog.md) for essential updates.
 
+<br/>
 
 ### Examples
 
@@ -816,6 +787,7 @@ ds = load_dataset(
 ```
 </details>
 
+<br/>
 
 ## Download Mode in MedVision Dataset
 
@@ -849,7 +821,7 @@ ds = load_dataset(
 Since data downloading and processing take time, you can download datasets from the tasks list (example [here](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list)) or configs list (example [here](https://huggingface.co/datasets/YongchengYAO/MedVision/tree/main/info)) in advance.
 
 > [!NOTE]
-> ⚠️ You need to set API token for these datasets (see [detailed instructions](https://huggingface.co/datasets/YongchengYAO/MedVision#datasets)): FeTA24, SKM-TEA, and ToothFairy2
+> ⚠️ You need to set an API token for these datasets (see [detailed instructions](https://huggingface.co/datasets/YongchengYAO/MedVision#datasets)): FeTA24, SKM-TEA, and ToothFairy2
 
 ```bash
 # CLI command:
@@ -860,7 +832,7 @@ Since data downloading and processing take time, you can download datasets from 
 # --tasks_json: task json file
 # --configs_csv: config json file
 # --force_download_data: (store_true arg) force redownload raw imaging data
-# ⚠️ `--force_download_data` is for debugging only, it will repeatedly download data for tasks/configs of the same dataset
+# ⚠️ `--force_download_data` is for debugging only; it will repeatedly download data for tasks/configs of the same dataset
 
 # NOTE: replace <task-list-json>, <data-folder>
 python -m medvision_bm.benchmark.download_datasets --tasks_json <task-list-json> --data_dir <data-folder>
@@ -872,6 +844,12 @@ or
 # NOTE: replace <config-list-csv>, <data-folder>
 python -m medvision_bm.benchmark.download_datasets --configs_csv <config-list-csv> --data_dir <data-folder>
 ```
+
+<br/>
+
+# 📜 License
+
+MedVision is released under the [Creative Commons Attribution 4.0 International (CC-BY 4.0)](https://creativecommons.org/licenses/by/4.0/) license. Users are permitted to utilize, adapt, and build upon this dataset for both academic and commercial purposes, provided that appropriate credit is given. MedVision is a meta-dataset built upon various publicly available source datasets. While the annotations provided by MedVision are covered by the CC-BY 4.0 license, any downstream application must continue to comply with the specific usage terms and licensing requirements stipulated by the curators of the original raw imaging data. It is the responsibility of the user to ensure that their application of this data aligns with the license agreements of all constituent source datasets.
 
 <br/>
 

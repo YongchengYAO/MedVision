@@ -17,10 +17,10 @@ if not args.skip_env_setup:
     install_torch_cu124()
 
     # NOTE: vllm version may need to be adjusted based on compatibility of model and transformers version
-    install_vllm(data_dir, version="0.14.0")
+    install_vllm(data_dir, version="0.10.0")
 
     # NOTE: Reinstall packages to overwrite potentially incompatible versions
-    install_transformers_accelerate_for_qwen25vl(transformers_version="5.0.0.rc2", accelerate_version="1.9.0")
+    install_transformers_accelerate_for_qwen25vl(transformers_version="4.54.1", accelerate_version="1.9.0")
 
     if args.env_setup_only:
         print(
@@ -97,7 +97,7 @@ Note that dependencies are installed in a specific order; some have specified ve
 
 1. Modify dependencies list, such as `requirements/requirements_sft_qwen25vl.txt`
 
-2. Use the alternative setup command in `script/medvision-*/train__SFT__*` 
+2. Use the alternative setup command in `script/sft/train*.sh` 
 
     ```bash
     # [Alternative] Setup training env: use a specific requirements file

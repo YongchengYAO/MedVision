@@ -103,8 +103,8 @@ All four data-parallel models are **DDP-effective** for inference:
 | Model | DDP Method | Conflict Status | Notes |
 |---|---|---|---|
 | **LLaVA-Med** | `accelerator.prepare_model()` | ✅ Clean | DDP wrapper properly synchronized; data sharding works |
-| **MedDr** | `accelerator.prepare_model(eval_mode=True)` | ✅ Clean | Wrapper prevents unwanted gradient hooks; data sharding works |
-| **HealthGPT L14/XL32** | `accelerator.prepare_model()` | ✅ Clean | Same as MedDr; both use `eval_mode=True` |
+| **MedDr** | `accelerator.prepare_model(evaluation_mode=True)` | ✅ Clean | Wrapper prevents unwanted gradient hooks; data sharding works |
+| **HealthGPT L14/XL32** | `accelerator.prepare_model()` | ✅ Clean | Same as MedDr; both use `evaluation_mode=True` |
 | **HuatuoGPT-Vision** | Per-rank `device` assignment | ✅ Clean | No `device_map="auto"`; explicit `.to(device)` in `cli.py:81` binds model to per-rank GPU |
 
 Each process loads a full model copy on its own GPU. Accelerator or explicit device assignment ensures no cross-rank interference. Data sharding happens in the evaluator, not in the model wrapper.

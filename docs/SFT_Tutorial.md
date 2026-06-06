@@ -13,7 +13,7 @@ Supervised Fine-Tuning (SFT) is a crucial step in adapting Large Language Models
 
 For a deeper dive into the concepts of SFT, we recommend the [Hugging Face SFT Tutorial](https://huggingface.co/learn/llm-course/en/chapter11/1).
 
-In the context of `medvision_bm`, we use SFT to teach models like **MedGemma** and **Qwen2.5-VL** to perform specific medical tasks:
+In the context of `medvision_bm`, we use SFT to teach **Qwen2.5-VL** to perform specific medical tasks:
 
 *   **Angle/Distance (A/D)**: Estimating angles or distances in medical images.
 *   **Detection**: Identifying bounding boxes for anatomical structures.
@@ -27,8 +27,11 @@ In the context of `medvision_bm`, we use SFT to teach models like **MedGemma** a
 
 The recommended way to run training is using the provided shell scripts in `script/sft/`. These scripts handle environment setup, variable definition, and launching the training process (including distributed training).
 
-*   `script/sft/train__SFT__MedGemma.sh`: For **MedGemma** models.
-*   `script/sft/train__SFT__Qwen2.5-VL.sh`: For **Qwen2.5-VL** models.
+All current scripts fine-tune **Qwen2.5-VL-7B** with chain-of-thought (CoT) supervision on the combined detection / A-D / T-L data:
+
+*   `script/sft/train__SFT-CoT__Qwen2.5VL7B__D110k-AD5.5k-TL5.5k.sh`: **LoRA** SFT at the model's native (dynamic) resolution.
+*   `script/sft/train__SFT-CoT__Qwen2.5VL7B__D110k-AD5.5k-TL5.5k__512x512.sh`: **LoRA** SFT with images reshaped to **512×512**.
+*   `script/sft/train__fullSFT-CoT__Qwen2.5VL7B__D110k-AD5.5k-TL5.5k__512x512.sh`: **Full-parameter** SFT with images reshaped to **512×512**.
 
 ```bash
 # Install the package
@@ -40,9 +43,12 @@ pip install .
 Simply execute the shell script from the project root:
 
 ```bash
-bash script/sft/train__SFT__MedGemma.sh
-# or
-bash script/sft/train__SFT__Qwen2.5-VL.sh
+# LoRA SFT, 512x512 (the MedVision-V0 recipe)
+bash script/sft/train__SFT-CoT__Qwen2.5VL7B__D110k-AD5.5k-TL5.5k__512x512.sh
+# or LoRA SFT at native resolution
+bash script/sft/train__SFT-CoT__Qwen2.5VL7B__D110k-AD5.5k-TL5.5k.sh
+# or full-parameter SFT, 512x512
+bash script/sft/train__fullSFT-CoT__Qwen2.5VL7B__D110k-AD5.5k-TL5.5k__512x512.sh
 ```
 
 ## 3. 💿 Data Preparation
