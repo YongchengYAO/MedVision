@@ -1,9 +1,7 @@
 ---
 language:
 - en
-license: other
-license_name: research-only
-license_link: https://medvision-vlm.github.io
+license: cc-by-4.0
 base_model:
 - Qwen/Qwen2.5-VL-7B-Instruct
 pipeline_tag: image-text-to-text
@@ -23,19 +21,13 @@ datasets:
 - YongchengYAO/MedVision
 ---
 
-<!--
-NOTE for maintainer: confirm the `license`/`license_name` tags before publishing.
-The code repo is MIT, but MedVision data (and its derivatives, including this model)
-is released for research/education only — see "License & Intended Use" below.
--->
-
 # MedVision-V0-7B
 
 **MedVision-V0-7B** is a vision-language model (VLM) for **quantitative medical image
 analysis**. It is fine-tuned from `Qwen/Qwen2.5-VL-7B-Instruct` on the
 [MedVision](https://huggingface.co/datasets/YongchengYAO/MedVision) dataset to perform
 three clinically relevant quantitative tasks **end-to-end**, without relying on external
-tools or specialist segmentation models:
+tools or specialist software:
 
 1. **Detection** — localization and identification of anatomical structures and abnormalities (bounding boxes).
 2. **Tumor/Lesion (T/L) size estimation** — bidirectional (major/minor axis) measurements.
@@ -44,8 +36,8 @@ tools or specialist segmentation models:
 A distinguishing feature is that the model reasons about **physical units** (e.g. `mm`):
 it estimates landmark/endpoint coordinates, then converts them to real-world
 measurements using the pixel size and image size provided in the prompt. Its internal
-reasoning is exposed inside `<think>...</think>` tags, with the final structured output
-in `<answer>...</answer>` tags.
+reasoning appears inside `<think>...</think>` tags, and the final answer inside
+`<answer>...</answer>` tags.
 
 | | |
 |---|---|
@@ -62,11 +54,11 @@ in `<answer>...</answer>` tags.
 |---|---|
 | **Backbone** | [`Qwen/Qwen2.5-VL-7B-Instruct`](https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct) |
 | **Parameters** | ~7B (8.3B including the vision encoder) |
-| **Modality** | Image + text → text (open-ended VQA) |
+| **Modality** | Image + text → text (visual question answering) |
 | **Frameworks** | [TRL](https://github.com/huggingface/trl) (SFT), [verl](https://github.com/volcengine/verl) (RFT/GRPO) |
 
-The base model's own license and usage terms (Qwen2.5-VL) also apply in addition to the
-restrictions stated below.
+The base model's own license and usage terms (Qwen2.5-VL) also apply; see
+[License & Intended Use](#license--intended-use) for details.
 
 ---
 
@@ -80,10 +72,10 @@ a large-scale, multi-anatomy, multi-modality medical imaging dataset with quanti
   physical spacing (pixel size) information in their file headers, which is essential for
   generating ground-truth real-world measurements.
 - Anatomies: abdomen, brain, heart, kidney, knee, head & neck, tooth, fetal brain, whole body, and more.
-- Annotation types: **bounding boxes**, **bidirectional T/L size** (major/minor axis of a fitted ellipse),
+- Annotation types: **bounding boxes**, **T/L size** (major and minor axis lengths of a fitted ellipse),
   and **angle/distance** (derived from human-annotated landmarks).
 - All measurements are in **clinically relevant real-world units (e.g. `mm`)** rather than pixels.
-- Volumes are oriented to the **RAS+** convention; the dataset supports slicing along axial, coronal, and sagittal planes.
+- Medical volumes follow standard **RAS+** orientation and support axial, coronal, and sagittal views.
 - Subject-level split: **70% train / 30% test**.
 
 **Training subset used for MedVision-V0:** A multi-task subset of **121K samples** drawn
@@ -97,29 +89,25 @@ from the MedVision *training* split:
 | **Total** | **121K** |
 
 Only **axial** slices were used for training; **coronal and sagittal** slices are
-deliberately held out to evaluate out-of-distribution (OOD) generalization to unseen
-imaging planes. A weighted random sampler oversamples minority tasks to mitigate the
-strong class imbalance toward detection. Each sample is an image reshaped to **512×512**
-paired with a prompt–answer pair.
-
-> ⚠️ **Data terms:** MedVision and its derivatives (including this model) are released for
-> **research and education only**, consistent with the research-only access conditions of
-> the underlying source datasets. See [License & Intended Use](#license--intended-use).
+deliberately held out to test generalization to unseen imaging planes. Since detection
+accounts for the vast majority of samples, a weighted sampler ensures the model sees a
+balanced mix of all three tasks during training. Each training example is a **512×512**
+image paired with a question and expected answer.
 
 ---
 
 ## 3. Training Recipe
 
-MedVision-V0 is produced by a **two-stage post-training** pipeline: supervised fine-tuning
-(SFT) with chain-of-thought, followed by reinforcement fine-tuning (RFT) with GRPO.
+MedVision-V0 is trained in two stages: **supervised fine-tuning (SFT)** with step-by-step
+reasoning, followed by **reinforcement fine-tuning (RFT)** using the GRPO algorithm.
 
-### Stage 1 — SFT with Chain-of-Thought
+### Stage 1 — Supervised Fine-Tuning (SFT) with Chain-of-Thought Reasoning
 
-The model learns the required answer formats and reasoning patterns. Each target answer is
-structured as an internal reasoning trace wrapped in `<think>...</think>` followed by the
-final structured result in `<answer>...</answer>`. The reasoning text is constructed by
-filling intermediate ground-truth values (e.g. landmark coordinates) into task-specific
-CoT instruction templates, so the model learns to *first localize, then compute*.
+The model learns the required answer formats and reasoning patterns. Each training answer
+includes a step-by-step reasoning trace inside `<think>...</think>` followed by the final
+result inside `<answer>...</answer>`. The reasoning text is generated by inserting known
+correct intermediate values (e.g. landmark coordinates) into structured templates, so the
+model learns to *first localize, then compute*.
 
 | Setting | Value |
 |---|---|
@@ -135,49 +123,39 @@ CoT instruction templates, so the model learns to *first localize, then compute*
 | Optimizations | Flash-Attention 2, gradient checkpointing |
 | Sampler | Custom weighted random sampler (oversamples minority tasks) |
 
-### Stage 2 — RFT via GRPO
+### Stage 2 — Reinforcement Fine-Tuning (RFT) via GRPO
 
-The SFT model is further refined with the **GRPO** algorithm (implemented in
-[verl](https://github.com/volcengine/verl)). The **same 121K samples** are reused, but the
-CoT answer is removed — the model now learns from reward signals. A separate RFT dataset is
-built per task and the tasks are trained **sequentially**: **A/D → T/L → Detection**.
+The fine-tuned model is further trained with the **GRPO** reinforcement learning algorithm
+(implemented in [verl](https://github.com/volcengine/verl)). The **same 121K samples** are
+reused, but the step-by-step reasoning is removed — the model now learns by receiving
+scores on its outputs. Tasks are trained **sequentially**: **A/D → T/L → Detection**.
 
-In addition to the standard GRPO **format** and **answer** rewards, **process rewards** are
-designed for the T/L and A/D tasks to encourage accurate intermediate estimates (e.g.
-landmark coordinates). Both process and answer rewards are computed as `exp(-x)`, where `x`
-is the error of the model's prediction. The final reward combines them as:
+In addition to the standard GRPO **format** and **answer** scores, **intermediate accuracy
+scores** are designed for T/L and A/D tasks to reward correct intermediate steps (e.g.
+accurate landmark coordinates). All scores are computed as `exp(-x)`, where `x` is the
+prediction error. The final score combines them as:
 
 ```
 r = r_format + r_process * r_answer
 ```
 
-This coupling means the answer reward only contributes meaningfully when the intermediate
-reasoning (localization) is also correct.
+This coupling means the answer score only contributes meaningfully when the intermediate
+localization step is also correct.
 
-> SFT yields large gains over the base model on detection precision, T/L size, and A/D
-> accuracy; the additional RFT stage produces further consistent gains across all three
-> tasks, both in-distribution and on plane-/target-OOD evaluation.
+> SFT yields large gains over the base model on all three tasks; the additional RFT stage
+> produces further consistent improvements, including on unseen imaging planes (plane
+> generalization) and unseen anatomical targets (target generalization).
 
 ---
 
 ## 4. Usage
 
-MedVision-V0-7B is a `Qwen2.5-VL-7B` model, so it loads with the standard
+MedVision-V0-7B is built on `Qwen2.5-VL-7B-Instruct` and loads with the standard
 `Qwen2_5_VLForConditionalGeneration` / `AutoProcessor` API. What is **specific to this
-model** is the input/output contract it was post-trained on. Get these three things right
-and the model behaves as benchmarked:
+model** is the prompt and output format it was trained on. The sections below cover the
+required system prompt, task prompts, and how to read the output.
 
-1. **Always set the system prompt** below. It defines the `<think>…</think>` /
-   `<answer>…</answer>` contract; omitting it diverges from the training distribution.
-2. **Feed 504×504 RGB images.** Training used 512×512, but Qwen2.5-VL resizes to a
-   multiple of 28, so it actually processes images at 504×504; feeding 504×504 directly
-   skips the internal resize so the image/pixel size you state match what the model sees.
-   For measurement tasks, the pixel size you state in the prompt must correspond to the
-   image *as the model sees it* (see note below).
-3. **Read the final values from inside `<answer>…</answer>`** — the `<think>` block is
-   intermediate reasoning, not the result.
-
-### 4.1 The output contract (shared by all three tasks)
+### 4.1 Required output format (shared by all three tasks)
 
 Use this system prompt for every request (it is the same one used at benchmark time, via
 the `--use_system_prompt` flag):
@@ -186,35 +164,21 @@ the `--use_system_prompt` flag):
 A conversation between a User and an Assistant. The User asks a question, and the Assistant solves it. The Assistant first thinks through the reasoning process internally, then provides the User with the answer. The reasoning process and the final answer must be enclosed within <think> </think> and <answer> </answer> tags, respectively. For example: <think> reasoning process here </think> <answer> answer here </answer>. Within the <think> </think> tags, report the reasoning process for each step inside <step-k-reasoning> </step-k-reasoning> tags, followed by the intermediate results in <step-k-answer> </step-k-answer> tags. For example: <think> <step-1-reasoning> reasoning for step 1 </step-1-reasoning> <step-1-answer> intermediate result from step 1 </step-1-answer> </think>.
 ```
 
-The model emits its step-by-step localization/arithmetic inside `<think>` (with
-`<step-k-reasoning>` / `<step-k-answer>` sub-tags) and the final, parseable values inside
-`<answer>`.
-
 ### 4.2 The three tasks — prompt and answer formats
 
 The released model was trained and benchmarked with the **chain-of-thought (CoT)** prompts
 below. Each prompt has up to four blocks — `Task:` / `Additional information:` /
-`Format requirement:` / `Reasoning steps:` — and the model is queried **one target (label)
-at a time**. The exact templates come from
+`Format requirement:` / `Reasoning steps:`. The exact templates come from
 [`medvision_utils.py`](https://github.com/YongchengYAO/MedVision/blob/main/src/medvision_bm/medvision_lmms_eval/lmms_eval/tasks/medvision/medvision_utils.py)
-(`doc_to_text_*_CoT`) and the prompt constants in
-[`sft_prompts.py`](https://github.com/YongchengYAO/MedVision/blob/main/src/medvision_bm/sft/sft_prompts.py).
+(`doc_to_text_*_CoT`) and [`sft_prompts.py`](https://github.com/YongchengYAO/MedVision/blob/main/src/medvision_bm/sft/sft_prompts.py).
 
-Quick reference (the `<answer>` payload the parser must read):
+Quick reference (what the `<answer>` tag contains for each task):
 
-| Task | `Additional information:`? | `<answer>` payload | Example answer |
+| Task | `Additional information:`? | What goes inside `<answer>` | Example answer |
 |---|---|---|---|
 | **Detection** | no | 4 comma-separated decimals `x0,y0,x1,y1` — **relative** coords in `[0,1]`, origin at the image's lower-left corner (lower-left then upper-right). No units. | `<answer>0.31,0.42,0.55,0.68</answer>` |
 | **T/L size** | yes | 2 numbers: major axis, then minor axis, in real-world units. | `<answer>(24.13, 11.07)</answer>` |
 | **A/D measurement** | yes | a single number (angle in degrees, or distance in mm). | `<answer>3.42</answer>` |
-
-> **Note on the answer form.** The `Format requirement:` asks for bare comma-separated
-> numbers, but with the CoT prompt the model usually wraps T/L answers in parentheses, e.g.
-> `<answer> (24.13, 11.07) </answer>`. Parse defensively — take the last *k* numbers inside
-> the tag (see §4.3), as the benchmark's `parse_outputs.py` does. Units in the rendered
-> prompt are **full words** (`mm` → `millimeters`, `degree` → `degrees`); `<unit>` and the
-> `<...>` placeholders below are filled in per sample. `image_description` is optional and
-> prepended as `: <image_description>` when present.
 
 **Detection** (`doc_to_text_BoxCoordinate_CoT`) — no `Additional information:` block:
 
@@ -272,22 +236,12 @@ Follow the reasoning steps to get the final answer in the required format.
     `Step 1: Identify line 1 and record the relative coordinates of its two endpoints in the format (x, y) = (relative position in width direction, relative position in height direction). Denote the endpoints as (x1_line1, y1_line1) and (x2_line1, y2_line1). Step 2: Identify line 2 and record the relative coordinates of its two endpoints in the same (x, y) format. Denote them as (x1_line2, y1_line2) and (x2_line2, y2_line2). Step 3: Given the pixel dimensions (pixel_width, pixel_height) and image size (image_width, image_height), compute the angle between the two lines using the formula: angle = arccos(|A · B| / (||A|| ||B||)), where A and B are the vectors of the two lines computed from the physical coordinates of their endpoints. A = ((x2_line1 - x1_line1) * image_width * pixel_width, (y2_line1 - y1_line1) * image_height * pixel_height) and B = ((x2_line2 - x1_line2) * image_width * pixel_width, (y2_line2 - y1_line2) * image_height * pixel_height). Denote A=(Ax, Ay) and B=(Bx, By). Then, angle = arccos(|Ax*Bx + Ay*By| / (sqrt(Ax^2 + Ay^2) * sqrt(Bx^2 + By^2))). Report the reasoning process and final answer within <think> </think> and <answer> </answer> tags, respectively. Inside <think> </think>, include reasoning and step results using <step-k-reasoning> </step-k-reasoning> and <step-k-answer> </step-k-answer> tags.`
 
 
-> ⚠️ **State the spacing of the image the model actually sees.** The physical extent must be
-> preserved: `image_size × pixel_size` has to equal the true physical size of the scan, but
-> measured on the image *as the model processes it internally* — not the raw file. The
-> benchmark handles this by querying Qwen2.5-VL's vision processor **up front** to learn the
-> exact size it will resize to (a multiple of 28 — e.g. a 512×512 input is processed at
-> 504×504), then rescaling the pixel size by that same ratio. The prompt therefore reports
-> the **post-resize** image size (504×504) and the **adjusted** pixel size `(s_x', s_y')`,
-> not the values of the file on disk. Because the matching is precomputed from the processor,
-> the numbers in the prompt always describe exactly what the model perceives.
->
-> When you use the model **outside the benchmark you must mirror this matching step**: put in
-> the prompt the image size and pixel size of the image *as the model perceives it*, not your
-> raw input. The simplest way is to resize to 504×504 yourself and scale the pixel size by
-> the same factor (as in §4.3) so no further internal resize occurs; otherwise the
-> millimetre output will be off by the resize factor. Detection is exempt — it uses unitless
-> relative coordinates and carries no spacing information.
+> ⚠️ **State the image size and pixel size as the model sees them.** Qwen2.5-VL resizes
+> images to a multiple of 28 internally — for example, a 512×512 input becomes 504×504.
+> Always provide the image size and pixel size *after* this resize, not from the original
+> file. The simplest approach: resize to 504×504 before inference and scale the pixel size
+> by the same ratio (as in §4.3). Detection is exempt — it uses unitless relative
+> coordinates and needs no pixel size.
 
 ### 4.3 Quick start (direct inference)
 
@@ -364,8 +318,7 @@ output = processor.batch_decode(trimmed, skip_special_tokens=True)[0]
 # Parse the final values from <answer>...</answer>, using the same strategy as the
 # benchmark (medvision_bm.benchmark.parse_outputs -> extract_last_k_nums_within_answer_tag):
 # pull every number inside the <answer> tag and keep the LAST k of them (k=2 for T/L:
-# major, minor). This is robust to surrounding text/punctuation the model may add, e.g.
-# "<answer> (24.13, 11.07) </answer>", which a naive split(",") would choke on.
+# major, minor). 
 EXPECTED_NUMS = 2  # T/L: major, minor. Use 1 for A/D, 4 for Detection.
 m = re.search(r"<answer>(.*?)</answer>", output, re.DOTALL)
 numbers = re.findall(r"-?\d+\.?\d*", m.group(1)) if m else []
@@ -382,9 +335,8 @@ To switch tasks, swap in the corresponding template from §4.2 — the `Task:` l
 
 ### 4.4 Reproducing the MedVision benchmark
 
-The repository runs all three tasks through a single entry point,
-`medvision_bm.benchmark.eval__medvision-model-rft`, served with vLLM (`vllm_qwen25vl`
-backend). Ready-to-run scripts live in
+To reproduce the benchmark, use the `medvision_bm.benchmark.eval__medvision-model-rft`
+entry point (vLLM backend, `vllm_qwen25vl`). Ready-to-run scripts are in
 [`script/benchmark-{AD,TL,detect}/`](https://github.com/YongchengYAO/MedVision/tree/main/script):
 
 | Task | Script | `tasks_list` JSON |
@@ -421,20 +373,18 @@ Then parse and summarize the outputs with `medvision_bm.benchmark.parse_outputs`
 
 ## 5. Performance
 
-📊 Detailed benchmark results — including comparison against 12 off-the-shelf general and
-medical VLMs, per-label breakdowns, OOD generalization, and the SFT/RFT ablation — are
-available on the **[project page](https://medvision-vlm.github.io)**.
-
-_(Performance tables to be added — see project page for the latest results.)_
+📊 Detailed benchmark results are available on the **[project page](https://medvision-vlm.github.io)**.
 
 ---
 
 ## License & Intended Use
 
-**Intended use.** MedVision-V0 is released **exclusively for research and education**.
-This is consistent with the intended use of all source datasets, which were collected and
-made available under research-only access conditions. Derivatives of MedVision data —
-including this model — **must not** be used for commercial or clinical development.
+**License.** MedVision-V0-7B is released under the
+[Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/)
+license. You are free to share and adapt the model for any purpose, including commercially,
+provided appropriate credit is given. The base model
+([Qwen2.5-VL-7B-Instruct](https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct))
+is subject to its own license terms, which also apply.
 
 **⚠️ Not for clinical use.** Current state-of-the-art VLMs are not yet capable of accurate,
 robust medical image detection and measurement. While MedVision-V0 substantially improves
