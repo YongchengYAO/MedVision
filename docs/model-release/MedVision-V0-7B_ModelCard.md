@@ -337,7 +337,7 @@ To switch tasks, swap in the corresponding template from §4.2 — the `Task:` l
 
 To reproduce the benchmark, use the `medvision_bm.benchmark.eval__medvision-model-rft`
 entry point (vLLM backend, `vllm_qwen25vl`). Ready-to-run scripts are in
-[`script/benchmark-{AD,TL,detect}/`](https://github.com/YongchengYAO/MedVision/tree/main/script):
+[`script/benchmark-{AD,TL,detect}/`](https://github.com/YongchengYAO/MedVision/tree/master/script):
 
 | Task | Script | `tasks_list` JSON |
 |---|---|---|
