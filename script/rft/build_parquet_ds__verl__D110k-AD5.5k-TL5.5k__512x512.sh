@@ -1,10 +1,14 @@
 ENV_NAME="rft-verl-ds"
 
-# TODO: debug
-# temp fix
+# Fail early on errors, treat unset vars as errors, and propagate failures in pipelines
+set -euo pipefail
+
+# Initialize conda for this shell before using `conda activate`
+eval "$(conda shell.bash hook)"
+
+# TODO: debug - use classic solver and install specific conda non-interactively
 conda config --set solver classic
-# or try this
-# conda install conda=26.1.1
+conda install -y conda=26.1.1
 
 # Only create the env if it doesn't already exist
 source activate base
@@ -30,8 +34,8 @@ export MedVision_DATA_DIR=${data_dir}
 # Supported model_family_name: check get_resized_img_shape() in medvision_bm/medvision_lmms_eval/lmms_eval/tasks/medvision/medvision_utils.py
 model_family_name="qwen25vl"
 model_hf="Qwen/Qwen2.5-VL-7B-Instruct" # Used to load the image processor
-num_workers_concat_datasets=4
-num_workers_format_dataset=16
+num_workers_concat_datasets=2
+num_workers_format_dataset=32
 
 # Data configs
 # ----------------------------------------------------------------------------------
@@ -62,7 +66,7 @@ train_sample_limit_task_TL=5500
 val_sample_limit_task_TL=50
 
 # (Optional) Resize shape for images during dataset preparation
-# new_shape_hw=(256 256)  # explicitly reshape images to size (height, width)
+new_shape_hw=(512 512)  # explicitly reshape images to size (height, width)
 # ----------------------------------------------------------------------------------
 
 
@@ -109,6 +113,7 @@ python -m medvision_bm.rft.verl.build_parquet_ds \
 --val_sample_limit_task_Detection ${val_sample_limit_task_Detection} \
 --train_sample_limit_task_TL ${train_sample_limit_task_TL} \
 --val_sample_limit_task_TL ${val_sample_limit_task_TL} \
+--new_shape_hw ${new_shape_hw[0]} ${new_shape_hw[1]} \
 
 conda deactivate
 # conda remove -n $ENV_NAME --all -y
