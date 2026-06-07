@@ -126,8 +126,8 @@ model learns to *first localize, then compute*.
 ### Stage 2 — Reinforcement Fine-Tuning (RFT) via GRPO
 
 The fine-tuned model is further trained with the **GRPO** reinforcement learning algorithm
-(implemented in [verl](https://github.com/volcengine/verl)). The **same 121K samples** are
-reused, but the step-by-step reasoning is removed — the model now learns by receiving
+(implemented in [https://github.com/YongchengYAO/verl/tree/medvision-rl](https://github.com/YongchengYAO/verl/tree/medvision-rl)). 
+The **same 121K samples** are reused, but the step-by-step reasoning is removed — the model now learns by receiving
 scores on its outputs. Tasks are trained **sequentially**: **A/D → T/L → Detection**.
 
 In addition to the standard GRPO **format** and **answer** scores, **intermediate accuracy

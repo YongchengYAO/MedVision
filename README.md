@@ -217,6 +217,11 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
   - **Detection response panels** (`viz_detection_responses.sh`): per-sample prompt/response/GT panels.
   - **Comparison grids** (`viz_compile_grid_batch.sh`): tile per-sample overlays across models.
 
+- **[Analysis]** (optional) Scripts in [`script/analyze`](https://github.com/YongchengYAO/MedVision/tree/master/script/analyze):
+  - **Process accuracy** (`process-accuracy/analyze_process_accuracy_TL.py`, `process-accuracy/analyze_process_accuracy_AD.py`): step-by-step CoT accuracy for T/L (4 steps: major/minor axis endpoint norm-L2 → axis length MRE) and A/D (3 steps: landmark coordinate norm-L2 → scalar MRE), evaluated against ground truth.
+  - **Equation accuracy** (`equation-accuracy/analyze_equation_accuracy_TL.py`, `equation-accuracy/analyze_equation_accuracy_AD.py`): arithmetic correctness independent of ground truth — extracts the equation the model wrote, evaluates it in Python, and computes MRE between that result and the model's own reported answer.
+  - **Detection × target size** (`detection--target-size/run_analysis.sh`): detection metrics (F1, IoU, etc.) stratified by box-to-image ratio, revealing performance trends across small, medium, and large targets.
+
 - **[Troubleshooting]** [here](https://github.com/YongchengYAO/MedVision/tree/master/docs/debug_env_setup.md)
 
 <br/>
@@ -247,9 +252,16 @@ RL fine-tuning uses the verl framework. MedVision provides **parquet dataset bui
 
 - **[Data Processing]** Build the verl parquet dataset with the scripts in [`script/rft`](https://github.com/YongchengYAO/MedVision/tree/master/script/rft), which call:
   - `medvision_bm.rft.verl.build_parquet_ds`: normal parquet dataset builder
-  - `medvision_bm.rft.verl.build_parquet_ds__checkpointed`: the checkpointed builder to avoid OOM, recommended to use when building large datasets (e.g. ~1M detection samples)
+  - `medvision_bm.rft.verl.build_parquet_ds__checkpointed`: checkpointed builder to avoid OOM, recommended for large datasets (e.g. ~1M detection samples)
 
-- **[RFT]** RL fine-tuning in [https://github.com/YongchengYAO/verl](https://github.com/YongchengYAO/verl)
+  Available scripts:
+  - `build_parquet_ds__verl__D0k-AD5.5k-TL0k__512x512.sh`: A/D task only (5.5K train / 45 val)
+  - `build_parquet_ds__verl__D0k-AD0k-TL5.5k__512x512.sh`: T/L task only (5.5K train / 50 val)
+  - `build_parquet_ds__verl__D110k-AD0k-TL0k__512x512.sh`: Detection task only (110K train / 105 val)
+  - `build_parquet_ds__verl__D110k-AD5.5k-TL5.5k__512x512.sh`: all 3 tasks combined (121K train / 200 val)
+  - `build_parquet_ds__verl__D1000k-AD0k-TL0k__512x512__checkpointed.sh`: Detection task only, large scale (1M train / 500 val); uses the checkpointed builder
+
+- **[RFT]** RL fine-tuning in [https://github.com/YongchengYAO/verl/tree/medvision-rl](https://github.com/YongchengYAO/verl/tree/medvision-rl)
 
 - **[Evaluation]** Evaluate the trained model with `eval__MedVision-V0-7B__detect.sh` (in `script/benchmark-*/`).
 

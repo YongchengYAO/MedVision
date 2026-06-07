@@ -7,8 +7,8 @@ dataset and works for any model regardless of image size or prompt format.
 
 For each sample in the input JSONL file(s):
   - T/L tasks (4 steps):
-      Step 1: major axis endpoints (P1 & P2) → MAE vs GT
-      Step 2: minor axis endpoints (P3 & P4) → MAE vs GT
+      Step 1: major axis endpoints (P1 & P2) → norm-L2 vs GT
+      Step 2: minor axis endpoints (P3 & P4) → norm-L2 vs GT
       Step 3: major axis length (scalar)      → MRE vs GT
       Step 4: minor axis length (scalar)      → MRE vs GT
 
