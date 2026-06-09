@@ -15,10 +15,10 @@
 
 
 ```
-@misc{yao2025medvisiondatasetbenchmarkquantitative,
-      title={MedVision: Dataset and Benchmark for Quantitative Medical Image Analysis}, 
+@misc{yao2026medvisionbenchmarkingquantitativemedical,
+      title={MedVision: Benchmarking Quantitative Medical Image Analysis}, 
       author={Yongcheng Yao and Yongshuo Zong and Raman Dutt and Yongxin Yang and Sotirios A Tsaftaris and Timothy Hospedales},
-      year={2025},
+      year={2026},
       eprint={2511.18676},
       archivePrefix={arXiv},
       primaryClass={cs.CV},
@@ -30,6 +30,7 @@
 
 # 🔥 News
 
+- [Jun 9, 2026] 🚀 Released [MedVision-V0](https://huggingface.co/collections/YongchengYAO/medvision-v0), [RFT code](https://github.com/YongchengYAO/verl/tree/medvision-rl), [preprint v2](https://arxiv.org/abs/2511.18676), [project page](https://medvision-vlm.github.io/) with interactive case viewer. 
 - [May 15, 2026] 🚀 Released the benchmarking/fine-tuning codebase `medvision_bm` v1.1.0 — [release notes](https://github.com/YongchengYAO/MedVision/blob/master/docs/codebase-release/release-v1.1.0.md)
 - [May 14, 2026] 🚀 Released the **MedVision** dataset (`medvision_ds`) v1.1.0 — [release notes](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.0.md)
   - 🌟 Highlight: new T/L sample filtering (with ambiguous cases removed), more T/L samples with a single small target (cluster size > 20)

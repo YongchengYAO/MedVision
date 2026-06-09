@@ -222,3 +222,7 @@ CLAUDE.md
 
 # Git worktrees
 .worktrees/
+
+# graphify folder
+graphify-out
+.graphifyignore
