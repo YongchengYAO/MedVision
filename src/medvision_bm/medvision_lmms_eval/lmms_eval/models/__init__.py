@@ -22,6 +22,8 @@ AVAILABLE_MODELS = {
     "gemini__2_5_woTool": "Gemini__2_5_woTool",
     # Gemma3
     "vllm_gemma3": "VLLM_Gemma3",
+    # Gemma4
+    "vllm_gemma4": "VLLM_Gemma4",
     # HealthGPT
     "healthgpt": "HealthGPT",
     "healthgpt_l14": "HealthGPT_L14",
@@ -51,8 +53,7 @@ AVAILABLE_MODELS = {
     "vllm_qwen25vl": "VLLM_Qwen25VL",
     "vllm_qwen25vl_tooluse": "VLLM_Qwen25VL_ToolUse",
     # Qwen3-VL
-    "qwen3vl": "Qwen3VL",
-    # "vllm_qwen3vl": "VLLM_Qwen3VL",
+    "vllm_qwen3vl": "VLLM_Qwen3VL",
     # BiomedGPT
     # "biomedgpt": "BiomedGPT",
 }

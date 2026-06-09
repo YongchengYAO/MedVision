@@ -1149,6 +1149,27 @@ def _process_img_gemma3(img_2d_raw, extra_kwargs):
     return img_shape_resized_hw
 
 
+def _process_img_gemma4(img_2d_raw, extra_kwargs):
+    img_PIL = Image.fromarray(img_2d_raw).convert("RGB")
+    model_hf = extra_kwargs["model_hf"]
+    img_processor = AutoImageProcessor.from_pretrained(model_hf)
+    processed_visual = img_processor.preprocess(images=[img_PIL], return_tensors="pt")
+    # Gemma 4 uses variable-resolution vision and packs the image into a PADDED patch sequence:
+    #   pixel_values:       [batch, max_patches (padded), patch_size*patch_size*3]
+    #   image_position_ids: [batch, max_patches, 2] -> (x=col, y=row) patch coords; padding = -1
+    # There is no image_grid_thw / spatial H,W field (unlike Qwen), so pixel_values.shape is
+    # (padded patch count, flattened patch dim), NOT (H, W). Recover the resized H,W from the
+    # extent of the valid (non-padding) patch grid instead.
+    patch_size = img_processor.patch_size
+    pos = processed_visual["image_position_ids"][0]  # (max_patches, 2): (x, y)
+    valid = pos[(pos[:, 0] >= 0) & (pos[:, 1] >= 0)]  # drop -1 padding patches
+    n_cols = int(valid[:, 0].max()) + 1  # x -> width (columns)
+    n_rows = int(valid[:, 1].max()) + 1  # y -> height (rows)
+    img_shape_resized_hw = (n_rows * patch_size, n_cols * patch_size)
+    print(f"\nOriginal image size (HxW): {img_PIL.size[::-1]}; Resized image size (HxW): {img_shape_resized_hw}")
+    return img_shape_resized_hw
+
+
 def get_resized_img_shape(model_name, img_2d_raw, extra_kwargs):
     # NOTE 1: usage in MedVision benchamrk 
     # The model_name is the same as the key in AVAILABLE_MODELS. If you add new models, the strings in the if conditions below should be consistent with the keys in AVAILABLE_MODELS.
@@ -1191,6 +1212,11 @@ def get_resized_img_shape(model_name, img_2d_raw, extra_kwargs):
         # Image processor - Gemma3ImageProcessor: https://github.com/huggingface/transformers/blob/91393fe4cc3266a05bc0d129e34ff5f761bb46e2/src/transformers/models/gemma3/image_processing_gemma3.py#L53
         img_shape_resized_hw = [896, 896]
         # img_shape_resized_hw = _process_img_gemma3(img_2d_raw, extra_kwargs)  # for debugging only
+    elif model_name in ["vllm_gemma4", "gemma4"]:
+        # NOTE: Gemma 4 uses variable-resolution vision (a "visual token budget"), not a fixed
+        # size like Gemma 3, so we probe the real image processor for the resized shape.
+        # Config: https://huggingface.co/google/gemma-4-31B-it/blob/main/config.json
+        img_shape_resized_hw = _process_img_gemma4(img_2d_raw, extra_kwargs)
     elif model_name == "medgemma":
         # NOTE: Medgemma resize images to a fixed size [896, 896]. We used this size for pixel size adjustment.
         # Preprocessor config: https://huggingface.co/google/medgemma-4b-it/blob/main/preprocessor_config.json

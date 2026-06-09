@@ -15,16 +15,14 @@ from loguru import logger as eval_logger
 from PIL import Image
 from tqdm import tqdm
 
-from medvision_bm.utils.configs import SEED
-
 NUM_SECONDS_TO_SLEEP = 5
 
 from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
 
 
-@register_model("vllm_qwen3vl")
-class VLLM_Qwen3VL(lmms):
+@register_model("vllm_gemma4")
+class VLLM_Gemma4(lmms):
     """
     VLLM model wrapper for large multimodal models evaluation.
 
@@ -46,11 +44,11 @@ class VLLM_Qwen3VL(lmms):
 
     Args:
         model_hf (str): HuggingFace model identifier or path to the model.
-            Default: "Qwen/Qwen3-VL-32B-Thinking"
+            Default: "google/gemma-4-31B-it"
         tensor_parallel_size (int): Number of GPUs to use for tensor parallelism.
             Default: 1
         gpu_memory_utilization (float): Fraction of GPU memory to use for model weights.
-            Should be between 0.0 and 1.0. Default: 0.9
+            Should be between 0.0 and 1.0. Default: 0.8
         batch_size (int): Number of requests to process in parallel per GPU.
             Default: 1
         max_frame_num (int): Maximum number of frames to extract from videos.
@@ -61,22 +59,8 @@ class VLLM_Qwen3VL(lmms):
             the model. Default: True
         chat_template (str, optional): Path to chat template file or template string.
             If None, uses the model's default template. Default: None
-        max_new_tokens (int): Maximum number of tokens to generate per sample. Default: 4096
-        temperature (float): Sampling temperature. Default: 0.8
-        top_p (float): Nucleus sampling probability. Default: 0.95
-        top_k (int): Top-k sampling cutoff. Default: 20
-            Sampling note (IMPORTANT for "Thinking" models):
-            Qwen3-VL "Thinking" checkpoints are validated for SAMPLING, not greedy decoding.
-            Their generation_config.json ships temperature=0.8, top_k=20, top_p=0.95, and Qwen
-            warns that greedy decoding (temperature=0) degrades thinking models -- they collapse
-            to an early end-of-sequence token while still inside the <think> block, so the final
-            <answer> is never emitted. The defaults above mirror the model's generation_config and
-            should NOT be set to temperature=0 for Thinking models. Generation uses a fixed seed
-            (medvision_bm.utils.configs.SEED) so sampling-based runs stay reproducible. A task's
-            generation_kwargs (if any) still override these per-task.
-        stop_strings (str, optional): JSON-encoded list of extra stop strings. Default: None
-        system_prompt (str, optional): JSON-encoded single-element list with a system prompt.
-            Default: None
+        enable_thinking (bool): Enable Gemma 4 reasoning ("thinking") mode, passed through
+            to the model's chat template via chat_template_kwargs. Default: True
         **kwargs: Additional arguments passed to the VLLM LLM constructor.
             - NOTE: model specific arguments can be passed here without the need to add more arguments to this class (see example below)
             - String arguments that look like JSON dictionaries will be automatically parsed.
@@ -114,40 +98,6 @@ class VLLM_Qwen3VL(lmms):
     # ---------------------
 
 
-    Python Example 2: (example of using chat template file)
-    # ---------------------
-    chat_template_file = "template_deepseek_vl2.jinja"
-    subprocess.run(
-        f"wget https://raw.githubusercontent.com/vllm-project/vllm/main/examples/template_deepseek_vl2.jinja -O {chat_template_file}",
-        check=True,
-        shell=True,
-    )
-    cmd = [
-        "python3",
-        "-m",
-        "lmms_eval",
-        "--model",
-        "vllm",
-        "--model_args",
-        "model_hf=deepseek-ai/deepseek-vl2,"
-        'hf_overrides={"architectures": ["DeepseekVLV2ForCausalLM"]},' # example of passing model specific arguments, JSON string will be parsed automatically
-        f"chat_template={chat_template_file}," # chat template file path
-        "tensor_parallel_size=2,"
-        "dtype=bfloat16",
-        "--tasks",
-        task, # change this to your task
-        "--batch_size",
-        "1",
-        "--limit",
-        "1000",
-        "--log_samples",
-        "--output_path",
-        "logs",
-    ]
-    cmd_result = subprocess.run(cmd, check=False)
-    # ---------------------
-
-
     # NOTE: No need to pass the chat template file if it is already defined in the model tokenizer.
     # The chat method automatically applies the model's chat template to format the prompt
     # - vllm chat method: https://docs.vllm.ai/en/stable/models/generative_models.html#llmchat
@@ -156,35 +106,28 @@ class VLLM_Qwen3VL(lmms):
 
     def __init__(
         self,
-        model_hf: str = "Qwen/Qwen3-VL-32B-Thinking",
+        model_hf: str = "google/gemma-4-31B-it",
         lora_path: Optional[str] = None,
         tensor_parallel_size: int = 1,
-        gpu_memory_utilization: float = 0.9,
+        gpu_memory_utilization: float = 0.8,
         batch_size: int = 1,
         max_frame_num: int = 32,
         max_new_tokens: int = 4096,
-        temperature: float = 0.8,
-        top_p: float = 0.95,
-        top_k: int = 20,
         threads: int = 16,  # Threads to use for decoding visuals
         trust_remote_code: Optional[bool] = True,
         chat_template: Optional[str] = None,
+        enable_thinking: bool = True,
         stop_strings: Optional[str] = None,
         system_prompt: Optional[str] = None,
         **kwargs,
     ) -> None:
         super().__init__()
-        # Manually set a image token for GPT4V so that we can search for it
-        # and split the text and image
-        # Here we just use the same token as llava for convenient
         self.model_hf = model_hf
         self.max_frame_num = max_frame_num
         self.max_new_tokens = max_new_tokens
-        self.temperature = temperature
-        self.top_p = top_p
-        self.top_k = top_k
         self.threads = threads
         self.chat_template = chat_template
+        self.enable_thinking = enable_thinking
         self.lora_path = lora_path
         self.stop_strings: List[str] = json.loads(stop_strings) if stop_strings else []
         self.system_prompt: Optional[str] = json.loads(system_prompt)[0] if system_prompt else None
@@ -196,7 +139,7 @@ class VLLM_Qwen3VL(lmms):
                     kwargs[key] = json.loads(value)
                 except json.JSONDecodeError:
                     eval_logger.warning(f"Failed to parse JSON-like string for argument '{key}': {value}")
-        
+
         # Remove MedVision-specific kwargs that should not be forwarded to vLLM
         kwargs.pop("reshape_image_hw", None)
 
@@ -223,11 +166,6 @@ class VLLM_Qwen3VL(lmms):
             **lora_kwargs,
             **kwargs,
         )
-
-        # Set padding side
-        tokenizer = self.client.get_tokenizer()
-        tokenizer.padding_side = "left" 
-        self.client.set_tokenizer(tokenizer)
 
         self.batch_size_per_gpu = int(batch_size)
 
@@ -313,46 +251,28 @@ class VLLM_Qwen3VL(lmms):
 
                 if "max_new_tokens" not in gen_kwargs:
                     gen_kwargs["max_new_tokens"] = self.max_new_tokens
-                # NOTE: Qwen3-VL "Thinking" models are validated for sampling, NOT greedy decoding.
-                # Greedy decoding (temperature=0) makes them collapse to an early EOS inside the
-                # <think> block. Fall back to the configured sampling params (see class docstring);
-                # a task's generation_kwargs still override these per-task.
+
                 if "temperature" not in gen_kwargs:
-                    gen_kwargs["temperature"] = self.temperature
+                    gen_kwargs["temperature"] = 0
+
                 if "top_p" not in gen_kwargs:
-                    gen_kwargs["top_p"] = self.top_p
-                if "top_k" not in gen_kwargs:
-                    gen_kwargs["top_k"] = self.top_k
+                    gen_kwargs["top_p"] = 0.95
 
                 until = gen_kwargs.get("until") or []
                 if isinstance(until, str):
                     until = [until]
                 until_list = [s for s in until if s is not None]
-                # Only when the user supplies explicit stop strings via --stop_strings (e.g.
-                # "</answer>") do we drop the newline/whitespace-only entries that lmms-eval
-                # auto-injects into `until` (the fewshot delimiter "\n\n"; see api/task.py).
-                # Qwen3-VL "Thinking" models put blank lines between CoT steps, so a "\n\n" stop
-                # halts generation right after <step-1-answer>, before <answer> is ever produced.
-                # Gating on self.stop_strings keeps the default path unchanged -- models that
-                # have no explicit terminator still benefit from the "\n\n" runaway-stop -- while
-                # an explicit stop string then defines exactly where generation should end.
-                if self.stop_strings:
-                    until_list = [s for s in until_list if s.strip() != ""]
                 stop = list(dict.fromkeys(until_list + self.stop_strings))
 
                 params = {
                     "temperature": gen_kwargs["temperature"],
                     "max_tokens": gen_kwargs["max_new_tokens"],
                     "top_p": gen_kwargs["top_p"],
-                    "top_k": gen_kwargs["top_k"],
-                    # Fixed seed for reproducible sampling-based eval (greedy is unsafe for thinking models).
-                    "seed": SEED,
                 }
                 if stop:
                     params["stop"] = stop
                 if self.stop_strings:
                     params["include_stop_str_in_output"] = True
-
                 # params is collected per-request; after the loop, SamplingParams
                 # is built once from the last request's params for the batch call.
 
@@ -383,10 +303,10 @@ class VLLM_Qwen3VL(lmms):
                     ]
                 else:
                     messages = [{"role": "user", "content": []}]
-                # Images must come before text (per Qwen3-VL chat template requirements)
+                # When there is no image token in the context, append the image to the text
+                messages[-1]["content"].append({"type": "text", "text": contexts})
                 for img in imgs:
                     messages[-1]["content"].append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img}"}})
-                messages[-1]["content"].append({"type": "text", "text": contexts})
 
                 batched_messages.append(messages)
 
@@ -401,22 +321,20 @@ class VLLM_Qwen3VL(lmms):
             if self.lora_path is not None:
                 lora_request = LoRARequest("adapter", 1, self.lora_path)
 
-            # NOTE: No enable_thinking toggle here. Qwen3-VL "Thinking" checkpoints hardcode the
-            # opening <think> tag in their chat template and ignore the enable_thinking kwarg, so
-            # passing it was a no-op. (Thinking is always on for these models.)
+            chat_template_kwargs = {"enable_thinking": self.enable_thinking}
             if self.chat_template is not None:
                 if os.path.isfile(self.chat_template):
                     with open(self.chat_template, "r") as f:
                         chat_template = f.read()
                 else:
                     chat_template = self.chat_template
-                response = self.client.chat(sampling_params=sampling_params, messages=batched_messages, chat_template=chat_template, lora_request=lora_request)
+                response = self.client.chat(sampling_params=sampling_params, messages=batched_messages, chat_template=chat_template, chat_template_kwargs=chat_template_kwargs, lora_request=lora_request)
             else:
-                response = self.client.chat(sampling_params=sampling_params, messages=batched_messages, lora_request=lora_request)
-                
-            # NOTE: In vLLM 0.8.5+, for Qwen3 thinking models, CompletionOutput splits output into:
-            #   - reasoning_content: content inside <think>...</think> (may be empty if thinking disabled)
-            #   - text: content AFTER </think> (may be empty if all content is in reasoning_content)
+                response = self.client.chat(sampling_params=sampling_params, messages=batched_messages, chat_template_kwargs=chat_template_kwargs, lora_request=lora_request)
+
+            # NOTE: For thinking models, CompletionOutput may split output into:
+            #   - reasoning_content: content inside the model's thinking block (may be empty if thinking disabled)
+            #   - text: content AFTER the thinking block (may be empty if all content is in reasoning_content)
             # We combine both to get the full response for robust downstream parsing.
             def _get_full_text(output) -> str:
                 text = output.text
