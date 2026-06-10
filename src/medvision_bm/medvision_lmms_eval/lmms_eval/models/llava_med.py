@@ -37,7 +37,12 @@ class LLaVA_Med(lmms):
     """
     LLaVA-Med Model
 
-    dtype: BF16 (https://huggingface.co/microsoft/llava-med-v1.5-mistral-7b/blob/main/config.json) 
+    dtype: BF16 (https://huggingface.co/microsoft/llava-med-v1.5-mistral-7b/blob/main/config.json)
+
+    Generation note: greedy decoding (temperature=0) on the mistral_instruct
+    template can collapse to an immediate EOS (empty output) on longer prompts;
+    eval_model() sets min_new_tokens to work around this. See the comment there
+    and https://github.com/haotian-liu/LLaVA/issues/1363.
     """
 
     def __init__(
@@ -191,6 +196,25 @@ class LLaVA_Med(lmms):
                 temperature=self.temperature,
                 top_p=self.top_p,
                 num_beams=self.num_beams,
+                # --- Empty-response workaround: force a minimum generation length ---
+                # LLaVA-Med uses the `mistral_instruct` conversation template, which is
+                # prone to degenerate/empty *greedy* generation: on longer prompts (e.g.
+                # the CoT measurement tasks) greedy decoding (temperature=0) emits an
+                # immediate EOS as its first real step. The raw output is just
+                # `<s> ▁ </s>`, which decodes to "" after skip_special_tokens + .strip(),
+                # so the sample is scored as a failure even though the model is capable —
+                # suppressing EOS for the first few steps yields a correct, parseable CoT
+                # answer. We deliberately KEEP deterministic greedy decoding for benchmark
+                # reproducibility (the benchmark standardizes temperature=0 across all
+                # models) and instead force a minimum of 16 new tokens to escape the
+                # premature-EOS basin. Every legitimate AD/TL/detection answer is far
+                # longer than 16 tokens, so this never truncates a real response.
+                # Refs:
+                #  - LLaVA issue #1363 (mistral_instruct empty output):
+                #    https://github.com/haotian-liu/LLaVA/issues/1363
+                #  - Reference inference (third_party/LLaVA-Med/llava/eval/model_vqa.py)
+                #    uses temperature=0.2 + do_sample=True; the benchmark uses greedy.
+                min_new_tokens=16,
                 max_new_tokens=self.max_new_tokens,
                 use_cache=True,
             )
