@@ -130,6 +130,14 @@ qwen3_vl = [
 gemini = [
     "google-genai",
 ]
+claude = [
+    "anthropic",
+    "openai",
+    # Pin transformers to the version validated with huggingface-hub==0.36.0 (same as the
+    # Gemini path). The base `transformers` dependency is unpinned, and newer transformers
+    # (5.x) import `is_offline_mode` from huggingface_hub, which 0.36.0 removed -> ImportError.
+    "transformers==4.57.1",
+]
 reka = [
     "httpx>=0.23.3",
     "reka-api",

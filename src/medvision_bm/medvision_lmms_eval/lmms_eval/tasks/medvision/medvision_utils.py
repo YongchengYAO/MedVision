@@ -1249,6 +1249,18 @@ def get_resized_img_shape(model_name, img_2d_raw, extra_kwargs):
         # NOTE: HealthGPT resize images to a fixed size [336, 336]. We used this size for pixel size adjustment.
         img_shape_resized_hw = [336, 336]
         # img_shape_resized_hw = _process_img_healthgpt_L14(img_2d_raw, extra_kwargs)  # for debugging only
+    elif model_name == "claude":
+        # Single source of truth: the Claude model file owns the resize rule + cap table, so the
+        # size stated in the prompt always matches the image actually sent to the API. Imported
+        # lazily so the SFT path (which calls get_resized_img_shape but never with model_name="claude")
+        # does not load the model layer. anthropic_resized_hw() selects per-model caps from
+        # extra_kwargs["model_hf"] (raw Anthropic/OpenRouter code) and raises for unsupported models.
+        from lmms_eval.models.claude import anthropic_resized_hw
+
+        img_h, img_w = img_2d_raw.shape[:2]
+        model_code = (extra_kwargs or {}).get("model_hf") or ""
+        img_shape_resized_hw = anthropic_resized_hw(img_h, img_w, model_code)
+        print(f"\nOriginal image size (HxW): {(img_h, img_w)}; Resized image size (HxW): {tuple(img_shape_resized_hw)}")
     else:
         raise ValueError(f"[Error] {model_name} is not recognised/supported.")
     return img_shape_resized_hw
