@@ -36,6 +36,22 @@ class VLLM_Gemma4(lmms):
         - Images: .jpg, .jpeg, .png, .gif, .bmp, .tiff, .webp
         - Videos: .mp4, .avi, .mov, .flv, .wmv
 
+    Image preprocessing (MedVision pixel-size rule):
+        Images are sent raw (base64 PNG); vLLM applies the HF Gemma4ImageProcessor internally.
+        Gemma 4 vision is variable-resolution: one scale factor (upscaling allowed) fits the
+        image into a budget of max_patches = max_soft_tokens * pooling_kernel_size^2
+        (= 280 * 9 = 2520) patches of 16x16 px, then each side is independently floored to a
+        multiple of pooling_kernel_size * patch_size (= 3 * 16 = 48), so the aspect ratio is
+        only approximately preserved (handled by per-axis pixel-size adjustment in the prompt).
+        The processor outputs a flattened,
+        sequence-padded patch list, NOT a spatial image grid:
+            pixel_values:       [batch, max_patches, patch_size^2 * 3] = [batch, 2520, 768]
+                                (the last two dims are config constants, not the resized H, W)
+            image_position_ids: [batch, max_patches, 2] -> (x=col, y=row); padding = -1
+        The TL/AD prompts must state the post-resize image and pixel size, which
+        _process_img_gemma4() in lmms_eval/tasks/medvision/medvision_utils.py recovers by
+        probing the same processor and reading the valid (non -1) patch-grid extent.
+
     Chat template:
         The chat template is used to format the conversation for the model. It can be
         provided as a file path or as a template string directly.

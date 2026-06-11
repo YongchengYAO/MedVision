@@ -36,7 +36,7 @@ tasks_list_json_path_TL="${benchmark_dir}/tasks_list/tasks_MedVision-TL__train_S
 
 
 # Model configs
-model_family_name="qwen25vl" # NOTE: model_family_name must be in src/medvision_bm/sft/config/model_info.yaml
+model_family_name="qwen25vl" # NOTE: model_family_name must be in AVAILABLE_MODELS from lmms_eval.models (the "vllm_" prefix may be omitted)
 base_model_hf="Qwen/Qwen2.5-VL-7B-Instruct"
 run_name="MedVision__SFT__Qwen2.5VL-7B__D110k-AD5k-TL5k__CoT"
 lora_checkpoint_dir="${train_sft_dir}/${run_name}/checkpoints/${run_name}" # Put a ${run_name} subfolder at the end for distinct HF repo names when pushing LoRA checkpoints

@@ -1154,12 +1154,25 @@ def _process_img_gemma4(img_2d_raw, extra_kwargs):
     model_hf = extra_kwargs["model_hf"]
     img_processor = AutoImageProcessor.from_pretrained(model_hf)
     processed_visual = img_processor.preprocess(images=[img_PIL], return_tensors="pt")
-    # Gemma 4 uses variable-resolution vision and packs the image into a PADDED patch sequence:
+    # Gemma 4 uses variable-resolution vision and packs the image into a PADDED patch sequence
+    # (verified against transformers/models/gemma4/image_processing_gemma4.py):
     #   pixel_values:       [batch, max_patches (padded), patch_size*patch_size*3]
     #   image_position_ids: [batch, max_patches, 2] -> (x=col, y=row) patch coords; padding = -1
-    # There is no image_grid_thw / spatial H,W field (unlike Qwen), so pixel_values.shape is
-    # (padded patch count, flattened patch dim), NOT (H, W). Recover the resized H,W from the
-    # extent of the valid (non-padding) patch grid instead.
+    # With the checkpoint defaults (patch_size=16, max_soft_tokens=280, pooling_kernel_size=3):
+    #   max_patches = max_soft_tokens * pooling_kernel_size^2 = 280 * 9 = 2520   (sequence length)
+    #   flattened patch dim = patch_size^2 * 3 RGB channels = 16*16*3 = 768      (per-patch vector)
+    # So pixel_values.shape[-2:] is ALWAYS (2520, 768) -- config constants, NOT the resized (H, W).
+    # Do NOT read the image size from pixel_values.shape (the gemma3-style probe); there is no
+    # image_grid_thw / spatial H,W field (unlike Qwen).
+    # The resize is only APPROXIMATELY aspect-preserving: one scale factor
+    # f = sqrt(target_px / total_px) is applied to both sides (upscaling allowed), but then each
+    # side is INDEPENDENTLY floored to a multiple of side_mult = pooling_kernel_size * patch_size
+    # = 48, so the final aspect ratio can deviate from the original by up to one side_mult per
+    # axis (e.g. 1935x2400 -> ideal 721x895 -> 720x864, a ~3% anisotropic squeeze; worse for
+    # small images). This is fine for MedVision because the caller adjusts pixel size PER AXIS.
+    # The image is stretched to exactly the floored dims, so the content fills the whole patch
+    # grid with NO spatial padding; only the patch SEQUENCE is padded (position ids = -1).
+    # Recover the resized H,W from the extent of the valid (non-padding) patch grid instead.
     patch_size = img_processor.patch_size
     pos = processed_visual["image_position_ids"][0]  # (max_patches, 2): (x, y)
     valid = pos[(pos[:, 0] >= 0) & (pos[:, 1] >= 0)]  # drop -1 padding patches
@@ -1215,6 +1228,12 @@ def get_resized_img_shape(model_name, img_2d_raw, extra_kwargs):
     elif model_name in ["vllm_gemma4", "gemma4"]:
         # NOTE: Gemma 4 uses variable-resolution vision (a "visual token budget"), not a fixed
         # size like Gemma 3, so we probe the real image processor for the resized shape.
+        # Resize rule (Gemma4ImageProcessor): a single scale factor fits the image into at most
+        # max_patches = max_soft_tokens * pooling_kernel_size^2 (= 280 * 9 = 2520 by default)
+        # patches of patch_size x patch_size (16x16) px, then each side is independently floored
+        # to a multiple of pooling_kernel_size * patch_size (= 48) -- so aspect ratio is only
+        # approximately preserved; small images are UPSCALED to fill the budget.
+        # See _process_img_gemma4 for the output tensor layout (pixel_values has no spatial H,W).
         # Config: https://huggingface.co/google/gemma-4-31B-it/blob/main/config.json
         img_shape_resized_hw = _process_img_gemma4(img_2d_raw, extra_kwargs)
     elif model_name == "medgemma":

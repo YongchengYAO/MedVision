@@ -8,14 +8,17 @@ Hosting large-scale, complex medical datasets requires more than just uploading 
 
 ## 🩻 What is MedVision?
 
-[MedVision](https://github.com/YongchengYAO/MedVision) is a large-scale, multi-anatomy, multi-modality dataset designed for **quantitative medical image analysis**. It standardizes diverse public datasets (like *BraTS24*, *MSD*, *OAIZIB-CM*) into a unified structure suitable for training massive foundation models.
+[MedVision](https://github.com/YongchengYAO/MedVision) is a large-scale, multi-anatomy, multi-modality dataset designed for **quantitative medical image analysis**. It standardizes **22 public datasets** (like *BraTS24*, *MSD*, *OAIZIB-CM*) — covering XR, CT, MRI, US, and PET — into a unified structure with **30.8M image-annotation pairs**, suitable for training massive foundation models. Images are stored as 3D volumes in RAS+ orientation, and annotations carry **real-world units** (mm and degrees) derived from the physical spacing in the image headers.
 
 ### ✨ Key Features
 
 1.  **📦 Automatic Data Handling**: Automatic downloading and processing of 3D images.
-2.  **✂️ Dynamic Slicing**: Dynamic loading of 2D slices from local 3D volumes.
-3.  **📏 Quantitative Annotations**: Detailed annotations including mask size, tumor/lesion size, and angle/distance measurements.
-4.  **🏗️ Dataset Codebase**: A dedicated codebase for robust dataset construction.
+2.  **✂️ Dynamic Slicing**: Dynamic loading of 2D slices from local 3D volumes, along any of the three anatomical planes (axial, coronal, sagittal).
+3.  **📏 Quantitative Annotations**: Detailed annotations including bounding boxes, mask size, tumor/lesion size, and angle/distance measurements.
+4.  **🏗️ Dataset Codebase**: A dedicated codebase (`medvision_ds`) for robust dataset construction.
+
+> [!TIP]
+> For the dataset/data-config naming conventions and the fields returned by `load_dataset()`, see the [Essential Dataset Concept](https://github.com/YongchengYAO/MedVision#-essential-dataset-concept) section of the repository README.
 
 ## 🛠️ Deep Dive: The Data Processing Script
 
@@ -29,11 +32,11 @@ Medical datasets often require distinct subsets. For example, a user might need 
 The `MedVisionConfig` class defines essential parameters like `taskType`, `imageType` (2D/3D), and `imageSliceType` (axial/coronal/sagittal) to ensure the correct data view is loaded. Basically, data configuration defines what data will be extracted from the raw data storage.
 
 > [!TIP]
-> **Documentation**: [Hugging Face BuilderConfig](https://huggingface.co/docs/datasets/en/package_reference/builder_classes#datasets.DatasetBuilder)
+> **Documentation**: [Hugging Face BuilderConfig](https://huggingface.co/docs/datasets/en/package_reference/builder_classes#datasets.BuilderConfig)
 
 ### 2. 🗂️ Data Preparation (`_split_generators`)
 
-The `_split_generators` method is responsible for downloading the data and organizing it into splits (Train/Test).
+The `_split_generators` method is responsible for downloading the data and organizing it into splits (Train/Test). The split is made **at the subject level** (70/30), so slices from one subject never appear in both splits.
 
 **Key Features:**
 
@@ -60,7 +63,7 @@ For a specific dataset configuration, the script iterates through the cases in t
 
 ## 📥 Data Downloading & Advanced Usage
 
-While the script automates much of the process, some datasets (like *SKM-TEA* or *ToothFairy2*) have restrictive licenses that prevent direct automatic downloading. For these, MedVision provides a **Data Downloading** guide. Users must manually download the raw data, process it using the provided tools, and format it correctly before the Hugging Face script can load it.
+While the script automates much of the process, some datasets (like *SKM-TEA* or *ToothFairy2*) have restrictive licenses that prevent direct automatic downloading. For these, MedVision provides a **Data Downloading** guide. Users must manually download the raw data, process it using the provided tools (`python -m medvision_bm.benchmark.download_datasets`), and format it correctly before the Hugging Face script can load it.
 
 *   **Read more**: [MedVision Data Downloading Guide](https://github.com/YongchengYAO/MedVision#-data-downloading-optional)
 

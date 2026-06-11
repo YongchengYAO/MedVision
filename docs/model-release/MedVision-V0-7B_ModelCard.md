@@ -169,8 +169,8 @@ A conversation between a User and an Assistant. The User asks a question, and th
 The released model was trained and benchmarked with the **chain-of-thought (CoT)** prompts
 below. Each prompt has up to four blocks — `Task:` / `Additional information:` /
 `Format requirement:` / `Reasoning steps:`. The exact templates come from
-[`medvision_utils.py`](https://github.com/YongchengYAO/MedVision/blob/main/src/medvision_bm/medvision_lmms_eval/lmms_eval/tasks/medvision/medvision_utils.py)
-(`doc_to_text_*_CoT`) and [`sft_prompts.py`](https://github.com/YongchengYAO/MedVision/blob/main/src/medvision_bm/sft/sft_prompts.py).
+[`medvision_utils.py`](https://github.com/YongchengYAO/MedVision/blob/master/src/medvision_bm/medvision_lmms_eval/lmms_eval/tasks/medvision/medvision_utils.py)
+(`doc_to_text_*_CoT`) and [`sft_prompts.py`](https://github.com/YongchengYAO/MedVision/blob/master/src/medvision_bm/sft/sft_prompts.py).
 
 Quick reference (what the `<answer>` tag contains for each task):
 

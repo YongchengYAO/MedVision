@@ -27,7 +27,6 @@ AVAILABLE_MODELS = {
     # Gemma4
     "vllm_gemma4": "VLLM_Gemma4",
     # HealthGPT
-    "healthgpt": "HealthGPT",
     "healthgpt_l14": "HealthGPT_L14",
     "healthgpt_xl32": "HealthGPT_XL32",
     # HuatuoGPT-Vision
@@ -38,7 +37,6 @@ AVAILABLE_MODELS = {
     # Lingshu
     "lingshu": "Lingshu",
     # Llama
-    "llama_vision": "LlamaVision",
     "vllm_llama_3_2_vision": "VLLM_Llama_3_2_Vision",
     # "llama4": "Llama4",
     # LLaVA-Med

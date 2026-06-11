@@ -21,6 +21,8 @@
 
   ```python
   AVAILABLE_MODELS = {
+      # Claude (Anthropic API or OpenRouter)
+      "claude": "Claude",
       # Gemini
       "gemini__2_5": "Gemini__2_5",
       "gemini__2_5_woTool": "Gemini__2_5_woTool",
@@ -29,7 +31,6 @@
       # Gemma4
       "vllm_gemma4": "VLLM_Gemma4",
       # HealthGPT
-      "healthgpt": "HealthGPT",
       "healthgpt_l14": "HealthGPT_L14",
       "healthgpt_xl32": "HealthGPT_XL32",
       # HuatuoGPT-Vision
@@ -40,7 +41,6 @@
       # Lingshu
       "lingshu": "Lingshu",
       # Llama
-      "llama_vision": "LlamaVision",
       "vllm_llama_3_2_vision": "VLLM_Llama_3_2_Vision",
       # "llama4": "Llama4",
       # LLaVA-Med
@@ -78,7 +78,7 @@
 > 1. Match model class name and registry name in model file and those in `__init__.py`
 > 2. Define `generate_until()` in model file
 
-2. Implement a model-specific image processing function for your model in  [`src/medvision_bm/medvision_lmms_eval/lmms_eval/tasks/medvision/medvision_utils.py`](https://github.com/YongchengYAO/MedVision/blob/main/src/medvision_bm/medvision_lmms_eval/lmms_eval/tasks/medvision/medvision_utils.py)
+2. Implement a model-specific image processing function for your model in  [`src/medvision_bm/medvision_lmms_eval/lmms_eval/tasks/medvision/medvision_utils.py`](https://github.com/YongchengYAO/MedVision/blob/master/src/medvision_bm/medvision_lmms_eval/lmms_eval/tasks/medvision/medvision_utils.py)
 
    ```python
    def get_resized_img_shape(model_name, img_2d_raw, extra_kwargs):
@@ -180,7 +180,7 @@
    - `model_name` comes from `--model`. It must match a key in `AVAILABLE_MODELS` **and** a branch condition in `get_resized_img_shape()`.
    - `model_hf` (the HF model ID used to load the image processor for dynamic-resize models) comes from `--model_args model_hf=<HF_ID>`.
 
-   See the injection in [`evaluator.py`](https://github.com/YongchengYAO/MedVision/blob/main/src/medvision_bm/medvision_lmms_eval/lmms_eval/evaluator.py):
+   See the injection in [`evaluator.py`](https://github.com/YongchengYAO/MedVision/blob/master/src/medvision_bm/medvision_lmms_eval/lmms_eval/evaluator.py):
 
    ```python
    # lmms_eval/evaluator.py
@@ -207,7 +207,7 @@
    get_resized_img_shape() / _process_img_*()
    ```
 
-   The shared [`tasks/medvision/lmms_eval_specific_kwargs.yaml`](https://github.com/YongchengYAO/MedVision/blob/main/src/medvision_bm/medvision_lmms_eval/lmms_eval/tasks/medvision/lmms_eval_specific_kwargs.yaml) (included by every base task yaml) only needs an explicit entry when a model requires **extra** parameters beyond `model_name`/`model_hf`. For example, HealthGPT-L14 needs its base/vision models and HLoRA config:
+   The shared [`tasks/medvision/lmms_eval_specific_kwargs.yaml`](https://github.com/YongchengYAO/MedVision/blob/master/src/medvision_bm/medvision_lmms_eval/lmms_eval/tasks/medvision/lmms_eval_specific_kwargs.yaml) (included by every base task yaml) only needs an explicit entry when a model requires **extra** parameters beyond `model_name`/`model_hf`. For example, HealthGPT-L14 needs its base/vision models and HLoRA config:
 
    ```yaml
    lmms_eval_specific_kwargs:
@@ -227,6 +227,72 @@
      dataset:
    ```
 
+---
+
+## API Models (Claude, Gemini, …)
+
+API models follow the same wiring as local models (register in `AVAILABLE_MODELS`, implement `generate_until()`, add an eval `.py` + `.sh`), but the **image-size / pixel-size handling is fundamentally different** — and it is the part most likely to silently corrupt results, so read this before adding one.
+
+### The core constraint
+
+MedVision's quantitative tasks (Tumor/Lesion size, Angle/Distance) put the **image size** and **pixel size** into the prompt; the model must do the pixel→mm arithmetic itself. Those numbers must match the resolution the model's vision encoder **actually perceives after its internal resize** — not the raw NIfTI slice size. If they don't, the model reasons against a different scale than the ground truth assumes and every measurement is wrong.
+
+For **local HF models** you probe the image processor (`_process_img_*` loads `AutoImageProcessor` from `extra_kwargs["model_hf"]`). For **API models there is no local processor to probe** — the provider resizes server-side. So you must:
+
+1. **Read the provider's official vision/image docs** and find its exact resize rule and per-model limits (image-token cap, max resolution). E.g. Anthropic: an image uses ≈ `w·h/750` tokens, downscaled aspect-preserving to fit both an image-token cap and a long-edge px cap, **then padded on the bottom/right to a multiple of 28 px**.
+   - Anthropic vision: <https://platform.claude.com/docs/en/build-with-claude/vision>
+
+   > [!CAUTION]
+   > **Padding is not harmless for MedVision.** The benchmark asks the model for **relative coordinates in [0, 1]** (coordinate ÷ canvas dimension). The model normalizes by the canvas it actually perceives — including any padding the provider adds. If you state the *unpadded* size in the prompt but the model perceives a *padded* canvas, every relative coordinate is skewed (and with the lower-left origin convention, bottom padding sits right on the origin). The robust fix is to make the pre-processed image a **fixed point of the provider's vision pipeline**: round each side **down to a multiple of 28** so the provider's resize *and* pad steps are both no-ops, and the content fills the whole perceived canvas. Then `sent image == perceived canvas == stated size`. This is the same grid-alignment used for Qwen2.5-VL; verify empirically with `unit-test/claude-image-resize/check_claude_count_tokens.py` (a 28-grid image must incur **no** extra image tokens from padding).
+
+2. **Enumerate supported model codes explicitly in the model file**, grouped by cap tier — do **not** use a generic default. Models in the *same family* can differ: Anthropic high-resolution vision (2576 px / 4784 tokens) is available on Claude Fable 5, Opus 4.8 and Opus 4.7, but **not** on Opus 4.6/4.5 or the Sonnet/Haiku tiers (1568 px / 1568 tokens). An unrecognized model code must **raise**, forcing whoever adds it to verify the docs first. See `SUPPORTED_MODEL_CAPS` and `anthropic_image_caps()` in [`lmms_eval/models/claude.py`](https://github.com/YongchengYAO/MedVision/blob/master/src/medvision_bm/medvision_lmms_eval/lmms_eval/models/claude.py):
+
+   ```python
+   _HIGH_RES = (2576, 4784)       # (long_edge_cap_px, max_image_tokens)
+   _STANDARD_RES = (1568, 1568)
+   SUPPORTED_MODEL_CAPS = {
+       "claude-fable-5":   _HIGH_RES,
+       "claude-opus-4-8":  _HIGH_RES,
+       "claude-opus-4-7":  _HIGH_RES,
+       "claude-opus-4-6":  _STANDARD_RES,
+       "claude-sonnet-4-6": _STANDARD_RES,
+       "claude-haiku-4-5": _STANDARD_RES,
+       # ...add a model only after confirming its caps in the docs; unknown -> raise
+   }
+   ```
+
+3. **Pre-resize the image client-side with the exact same formula** (including the 28-grid rounding) before sending it, so the stated size equals the model input and the server does no further downscaling **and no padding**. The model class does this in `_encode_image()`.
+
+4. **Keep the cap table + resize rule in ONE place — the model file.** The `claude` branch of `get_resized_img_shape()` in [`medvision_utils.py`](https://github.com/YongchengYAO/MedVision/blob/master/src/medvision_bm/medvision_lmms_eval/lmms_eval/tasks/medvision/medvision_utils.py) does **not** re-implement the rule; it imports and calls `anthropic_resized_hw()` from `claude.py` (lazy, function-local import so the SFT path never loads the model layer). So `SUPPORTED_MODEL_CAPS` and the resize formula live only in the model file — the prompt-side size and the API-sent image can never drift. Tested directly in [`unit-test/claude-image-resize/test_claude_resize.py`](https://github.com/YongchengYAO/MedVision/blob/master/unit-test/claude-image-resize/test_claude_resize.py) and verified against the live API with [`unit-test/claude-image-resize/check_claude_count_tokens.py`](https://github.com/YongchengYAO/MedVision/blob/master/unit-test/claude-image-resize/check_claude_count_tokens.py) (both import the function directly; run them in an env with the eval deps).
+
+> [!TIP]
+> The cap table is the **single documented source of truth** and lives in the model file under `lmms_eval/models/`. This keeps the same image-processing strategy applied consistently to every supported model code (including OpenRouter ids like `anthropic/claude-opus-4.8`, which are normalized to the bare Anthropic form for lookup).
+
+### Providers, auth, and thinking
+
+`claude.py` supports two providers via a `provider` model-arg:
+
+- `anthropic` (default): direct Anthropic API, key from `ANTHROPIC_API_KEY`, Anthropic Messages format, `thinking={"type":"adaptive"}`.
+- `openrouter`: OpenAI-compatible endpoint (`https://openrouter.ai/api/v1`), key from `OPENROUTER_API_KEY`, model ids like `anthropic/claude-fable-5`, reasoning via `extra_body={"reasoning":{"enabled":True}}`.
+
+Notes that bit us in practice:
+
+- **Sanitize API keys** — pod/k8s-injected secrets can carry a trailing newline, which is an illegal HTTP header value. `claude.py` calls `.strip()`; the eval `.sh` scripts also `tr -d '\n'`.
+- **Adaptive thinking only** — on Fable 5 / Opus 4.8 / 4.7, `budget_tokens` and sampling params (`temperature`/`top_p`/`top_k`) are removed (400 if sent), and an explicit `thinking:{"type":"disabled"}` 400s on Fable 5 (omit the param to disable instead).
+- **Pin `transformers`** — the API model itself doesn't need `transformers`, but the lmms_eval framework imports it. Leaving it unpinned pulls a version incompatible with the pinned `huggingface_hub==0.36.0` (`ImportError: cannot import name 'is_offline_mode'`). The `claude` extras pin `transformers==4.57.1` (the version validated with hf_hub 0.36.0).
+
+### Files to create (for completeness)
+
+| File | Purpose |
+|---|---|
+| `lmms_eval/models/<model>.py` | model class + `@register_model` + `SUPPORTED_MODEL_CAPS` + pre-resize |
+| `lmms_eval/models/__init__.py` | add to `AVAILABLE_MODELS` |
+| `lmms_eval/tasks/medvision/medvision_utils.py` | `_process_img_<model>()` + branch in `get_resized_img_shape()` |
+| `medvision_lmms_eval/pyproject.toml` | `[project.optional-dependencies]` extras (SDK + any framework pins) |
+| `src/medvision_bm/benchmark/eval__<model>.py` | eval entry script (mirrors `eval__gemini2_5_w_tool.py`) |
+| `script/benchmark-{detect,TL,AD}/eval__<model>__*.sh` | one shell script per task family |
+| `unit-test/<model>-image-resize/test_<model>_resize.py` | resize-formula + loud-failure tests |
+
 ## Reference
 
-- [New models guide](https://github.com/EvolvingLMMs-Lab/lmms-eval/blob/main/docs/model_guide.md) from `EvolvingLMMs-Lab/lmms-eval `
+- [New models guide](https://github.com/EvolvingLMMs-Lab/lmms-eval/blob/main/docs/guides/model_guide.md) from `EvolvingLMMs-Lab/lmms-eval `
