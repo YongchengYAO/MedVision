@@ -125,6 +125,16 @@ def parse_args():
         help="Maximum number of new tokens to generate per sample.",
     )
     parser.add_argument(
+        "--min_new_tokens",
+        default=0,
+        type=int,
+        help=(
+            "Minimum number of new tokens before EOS/stop strings are honored (vLLM min_tokens). "
+            "Default 0 (off). Leave at 0 when using --stop_strings '</answer>', since a nonzero "
+            "floor suppresses the stop and forces tokens past the answer terminator."
+        ),
+    )
+    parser.add_argument(
         "--max_model_len",
         default=8192,
         type=int,
@@ -298,6 +308,7 @@ def main():
             f"max_num_seqs={batch_size},"  # maximum batch size
             f"max_model_len={args.max_model_len},"  # cap context so KV cache fits on one 80GB GPU
             f"max_new_tokens={max_new_tokens},"
+            f"min_new_tokens={args.min_new_tokens},"
             f"enable_thinking={args.enable_thinking},"
             f"dtype={dtype}"
         )

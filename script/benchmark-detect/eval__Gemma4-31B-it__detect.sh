@@ -19,6 +19,16 @@ batch_size_per_gpu=10
 gpu_memory_utilization=0.95
 max_model_len=8192  # cap Gemma 4's 256K context so KV cache fits on a single 80GB GPU
 
+# Stop string.
+# REQUIRED: lmms-eval auto-injects the fewshot delimiter "\n\n" as a stop string for
+# generate_until tasks. The CoT prompt puts blank lines between <step-k> blocks, so that
+# "\n\n" stop halts generation mid-reasoning, before <answer> is produced. An explicit
+# --stop_strings "</answer>" gives a clean terminator AND signals the wrapper to drop the
+# auto-injected "\n\n" stop (see vllm_gemma4.py). NOTE: Gemma 4's native thinking mode is
+# disabled (--no-enable_thinking) -- with thinking on it ignores the <think>/<answer> format
+# and degenerates into repetition (validated: 5/5 parseable answers vs 0/5 with thinking on).
+stop_string='</answer>'
+
 # Other configs (safe to leave as is)
 task_tag="MedVision-detect-CoT"
 result_dir="${benchmark_dir}/Results/${task_tag}"
@@ -62,7 +72,8 @@ export MedVision_PLANNER_VERSION='1.0.0'
 # --gpu_memory_utilization $gpu_memory_utilization \
 # --sample_limit $sample_limit \
 # --max_model_len $max_model_len \
-# --enable_thinking
+# --no-enable_thinking \
+# --stop_strings "$stop_string"
 # ---
 
 # (Method 2) Automatically install requirements via the eval script's built-in setup pipeline
@@ -82,7 +93,8 @@ python -m medvision_bm.benchmark.eval__gemma4 \
 --gpu_memory_utilization $gpu_memory_utilization \
 --sample_limit $sample_limit \
 --max_model_len $max_model_len \
---enable_thinking
+--no-enable_thinking \
+--stop_strings "$stop_string"
 # ---
 
 conda deactivate

@@ -69,6 +69,10 @@ class VLLM_Gemma4(lmms):
             Default: 1
         max_frame_num (int): Maximum number of frames to extract from videos.
             Frames are sampled uniformly across the video duration. Default: 32
+        min_new_tokens (int): Minimum number of tokens to generate before EOS or
+            stop strings are honored (vLLM `min_tokens`). Default 0 (off). Optional
+            lever for the rare immediate-EOS/empty-output case; leave at 0 when
+            using a "</answer>" stop string (see note at the params dict).
         threads (int): Number of threads to use for parallel visual encoding.
             Default: 16
         trust_remote_code (bool, optional): Whether to trust remote code when loading
@@ -129,6 +133,7 @@ class VLLM_Gemma4(lmms):
         batch_size: int = 1,
         max_frame_num: int = 32,
         max_new_tokens: int = 4096,
+        min_new_tokens: int = 0,
         threads: int = 16,  # Threads to use for decoding visuals
         trust_remote_code: Optional[bool] = True,
         chat_template: Optional[str] = None,
@@ -141,6 +146,7 @@ class VLLM_Gemma4(lmms):
         self.model_hf = model_hf
         self.max_frame_num = max_frame_num
         self.max_new_tokens = max_new_tokens
+        self.min_new_tokens = min_new_tokens
         self.threads = threads
         self.chat_template = chat_template
         self.enable_thinking = enable_thinking
@@ -278,11 +284,27 @@ class VLLM_Gemma4(lmms):
                 if isinstance(until, str):
                     until = [until]
                 until_list = [s for s in until if s is not None]
+                # Only when the user supplies explicit stop strings via --stop_strings (e.g.
+                # "</answer>") do we drop the newline/whitespace-only entries that lmms-eval
+                # auto-injects into `until` (the fewshot delimiter "\n\n"; see api/task.py).
+                # Gemma 4's CoT puts blank lines between <step-k> blocks, so a "\n\n" stop halts
+                # generation mid-reasoning, before <answer> is produced. Gating on self.stop_strings
+                # keeps the default path unchanged -- models with no explicit terminator still
+                # benefit from the "\n\n" runaway-stop -- while an explicit stop string then defines
+                # exactly where generation should end. (Mirrors vllm_qwen3vl.py.)
+                if self.stop_strings:
+                    until_list = [s for s in until_list if s.strip() != ""]
                 stop = list(dict.fromkeys(until_list + self.stop_strings))
 
                 params = {
                     "temperature": gen_kwargs["temperature"],
                     "max_tokens": gen_kwargs["max_new_tokens"],
+                    # Optional minimum generation length (vLLM `min_tokens`); default 0 = off,
+                    # tunable via --min_new_tokens to escape a rare immediate-EOS (empty output).
+                    # NOTE: min_tokens suppresses BOTH EOS *and* stop strings until the floor, so
+                    # keep it 0 (or well below a real answer's length) when relying on a
+                    # "</answer>" stop, otherwise it forces tokens past the answer terminator.
+                    "min_tokens": self.min_new_tokens,
                     "top_p": gen_kwargs["top_p"],
                 }
                 if stop:
