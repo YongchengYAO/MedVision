@@ -19,9 +19,8 @@ logger.add(sys.stdout, level="WARNING")
 AVAILABLE_MODELS = {
     # Claude (Anthropic API or OpenRouter)
     "claude": "Claude",
-    # Gemini
-    "gemini__2_5": "Gemini__2_5",
-    "gemini__2_5_woTool": "Gemini__2_5_woTool",
+    # Gemini (Google Gemini API or OpenRouter; 2.5 + 3 series)
+    "gemini": "Gemini",
     # Gemma3
     "vllm_gemma3": "VLLM_Gemma3",
     # Gemma4

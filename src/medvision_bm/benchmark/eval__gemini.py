@@ -14,6 +14,12 @@ from medvision_bm.utils import (
     update_task_status,
 )
 
+# provider -> accepted API key env vars (first non-empty wins)
+API_KEY_ENV_VARS = {
+    "google": ["GEMINI_API_KEY", "GOOGLE_API_KEY"],
+    "openrouter": ["OPENROUTER_API_KEY"],
+}
+
 
 def run_evaluation_for_task_API_models(
     lmmseval_module: str,
@@ -60,15 +66,77 @@ def parse_args():
     # model-specific arguments
     parser.add_argument(
         "--google_model_code",
-        required=True,
+        default="gemini-3.1-pro-preview",
         type=str,
-        help="Google model code. Check https://ai.google.dev/gemini-api/docs/models#model-variations",
+        help=(
+            "Gemini model code. For --api_provider google, use a Gemini API model ID "
+            "(e.g. gemini-3.1-pro-preview, gemini-2.5-pro), see "
+            "https://ai.google.dev/gemini-api/docs/models. For --api_provider openrouter, "
+            "use an OpenRouter model ID (e.g. google/gemini-3.1-pro-preview), see "
+            "https://openrouter.ai/models. NOTE: gemini-3-pro-preview was retired 2026-03-09."
+        ),
+    )
+    parser.add_argument(
+        "--api_provider",
+        default="google",
+        choices=["google", "openrouter"],
+        type=str,
+        help="API provider to access the Gemini model: 'google' (direct) or 'openrouter'.",
     )
     parser.add_argument(
         "--model_name",
         required=True,
         type=str,
         help="Name of the model to evaluate.",
+    )
+    parser.add_argument(
+        "--use_tool",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Enable code execution (provider 'google' only). Default: disabled (plain text).",
+    )
+    parser.add_argument(
+        "--json_output",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Enable structured JSON output (provider 'google' only). Default: disabled (plain text).",
+    )
+    parser.add_argument(
+        "--thinking_level",
+        default=None,
+        choices=["minimal", "low", "medium", "high"],
+        type=str,
+        help=(
+            "Thinking level for Gemini 3 series models (omitted when unset; model default is high; "
+            "thinking cannot be disabled on Gemini 3.1 Pro). Not valid for 2.5 series."
+        ),
+    )
+    parser.add_argument(
+        "--thinkingBudget",
+        default=None,
+        type=int,
+        help=(
+            "Thinking budget for Gemini 2.5 series models (-1 dynamic [default], 0 off for "
+            "Flash/Flash-Lite; 2.5 Pro cannot disable thinking). Not valid for 3 series "
+            "(use --thinking_level)."
+        ),
+    )
+    parser.add_argument(
+        "--media_resolution",
+        default=None,
+        choices=["low", "medium", "high"],
+        type=str,
+        help=(
+            "Media resolution for provider 'google' (both series). Pinned to 'high' when "
+            "unset: with the SDK default UNSET, Gemini 2.5 returns a ~258-token thumbnail "
+            "(no tiling), so 'high' is required for detail. LOW/MEDIUM collapse resolution."
+        ),
+    )
+    parser.add_argument(
+        "--max_tokens",
+        default=16000,
+        type=int,
+        help="Default max output tokens per request. A per-task max_new_tokens from the task YAML takes precedence.",
     )
     parser.add_argument(
         "--reshape_image_hw",
@@ -180,6 +248,14 @@ def main():
     os.environ["MEDVISION_SCALED_PS_LOW"] = str(args.scaled_ps_low)
     os.environ["MEDVISION_SCALED_PS_HIGH"] = str(args.scaled_ps_high)
 
+    # Fail fast if the provider's API key is missing
+    api_key_env_vars = API_KEY_ENV_VARS[args.api_provider]
+    if not any(os.environ.get(var, "").strip() for var in api_key_env_vars):
+        raise EnvironmentError(
+            f"None of {api_key_env_vars} is set. Export one before running the Gemini evaluation "
+            f"with --api_provider {args.api_provider}."
+        )
+
     # Configuration
     google_model_code = args.google_model_code
     model_name = args.model_name
@@ -216,15 +292,27 @@ def main():
             print(f"Task {task} already completed. Skipping...")
             continue
 
-        # model configuration for Gemini 2.5 with tool use
+        # model configuration for Gemini
+        # NOTE: model_hf carries the raw model code; the evaluator injects it into
+        # lmms_eval_specific_kwargs, and gemini.gemini_resized_hw() normalizes it
+        # ("google/" prefix stripped) for capability lookup -- normalization lives
+        # in exactly one place (gemini._normalize_model_code).
         model_args = (
             f"model={google_model_code},"
-            "thinkingBudget=-1,"
-            "use_tool=True,"
-            "json_output=False,"
-            "ignore_thoughts=False,"
-            "ignore_code=True"
+            f"provider={args.api_provider},"
+            f"model_hf={google_model_code},"
+            f"use_tool={args.use_tool},"
+            f"json_output={args.json_output},"
+            f"max_tokens={args.max_tokens}"
         )
+        # Series-specific thinking / media-resolution settings: only forwarded when set,
+        # so the model class can apply its series-aware defaults and validation.
+        if args.thinking_level is not None:
+            model_args += f",thinking_level={args.thinking_level}"
+        if args.thinkingBudget is not None:
+            model_args += f",thinkingBudget={args.thinkingBudget}"
+        if args.media_resolution is not None:
+            model_args += f",media_resolution={args.media_resolution}"
 
         # add reshape_image_hw to model args if specified, with normalization to ensure correct parsing
         if args.reshape_image_hw is not None:
@@ -246,7 +334,7 @@ def main():
             parsed_sample_indices = parse_sample_indices(args.sample_indices)
 
         rc = run_evaluation_for_task_API_models(
-            lmmseval_module="gemini__2_5",
+            lmmseval_module="gemini",
             model_args=model_args,
             task=task,
             batch_size=args.batch_size,

@@ -1280,6 +1280,20 @@ def get_resized_img_shape(model_name, img_2d_raw, extra_kwargs):
         model_code = (extra_kwargs or {}).get("model_hf") or ""
         img_shape_resized_hw = anthropic_resized_hw(img_h, img_w, model_code)
         print(f"\nOriginal image size (HxW): {(img_h, img_w)}; Resized image size (HxW): {tuple(img_shape_resized_hw)}")
+    elif model_name == "gemini":
+        # Single source of truth: the Gemini model file owns the pass-through + 3072-cap rule
+        # (Gemini tiles/crops server-side -- frame-preserving -- so sent size == perceived canvas;
+        # only >3072px long edges are downscaled server-side, which the client guard pre-empts).
+        # Imported lazily so the SFT path (which calls get_resized_img_shape but never with
+        # model_name="gemini") does not load the model layer. gemini_resized_hw() selects per-model
+        # caps from extra_kwargs["model_hf"] (raw Google/OpenRouter code) and raises for
+        # unsupported models.
+        from lmms_eval.models.gemini import gemini_resized_hw
+
+        img_h, img_w = img_2d_raw.shape[:2]
+        model_code = (extra_kwargs or {}).get("model_hf") or ""
+        img_shape_resized_hw = gemini_resized_hw(img_h, img_w, model_code)
+        print(f"\nOriginal image size (HxW): {(img_h, img_w)}; Resized image size (HxW): {tuple(img_shape_resized_hw)}")
     else:
         raise ValueError(f"[Error] {model_name} is not recognised/supported.")
     return img_shape_resized_hw
