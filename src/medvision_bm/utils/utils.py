@@ -1,6 +1,35 @@
 import json
 import os
+import tempfile
+
 import torch
+
+
+def atomic_write_json(json_path, data, indent=4):
+    """
+    Write ``data`` as JSON to ``json_path`` atomically.
+
+    Writes to a temp file in the same directory, fsyncs it, then ``os.replace``-es
+    it over the target. If the write fails (e.g. ENOSPC on a full disk), the
+    original file is left untouched instead of being truncated to 0 bytes, which
+    is what opening the target directly with mode "w" would do.
+    """
+    dir_name = os.path.dirname(json_path) or "."
+    os.makedirs(dir_name, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(dir=dir_name, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f, indent=indent)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, json_path)
+    except BaseException:
+        # Don't leave a partial temp file behind on failure.
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 def str2bool(v):
@@ -56,8 +85,7 @@ def update_task_status(json_path, model_name, task_name):
     if model_name not in data:
         data[model_name] = {}
     data[model_name][task_name] = True
-    with open(json_path, "w") as f:
-        json.dump(data, f, indent=4)
+    atomic_write_json(json_path, data)
 
     return False
 

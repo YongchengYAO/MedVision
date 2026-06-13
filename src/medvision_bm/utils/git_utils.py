@@ -4,6 +4,8 @@ import random
 import subprocess
 import time
 
+from medvision_bm.utils.utils import atomic_write_json
+
 
 def run_with_retry(cmd, max_retries=10, **kwargs):
     for i in range(max_retries):
@@ -44,8 +46,7 @@ def update_task_status_and_gitpush(json_path, model_name, task_name, max_retries
             if model_name not in data:
                 data[model_name] = {}
             data[model_name][task_name] = True
-            with open(json_path, "w") as f:
-                json.dump(data, f, indent=4)
+            atomic_write_json(json_path, data)
 
             # Check if there are changes to commit for the JSON file
             status = subprocess.run(
