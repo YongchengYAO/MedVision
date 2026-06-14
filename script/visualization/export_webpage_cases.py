@@ -1,4 +1,9 @@
 """
+Used to generate samples for the case viewers in MedVision project page:
+*********************************
+https://medvision-vlm.github.io/
+*********************************
+
 Export MedVision benchmark results as case-study data for the project webpage's
 interactive case viewer (medvision-vlm.github.io).
 
@@ -319,6 +324,78 @@ def _failure_metrics(task, sample):
     return note + "\n\n" + prof
 
 
+# ── Off-the-shelf localization error under an assumed origin (top-left vs lower-left) ──
+# The benchmark's localization error (_cal_norm_L2_dist in analyze_process_accuracy_*.py)
+# compares the model's reported (x, y) — read in lower-left wh-space — against GT, normalized
+# by sqrt(2). Off-the-shelf TL/AD models may instead use the standard top-left image origin;
+# we recompute the error under each assumption so the viewer can show both. The final
+# size/distance/angle answer is reflection-invariant, so ONLY this line differs by origin.
+
+def _to_wh(pt_arr, H, W):
+    """Array-space (dim0=row, dim1=col) → relative wh (x=col/W, y=1-row/H, lower-left)."""
+    d0, d1 = pt_arr
+    return (d1 / W, 1.0 - d0 / H)
+
+
+def _nl2(a, b):
+    """Normalized L2 in the unit wh-square (matches _cal_norm_L2_dist: /sqrt(2))."""
+    return (((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5) / (2 ** 0.5)
+
+
+def _origin_wh(p_wh, origin):
+    """p_wh = the model's reported (x, y) read as lower-left. Under 'topleft' the model meant
+    y measured from the top, so its lower-left-equivalent y is (1 - y)."""
+    return (p_wh[0], 1.0 - p_wh[1]) if origin == "topleft" else p_wh
+
+
+def _localization_line(task, sample, origin):
+    """One 'Localization error (normalized L2)' line for an off-the-shelf TL/AD prediction
+    under the assumed origin, or None if predicted/GT coords are unavailable."""
+    doc = sample["doc"]
+    H, W = doc["image_size_2d"]
+    f4 = lambda v: f"{v:.4f}" if v is not None else "N/A"
+    if task == "TL":
+        maj, minr = TL.parse_axis_coords(_resp(sample), (H, W))
+        gt_maj, gt_min = TL._extract_gt_axis_pts(doc)
+        if maj is None or gt_maj is None:
+            return None
+
+        def axis_err(pred_pts, gt_pts):
+            p = [_origin_wh(_to_wh(pt, H, W), origin) for pt in pred_pts]
+            g = [_to_wh(pt, H, W) for pt in gt_pts]
+            return min((_nl2(p[0], g[0]) + _nl2(p[1], g[1])) / 2,
+                       (_nl2(p[0], g[1]) + _nl2(p[1], g[0])) / 2)  # endpoints unordered
+        return (f"Localization error (normalized L2):   "
+                f"major axis = {f4(axis_err(maj, gt_maj))}    minor axis = {f4(axis_err(minr, gt_min))}")
+    # AD
+    mtype = doc["biometric_profile"]["metric_type"]
+    mtype = mtype[0] if isinstance(mtype, list) else mtype
+    pred = AD._parse_dist_preds(_resp(sample), H, W) if mtype == "distance" else AD._parse_angle_preds(_resp(sample), H, W)
+    gt, _ = AD._get_gt_coords(doc)
+    if pred is None or gt is None:
+        return None
+    gpts = ([gt["p1"], gt["p2"]] if gt["metric_type"] == "distance"
+            else [gt["l1p1"], gt["l1p2"], gt["l2p1"], gt["l2p2"]])
+    n = min(len(pred), len(gpts))
+    if n == 0:
+        return None
+    avg = sum(_nl2(_origin_wh(_to_wh(pred[i], H, W), origin), _to_wh(gpts[i], H, W)) for i in range(n)) / n
+    return f"Localization error (normalized L2):   {f4(avg)}"
+
+
+_ORIGIN_LABEL = {"topleft": "top-left", "lowerleft": "lower-left"}
+
+
+def _offshelf_metrics(task, sample, origin, failed):
+    """Metrics HTML for an off-the-shelf TL/AD case under an assumed origin: an origin header
+    + the per-origin localization line + the standard partial profile (flip-invariant)."""
+    hdr = ('<span style="color:#3b4cc8;font-weight:700">Assumed coordinate origin: '
+           f'{_ORIGIN_LABEL.get(origin, origin)}.</span>')
+    base = _failure_metrics(task, sample) if failed else _partial_metrics(task, sample)
+    loc = None if failed else _localization_line(task, sample, origin)
+    return hdr + (("\n" + loc) if loc else "") + "\n\n" + base
+
+
 # Response HTML for non-MedVision models: plain black EXCEPT numbers inside <answer>,
 # which are bold + colored to match the Prediction line in the metrics section.
 #
@@ -405,7 +482,7 @@ def _target_modality(task, sample, ds=None):
     return target, modality
 
 
-def _blocks_tl(sample, proc, eq, failed=False, colored=True):
+def _blocks_tl(sample, proc, eq, failed=False, colored=True, origin=None):
     raw = _resp(sample)   # depth-robust: handles [[text]] and HuatuoGPT's [[[text]]]
     prompt = _prompt_html(sample.get("input", ""), TLR)
     if colored:
@@ -417,9 +494,12 @@ def _blocks_tl(sample, proc, eq, failed=False, colored=True):
     else:
         resp = _answer_colored_resp(raw, TLR)
         # Non-MedVision: always use partial profile (C_ANS) so Prediction colors
-        # match the <answer> highlight in the response. _failure_metrics prepends a
-        # warning note; non-failed just shows the profile directly.
-        metrics = _failure_metrics("TL", sample) if failed else _partial_metrics("TL", sample)
+        # match the <answer> highlight in the response. With origin set (dual-origin
+        # off-the-shelf cases) prepend the origin header + per-origin localization line.
+        if origin:
+            metrics = _offshelf_metrics("TL", sample, origin, failed)
+        else:
+            metrics = _failure_metrics("TL", sample) if failed else _partial_metrics("TL", sample)
     return _title_tl(sample), _three_panels(prompt, resp, metrics)
 
 
@@ -437,7 +517,7 @@ def _blocks_det(sample, proc, eq, failed=False, colored=True):
     return _title_det(sample), _three_panels(prompt, resp, metrics)
 
 
-def _blocks_ad(sample, proc, eq, failed=False, colored=True):
+def _blocks_ad(sample, proc, eq, failed=False, colored=True, origin=None):
     raw = _resp(sample)   # depth-robust: handles [[text]] and HuatuoGPT's [[[text]]]
     prompt = _prompt_html(sample.get("input", ""), ADR)
     if colored:
@@ -448,16 +528,26 @@ def _blocks_ad(sample, proc, eq, failed=False, colored=True):
         metrics = _failure_metrics("AD", sample) if failed else _tokens_to_html(ADR._build_metrics_tokens(sample, proc, eq), ADR)
     else:
         resp = _answer_colored_resp(raw, ADR)
-        metrics = _failure_metrics("AD", sample) if failed else _partial_metrics("AD", sample)
+        if origin:
+            metrics = _offshelf_metrics("AD", sample, origin, failed)
+        else:
+            metrics = _failure_metrics("AD", sample) if failed else _partial_metrics("AD", sample)
     return _title_ad(sample), _three_panels(prompt, resp, metrics)
 
 
 # ── Overlay (Image-2) renderers — reuse canonical pixel-size-scaled plotters ───
 
-def _overlay_tl(sample, out_path):
+def _overlay_tl(sample, out_path, topleft=False):
     doc = sample["doc"]
     H, W = doc["image_size_2d"]
     maj, minr = TL.parse_axis_coords(_resp(sample), (H, W))
+    # parse_axis_coords assumes the model used a lower-left origin (idx_dim0 = H*(1-y)).
+    # Off-the-shelf models (e.g. Claude-Fable-5) use the standard top-left image origin
+    # (y = row/H), so their predicted row is mirrored. Un-flip dim0 (predicted pts only;
+    # GT is unaffected) to plot the landmarks where the model actually localized them.
+    if topleft and maj is not None:
+        maj  = [(H - d0, d1) for (d0, d1) in maj]
+        minr = [(H - d0, d1) for (d0, d1) in minr]
     psz, img = TL.load_nifti_slice(doc["image_file"], doc["slice_dim"], doc["slice_idx"], doc)
     mask = None
     mf = doc.get("mask_file")
@@ -491,7 +581,7 @@ def _overlay_det(sample, out_path):
     return pred_norm is not None
 
 
-def _overlay_ad(sample, out_path):
+def _overlay_ad(sample, out_path, topleft=False):
     doc = sample["doc"]
     H, W = doc["image_size_2d"]
     mtype = doc["biometric_profile"]["metric_type"]
@@ -499,6 +589,11 @@ def _overlay_ad(sample, out_path):
         mtype = mtype[0]
     resp = _resp(sample)
     pred = AD._parse_dist_preds(resp, H, W) if mtype == "distance" else AD._parse_angle_preds(resp, H, W)
+    # Same lower-left vs top-left origin mismatch as TL (AD prompts also omit the origin).
+    # Un-flip dim0 of the predicted landmarks (pred only; GT untouched) for off-the-shelf
+    # models that use the standard top-left origin. See _overlay_tl for the rationale.
+    if topleft and pred is not None:
+        pred = tuple((H - d0, d1) for (d0, d1) in pred)
     gt_pts, err = AD._get_gt_coords(doc)
     if gt_pts is None:
         # No GT data — fall back to image-only
@@ -511,6 +606,34 @@ def _overlay_ad(sample, out_path):
         gt_pts=gt_pts, pred_pts=pred,
         slice_dim=doc["slice_dim"], slice_idx=doc["slice_idx"], fig_path=out_path,
     )
+    return pred is not None
+
+
+# Parse-only success checks (no NIfTI load / no render) — mirror the parse half of
+# the _overlay_* functions so --skip_existing can recover the parseFailed flag for a
+# case whose overlay PNG is reused from disk.
+
+def _parse_ok_tl(sample):
+    H, W = sample["doc"]["image_size_2d"]
+    maj, _ = TL.parse_axis_coords(_resp(sample), (H, W))
+    return maj is not None
+
+
+def _parse_ok_det(sample):
+    return DET.parse_box_coords(_resp(sample)) is not None
+
+
+def _parse_ok_ad(sample):
+    doc = sample["doc"]
+    gt_pts, _ = AD._get_gt_coords(doc)
+    if gt_pts is None:
+        return False
+    H, W = doc["image_size_2d"]
+    mtype = doc["biometric_profile"]["metric_type"]
+    if isinstance(mtype, list):
+        mtype = mtype[0]
+    resp = _resp(sample)
+    pred = AD._parse_dist_preds(resp, H, W) if mtype == "distance" else AD._parse_angle_preds(resp, H, W)
     return pred is not None
 
 
@@ -572,9 +695,9 @@ def _parse_models(entries):
 
 
 _BUILDERS = {
-    "TL": (_blocks_tl, _overlay_tl),
-    "Detection": (_blocks_det, _overlay_det),
-    "AD": (_blocks_ad, _overlay_ad),
+    "TL": (_blocks_tl, _overlay_tl, _parse_ok_tl),
+    "Detection": (_blocks_det, _overlay_det, _parse_ok_det),
+    "AD": (_blocks_ad, _overlay_ad, _parse_ok_ad),
 }
 
 
@@ -651,41 +774,67 @@ def _select_shared_keys(collected, per_dataset, per_task_max, seed):
     return selected
 
 
-def _build_case(task, ds, model_slug, model_name, sample, proc, eq, cases_dir, colored):
+def _build_case(task, ds, model_slug, model_name, sample, proc, eq, cases_dir, colored,
+                skip_existing=False, cases_dirname="cases", dual_origin=False):
     """Render one model's overlay + Prompt/Response/Metrics panels for a single sample.
 
     Writes the PNG into cases_dir/<model_slug>/ and returns the case dict, or None if
     rendering raised. On unparseable coordinates the figure is image-only and the case is
-    flagged parseFailed (metrics panel shows the parsing-failure note)."""
-    block_fn, ovl_fn = _BUILDERS[task]
+    flagged parseFailed (metrics panel shows the parsing-failure note).
+
+    skip_existing: reuse an overlay PNG already on disk instead of re-rendering it;
+    the parseFailed flag is then recovered via the parse-only check.
+    cases_dirname: subfolder under figure/ used in the manifest's image path.
+    dual_origin: off-the-shelf TL/AD — render BOTH the top-left (default) and lower-left
+    (alt) interpretations + per-origin localization metrics, and flag the case so the viewer
+    shows an origin toggle. Off otherwise (MedVision uses lower-left; Detection states it)."""
+    block_fn, ovl_fn, parse_fn = _BUILDERS[task]
     doc = sample.get("doc", {})
     doc_id = sample["doc_id"]
     # Include taskID + slice_dim so PNGs don't collide across a dataset's task-config files.
     stem = f"{task.lower()}_{ds}_T{doc.get('taskID')}_S{doc.get('slice_dim')}_{doc_id}"
-    ov_png = os.path.join(cases_dir, model_slug, f"{stem}_overlay.png")
+    png = lambda sfx="": os.path.join(cases_dir, model_slug, f"{stem}_overlay{sfx}.png")
+    rel = lambda sfx="": f"figure/{cases_dirname}/{model_slug}/{stem}_overlay{sfx}.png"
+    tgt, mod = _target_modality(task, sample, ds)
+    base = {"target": tgt, "modality": mod, "holdMs": 4200}
     try:
-        overlaid = ovl_fn(sample, ov_png)      # True=GT+pred; False=GT-only or image-only
-        title, segs = block_fn(sample, proc, eq, failed=not overlaid, colored=colored)
+        if dual_origin:
+            # Default = top-left (likely model intent); alt = lower-left (as the benchmark scores).
+            cached_d = skip_existing and os.path.exists(png(""))
+            overlaid = parse_fn(sample) if cached_d else ovl_fn(sample, png(""), topleft=True)
+            if overlaid:
+                if not (skip_existing and os.path.exists(png("_lowerleft"))):
+                    ovl_fn(sample, png("_lowerleft"), topleft=False)
+                title, segs_d = block_fn(sample, proc, eq, failed=False, colored=colored, origin="topleft")
+                _, segs_a = block_fn(sample, proc, eq, failed=False, colored=colored, origin="lowerleft")
+                case = {**base, "title": title, "image": rel(""), "segments": segs_d,
+                        "image_alt": rel("_lowerleft"), "segments_alt": segs_a,
+                        "originToggle": True, "originLabel": "top-left", "originLabelAlt": "lower-left",
+                        "parseFailed": False}
+            else:
+                # Parse failed → single image-only figure, no toggle.
+                title, segs = block_fn(sample, proc, eq, failed=True, colored=colored)
+                case = {**base, "title": title, "image": rel(""), "segments": segs, "parseFailed": True}
+        else:
+            cached = skip_existing and os.path.exists(png(""))
+            overlaid = parse_fn(sample) if cached else ovl_fn(sample, png(""))
+            title, segs = block_fn(sample, proc, eq, failed=not overlaid, colored=colored)
+            case = {**base, "title": title, "image": rel(""), "segments": segs, "parseFailed": not overlaid}
     except Exception as e:
         print(f"  [{task}/{model_slug}/{ds}/{doc_id}] render error: {e}")
         return None
-    tgt, mod = _target_modality(task, sample, ds)
-    tag = "PARSE-FAIL (GT-only)" if not overlaid else _metric_str(task, sample)
+    tag = "PARSE-FAIL (GT-only)" if case["parseFailed"] else _metric_str(task, sample)
+    if dual_origin and not case["parseFailed"]:
+        tag += ", dual-origin"
     print(f"  [{task}/{model_slug}/{ds}/{doc_id}] ok ({tag})")
     return {
-        "title": title,
-        "target": tgt,
-        "modality": mod,
-        "image": f"figure/cases/{model_slug}/{stem}_overlay.png",
-        "segments": segs,
-        "holdMs": 4200,
-        "parseFailed": not overlaid,
+        **case,
     }
 
 
 # ── cases.js emitter ───────────────────────────────────────────────────────────
 
-def _write_cases_js(path, by_task):
+def _write_cases_js(path, by_task, task_key_suffix=""):
     header = (
         "// Auto-generated by script/visualization/export_webpage_cases.py\n"
         "// Schema: window.MEDVISION_CASES = { Detection:{}, TL:{}, AD:{} }\n"
@@ -696,14 +845,19 @@ def _write_cases_js(path, by_task):
         "//   segments = the full Prompt / Response / Metrics panels as inline-styled HTML\n"
         "//   (color-coded to match script/visualization/viz_*_responses.py figures).\n"
     )
+    # task_key_suffix lets a variant export (e.g. the API pilot) emit distinct keys
+    # ("TL-Pilot") into a separate manifest file. Object.assign merges into any
+    # MEDVISION_CASES already defined, so the main and pilot manifests coexist
+    # regardless of <script> load order.
     body = json.dumps(
-        {"Detection": by_task.get("Detection", {}),
-         "TL": by_task.get("TL", {}),
-         "AD": by_task.get("AD", {})},
+        {f"Detection{task_key_suffix}": by_task.get("Detection", {}),
+         f"TL{task_key_suffix}": by_task.get("TL", {}),
+         f"AD{task_key_suffix}": by_task.get("AD", {})},
         indent=2, ensure_ascii=False,
     )
     with open(path, "w") as f:
-        f.write(header + "\nwindow.MEDVISION_CASES = " + body + ";\n")
+        f.write(header + "\nwindow.MEDVISION_CASES = Object.assign(window.MEDVISION_CASES || {}, "
+                + body + ");\n")
     print(f"[cases.js] wrote {path}")
 
 
@@ -739,9 +893,33 @@ def main():
     ap.add_argument("--removed_samples_filename",
                     default="multi_cluster_samples_v1.0.0_to_v1.1.0.json",
                     help="Removed-samples JSON filename within each dataset subdirectory.")
+    ap.add_argument("--skip_existing", action="store_true",
+                    help="Append mode: skip rendering overlay PNGs that already exist on disk "
+                         "(reuse the file); default overwrites every PNG. cases.js is always "
+                         "rebuilt in full. Existing PNGs are trusted — if model JSONLs were "
+                         "re-generated since the last export, run without this flag.")
+    # Variant export (e.g. the API pilot viewer): write PNGs + manifest to separate
+    # locations and emit distinct task keys, so the main 13-model viewer's assets are
+    # never touched. Defaults reproduce the original behavior exactly.
+    ap.add_argument("--cases_dirname", default="cases",
+                    help="Subfolder under <page_dir>/figure/ for overlay PNGs (default 'cases'). "
+                         "Also the orphan-cleanup scope and the manifest image-path prefix.")
+    ap.add_argument("--cases_js", default="static/js/cases.js",
+                    help="Manifest output path relative to <page_dir> (default static/js/cases.js).")
+    ap.add_argument("--task_key_suffix", default="",
+                    help="Suffix appended to manifest task keys, e.g. '-Pilot' -> 'TL-Pilot' "
+                         "(default '' = Detection/TL/AD).")
+    ap.add_argument("--nonmedvision_topleft", action="store_true",
+                    help="Dual-origin mode for off-the-shelf (non-MedVision) TL & AD cases: render "
+                         "BOTH a top-left (default) and a lower-left (alt) overlay + per-origin "
+                         "localization metrics, and flag the case so the viewer shows an origin "
+                         "toggle. The TL/AD prompts omit the origin, so off-the-shelf models may use "
+                         "either; the benchmark/GT/MedVision-V0 use lower-left. Detection is excluded "
+                         "(its prompt states the origin). Final size/distance/angle answers are "
+                         "reflection-invariant, so only the localization line differs by origin.")
     args = ap.parse_args()
 
-    cases_dir = os.path.join(args.page_dir, "figure", "cases")
+    cases_dir = os.path.join(args.page_dir, "figure", args.cases_dirname)
     os.makedirs(cases_dir, exist_ok=True)
     # NOTE: stale overlays are NOT deleted up-front. Doing so would wipe the page's
     # figures before regeneration, so an interrupted/failed run would leave the old
@@ -786,10 +964,16 @@ def main():
         rendered = {name: {} for name in collected}     # name -> {key: case}
         for name in collected:
             colored = "medvision" in name.lower()        # color response only for MedVision-V0
+            # Off-the-shelf (non-MedVision) TL/AD: the prompt omits the origin, so render both
+            # top-left and lower-left interpretations + a toggle (--nonmedvision_topleft).
+            # MedVision (lower-left) and Detection (origin stated) keep a single version.
+            dual_origin = args.nonmedvision_topleft and not colored and task in ("TL", "AD")
             for key in selected:
                 ds = key[0]
                 sample, proc, eq = collected[name][key]
-                case = _build_case(task, ds, _slug(name), name, sample, proc, eq, cases_dir, colored)
+                case = _build_case(task, ds, _slug(name), name, sample, proc, eq, cases_dir, colored,
+                                   skip_existing=args.skip_existing, cases_dirname=args.cases_dirname,
+                                   dual_origin=dual_origin)
                 if case:
                     rendered[name][key] = case
         good = [k for k in selected if all(k in rendered[name] for name in collected)]
@@ -804,17 +988,19 @@ def main():
                 models[name] = lst
         by_task[task] = models
 
-    _write_cases_js(os.path.join(args.page_dir, "static", "js", "cases.js"), by_task)
+    _write_cases_js(os.path.join(args.page_dir, args.cases_js), by_task,
+                    task_key_suffix=args.task_key_suffix)
 
     # Deferred cleanup: now that the fresh cases.js is written, every referenced PNG
     # exists on disk; remove only overlays NOT referenced by it (orphans from prior
     # runs / dropped or unselected samples). This never leaves a dangling reference.
     referenced = {
-        os.path.normpath(os.path.join(args.page_dir, c["image"]))
-        for m in by_task.values() for cases in m.values() for c in cases if c.get("image")
+        os.path.normpath(os.path.join(args.page_dir, c[k]))
+        for m in by_task.values() for cases in m.values() for c in cases
+        for k in ("image", "image_alt") if c.get(k)
     }
-    existing = (glob.glob(os.path.join(cases_dir, "*_overlay.png"))
-                + glob.glob(os.path.join(cases_dir, "*", "*_overlay.png")))
+    existing = (glob.glob(os.path.join(cases_dir, "*_overlay*.png"))
+                + glob.glob(os.path.join(cases_dir, "*", "*_overlay*.png")))
     orphans = [p for p in existing if os.path.normpath(p) not in referenced]
     for p in orphans:
         os.remove(p)

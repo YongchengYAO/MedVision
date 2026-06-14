@@ -1,4 +1,9 @@
 #!/bin/bash
+# Used to generate samples for the case viewers in MedVision project page:
+# *********************************
+# https://medvision-vlm.github.io/
+# *********************************
+# 
 # Export benchmark results as case-study data for the project webpage's interactive
 # case viewer: writes one overlay PNG per case into <PAGE_DIR>/figure/cases/<model>/
 # and regenerates <PAGE_DIR>/static/js/cases.js (nested by task -> model -> cases).
@@ -11,8 +16,33 @@
 # Run in the MedVision conda env (needs nibabel + matplotlib + medvision_bm).
 #
 # Usage:
+#   # Full re-render (overwrites every overlay PNG; default):
 #   bash export_webpage_cases.sh
-#   PAGE_DIR=/path PER_DATASET=2 PER_TASK_MAX=40 bash export_webpage_cases.sh
+#
+#   # Append/incremental: reuse PNGs already on disk, only draw NEW cases:
+#   SKIP_EXISTING=1 bash export_webpage_cases.sh
+#
+#   # Smaller/faster sample set:
+#   PER_DATASET_TL=2 PER_TASK_MAX=40 bash export_webpage_cases.sh
+#
+# Environment-variable knobs (all map to export_webpage_cases.py CLI flags):
+#   PAGE_DIR             Project page repo root           -> --page_dir
+#   PER_DATASET_DET      Detection samples / dataset (20) -> --per_dataset_det
+#   PER_DATASET_TL       TL samples / dataset (20)        -> --per_dataset_tl
+#   PER_DATASET_AD       AD samples / dataset (40)        -> --per_dataset_ad
+#   PER_TASK_MAX         Hard cap on samples / task       -> --per_task_max
+#   SEED                 Sample-selection seed (1234)     -> --seed
+#   REMOVED_SAMPLES_DIR  TL multi-cluster exclusion root  -> --removed_samples_dir
+#   SKIP_EXISTING=1      Skip re-rendering existing PNGs  -> --skip_existing
+#
+# Hardcoded below (not env-controlled): --nonmedvision_topleft enables DUAL-ORIGIN mode
+# for off-the-shelf (non-MedVision) TL & AD cases — each such case gets both a top-left and
+# a lower-left overlay + per-origin localization metrics, and the viewer shows an origin
+# toggle. MedVision-V0 and all Detection cases stay single-version. cases.js is always
+# rebuilt in full regardless of SKIP_EXISTING.
+#
+# IMPORTANT: SKIP_EXISTING trusts on-disk PNGs. If any model's JSONLs were re-generated
+# since the last export, run WITHOUT it so stale overlays are redrawn.
 #
 # Edit the *_MODELS arrays below to add/remove models ("DisplayName=/path/to/model_dir").
 # Missing dirs are skipped gracefully.
@@ -92,6 +122,14 @@ if [ -n "$REMOVED_SAMPLES_DIR" ]; then
     REMOVED_ARGS=(--removed_samples_dir "$REMOVED_SAMPLES_DIR")
 fi
 
+# Append mode: set SKIP_EXISTING=1 to reuse overlay PNGs already on disk (skip
+# re-rendering, only new cases are drawn). Unset/empty -> overwrite every PNG (default).
+SKIP_EXISTING="${SKIP_EXISTING:-}"
+SKIP_ARGS=()
+if [ -n "$SKIP_EXISTING" ]; then
+    SKIP_ARGS=(--skip_existing)
+fi
+
 python "$SCRIPT_DIR/export_webpage_cases.py" \
     --det_models "${DET_MODELS[@]}" \
     --tl_models  "${TL_MODELS[@]}" \
@@ -102,5 +140,7 @@ python "$SCRIPT_DIR/export_webpage_cases.py" \
     --per_dataset_ad  "$PER_DATASET_AD" \
     --per_task_max "$PER_TASK_MAX" \
     --seed "$SEED" \
-    "${REMOVED_ARGS[@]}"
+    --nonmedvision_topleft \
+    "${REMOVED_ARGS[@]}" \
+    "${SKIP_ARGS[@]}"
 
