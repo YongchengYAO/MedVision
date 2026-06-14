@@ -375,7 +375,7 @@ def _doc_to_text_AngleDistanceTask(doc, model_name, model_hf, new_shape_hw=None)
     img_shape = img_2d_raw.shape
 
     # Get resized image shape
-    img_shape_resized = get_resized_img_shape(
+    img_shape_resized, img_shape_content_hw = get_resized_img_shape(
         model_name, img_2d_raw, {"model_hf":model_hf}
     )  # implicit/dynamic resizing from VLM
 
@@ -383,8 +383,8 @@ def _doc_to_text_AngleDistanceTask(doc, model_name, model_hf, new_shape_hw=None)
     original_height, original_width = img_shape
     pixel_height, pixel_width = pixel_size_hw
     resized_img_h, resized_img_w = img_shape_resized
-    resize_ratio_h = resized_img_h / original_height
-    resize_ratio_w = resized_img_w / original_width
+    resize_ratio_h = img_shape_content_hw[0] / original_height
+    resize_ratio_w = img_shape_content_hw[1] / original_width
     adjusted_pixel_height = pixel_height / resize_ratio_h
     adjusted_pixel_width = pixel_width / resize_ratio_w
 
@@ -506,7 +506,7 @@ def _doc_to_text_AngleDistanceTask_CoT(doc, model_name, model_hf, new_shape_hw=N
     img_shape = img_explicit_resize_2d.shape
 
     # [!] Get resized image shape (implicit/dynamic resizing from VLM)
-    img_shape_implicit_resize = get_resized_img_shape(
+    img_shape_implicit_resize, img_shape_content_hw = get_resized_img_shape(
         model_name, img_explicit_resize_2d, {"model_hf":model_hf}
     )
 
@@ -514,8 +514,8 @@ def _doc_to_text_AngleDistanceTask_CoT(doc, model_name, model_hf, new_shape_hw=N
     original_height, original_width = img_shape
     pixel_height, pixel_width = pixel_size_hw
     resized_img_h, resized_img_w = img_shape_implicit_resize
-    resize_ratio_h = resized_img_h / original_height
-    resize_ratio_w = resized_img_w / original_width
+    resize_ratio_h = img_shape_content_hw[0] / original_height
+    resize_ratio_w = img_shape_content_hw[1] / original_width
     adjusted_pixel_height = pixel_height / resize_ratio_h
     adjusted_pixel_width = pixel_width / resize_ratio_w
 
@@ -971,7 +971,7 @@ def _doc_to_text_TumorLesionTask(doc, model_name, model_hf, new_shape_hw=None):
     metric_unit = _normalize_metric_unit(biometric_profile["metric_unit"])
 
     # Get resized image shape
-    img_shape_resized = get_resized_img_shape(
+    img_shape_resized, img_shape_content_hw = get_resized_img_shape(
         model_name, img_2d_raw, {"model_hf":model_hf}
     )  # implicit/dynamic resizing from VLM
 
@@ -979,8 +979,8 @@ def _doc_to_text_TumorLesionTask(doc, model_name, model_hf, new_shape_hw=None):
     original_height, original_width = img_shape
     pixel_height, pixel_width = pixel_size_hw
     resized_img_h, resized_img_w = img_shape_resized
-    resize_ratio_h = resized_img_h / original_height
-    resize_ratio_w = resized_img_w / original_width
+    resize_ratio_h = img_shape_content_hw[0] / original_height
+    resize_ratio_w = img_shape_content_hw[1] / original_width
     adjusted_pixel_height = pixel_height / resize_ratio_h
     adjusted_pixel_width = pixel_width / resize_ratio_w
 
@@ -1175,7 +1175,7 @@ def _doc_to_text_TumorLesionTask_CoT(doc, model_name, model_hf, new_shape_hw=Non
     metric_unit = _normalize_metric_unit(biometric_profile["metric_unit"])
 
     # [!] Get resized image shape (implicit resizing from VLM)
-    img_shape_implicit_resize = get_resized_img_shape(
+    img_shape_implicit_resize, img_shape_content_hw = get_resized_img_shape(
         model_name, img_explicit_resize_2d, {"model_hf":model_hf}
     ) 
 
@@ -1183,8 +1183,8 @@ def _doc_to_text_TumorLesionTask_CoT(doc, model_name, model_hf, new_shape_hw=Non
     original_height, original_width = img_shape
     pixel_height, pixel_width = pixel_size_hw
     resized_img_h, resized_img_w = img_shape_implicit_resize
-    resize_ratio_h = resized_img_h / original_height
-    resize_ratio_w = resized_img_w / original_width
+    resize_ratio_h = img_shape_content_hw[0] / original_height
+    resize_ratio_w = img_shape_content_hw[1] / original_width
     adjusted_pixel_height = pixel_height / resize_ratio_h
     adjusted_pixel_width = pixel_width / resize_ratio_w
 

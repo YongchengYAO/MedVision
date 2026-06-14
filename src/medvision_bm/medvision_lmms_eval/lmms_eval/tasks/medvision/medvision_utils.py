@@ -867,20 +867,30 @@ def _process_img_meddr(img_2d_raw, extra_kwargs):
 
 
 def _process_img_llavaonevision(img_2d_raw, extra_kwargs):
-    from transformers.image_processing_utils import select_best_resolution
+    import numpy as np
+    from transformers.image_processing_utils import get_patch_output_size, select_best_resolution
+    from transformers.image_utils import ChannelDimension
 
     img_PIL = Image.fromarray(img_2d_raw).convert("RGB")
     model_hf = extra_kwargs["model_hf"]
     img_processor = AutoImageProcessor.from_pretrained(model_hf)
 
     # NOTE:
-    # Llave-OneVision dynamically resize the image to a shape that can fit in patches of size [384,384]
-    # The image processor (LlavaOnevisionImageProcessor) first selects the best resolution for the input image,
-    # then resizes the image to the selected resolution, and pads the image and extract patches.
-    # Finally, a resized version of the image (with same size as a patch) is added to the list of patches.
-    img_shape_resized_hw = select_best_resolution(img_PIL.size, img_processor.image_grid_pinpoints)
-    print(f"\nOriginal image size (HxW): {img_PIL.size[::-1]}; Resized image size (HxW): {img_shape_resized_hw}")
-    return img_shape_resized_hw
+    # LLaVA-OneVision LETTERBOXES: select_best_resolution() picks an anyres canvas (multiples of 384),
+    # the image is aspect-preserving-resized into it (LlavaOnevisionImageProcessor._resize_for_patching
+    # -> get_patch_output_size, the min-scale + ceil resize), then PADDED to the canvas (_pad_for_patching).
+    # The model measures inside the content, never across the padding, so we must return the PRE-PAD
+    # CONTENT size, not the padded canvas -- otherwise the padded axis's resize ratio (and thus its
+    # adjusted pixel size) is wrong for non-square inputs. We compose the processor's own transformers
+    # helpers (faithful, not a reimplementation); vLLM runs this same HF processor server-side.
+    # select_best_resolution expects/returns (H, W); image_grid_pinpoints here are swap-symmetric, which
+    # previously masked passing PIL's (W, H) -- we pass img_PIL.size[::-1] = (H, W) per the documented contract.
+    orig_hw = img_PIL.size[::-1]
+    best_resolution_hw = select_best_resolution(orig_hw, img_processor.image_grid_pinpoints)
+    content_hw = get_patch_output_size(np.array(img_PIL), best_resolution_hw, ChannelDimension.LAST)
+    print(f"\nOriginal image size (HxW): {img_PIL.size[::-1]}; Perceived canvas (HxW): {tuple(best_resolution_hw)}; Content (HxW): {tuple(content_hw)}")
+    # perceived canvas (padded anyres) for the stated image size; pre-pad content for the pixel-size ratio
+    return best_resolution_hw, content_hw
 
 
 def _process_img_llavamed(img_2d_raw, extra_kwargs):
@@ -1015,23 +1025,59 @@ def _process_img_llama_3_2_vision(img_2d_raw, extra_kwargs):
     # Use the custom method to calculate resized image shape
     batch_resized_shapes = custom_img_processor.cal_resized_image_shape(images=[img_PIL])
 
-    # Extract the shape for the single image (first batch, first image)
-    # Get (height, width) from shape
-    img_shape_resized_hw = batch_resized_shapes[0][0][-2:]
+    # Extract the pre-pad content (height, width) for the single image (first batch, first image)
+    content_hw = batch_resized_shapes[0][0][-2:]
 
-    print(f"\nOriginal image size (HxW): {img_PIL.size[::-1]}; Resized image size (HxW): {img_shape_resized_hw}")
-    return img_shape_resized_hw
+    # Perceived canvas: Mllama pads the resized content up to a grid of `size`-px tiles, so the encoder
+    # sees ceil(content/tile)*tile per axis (e.g. content 233x560 -> 560x560). The padded canvas is the
+    # stated image size; content_hw (resize-only) drives the per-axis pixel-size ratio.
+    import math
+    size_dict = custom_img_processor.size
+    tile_h, tile_w = size_dict["height"], size_dict["width"]
+    canvas_hw = (math.ceil(content_hw[0] / tile_h) * tile_h, math.ceil(content_hw[1] / tile_w) * tile_w)
+    print(f"\nOriginal image size (HxW): {img_PIL.size[::-1]}; Perceived canvas (HxW): {tuple(canvas_hw)}; Content (HxW): {tuple(content_hw)}")
+    return canvas_hw, content_hw
 
 
 def _process_img_internvl3(img_2d_raw, extra_kwargs):
+    from transformers import AutoConfig
+    from transformers.models.got_ocr2.image_processing_got_ocr2 import get_optimal_tiled_canvas
+
     img_PIL = Image.fromarray(img_2d_raw).convert("RGB")
     model_hf = extra_kwargs["model_hf"]
-    img_processor = AutoImageProcessor.from_pretrained(model_hf)
-    processed_visual = img_processor.preprocess(images=[img_PIL], return_tensors="pt")
-    pv_shape = processed_visual["pixel_values"].shape
-    img_shape_resized_hw = (pv_shape[-2], pv_shape[-1])
+
+    # NOTE:
+    # InternVL3 uses DYNAMIC TILING (not a fixed 448x448): it picks a (cols, rows) grid whose aspect best
+    # matches the input, STRETCHES the image to (image_size*cols, image_size*rows) -- a pure resize, NO
+    # padding -- then splits into image_size^2 tiles (+ a thumbnail). The perceived canvas is therefore
+    # image_size*cols x image_size*rows; fixed 448x448 is correct only for square inputs (a 1x1 grid).
+    # Because the stretch fills the canvas, returning the canvas is correct (the per-axis ratio is
+    # genuinely anisotropic). We use transformers' GOT-OCR2 tiler get_optimal_tiled_canvas, whose grid
+    # selection (candidate set + closest-aspect tie-break) is identical to vLLM 0.10.0's; params come from
+    # the checkpoint config. vLLM bumps max_dynamic_patch by +1 for the thumbnail before selecting the
+    # grid, so we match that. downsample_ratio is post-ViT token compression, NOT a spatial change.
+    cfg = AutoConfig.from_pretrained(model_hf, trust_remote_code=True)
+    tile = cfg.vision_config.image_size
+    min_num = cfg.min_dynamic_patch
+    max_num = cfg.max_dynamic_patch + (1 if getattr(cfg, "use_thumbnail", False) and cfg.max_dynamic_patch != 1 else 0)
+    width, height = img_PIL.size
+    num_cols, num_rows = get_optimal_tiled_canvas((height, width), (tile, tile), min_num, max_num)
+    img_shape_resized_hw = (tile * num_rows, tile * num_cols)
     print(f"\nOriginal image size (HxW): {img_PIL.size[::-1]}; Resized image size (HxW): {img_shape_resized_hw}")
     return img_shape_resized_hw
+
+
+def _padsquare_clip_content_hw(img_2d_raw, size):
+    # NOTE:
+    # LLaVA-Med, HuatuoGPT-Vision and HealthGPT-L14 pad the image to a square (expand2square /
+    # image_aspect_ratio="pad") BEFORE the CLIP-<size> resize + center-crop, so the content is resized by
+    # a single uniform factor size/max(H, W) and occupies a sub-region of the size x size canvas (the rest
+    # is padding). The model measures inside the content, so we return the pre-pad CONTENT size; returning
+    # the fixed size x size canvas would inflate the short axis's pixel size for non-square inputs.
+    # The geometry is fully determined by max(H, W) (no library helper exposes the pre-pad content size).
+    H, W = img_2d_raw.shape[:2]
+    m = max(H, W)
+    return (round(H * size / m), round(W * size / m))
 
 
 def _process_img_huatuogpt_vision(img_2d_raw, extra_kwargs):
@@ -1195,7 +1241,12 @@ def get_resized_img_shape(model_name, img_2d_raw, extra_kwargs):
 
     assert model_name is not None, "[Error] model_name cannot be None. Please provide a valid model_name to get_resized_img_shape()."
 
-    # Get reshaped image size so that we can adjust the pixel size dynamically
+    # Get reshaped image size so that we can adjust the pixel size dynamically.
+    # Returns (perceived_canvas_hw, content_hw): perceived = the resized+padded shape the encoder sees
+    # (used for the stated image size); content = the pre-pad / resize-only shape (used for the per-axis
+    # pixel-size adjustment). For non-padding models the two are identical; the padding models
+    # (LLaVA-OneVision, CLIP-336 trio, Llama-3.2) set img_shape_content_hw explicitly below.
+    img_shape_content_hw = None
     if model_name in ["qwen3vl", "vllm_qwen3vl"]:
         img_shape_resized_hw = _process_img_qwen3vl(img_2d_raw, extra_kwargs) 
     elif model_name in ["vllm_qwen25vl", "vllm_qwen25vl_tooluse", "qwen25vl"]:
@@ -1212,15 +1263,17 @@ def get_resized_img_shape(model_name, img_2d_raw, extra_kwargs):
         # NOTE: Llama-3.2-Vision dynamically resize the image to a shape that can fit in patches of size [560, 560].
         # Preprocessor config: https://huggingface.co/meta-llama/Llama-3.2-11B-Vision-Instruct/blob/main/preprocessor_config.json
         # Image processor - MllamaImageProcessor: https://github.com/huggingface/transformers/blob/main/src/transformers/models/mllama/image_processing_mllama.py#L536
-        img_shape_resized_hw = _process_img_llama_3_2_vision(img_2d_raw, extra_kwargs)
+        img_shape_resized_hw, img_shape_content_hw = _process_img_llama_3_2_vision(img_2d_raw, extra_kwargs)
     elif model_name in ["vllm_llava_onevision", "llava_onevision"]:
-        # NOTE: Llava-OneVision dynamically resize the image to a shape that can fit in patches of size [384,384]
-        # NOTE: The current probing method only work for single image input, as padding is enabled for multiple image inputs
+        # NOTE: LLaVA-OneVision letterboxes (aspect-preserving resize into an anyres canvas of 384-px
+        # tiles, THEN pad). The probe returns the PRE-PAD content size (not the padded canvas), so
+        # non-square inputs get the correct per-axis pixel size. Single-image input only.
         # Preprocessor config: https://huggingface.co/llava-hf/llava-onevision-qwen2-72b-ov-hf/blob/main/preprocessor_config.json
-        # Image processor - LlavaOnevisionImageProcessor: https://github.com/huggingface/transformers/blob/91393fe4cc3266a05bc0d129e34ff5f761bb46e2/src/transformers/models/llava_onevision/image_processing_llava_onevision.py#L108
-        img_shape_resized_hw = _process_img_llavaonevision(img_2d_raw, extra_kwargs)
+        # Image processor - LlavaOnevisionImageProcessor: https://github.com/huggingface/transformers/blob/v4.57.1/src/transformers/models/llava_onevision/image_processing_llava_onevision.py
+        img_shape_resized_hw, img_shape_content_hw = _process_img_llavaonevision(img_2d_raw, extra_kwargs)
     elif model_name in ["vllm_gemma3", "gemma3"]:
-        # NOTE: HealthGPT resize images to a fixed size [896, 896]. We used this size for pixel size adjustment.
+        # NOTE: Gemma3 resizes images to a fixed size [896, 896] (pure stretch, no pad, pan&scan off by
+        # default), so content fills the canvas and the fixed size is correct. Used for pixel size adjustment.
         # Preprocessor config: https://huggingface.co/google/gemma-3-27b-it/blob/main/preprocessor_config.json
         # Image processor - Gemma3ImageProcessor: https://github.com/huggingface/transformers/blob/91393fe4cc3266a05bc0d129e34ff5f761bb46e2/src/transformers/models/gemma3/image_processing_gemma3.py#L53
         img_shape_resized_hw = [896, 896]
@@ -1248,25 +1301,33 @@ def get_resized_img_shape(model_name, img_2d_raw, extra_kwargs):
         img_shape_resized_hw = [448, 448]
         # img_shape_resized_hw = _process_img_meddr(img_2d_raw, extra_kwargs) # for debugging only
     elif model_name == "llava_med":
-        # NOTE: Llava-Med resize images to a fixed size [336, 336]. We used this size for pixel size adjustment.
-        # Check the fixed size in the model config: https://huggingface.co/microsoft/llava-med-v1.5-mistral-7b/blob/main/config.json
+        # NOTE: Llava-Med pads to square (image_aspect_ratio="pad" -> expand2square) then CLIP-336
+        # resize+center-crop, so the content scale is uniform 336/max(H,W). Return the pre-pad content
+        # size (NOT [336,336]) so non-square inputs get the correct per-axis pixel size.
+        # Model config: https://huggingface.co/microsoft/llava-med-v1.5-mistral-7b/blob/main/config.json
         img_shape_resized_hw = [336, 336]
+        img_shape_content_hw = _padsquare_clip_content_hw(img_2d_raw, 336)
         # img_shape_resized_hw = _process_img_llavamed(img_2d_raw, extra_kwargs) # for debugging only
     elif model_name in ["vllm_internvl3", "internvl3"]:
-        # NOTE: InternVL3 resizes images to a fixed size [448, 448]. We used this size for pixel size adjustment.
-        # Preprocessor config: https://huggingface.co/OpenGVLab/InternVL3-38B/blob/main/preprocessor_config.json
-        # Image processor - CLIPImageProcessor: https://github.com/huggingface/transformers/blob/91393fe4cc3266a05bc0d129e34ff5f761bb46e2/src/transformers/models/clip/image_processing_clip.py#L54
-        img_shape_resized_hw = [448, 448]
-        # img_shape_resized_hw = _process_img_internvl3(img_2d_raw, extra_kwargs)  # for debugging only
+        # NOTE: InternVL3 uses dynamic tiling (NOT a fixed 448x448): it stretches the image to
+        # image_size*cols x image_size*rows and splits into image_size^2 tiles (+ thumbnail). We probe the
+        # tiling canvas; fixed 448x448 is correct only for square inputs (a 1x1 grid). See _process_img_internvl3.
+        # vLLM tiling: https://github.com/vllm-project/vllm/blob/v0.10.0/vllm/model_executor/models/internvl.py
+        # Grid selection (GOT-OCR2 tiler, identical algorithm): transformers.models.got_ocr2.image_processing_got_ocr2.get_optimal_tiled_canvas
+        # Config: https://huggingface.co/OpenGVLab/InternVL3-38B/blob/main/config.json
+        img_shape_resized_hw = _process_img_internvl3(img_2d_raw, extra_kwargs)
     elif model_name == "huatuogpt_vision":
-        # NOTE: HuatuoGPT-Vision resize images to a fixed size [336, 336]. We used this size for pixel size adjustment.
-        # The fixed size is configured in the "shortest_edge" in image processor: https://huggingface.co/FreedomIntelligence/HuatuoGPT-Vision-34B-hf/blob/main/preprocessor_config.json
-        # Image processor - CLIPImageProcessor:
+        # NOTE: HuatuoGPT-Vision pads to square (expand2square) then CLIP-336 resize+center-crop, so the
+        # content scale is uniform 336/max(H,W). Return the pre-pad content size (NOT [336,336]).
+        # CLIP shortest_edge config: https://huggingface.co/FreedomIntelligence/HuatuoGPT-Vision-34B-hf/blob/main/preprocessor_config.json
         img_shape_resized_hw = [336, 336]
+        img_shape_content_hw = _padsquare_clip_content_hw(img_2d_raw, 336)
         # img_shape_resized_hw = _process_img_huatuogpt_vision(img_2d_raw, extra_kwargs)  # for debugging only
     elif model_name == "healthgpt_l14":
-        # NOTE: HealthGPT resize images to a fixed size [336, 336]. We used this size for pixel size adjustment.
+        # NOTE: HealthGPT pads to square (expand2square) then CLIP-336 resize+center-crop, so the content
+        # scale is uniform 336/max(H,W). Return the pre-pad content size (NOT [336,336]).
         img_shape_resized_hw = [336, 336]
+        img_shape_content_hw = _padsquare_clip_content_hw(img_2d_raw, 336)
         # img_shape_resized_hw = _process_img_healthgpt_L14(img_2d_raw, extra_kwargs)  # for debugging only
     elif model_name == "claude":
         # Single source of truth: the Claude model file owns the resize rule + cap table, so the
@@ -1296,7 +1357,8 @@ def get_resized_img_shape(model_name, img_2d_raw, extra_kwargs):
         print(f"\nOriginal image size (HxW): {(img_h, img_w)}; Resized image size (HxW): {tuple(img_shape_resized_hw)}")
     else:
         raise ValueError(f"[Error] {model_name} is not recognised/supported.")
-    return img_shape_resized_hw
+    # (perceived canvas for the stated image size, content/resize-only shape for the pixel-size ratio)
+    return img_shape_resized_hw, (img_shape_content_hw if img_shape_content_hw is not None else img_shape_resized_hw)
 
 
 def create_doc_to_text_TumorLesionSize(preprocess_biometry_module):
@@ -1343,14 +1405,14 @@ def create_doc_to_text_TumorLesionSize(preprocess_biometry_module):
         # NOTE: img_shape_resized_hw is the shape of image after model-specific processing, which could be dynamic or fixed depending on the model. 
         # We will use img_shape_resized_hw to adjust the pixel size information in the prompt to make it consistent with the image size input to the model.
         model_name = lmms_eval_specific_kwargs.get("model_name")
-        img_shape_resized_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
+        img_shape_resized_hw, img_shape_content_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
 
         # Adjust pixel size based on the resize ratio
         original_height, original_width = img_shape_hw
         pixel_height, pixel_width = pixel_size_hw
         resized_img_h, resized_img_w = img_shape_resized_hw
-        resize_ratio_h = resized_img_h / original_height
-        resize_ratio_w = resized_img_w / original_width
+        resize_ratio_h = img_shape_content_hw[0] / original_height
+        resize_ratio_w = img_shape_content_hw[1] / original_width
         adjusted_pixel_height = pixel_height / resize_ratio_h
         adjusted_pixel_width = pixel_width / resize_ratio_w
 
@@ -1416,14 +1478,14 @@ def doc_to_text_TumorLesionSize_woMedImg(doc, lmms_eval_specific_kwargs=None):
     # NOTE: img_shape_resized_hw is the shape of image after model-specific processing, which could be dynamic or fixed depending on the model. 
     # We will use img_shape_resized_hw to adjust the pixel size information in the prompt to make it consistent with the image size input to the model.
     model_name = lmms_eval_specific_kwargs.get("model_name")
-    img_shape_resized_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
+    img_shape_resized_hw, img_shape_content_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
 
     # Adjust pixel size based on the resize ratio
     original_height, original_width = img_shape_hw
     pixel_height, pixel_width = pixel_size_hw
     resized_img_h, resized_img_w = img_shape_resized_hw
-    resize_ratio_h = resized_img_h / original_height
-    resize_ratio_w = resized_img_w / original_width
+    resize_ratio_h = img_shape_content_hw[0] / original_height
+    resize_ratio_w = img_shape_content_hw[1] / original_width
     adjusted_pixel_height = pixel_height / resize_ratio_h
     adjusted_pixel_width = pixel_width / resize_ratio_w
 
@@ -1490,14 +1552,14 @@ def create_doc_to_text_TumorLesionSize_wVisualPrompt(preprocess_biometry_module)
         # NOTE: img_shape_resized_hw is the shape of image after model-specific processing, which could be dynamic or fixed depending on the model. 
         # We will use img_shape_resized_hw to adjust the pixel size information in the prompt to make it consistent with the image size input to the model.
         model_name = lmms_eval_specific_kwargs.get("model_name")
-        img_shape_resized_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
+        img_shape_resized_hw, img_shape_content_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
 
         # Adjust pixel size based on the resize ratio
         original_height, original_width = img_shape_hw
         pixel_height, pixel_width = pixel_size_hw
         resized_img_h, resized_img_w = img_shape_resized_hw
-        resize_ratio_h = resized_img_h / original_height
-        resize_ratio_w = resized_img_w / original_width
+        resize_ratio_h = img_shape_content_hw[0] / original_height
+        resize_ratio_w = img_shape_content_hw[1] / original_width
         adjusted_pixel_height = pixel_height / resize_ratio_h
         adjusted_pixel_width = pixel_width / resize_ratio_w
 
@@ -1563,14 +1625,14 @@ def doc_to_text_TumorLesionSize_wVisualPrompt_woMedImg(doc, lmms_eval_specific_k
     # NOTE: img_shape_resized_hw is the shape of image after model-specific processing, which could be dynamic or fixed depending on the model. 
     # We will use img_shape_resized_hw to adjust the pixel size information in the prompt to make it consistent with the image size input to the model.
     model_name = lmms_eval_specific_kwargs.get("model_name")
-    img_shape_resized_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
+    img_shape_resized_hw, img_shape_content_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
 
     # Adjust pixel size based on the resize ratio
     original_height, original_width = img_shape_hw
     pixel_height, pixel_width = pixel_size_hw
     resized_img_h, resized_img_w = img_shape_resized_hw
-    resize_ratio_h = resized_img_h / original_height
-    resize_ratio_w = resized_img_w / original_width
+    resize_ratio_h = img_shape_content_hw[0] / original_height
+    resize_ratio_w = img_shape_content_hw[1] / original_width
     adjusted_pixel_height = pixel_height / resize_ratio_h
     adjusted_pixel_width = pixel_width / resize_ratio_w
 
@@ -1640,14 +1702,14 @@ def create_doc_to_text_TumorLesionSize_CoT_woInstruct(preprocess_biometry_module
         # NOTE: img_shape_resized_hw is the shape of image after model-specific processing, which could be dynamic or fixed depending on the model. 
         # We will use img_shape_resized_hw to adjust the pixel size information in the prompt to make it consistent with the image size input to the model.
         model_name = lmms_eval_specific_kwargs.get("model_name")
-        img_shape_resized_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
+        img_shape_resized_hw, img_shape_content_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
 
         # Adjust pixel size based on the resize ratio
         original_height, original_width = img_shape_hw
         pixel_height, pixel_width = pixel_size_hw
         resized_img_h, resized_img_w = img_shape_resized_hw
-        resize_ratio_h = resized_img_h / original_height
-        resize_ratio_w = resized_img_w / original_width
+        resize_ratio_h = img_shape_content_hw[0] / original_height
+        resize_ratio_w = img_shape_content_hw[1] / original_width
         adjusted_pixel_height = pixel_height / resize_ratio_h
         adjusted_pixel_width = pixel_width / resize_ratio_w
 
@@ -1726,14 +1788,14 @@ def create_doc_to_text_TumorLesionSize_CoT(preprocess_biometry_module):
         # NOTE: img_shape_resized_hw is the shape of image after model-specific processing, which could be dynamic or fixed depending on the model. 
         # We will use img_shape_resized_hw to adjust the pixel size information in the prompt to make it consistent with the image size input to the model.
         model_name = lmms_eval_specific_kwargs.get("model_name")
-        img_shape_resized_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
+        img_shape_resized_hw, img_shape_content_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
 
         # Adjust pixel size based on the resize ratio
         original_height, original_width = img_shape_hw
         pixel_height, pixel_width = pixel_size_hw
         resized_img_h, resized_img_w = img_shape_resized_hw
-        resize_ratio_h = resized_img_h / original_height
-        resize_ratio_w = resized_img_w / original_width
+        resize_ratio_h = img_shape_content_hw[0] / original_height
+        resize_ratio_w = img_shape_content_hw[1] / original_width
         adjusted_pixel_height = pixel_height / resize_ratio_h
         adjusted_pixel_width = pixel_width / resize_ratio_w
 
@@ -1806,14 +1868,14 @@ def create_doc_to_text_MaskSize(preprocess_segmentation_module):
         # NOTE: img_shape_resized_hw is the shape of image after model-specific processing, which could be dynamic or fixed depending on the model. 
         # We will use img_shape_resized_hw to adjust the pixel size information in the prompt to make it consistent with the image size input to the model.
         model_name = lmms_eval_specific_kwargs.get("model_name")
-        img_shape_resized_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
+        img_shape_resized_hw, img_shape_content_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
 
         # Adjust pixel size based on the resize ratio
         original_height, original_width = img_shape_hw
         pixel_height, pixel_width = pixel_size_hw
         resized_img_h, resized_img_w = img_shape_resized_hw
-        resize_ratio_h = resized_img_h / original_height
-        resize_ratio_w = resized_img_w / original_width
+        resize_ratio_h = img_shape_content_hw[0] / original_height
+        resize_ratio_w = img_shape_content_hw[1] / original_width
         adjusted_pixel_height = pixel_height / resize_ratio_h
         adjusted_pixel_width = pixel_width / resize_ratio_w
 
@@ -1884,14 +1946,14 @@ def create_doc_to_text_MaskSize_wMask(preprocess_segmentation_module):
         # NOTE: img_shape_resized_hw is the shape of image after model-specific processing, which could be dynamic or fixed depending on the model. 
         # We will use img_shape_resized_hw to adjust the pixel size information in the prompt to make it consistent with the image size input to the model.
         model_name = lmms_eval_specific_kwargs.get("model_name")
-        img_shape_resized_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
+        img_shape_resized_hw, img_shape_content_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
 
         # Adjust pixel size based on the resize ratio
         original_height, original_width = img_shape_hw
         pixel_height, pixel_width = pixel_size_hw
         resized_img_h, resized_img_w = img_shape_resized_hw
-        resize_ratio_h = resized_img_h / original_height
-        resize_ratio_w = resized_img_w / original_width
+        resize_ratio_h = img_shape_content_hw[0] / original_height
+        resize_ratio_w = img_shape_content_hw[1] / original_width
         adjusted_pixel_height = pixel_height / resize_ratio_h
         adjusted_pixel_width = pixel_width / resize_ratio_w
 
@@ -1954,14 +2016,14 @@ def doc_to_text_MaskSize_wMask_woMedImg(doc, lmms_eval_specific_kwargs=None):
     # NOTE: img_shape_resized_hw is the shape of image after model-specific processing, which could be dynamic or fixed depending on the model. 
     # We will use img_shape_resized_hw to adjust the pixel size information in the prompt to make it consistent with the image size input to the model.
     model_name = lmms_eval_specific_kwargs.get("model_name")
-    img_shape_resized_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
+    img_shape_resized_hw, img_shape_content_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
 
     # Adjust pixel size based on the resize ratio
     original_height, original_width = img_shape_hw
     pixel_height, pixel_width = pixel_size_hw
     resized_img_h, resized_img_w = img_shape_resized_hw
-    resize_ratio_h = resized_img_h / original_height
-    resize_ratio_w = resized_img_w / original_width
+    resize_ratio_h = img_shape_content_hw[0] / original_height
+    resize_ratio_w = img_shape_content_hw[1] / original_width
     adjusted_pixel_height = pixel_height / resize_ratio_h
     adjusted_pixel_width = pixel_width / resize_ratio_w
 
@@ -2040,14 +2102,14 @@ def create_doc_to_text_BiometricsFromLandmarks(preprocess_biometry_module):
         # NOTE: img_shape_resized_hw is the shape of image after model-specific processing, which could be dynamic or fixed depending on the model. 
         # We will use img_shape_resized_hw to adjust the pixel size information in the prompt to make it consistent with the image size input to the model.
         model_name = lmms_eval_specific_kwargs.get("model_name")
-        img_shape_resized_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
+        img_shape_resized_hw, img_shape_content_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
 
         # Adjust pixel size based on the resize ratio
         original_height, original_width = img_shape_hw
         pixel_height, pixel_width = pixel_size_hw
         resized_img_h, resized_img_w = img_shape_resized_hw
-        resize_ratio_h = resized_img_h / original_height
-        resize_ratio_w = resized_img_w / original_width
+        resize_ratio_h = img_shape_content_hw[0] / original_height
+        resize_ratio_w = img_shape_content_hw[1] / original_width
         adjusted_pixel_height = pixel_height / resize_ratio_h
         adjusted_pixel_width = pixel_width / resize_ratio_w
 
@@ -2149,14 +2211,14 @@ def create_doc_to_text_BiometricsFromLandmarks_wVisualPrompt(preprocess_biometry
         # NOTE: img_shape_resized_hw is the shape of image after model-specific processing, which could be dynamic or fixed depending on the model. 
         # We will use img_shape_resized_hw to adjust the pixel size information in the prompt to make it consistent with the image size input to the model.
         model_name = lmms_eval_specific_kwargs.get("model_name")
-        img_shape_resized_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
+        img_shape_resized_hw, img_shape_content_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
 
         # Adjust pixel size based on the resize ratio
         original_height, original_width = img_shape_hw
         pixel_height, pixel_width = pixel_size_hw
         resized_img_h, resized_img_w = img_shape_resized_hw
-        resize_ratio_h = resized_img_h / original_height
-        resize_ratio_w = resized_img_w / original_width
+        resize_ratio_h = img_shape_content_hw[0] / original_height
+        resize_ratio_w = img_shape_content_hw[1] / original_width
         adjusted_pixel_height = pixel_height / resize_ratio_h
         adjusted_pixel_width = pixel_width / resize_ratio_w
 
@@ -2265,14 +2327,14 @@ def doc_to_text_BiometricsFromLandmarks_wVisualPrompt_woMedImg(doc, lmms_eval_sp
     # NOTE: img_shape_resized_hw is the shape of image after model-specific processing, which could be dynamic or fixed depending on the model.
     # We will use img_shape_resized_hw to adjust the pixel size information in the prompt to make it consistent with the image size input to the model.
     model_name = lmms_eval_specific_kwargs.get("model_name")
-    img_shape_resized_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
+    img_shape_resized_hw, img_shape_content_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
 
     # Adjust pixel size based on the resize ratio
     original_height, original_width = img_shape_hw
     pixel_height, pixel_width = pixel_size_hw
     resized_img_h, resized_img_w = img_shape_resized_hw
-    resize_ratio_h = resized_img_h / original_height
-    resize_ratio_w = resized_img_w / original_width
+    resize_ratio_h = img_shape_content_hw[0] / original_height
+    resize_ratio_w = img_shape_content_hw[1] / original_width
     adjusted_pixel_height = pixel_height / resize_ratio_h
     adjusted_pixel_width = pixel_width / resize_ratio_w
 
@@ -2348,14 +2410,14 @@ def create_doc_to_text_BiometricsFromLandmarks_CoT_woInstruct(preprocess_biometr
         # NOTE: img_shape_resized_hw is the shape of image after model-specific processing, which could be dynamic or fixed depending on the model. 
         # We will use img_shape_resized_hw to adjust the pixel size information in the prompt to make it consistent with the image size input to the model.
         model_name = lmms_eval_specific_kwargs.get("model_name")
-        img_shape_resized_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
+        img_shape_resized_hw, img_shape_content_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
 
         # Adjust pixel size based on the resize ratio
         original_height, original_width = img_shape_hw
         pixel_height, pixel_width = pixel_size_hw
         resized_img_h, resized_img_w = img_shape_resized_hw
-        resize_ratio_h = resized_img_h / original_height
-        resize_ratio_w = resized_img_w / original_width
+        resize_ratio_h = img_shape_content_hw[0] / original_height
+        resize_ratio_w = img_shape_content_hw[1] / original_width
         adjusted_pixel_height = pixel_height / resize_ratio_h
         adjusted_pixel_width = pixel_width / resize_ratio_w
 
@@ -2475,14 +2537,14 @@ def create_doc_to_text_BiometricsFromLandmarks_CoT(preprocess_biometry_module):
         # NOTE: img_shape_resized_hw is the shape of image after model-specific processing, which could be dynamic or fixed depending on the model. 
         # We will use img_shape_resized_hw to adjust the pixel size information in the prompt to make it consistent with the image size input to the model.
         model_name = lmms_eval_specific_kwargs.get("model_name")
-        img_shape_resized_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
+        img_shape_resized_hw, img_shape_content_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
 
         # Adjust pixel size based on the resize ratio
         original_height, original_width = img_shape_hw
         pixel_height, pixel_width = pixel_size_hw
         resized_img_h, resized_img_w = img_shape_resized_hw
-        resize_ratio_h = resized_img_h / original_height
-        resize_ratio_w = resized_img_w / original_width
+        resize_ratio_h = img_shape_content_hw[0] / original_height
+        resize_ratio_w = img_shape_content_hw[1] / original_width
         adjusted_pixel_height = pixel_height / resize_ratio_h
         adjusted_pixel_width = pixel_width / resize_ratio_w
 
@@ -3166,13 +3228,13 @@ def create_doc_to_text_TumorLesionSize_CoT_scaledPS(preprocess_biometry_module):
         metric_unit = _normalize_metric_unit(biometric_profile["metric_unit"])
 
         model_name = lmms_eval_specific_kwargs.get("model_name")
-        img_shape_resized_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
+        img_shape_resized_hw, img_shape_content_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
 
         original_height, original_width = img_shape_hw
         pixel_height, pixel_width = pixel_size_hw
         resized_img_h, resized_img_w = img_shape_resized_hw
-        resize_ratio_h = resized_img_h / original_height
-        resize_ratio_w = resized_img_w / original_width
+        resize_ratio_h = img_shape_content_hw[0] / original_height
+        resize_ratio_w = img_shape_content_hw[1] / original_width
         adjusted_pixel_height = pixel_height / resize_ratio_h
         adjusted_pixel_width = pixel_width / resize_ratio_w
 
@@ -3304,13 +3366,13 @@ def create_doc_to_text_BiometricsFromLandmarks_CoT_scaledPS(preprocess_biometry_
         img_shape_hw = img_2d_raw.shape
 
         model_name = lmms_eval_specific_kwargs.get("model_name")
-        img_shape_resized_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
+        img_shape_resized_hw, img_shape_content_hw = get_resized_img_shape(model_name, img_2d_raw, lmms_eval_specific_kwargs)
 
         original_height, original_width = img_shape_hw
         pixel_height, pixel_width = pixel_size_hw
         resized_img_h, resized_img_w = img_shape_resized_hw
-        resize_ratio_h = resized_img_h / original_height
-        resize_ratio_w = resized_img_w / original_width
+        resize_ratio_h = img_shape_content_hw[0] / original_height
+        resize_ratio_w = img_shape_content_hw[1] / original_width
         adjusted_pixel_height = pixel_height / resize_ratio_h
         adjusted_pixel_width = pixel_width / resize_ratio_w
 
