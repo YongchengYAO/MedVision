@@ -47,6 +47,8 @@ AVAILABLE_MODELS = {
     "meddr": "MedDr",
     # MedGemma
     "medgemma": "MedGemma",
+    # OpenAI (official OpenAI API or OpenRouter)
+    "openai": "OpenAI_GPT",
     # Qwen2.5-VL
     # "qwen2_5_vl": "Qwen2_5_VL",
     "vllm_qwen25vl": "VLLM_Qwen25VL",

@@ -23,9 +23,8 @@
   AVAILABLE_MODELS = {
       # Claude (Anthropic API or OpenRouter)
       "claude": "Claude",
-      # Gemini
-      "gemini__2_5": "Gemini__2_5",
-      "gemini__2_5_woTool": "Gemini__2_5_woTool",
+      # Gemini (Google Gemini API or OpenRouter; 2.5 + 3 series)
+      "gemini": "Gemini",
       # Gemma3
       "vllm_gemma3": "VLLM_Gemma3",
       # Gemma4
@@ -52,6 +51,8 @@
       "meddr": "MedDr",
       # MedGemma
       "medgemma": "MedGemma",
+      # OpenAI (official OpenAI API or OpenRouter)
+      "openai": "OpenAI_GPT",
       # Qwen2.5-VL
       # "qwen2_5_vl": "Qwen2_5_VL",
       "vllm_qwen25vl": "VLLM_Qwen25VL",
@@ -289,7 +290,7 @@ Notes that bit us in practice:
 | `lmms_eval/models/__init__.py` | add to `AVAILABLE_MODELS` |
 | `lmms_eval/tasks/medvision/medvision_utils.py` | `_process_img_<model>()` + branch in `get_resized_img_shape()` |
 | `medvision_lmms_eval/pyproject.toml` | `[project.optional-dependencies]` extras (SDK + any framework pins) |
-| `src/medvision_bm/benchmark/eval__<model>.py` | eval entry script (mirrors `eval__gemini2_5_w_tool.py`) |
+| `src/medvision_bm/benchmark/eval__<model>.py` | eval entry script (mirrors `eval__gemini.py`) |
 | `script/benchmark-{detect,TL,AD}/eval__<model>__*.sh` | one shell script per task family |
 | `unit-test/<model>-image-resize/test_<model>_resize.py` | resize-formula + loud-failure tests |
 

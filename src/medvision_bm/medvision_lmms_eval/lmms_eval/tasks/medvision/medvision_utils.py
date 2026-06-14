@@ -1355,6 +1355,21 @@ def get_resized_img_shape(model_name, img_2d_raw, extra_kwargs):
         model_code = (extra_kwargs or {}).get("model_hf") or ""
         img_shape_resized_hw = gemini_resized_hw(img_h, img_w, model_code)
         print(f"\nOriginal image size (HxW): {(img_h, img_w)}; Resized image size (HxW): {tuple(img_shape_resized_hw)}")
+    elif model_name == "openai":
+        # Single source of truth: the OpenAI model file owns the resize rule + cap table (two
+        # rule families: patch-based models are downscaled to the patch budget then floored to
+        # the 32-px grid; tile-based models to fit 2048px long / 768px short edges), so the
+        # size stated in the prompt always matches the image actually sent to the API. Imported
+        # lazily so the SFT path (which calls get_resized_img_shape but never with
+        # model_name="openai") does not load the model layer. openai_resized_hw() selects
+        # per-model caps from extra_kwargs["model_hf"] (raw OpenAI/OpenRouter code) and raises
+        # for unsupported models.
+        from lmms_eval.models.openai import openai_resized_hw
+
+        img_h, img_w = img_2d_raw.shape[:2]
+        model_code = (extra_kwargs or {}).get("model_hf") or ""
+        img_shape_resized_hw = openai_resized_hw(img_h, img_w, model_code)
+        print(f"\nOriginal image size (HxW): {(img_h, img_w)}; Resized image size (HxW): {tuple(img_shape_resized_hw)}")
     else:
         raise ValueError(f"[Error] {model_name} is not recognised/supported.")
     # (perceived canvas for the stated image size, content/resize-only shape for the pixel-size ratio)
