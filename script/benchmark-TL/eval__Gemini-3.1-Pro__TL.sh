@@ -11,8 +11,7 @@ fi
 conda activate "${ENV_NAME}"
 
 # Set paths and configs
-benchmark_dir="/mnt/vincent-pvc-rwm/Github/MedVision"
-#benchmark_dir="/root/Documents/MedVision"
+benchmark_dir="/root/Documents/MedVision"
 data_dir="${benchmark_dir}/Data"
 model_name="Gemini-3.1-Pro"
 batch_size=1

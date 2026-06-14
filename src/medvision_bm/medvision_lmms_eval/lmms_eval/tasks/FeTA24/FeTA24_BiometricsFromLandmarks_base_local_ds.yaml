@@ -57,8 +57,6 @@ lmms_eval_specific_kwargs:
   huatuogpt_vision:
     model: "huatuogpt_vision"
     sample_model_hf: "FreedomIntelligence/HuatuoGPT-Vision-34B"
-  gemini__2_5:
-  gemini__2_5_woTool:
   internvl3:
   llava_onevision:
   qwen2_5_vl:

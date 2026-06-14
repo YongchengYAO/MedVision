@@ -124,13 +124,6 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
      > - resource-constrained configs, such as
      >   - `batch_size_per_gpu`
 
-     > **API models (Claude, Gemini).** Closed/API VLMs are also supported and run with no GPU. Use the `eval__claude_*` / `eval__gemini2_5_*` scripts in `script/benchmark-{detect,TL,AD}/`. Instead of `model_hf_id`, set the provider's model code and API key:
-     >
-     > - **Claude** — `eval__claude_fable5__*.sh`. Direct Anthropic (`ANTHROPIC_API_KEY`) or OpenRouter (`OPENROUTER_API_KEY`, model id `anthropic/claude-...`); selected via `--api_provider`. Adaptive thinking is on by default.
-     > - **Gemini** — `eval__gemini2_5_*.sh` (`GOOGLE_API_KEY`).
-     >
-     > For the quantitative tasks (TL/AD) the prompt's pixel size is matched to the resolution the API model actually perceives; the verified per-model image caps live in the model file (e.g. `SUPPORTED_MODEL_CAPS` in `lmms_eval/models/claude.py`). To add a new API model, see the **API Models** section of the [New models guide](https://github.com/YongchengYAO/MedVision/blob/master/docs/New-Models-Guide.md). How this perceived-resolution matching works for **every** supported model (fixed-size, dynamic-probe, and API strategies) is documented in [Model image processing](https://github.com/YongchengYAO/MedVision/blob/master/docs/Model-Image-Processing.md).
-
   2. After evaluating all models in step 1, parse model outputs and calculate metrics (e.g., MRE, MAE, nMAE, IoU, F1, Precision, Recall, Success Rate):
 
      ```bash
