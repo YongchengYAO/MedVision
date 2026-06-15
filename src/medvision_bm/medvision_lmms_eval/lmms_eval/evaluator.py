@@ -195,6 +195,12 @@ def simple_evaluate(
     elif isinstance(model, lmms_eval.api.model.lmms):
         lm = model
 
+    # Enable per-sample resumable response caching co-located with results, so an
+    # interruption mid-inference only costs the in-flight sample. No-op unless an
+    # output_path is set. Models opt in via resp_cache_get/put inside generate_until.
+    if cli_args is not None and getattr(cli_args, "output_path", None):
+        lm.init_response_cache(cli_args.output_path)
+
     # helper function to recursively apply config overrides to leaf subtasks, skipping their constituent groups.
     # (setting of num_fewshot ; bypassing metric calculation ; setting fewshot seed)
     def _adjust_config(task_dict):

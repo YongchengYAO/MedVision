@@ -247,17 +247,33 @@ class VLLM_InternVL3(lmms):
         return new_list
 
     def generate_until(self, requests) -> List[str]:
-        res = []
+        res = [None] * len(requests)
 
         # Always show progress - vLLM runs as single process with internal GPU distribution
         pbar = tqdm(total=len(requests), desc="Model Responding")
 
+        # Resolve already-cached responses up front so an interrupted run resumes;
+        # only the uncached requests are sent to the model. Non-greedy sampling is
+        # never cached (identical args would collide on the same key).
+        pending = []  # list of (global_index, request)
+        for gi, req in enumerate(requests):
+            _, gen_kwargs, _, doc_id, task, _ = req.arguments
+            if gen_kwargs.get("do_sample", False) or gen_kwargs.get("temperature", 0):
+                pending.append((gi, req))
+                continue
+            cached = self.resp_cache_get(task, self._resp_cache_key(doc_id, task, req.arguments[5], req.arguments[0]))
+            if cached is not None:
+                res[gi] = cached
+                pbar.update(1)
+            else:
+                pending.append((gi, req))
+
         batch_size = self.batch_size_per_gpu
-        batched_requests = [requests[i : i + batch_size] for i in range(0, len(requests), batch_size)]
+        batched_requests = [pending[i : i + batch_size] for i in range(0, len(pending), batch_size)]
         for batch_requests in batched_requests:
             batched_messages = []
             for idx in range(len(batch_requests)):
-                contexts, gen_kwargs, doc_to_visual, doc_id, task, split = batch_requests[idx].arguments
+                contexts, gen_kwargs, doc_to_visual, doc_id, task, split = batch_requests[idx][1].arguments
                 if "max_new_tokens" not in gen_kwargs:
                     gen_kwargs["max_new_tokens"] = self.max_new_tokens
                 if "temperature" not in gen_kwargs:
@@ -340,7 +356,11 @@ class VLLM_InternVL3(lmms):
             response_text = [o.outputs[0].text for o in response]
 
             assert len(response_text) == len(batch_requests)
-            res.extend(response_text)
+            for (gi, req), text in zip(batch_requests, response_text):
+                _, gen_kwargs, _, doc_id, task, split = req.arguments
+                if not (gen_kwargs.get("do_sample", False) or gen_kwargs.get("temperature", 0)):
+                    self.resp_cache_put(task, self._resp_cache_key(doc_id, task, split, req.arguments[0]), text)
+                res[gi] = text
             pbar.update(len(batch_requests))
 
         pbar.close()

@@ -297,6 +297,16 @@ class Claude(lmms):
         pbar = tqdm(total=len(requests), disable=(self.rank != 0), desc="Model Responding")
 
         for contexts, gen_kwargs, doc_to_visual, doc_id, task, split in [reg.args for reg in requests]:
+            # resume: skip already-finished samples (greedy decoding only)
+            _greedy = not (gen_kwargs.get("do_sample", False) or gen_kwargs.get("temperature", 0)) if gen_kwargs else True
+            _key = self._resp_cache_key(doc_id, task, split, contexts)
+            if _greedy:
+                _cached = self.resp_cache_get(task, _key)
+                if _cached is not None:
+                    res.append(_cached)
+                    pbar.update(1)
+                    continue
+
             # Image inputs
             visuals = [doc_to_visual(self.task_dict[task][split][doc_id])]
             visuals = self.flatten(visuals)
@@ -313,6 +323,8 @@ class Claude(lmms):
             # NOTE: no extra answer-format suffix is appended -- MedVision task prompts
             # already require the final values inside <answer></answer>, which parse_outputs parses.
             resp = self._generate_content_with_retry(image_b64, contexts, max_tokens)
+            if _greedy:
+                self.resp_cache_put(task, _key, resp)
             res.append(resp)
             pbar.update(1)
 

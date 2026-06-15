@@ -1,4 +1,5 @@
 import abc
+import glob
 import hashlib
 import json
 import os
@@ -25,6 +26,8 @@ class lmms(abc.ABC):
         self._world_size = 1
         self.cache_hook = CacheHook(None)
         self.task_dict = {}
+        # Per-sample resumable response cache (disabled until init_response_cache()).
+        self._resp_cache_dir = None
 
     @abc.abstractmethod
     def loglikelihood(self, requests: List[Instance]) -> List[Tuple[float, bool]]:
@@ -125,6 +128,110 @@ class lmms(abc.ABC):
 
     def set_cache_hook(self, cache_hook) -> None:
         self.cache_hook = cache_hook
+
+    # ------------------------------------------------------------------
+    # Per-sample resumable response cache
+    #
+    # lmms-eval runs inference as one long blocking generate_until() call and
+    # only writes results to disk at the very end. If the process is killed
+    # mid-run, every finished response is lost. These helpers let a model
+    # persist each response to a JSONL file the instant it is produced, and
+    # skip already-finished samples on a re-run, so an interruption only costs
+    # the in-flight sample.
+    #
+    # Files live under <output_path>/response_cache/<task>_rank<R>.jsonl
+    # (one line per sample: {"key": ..., "response": ...}). The path is stable
+    # across runs (not timestamped) so a restart finds the prior file.
+    #
+    # Caching assumes deterministic (greedy) decoding, which MedVision uses.
+    # Callers must NOT cache non-deterministic sampling (do_sample / temp > 0),
+    # mirroring the CachingLMM guard, since identical args -> identical keys.
+    # ------------------------------------------------------------------
+    def init_response_cache(self, output_path) -> None:
+        """Enable the per-sample response cache under ``output_path``.
+
+        No-op when ``output_path`` is falsy, so behaviour is unchanged unless a
+        caller (the evaluator) opts in. Safe to call once after construction.
+        """
+        if not output_path:
+            return
+        if os.environ.get("MEDVISION_RESP_CACHE", "1") == "0":
+            eval_logger.info("Per-sample response cache disabled via MEDVISION_RESP_CACHE=0")
+            return
+        cache_dir = os.path.join(output_path, "response_cache")
+        os.makedirs(cache_dir, exist_ok=True)
+        self._resp_cache_dir = cache_dir
+        self._resp_cache_loaded = {}  # task -> {key: response} loaded from disk
+        self._resp_cache_fh = {}  # task -> open append file handle
+        eval_logger.info(f"Per-sample response cache enabled at '{cache_dir}' (rank {self.rank})")
+
+    @staticmethod
+    def _resp_cache_key(doc_id, task, split, prompt=None) -> str:
+        """Stable per-sample key. Unique across the run for greedy decoding.
+
+        When ``prompt`` (the rendered prompt text) is supplied, a short hash of it
+        is folded into the key so a changed prompt/config misses the cache instead
+        of returning a stale response. ``prompt=None`` preserves the legacy key.
+        """
+        base = f"{task}::{split}::{doc_id}"
+        if prompt is None:
+            return base
+        h = hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:16]
+        return f"{base}::{h}"
+
+    def _resp_cache_path(self, task, rank) -> str:
+        safe = str(task).replace("/", "_")
+        return os.path.join(self._resp_cache_dir, f"{safe}_rank{rank}.jsonl")
+
+    def _resp_cache_ensure_loaded(self, task) -> None:
+        if task in self._resp_cache_loaded:
+            return
+        done = {}
+        safe = str(task).replace("/", "_")
+        # Load every rank shard for this task so a resume works even if the
+        # world size differs from the run that wrote them.
+        for path in glob.glob(os.path.join(self._resp_cache_dir, f"{safe}_rank*.jsonl")):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            rec = json.loads(line)
+                        except json.JSONDecodeError:
+                            # Tolerate a torn final line from a hard crash mid-write.
+                            continue
+                        if "key" in rec and "response" in rec:
+                            done[rec["key"]] = rec["response"]
+            except FileNotFoundError:
+                pass
+        self._resp_cache_loaded[task] = done
+        if done:
+            eval_logger.info(f"Resumed {len(done)} cached responses for task '{task}' (rank {self.rank})")
+
+    def resp_cache_get(self, task, key):
+        """Return the cached response for ``key`` or ``None`` if not cached."""
+        if not getattr(self, "_resp_cache_dir", None):
+            return None
+        self._resp_cache_ensure_loaded(task)
+        return self._resp_cache_loaded[task].get(key)
+
+    def resp_cache_put(self, task, key, response) -> None:
+        """Append one response to the cache and flush it to disk immediately."""
+        if not getattr(self, "_resp_cache_dir", None):
+            return
+        self._resp_cache_ensure_loaded(task)
+        if key in self._resp_cache_loaded[task]:
+            return  # already persisted; keep the first (canonical) value
+        fh = self._resp_cache_fh.get(task)
+        if fh is None:
+            fh = open(self._resp_cache_path(task, self.rank), "a", encoding="utf-8")
+            self._resp_cache_fh[task] = fh
+        fh.write(json.dumps({"key": key, "response": response}, ensure_ascii=False) + "\n")
+        fh.flush()
+        os.fsync(fh.fileno())  # durable against a hard kill, not just a flush
+        self._resp_cache_loaded[task][key] = response
 
 
 ### SQLite-based caching of LMM responses

@@ -104,6 +104,16 @@ class BiomedGPT(lmms):
         pbar = tqdm(total=len(requests), disable=(self.rank != 0), desc="Model Responding")
 
         for contexts, gen_kwargs, doc_to_visual, doc_id, task, split in [reg.args for reg in requests]:
+            # resume: skip already-finished samples (greedy decoding only)
+            _greedy = not (gen_kwargs.get("do_sample", False) or gen_kwargs.get("temperature", 0))
+            _key = self._resp_cache_key(doc_id, task, split, contexts)
+            if _greedy:
+                _cached = self.resp_cache_get(task, _key)
+                if _cached is not None:
+                    res.append(_cached)
+                    pbar.update(1)
+                    continue
+
             # Image inputs
             visuals = [doc_to_visual(self.task_dict[task][split][doc_id])]
             visuals = self.flatten(visuals)
@@ -126,6 +136,8 @@ class BiomedGPT(lmms):
                 gen_kwargs["max_new_tokens"] = 4096
             gen = self._model.generate(text_tokens, patch_images=patch_img, num_beams=5, no_repeat_ngram_size=3, max_length=gen_kwargs["max_new_tokens"])
             response = self._tokenizer.batch_decode(gen, skip_special_tokens=True)[0]
+            if _greedy:
+                self.resp_cache_put(task, _key, response)
             res.append(response)
             pbar.update(1)
 

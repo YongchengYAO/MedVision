@@ -131,6 +131,16 @@ class MedDr(lmms):
         pbar = tqdm(total=len(requests), disable=(self.rank != 0), desc="Model Responding")
 
         for contexts, gen_kwargs, doc_to_visual, doc_id, task, split in [reg.args for reg in requests]:
+            # resume: skip already-finished samples (greedy decoding only)
+            _greedy = not (gen_kwargs.get("do_sample", False) or gen_kwargs.get("temperature", 0))
+            _key = self._resp_cache_key(doc_id, task, split, contexts)
+            if _greedy:
+                _cached = self.resp_cache_get(task, _key)
+                if _cached is not None:
+                    res.append(_cached)
+                    pbar.update(1)
+                    continue
+
             # Image inputs
             visuals = [doc_to_visual(self.task_dict[task][split][doc_id])]
             visuals = self.flatten(visuals)
@@ -144,6 +154,8 @@ class MedDr(lmms):
                 gen_kwargs["max_new_tokens"] = self.max_new_tokens
 
             response = self.eval_model(question=contexts, pil_img=visual, max_new_tokens=gen_kwargs.get("max_new_tokens"))
+            if _greedy:
+                self.resp_cache_put(task, _key, response)
             res.append(response)
             torch.cuda.empty_cache()
             pbar.update(1)

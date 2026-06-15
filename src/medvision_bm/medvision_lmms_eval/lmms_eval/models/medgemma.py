@@ -263,13 +263,30 @@ class MedGemma(lmms):
         return batch_contexts, batch_visuals
 
     def generate_until(self, requests: List[Instance]) -> List[str]:
-        res = []
+        res = [None] * len(requests)
 
         pbar = tqdm(total=len(requests), disable=(self.rank != 0), desc="Model Responding")
 
-        # Process requests in batches
-        for i in range(0, len(requests), self.batch_size):
-            batch_requests = requests[i : i + self.batch_size]
+        # Resume: resolve already-cached responses up front so an interrupted run
+        # continues; only the uncached requests are sent to the model. Non-greedy
+        # sampling is never cached (identical args would collide on the same key).
+        pending = []  # list of (global_index, request)
+        for gi, req in enumerate(requests):
+            _gk = req.args[1]
+            if _gk.get("do_sample", False) or _gk.get("temperature", 0):
+                pending.append((gi, req))
+                continue
+            cached = self.resp_cache_get(req.args[4], self._resp_cache_key(req.args[3], req.args[4], req.args[5], req.args[0]))
+            if cached is not None:
+                res[gi] = cached
+                pbar.update(1)
+            else:
+                pending.append((gi, req))
+
+        # Process the pending requests in batches
+        for i in range(0, len(pending), self.batch_size):
+            batch = pending[i : i + self.batch_size]
+            batch_requests = [req for _, req in batch]
             batch_size = len(batch_requests)
 
             # Use parallel processing for batch preparation
@@ -284,7 +301,11 @@ class MedGemma(lmms):
                 batch_responses = [batch_responses]
 
             batch_responses = [self._apply_stop_strings(r) for r in batch_responses]
-            res.extend(batch_responses)
+            for (gi, req), text in zip(batch, batch_responses):
+                _gk = req.args[1]
+                if not (_gk.get("do_sample", False) or _gk.get("temperature", 0)):
+                    self.resp_cache_put(req.args[4], self._resp_cache_key(req.args[3], req.args[4], req.args[5], req.args[0]), text)
+                res[gi] = text
             pbar.update(batch_size)
 
         pbar.close()

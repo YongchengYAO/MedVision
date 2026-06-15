@@ -124,6 +124,8 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
      > - resource-constrained configs, such as
      >   - `batch_size_per_gpu`
 
+     > **Crash-safe resume.** During evaluation each finished output is written immediately to `Results/MedVision-*/<model_name>/response_cache/<task>_rank<N>.jsonl`, so re-running an interrupted eval skips already-completed samples instead of regenerating them — only the in-flight sample is lost. The cache key includes a hash of the prompt, so editing a prompt/config automatically invalidates stale entries (no need to clear the folder). Set the environment variable `MEDVISION_RESP_CACHE=0` to disable this layer entirely and reproduce the original (no-cache) behavior.
+
   2. After evaluating all models in step 1, parse model outputs and calculate metrics (e.g., MRE, MAE, nMAE, IoU, F1, Precision, Recall, Success Rate):
 
      ```bash
@@ -197,6 +199,8 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
   │   │   │   │   │   ├── *.jsonl                     # <== [step 2] parsed model outputs
   │   │   │   │   │   ├── *.json                      # <== [step 2] parsed summary file
   │   │   │   │   │   ├── summary_*                   # <== [step 3] mean metrics, values
+  │   │   │   │   ├── response_cache                  # <== [step 1] per-sample resume cache (auto; MEDVISION_RESP_CACHE=0 to disable)
+  │   │   │   │   │   ├── *_rank*.jsonl               #        one line per finished sample, written as produced
   │   │   │   │   ├── *.jsonl                         # <== [step 1] model outputs
   │   │   │   │   ├── *.json                          # <== [step 1] summary file
   │   │   │   ├── ...
