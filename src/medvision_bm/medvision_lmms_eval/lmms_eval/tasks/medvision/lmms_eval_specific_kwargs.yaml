@@ -3,8 +3,8 @@
 # NOTE: DO NOT change the keys in the model fields, as they are used in medvision_utils.py
 # Caveat: DO NOT remove empty model fields
 lmms_eval_specific_kwargs:
-  healthgpt_l14:
-    model: "healthgpt_l14"
+  healthgpt:
+    model: "healthgpt"
     base_model_hf: "microsoft/phi-4"
     vision_model_hf: "openai/clip-vit-large-patch14-336"
     model_dtype: "FP16"

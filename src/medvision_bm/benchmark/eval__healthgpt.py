@@ -98,6 +98,7 @@ def install_healthgpt_dependencies_post(dir_third_party: str, model_name: str):
             "hlora_alpha": hlora_alpha,
             "hlora_nums": hlora_nums,
             "vq_idx_nums": vq_idx_nums,
+            "model_dtype": "float16",
         }
     elif model_name == "HealthGPT-L14":
         hlora_path_hf = "lintw/HealthGPT-L14"
@@ -126,6 +127,7 @@ def install_healthgpt_dependencies_post(dir_third_party: str, model_name: str):
             "hlora_alpha": hlora_alpha,
             "hlora_nums": hlora_nums,
             "vq_idx_nums": vq_idx_nums,
+            "model_dtype": "bfloat16",
         }
     # ------------------------------
 
@@ -339,6 +341,7 @@ def main():
         hlora_alpha = model_configs.get("hlora_alpha")
         hlora_nums = model_configs.get("hlora_nums")
         vq_idx_nums = model_configs.get("vq_idx_nums")
+        model_dtype = model_configs.get("model_dtype")
         model_args = (
             f"base_model_hf={base_model_hf},"
             f"vision_model_hf={vision_model_hf},"
@@ -348,6 +351,7 @@ def main():
             f"hlora_alpha={hlora_alpha},"
             f"hlora_nums={hlora_nums},"
             f"vq_idx_nums={vq_idx_nums},"
+            f"model_dtype={model_dtype},"
             f"max_new_tokens={max_new_tokens}"
         )
 
@@ -365,10 +369,7 @@ def main():
 
         batch_size = args.batch_size_per_gpu * num_processes
 
-        if model_name == "HealthGPT-L14":
-            module = "healthgpt_l14"
-        elif model_name == "HealthGPT-XL32":
-            module = "healthgpt_xl32"
+        module = "healthgpt"
 
         parsed_sample_indices = None
         if args.sample_indices is not None:

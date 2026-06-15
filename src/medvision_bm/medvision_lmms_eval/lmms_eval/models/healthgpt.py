@@ -46,13 +46,22 @@ from utils import (
 )
 
 
-@register_model("healthgpt_xl32")
-class HealthGPT_XL32(lmms):
+@register_model("healthgpt")
+class HealthGPT(lmms):
     """
     HealthGPT Model
 
     Github:
         - https://github.com/DCDmllm/HealthGPT
+
+    HealthGPT-L14:
+        Base Model: phi-4
+            - https://huggingface.co/microsoft/phi-4
+        Vision Transformer for image processing: clip-vit-large-patch14-336
+            - https://huggingface.co/openai/clip-vit-large-patch14-336
+        HLORA Weights:
+            - https://huggingface.co/lintw/HealthGPT-L14/tree/main
+        dtype: bfloat16
 
     HealthGPT-XL32:
         Base Model: Qwen2.5-32B-Instruct
@@ -61,15 +70,20 @@ class HealthGPT_XL32(lmms):
             - https://huggingface.co/openai/clip-vit-large-patch14-336
         HLORA Weights:
             - https://huggingface.co/lintw/HealthGPT-XL32/tree/main
+        dtype: float16
 
-    dtype: FP16 (https://github.com/ZJU4HealthCare/HealthGPT)
+    dtype is variant-specific (L14 bfloat16, XL32 float16) and is set via the
+    `model_dtype` arg. (https://github.com/ZJU4HealthCare/HealthGPT)
     """
+
+    _DTYPE_MAP = {"bfloat16": torch.bfloat16, "float16": torch.float16}
 
     def __init__(
         self,
-        base_model_hf: str = "Qwen/Qwen2.5-32B-Instruct",
+        base_model_hf: str = "microsoft/phi-4",
         vision_model_hf: str = "openai/clip-vit-large-patch14-336",
         hlora_weights_local: str = None,
+        model_dtype: str = "bfloat16",
         attn_implementation: str = "flash_attention_2",
         hlora_r: int = 32,
         hlora_alpha: int = 64,
@@ -89,7 +103,9 @@ class HealthGPT_XL32(lmms):
         self.base_model_hf = base_model_hf
         self.vision_model_hf = vision_model_hf
         self.hlora_weights_local = hlora_weights_local
-        self.model_dtype = torch.float16 # use model dtype (https://github.com/ZJU4HealthCare/HealthGPT) 
+        if model_dtype not in self._DTYPE_MAP:
+            raise ValueError(f"Unsupported model_dtype: {model_dtype}. Choose from {list(self._DTYPE_MAP)}.")
+        self.model_dtype = self._DTYPE_MAP[model_dtype]
         self.attn_implementation = attn_implementation
         self.hlora_r = hlora_r
         self.hlora_alpha = hlora_alpha

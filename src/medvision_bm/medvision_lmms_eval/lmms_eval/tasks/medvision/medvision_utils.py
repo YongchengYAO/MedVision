@@ -1323,7 +1323,7 @@ def get_resized_img_shape(model_name, img_2d_raw, extra_kwargs):
         img_shape_resized_hw = [336, 336]
         img_shape_content_hw = _padsquare_clip_content_hw(img_2d_raw, 336)
         # img_shape_resized_hw = _process_img_huatuogpt_vision(img_2d_raw, extra_kwargs)  # for debugging only
-    elif model_name == "healthgpt_l14":
+    elif model_name == "healthgpt":
         # NOTE: HealthGPT pads to square (expand2square) then CLIP-336 resize+center-crop, so the content
         # scale is uniform 336/max(H,W). Return the pre-pad content size (NOT [336,336]).
         img_shape_resized_hw = [336, 336]
