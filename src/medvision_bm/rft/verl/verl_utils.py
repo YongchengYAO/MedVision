@@ -1,20 +1,19 @@
+from medvision_bm.dataset.ds_utils import load_split_limit_dataset_tr_val_ts
 from medvision_bm.sft.sft_utils import (
-    _doc_to_target_TumorLesionTask,
-    _doc_to_text_TumorLesionTask_CoT,
-    _doc_to_text_TumorLesionTask,
     _doc_to_target_AngleDistanceTask,
-    _doc_to_text_AngleDistanceTask_CoT,
-    _doc_to_text_AngleDistanceTask,
     _doc_to_target_DetectionTask,
-    _doc_to_text_DetectionTask_CoT,
+    _doc_to_target_TumorLesionTask,
+    _doc_to_text_AngleDistanceTask,
+    _doc_to_text_AngleDistanceTask_CoT,
     _doc_to_text_DetectionTask,
-    format_dataset,
+    _doc_to_text_DetectionTask_CoT,
+    _doc_to_text_TumorLesionTask,
+    _doc_to_text_TumorLesionTask_CoT,
     clean_dataset,
+    format_dataset,
     img_proccessor_nii2png_save2dataset,
     load_split_limit_dataset,
 )
-
-from medvision_bm.dataset.ds_utils import load_split_limit_dataset_tr_val_ts
 
 
 def _format_data_TumorLesionTask_CoT_verl(
@@ -42,10 +41,12 @@ def _format_data_TumorLesionTask_CoT_verl(
 
     """
     from medvision_bm.rft.verl.rft_prompts import SYSTEM_PROMPT
-    
+
     # Reuse existing function for SFT with CoT for TumorLesionTask
     # We can extract GT landmark coordinates from value_dict
-    prompt, values_dict = _doc_to_text_TumorLesionTask_CoT(example, model_name, model_hf, new_shape_hw)
+    prompt, values_dict = _doc_to_text_TumorLesionTask_CoT(
+        example, model_name, model_hf, new_shape_hw
+    )
     target = _doc_to_target_TumorLesionTask(example)
     target_str = ", ".join([f"{value:.3f}" for value in target])
 
@@ -137,9 +138,11 @@ def _format_data_TumorLesionTask_verl(
 
     """
     from medvision_bm.rft.verl.rft_prompts import SYSTEM_PROMPT_LITE
-    
+
     # Reuse existing function for SFT without CoT for TumorLesionTask
-    prompt, _ = _doc_to_text_TumorLesionTask(example, model_name, model_hf, new_shape_hw)
+    prompt, _ = _doc_to_text_TumorLesionTask(
+        example, model_name, model_hf, new_shape_hw
+    )
     target = _doc_to_target_TumorLesionTask(example)
     target_str = ", ".join([f"{value:.3f}" for value in target])
 
@@ -210,10 +213,12 @@ def _format_data_AngleDistanceTask_CoT_verl(
 
     """
     from medvision_bm.rft.verl.rft_prompts import SYSTEM_PROMPT
-    
+
     # Reuse existing function for SFT with CoT for TumorLesionTask
     # We can extract GT landmark coordinates from value_dict
-    prompt, values_dict = _doc_to_text_AngleDistanceTask_CoT(example, model_name, model_hf, new_shape_hw)
+    prompt, values_dict = _doc_to_text_AngleDistanceTask_CoT(
+        example, model_name, model_hf, new_shape_hw
+    )
     target = _doc_to_target_AngleDistanceTask(example)
     if not isinstance(target, list):
         target = [target]
@@ -262,33 +267,33 @@ def _format_data_AngleDistanceTask_CoT_verl(
     metric_type = values_dict.get("metric_type", None)
     assert metric_type is not None, "metric_type not found in values_dict"
 
-    if metric_type=="distance":
+    if metric_type == "distance":
         extra_info = {
             "metric_type": "distance",
             "landmark_1_wh": [
                 float(values_dict["<x1>"]),
                 float(values_dict["<y1>"]),
-            ], 
+            ],
             "landmark_2_wh": [
                 float(values_dict["<x2>"]),
                 float(values_dict["<y2>"]),
-            ], 
+            ],
         }
-    elif metric_type=="angle":
+    elif metric_type == "angle":
         extra_info = {
             "metric_type": "angle",
             "line_1_point_1_wh": [
                 float(values_dict["<x1_line1>"]),
                 float(values_dict["<y1_line1>"]),
-            ], 
+            ],
             "line_1_point_2_wh": [
                 float(values_dict["<x2_line1>"]),
                 float(values_dict["<y2_line1>"]),
-            ], 
+            ],
             "line_2_point_1_wh": [
                 float(values_dict["<x1_line2>"]),
                 float(values_dict["<y1_line2>"]),
-            ], 
+            ],
             "line_2_point_2_wh": [
                 float(values_dict["<x2_line2>"]),
                 float(values_dict["<y2_line2>"]),
@@ -300,7 +305,9 @@ def _format_data_AngleDistanceTask_CoT_verl(
     # Other fields required by Verl
     example["ground_truth"] = target_str
     example["data_source"] = "medvision-ad"
-    example["ability"] = f"medvision-{metric_type}" # e.g., medvision-angle, medvision-distance
+    example["ability"] = (
+        f"medvision-{metric_type}"  # e.g., medvision-angle, medvision-distance
+    )
     example["reward_model"] = {"style": "rule", "ground_truth": target_str}
     example["extra_info"] = extra_info
 
@@ -332,7 +339,7 @@ def _format_data_AngleDistanceTask_verl(
 
     """
     from medvision_bm.rft.verl.rft_prompts import SYSTEM_PROMPT_LITE
-    
+
     # Reuse existing function for SFT with CoT for TumorLesionTask
     # We can extract GT landmark coordinates from value_dict
     prompt = _doc_to_text_AngleDistanceTask(example, model_name, model_hf, new_shape_hw)
@@ -380,7 +387,9 @@ def _format_data_AngleDistanceTask_verl(
     # Other fields required by Verl
     example["ground_truth"] = target_str
     example["data_source"] = "medvision-ad"
-    example["ability"] = f"medvision-{metric_type}" # e.g., medvision-angle, medvision-distance
+    example["ability"] = (
+        f"medvision-{metric_type}"  # e.g., medvision-angle, medvision-distance
+    )
     example["reward_model"] = {"style": "rule", "ground_truth": target_str}
     example["extra_info"] = extra_info
 
@@ -619,11 +628,19 @@ def prepare_dataset_for_verl(
     #     - data_source: Data source identifier.
     #     - ability: Ability identifier.
     #     - reward_model: Reward model information.
-    #     - extra_info: Additional information. 
+    #     - extra_info: Additional information.
     # Additional fields:
     #     - images: the image (not just image path)
     # ---
-    keys_to_keep = ["prompt", "ground_truth", "data_source", "ability", "reward_model", "extra_info", "images"]
+    keys_to_keep = [
+        "prompt",
+        "ground_truth",
+        "data_source",
+        "ability",
+        "reward_model",
+        "extra_info",
+        "images",
+    ]
     dataset = clean_dataset(dataset, keys_to_keep)
 
     return dataset
@@ -684,11 +701,19 @@ def prepare_dataset_for_verl_with_testset(
     #     - data_source: Data source identifier.
     #     - ability: Ability identifier.
     #     - reward_model: Reward model information.
-    #     - extra_info: Additional information. 
+    #     - extra_info: Additional information.
     # Additional fields:
     #     - images: the image (not just image path)
     # ---
-    keys_to_keep = ["prompt", "ground_truth", "data_source", "ability", "reward_model", "extra_info", "images"]
+    keys_to_keep = [
+        "prompt",
+        "ground_truth",
+        "data_source",
+        "ability",
+        "reward_model",
+        "extra_info",
+        "images",
+    ]
     dataset = clean_dataset(dataset, keys_to_keep)
 
     return dataset

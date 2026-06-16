@@ -40,14 +40,14 @@ import random
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
 
 from medvision_bm.utils.configs import SEED
-
 
 MODEL_NAME_MAP = {
     "MedVision__fullRFT__qwen25vl-7b-fullSFT__AD-TL-D__512x512__PRxAnswer_s250": "fullRFT",
@@ -63,8 +63,7 @@ def _select_samples(models, limit, rng):
     Samples from the same dataset are consecutive in the returned list.
     """
     datasets_per_model = {
-        m.name: sorted([d.name for d in m.iterdir() if d.is_dir()])
-        for m in models
+        m.name: sorted([d.name for d in m.iterdir() if d.is_dir()]) for m in models
     }
     common_datasets = sorted(
         set.intersection(*[set(v) for v in datasets_per_model.values()])
@@ -78,13 +77,12 @@ def _select_samples(models, limit, rng):
 
     common_files = {}
     for dataset in common_datasets:
-        files_sets = [
-            set(f.name for f in (m / dataset).glob("*.png"))
-            for m in models
-        ]
+        files_sets = [set(f.name for f in (m / dataset).glob("*.png")) for m in models]
         common_files[dataset] = sorted(set.intersection(*files_sets))
         if not common_files[dataset]:
-            raise ValueError(f"No common PNG files found across all models for dataset '{dataset}'")
+            raise ValueError(
+                f"No common PNG files found across all models for dataset '{dataset}'"
+            )
 
     per_dataset = math.ceil(limit / n_datasets)
     selected_by_dataset = {}
@@ -93,11 +91,7 @@ def _select_samples(models, limit, rng):
         rng.shuffle(pool)
         selected_by_dataset[dataset] = pool[:per_dataset]
 
-    return [
-        (ds, f)
-        for ds in common_datasets
-        for f in selected_by_dataset[ds]
-    ]
+    return [(ds, f) for ds in common_datasets for f in selected_by_dataset[ds]]
 
 
 def _draw_model_labels_and_separators(fig, models, anchor_axes, show_model_label):
@@ -112,20 +106,30 @@ def _draw_model_labels_and_separators(fig, models, anchor_axes, show_model_label
             y_center = (bbox_first.y1 + bbox_last.y0) / 2
             x_label = (bbox_first.x0 + bbox_first.x1) / 2
             fig.text(
-                x_label, y_center, model_name,
-                rotation=90, va="center", ha="center",
-                fontsize=11, fontweight="bold",
+                x_label,
+                y_center,
+                model_name,
+                rotation=90,
+                va="center",
+                ha="center",
+                fontsize=11,
+                fontweight="bold",
                 transform=fig.transFigure,
             )
 
         if model_idx < n_models - 1:
             bbox_next = anchor_axes[model_idx + 1][0].get_position()
             y_sep = (bbox_last.y0 + bbox_next.y1) / 2
-            fig.add_artist(Line2D(
-                [0.0, 1.0], [y_sep, y_sep],
-                transform=fig.transFigure,
-                color="black", linewidth=1.5, clip_on=False,
-            ))
+            fig.add_artist(
+                Line2D(
+                    [0.0, 1.0],
+                    [y_sep, y_sep],
+                    transform=fig.transFigure,
+                    color="black",
+                    linewidth=1.5,
+                    clip_on=False,
+                )
+            )
 
 
 def _compile_figure(models, samples, row_per_model, output, show_model_label=True):
@@ -145,12 +149,16 @@ def _compile_figure(models, samples, row_per_model, output, show_model_label=Tru
     fig = plt.figure(figsize=(fig_w, fig_h))
     width_ratios = ([label_w / cell_w] if show_model_label else []) + [1.0] * n_cols_img
     gs = GridSpec(
-        n_total_rows, n_cols,
+        n_total_rows,
+        n_cols,
         figure=fig,
         width_ratios=width_ratios,
         hspace=0.04,
         wspace=0.04,
-        left=0.0, right=1.0, top=1.0, bottom=0.0,
+        left=0.0,
+        right=1.0,
+        top=1.0,
+        bottom=0.0,
     )
 
     # anchor_axes[model_idx][row_in_model] = leftmost axis of that row (for label/separator positioning)
@@ -188,7 +196,9 @@ def _compile_figure(models, samples, row_per_model, output, show_model_label=Tru
     print(f"Saved: {out_path}")
 
 
-def _make_dataset_as_col_panel(models, ds_group, samples_by_dataset, rows_per_model, panel_size, show_model_label):
+def _make_dataset_as_col_panel(
+    models, ds_group, samples_by_dataset, rows_per_model, panel_size, show_model_label
+):
     """Render one dataset-as-col panel into a new Figure and return it (caller must close)."""
     n_models = len(models)
     n_total_rows = n_models * rows_per_model
@@ -200,21 +210,30 @@ def _make_dataset_as_col_panel(models, ds_group, samples_by_dataset, rows_per_mo
     fig = plt.figure(figsize=(fig_w, fig_h))
     width_ratios = ([label_w / cell_w] if show_model_label else []) + [1.0] * panel_size
     gs = GridSpec(
-        1 + n_total_rows, panel_size + col_offset,
+        1 + n_total_rows,
+        panel_size + col_offset,
         figure=fig,
         width_ratios=width_ratios,
         height_ratios=[header_h] + [1.0] * n_total_rows,
-        hspace=0.00, wspace=0.04,
-        left=0.0, right=1.0, top=1.0, bottom=0.0,
+        hspace=0.00,
+        wspace=0.04,
+        left=0.0,
+        right=1.0,
+        top=1.0,
+        bottom=0.0,
     )
 
     for ds_idx, dataset in enumerate(ds_group):
         ax_hdr = fig.add_subplot(gs[0, ds_idx + col_offset])
         ax_hdr.axis("off")
         ax_hdr.text(
-            0.5, 0.05, dataset,
-            va="bottom", ha="center",
-            fontsize=16, fontweight="bold",
+            0.5,
+            0.05,
+            dataset,
+            va="bottom",
+            ha="center",
+            fontsize=16,
+            fontweight="bold",
             transform=ax_hdr.transAxes,
         )
 
@@ -246,7 +265,9 @@ def _make_dataset_as_col_panel(models, ds_group, samples_by_dataset, rows_per_mo
     return fig
 
 
-def _compile_figure_dataset_as_col(models, samples, output, show_model_label=True, num_panel=1):
+def _compile_figure_dataset_as_col(
+    models, samples, output, show_model_label=True, num_panel=1
+):
     """Dataset-as-columns layout: each column = one dataset; rows = samples within that dataset.
 
     If num_panel > 1, datasets are split into vertically stacked panels to reduce figure width.
@@ -263,8 +284,7 @@ def _compile_figure_dataset_as_col(models, samples, output, show_model_label=Tru
     rows_per_model = max(len(v) for v in samples_by_dataset.values())
     panel_size = math.ceil(len(dataset_order) / num_panel)
     dataset_groups = [
-        dataset_order[i * panel_size: (i + 1) * panel_size]
-        for i in range(num_panel)
+        dataset_order[i * panel_size : (i + 1) * panel_size] for i in range(num_panel)
     ]
 
     out_path = Path(output)
@@ -272,18 +292,29 @@ def _compile_figure_dataset_as_col(models, samples, output, show_model_label=Tru
 
     if num_panel == 1:
         fig = _make_dataset_as_col_panel(
-            models, dataset_groups[0], samples_by_dataset, rows_per_model, panel_size, show_model_label
+            models,
+            dataset_groups[0],
+            samples_by_dataset,
+            rows_per_model,
+            panel_size,
+            show_model_label,
         )
         fig.savefig(str(out_path), bbox_inches="tight", dpi=150)
         plt.close(fig)
     else:
         import io
+
         from PIL import Image
 
         panel_images = []
         for ds_group in dataset_groups:
             fig = _make_dataset_as_col_panel(
-                models, ds_group, samples_by_dataset, rows_per_model, panel_size, show_model_label
+                models,
+                ds_group,
+                samples_by_dataset,
+                rows_per_model,
+                panel_size,
+                show_model_label,
             )
             buf = io.BytesIO()
             fig.savefig(buf, format="png", bbox_inches="tight", dpi=150)
@@ -303,13 +334,23 @@ def _compile_figure_dataset_as_col(models, samples, output, show_model_label=Tru
     print(f"Saved: {out_path}")
 
 
-def _make_dataset_as_row_panel(models, ds_group, samples_by_dataset, cols_per_dataset, panel_size, show_model_label, num_row_per_ds=1):
+def _make_dataset_as_row_panel(
+    models,
+    ds_group,
+    samples_by_dataset,
+    cols_per_dataset,
+    panel_size,
+    show_model_label,
+    num_row_per_ds=1,
+):
     """Render one dataset-as-row panel into a new Figure and return it (caller must close)."""
     n_models = len(models)
     cell_h, cell_w, label_w, ds_label_w = 3.0, 3.0, 0.6, 0.6
     n_label_cols = (1 if show_model_label else 0) + 1
 
-    fig_w = (label_w if show_model_label else 0) + ds_label_w + cols_per_dataset * cell_w
+    fig_w = (
+        (label_w if show_model_label else 0) + ds_label_w + cols_per_dataset * cell_w
+    )
     fig_h = n_models * panel_size * num_row_per_ds * cell_h
     fig = plt.figure(figsize=(fig_w, fig_h))
     width_ratios = (
@@ -323,8 +364,12 @@ def _make_dataset_as_row_panel(models, ds_group, samples_by_dataset, cols_per_da
         n_label_cols + cols_per_dataset,
         figure=fig,
         width_ratios=width_ratios,
-        hspace=0.04, wspace=0.04,
-        left=0.0, right=1.0, top=1.0, bottom=0.0,
+        hspace=0.04,
+        wspace=0.04,
+        left=0.0,
+        right=1.0,
+        top=1.0,
+        bottom=0.0,
     )
 
     ds_label_col_idx = 1 if show_model_label else 0
@@ -337,16 +382,24 @@ def _make_dataset_as_row_panel(models, ds_group, samples_by_dataset, cols_per_da
             base_row = model_idx * panel_size * num_row_per_ds + ds_idx * num_row_per_ds
 
             if show_model_label:
-                ax_model_lbl = fig.add_subplot(gs[base_row:base_row + num_row_per_ds, 0])
+                ax_model_lbl = fig.add_subplot(
+                    gs[base_row : base_row + num_row_per_ds, 0]
+                )
                 ax_model_lbl.axis("off")
                 model_anchors.append(ax_model_lbl)
 
-            ax_ds_lbl = fig.add_subplot(gs[base_row:base_row + num_row_per_ds, ds_label_col_idx])
+            ax_ds_lbl = fig.add_subplot(
+                gs[base_row : base_row + num_row_per_ds, ds_label_col_idx]
+            )
             ax_ds_lbl.axis("off")
             ax_ds_lbl.text(
-                0.5, 0.5, dataset,
-                va="center", ha="center",
-                fontsize=16, fontweight="bold",
+                0.5,
+                0.5,
+                dataset,
+                va="center",
+                ha="center",
+                fontsize=16,
+                fontweight="bold",
                 rotation=90,
                 transform=ax_ds_lbl.transAxes,
             )
@@ -371,7 +424,9 @@ def _make_dataset_as_row_panel(models, ds_group, samples_by_dataset, cols_per_da
     return fig
 
 
-def _compile_figure_dataset_as_row(models, samples, output, show_model_label=True, num_panel=1, num_row_per_ds=1):
+def _compile_figure_dataset_as_row(
+    models, samples, output, show_model_label=True, num_panel=1, num_row_per_ds=1
+):
     """Dataset-as-rows layout: each row = one dataset; columns = samples within that dataset.
 
     If num_panel > 1, datasets are split into horizontally arranged side-by-side panels
@@ -385,11 +440,12 @@ def _compile_figure_dataset_as_row(models, samples, output, show_model_label=Tru
             dataset_order.append(ds)
         samples_by_dataset[ds].append(f)
 
-    cols_per_dataset = math.ceil(max(len(v) for v in samples_by_dataset.values()) / num_row_per_ds)
+    cols_per_dataset = math.ceil(
+        max(len(v) for v in samples_by_dataset.values()) / num_row_per_ds
+    )
     panel_size = math.ceil(len(dataset_order) / num_panel)
     dataset_groups = [
-        dataset_order[i * panel_size: (i + 1) * panel_size]
-        for i in range(num_panel)
+        dataset_order[i * panel_size : (i + 1) * panel_size] for i in range(num_panel)
     ]
 
     out_path = Path(output)
@@ -397,19 +453,30 @@ def _compile_figure_dataset_as_row(models, samples, output, show_model_label=Tru
 
     if num_panel == 1:
         fig = _make_dataset_as_row_panel(
-            models, dataset_groups[0], samples_by_dataset, cols_per_dataset, panel_size, show_model_label,
+            models,
+            dataset_groups[0],
+            samples_by_dataset,
+            cols_per_dataset,
+            panel_size,
+            show_model_label,
             num_row_per_ds=num_row_per_ds,
         )
         fig.savefig(str(out_path), bbox_inches="tight", dpi=150)
         plt.close(fig)
     else:
         import io
+
         from PIL import Image
 
         panel_images = []
         for ds_group in dataset_groups:
             fig = _make_dataset_as_row_panel(
-                models, ds_group, samples_by_dataset, cols_per_dataset, panel_size, show_model_label,
+                models,
+                ds_group,
+                samples_by_dataset,
+                cols_per_dataset,
+                panel_size,
+                show_model_label,
                 num_row_per_ds=num_row_per_ds,
             )
             buf = io.BytesIO()
@@ -435,56 +502,75 @@ def main():
         description="Compile a cross-model comparison figure from pre-generated subfigures."
     )
     parser.add_argument(
-        "--dir_subfigures", required=True,
+        "--dir_subfigures",
+        required=True,
         help="Base directory containing model subfolders (e.g. Figures/MedVision-TL-v2-CoT)",
     )
     parser.add_argument(
-        "--limit_subfigures", type=int, required=True,
+        "--limit_subfigures",
+        type=int,
+        required=True,
         help="Total number of samples to show per model (must be >= number of datasets)",
     )
     parser.add_argument(
-        "--row_per_model", type=int, default=1,
+        "--row_per_model",
+        type=int,
+        default=1,
         help="Number of rows per model group (default: 1)",
     )
     parser.add_argument(
-        "--output", required=True,
+        "--output",
+        required=True,
         help="Output PNG file path",
     )
     parser.add_argument(
-        "--dir_model", default=None,
+        "--dir_model",
+        default=None,
         help="If set, only plot rows for this model folder (path or folder name)",
     )
     parser.add_argument(
-        "--seed", type=int, default=None,
+        "--seed",
+        type=int,
+        default=None,
         help="Random seed (overrides the default from configs.py)",
     )
     parser.add_argument(
-        "--dataset_as_col", action="store_true",
+        "--dataset_as_col",
+        action="store_true",
         help="If set, each column = one dataset; rows = samples within that dataset",
     )
     parser.add_argument(
-        "--dataset_as_col_num_panel", type=int, default=1,
+        "--dataset_as_col_num_panel",
+        type=int,
+        default=1,
         help="Number of vertically stacked panels for --dataset_as_col (default: 1). "
-             "When >1, datasets are split across panels to reduce figure width.",
+        "When >1, datasets are split across panels to reduce figure width.",
     )
     parser.add_argument(
-        "--dataset_as_row", action="store_true",
+        "--dataset_as_row",
+        action="store_true",
         help="If set, each row = one dataset; columns = samples within that dataset",
     )
     parser.add_argument(
-        "--dataset_as_row_num_panel", type=int, default=1,
+        "--dataset_as_row_num_panel",
+        type=int,
+        default=1,
         help="Number of horizontally arranged panels for --dataset_as_row (default: 1). "
-             "When >1, datasets are split across panels to reduce figure height.",
+        "When >1, datasets are split across panels to reduce figure height.",
     )
     parser.add_argument(
-        "--dataset_as_row_num_row_per_ds", type=int, default=1,
+        "--dataset_as_row_num_row_per_ds",
+        type=int,
+        default=1,
         help="Number of rows per dataset for --dataset_as_row (default: 1). "
-             "When >1, samples within each dataset wrap across multiple rows.",
+        "When >1, samples within each dataset wrap across multiple rows.",
     )
     args = parser.parse_args()
 
     if args.dataset_as_col and args.dataset_as_row:
-        raise ValueError("--dataset_as_col and --dataset_as_row are mutually exclusive.")
+        raise ValueError(
+            "--dataset_as_col and --dataset_as_row are mutually exclusive."
+        )
 
     base_dir = Path(args.dir_subfigures)
     models = sorted([d for d in base_dir.iterdir() if d.is_dir()])
@@ -500,11 +586,13 @@ def main():
     show_model_label = args.dir_model is None
     if args.dataset_as_col or args.dataset_as_row:
         import warnings
+
         flag = "--dataset_as_col" if args.dataset_as_col else "--dataset_as_row"
         warnings.warn(
             f"--row_per_model is ignored when {flag} is set. "
             "Rows per model are determined automatically as ceil(limit_subfigures / num_datasets).",
-            UserWarning, stacklevel=2,
+            UserWarning,
+            stacklevel=2,
         )
 
     seed = args.seed if args.seed is not None else SEED
@@ -513,19 +601,29 @@ def main():
 
     if args.dataset_as_col:
         _compile_figure_dataset_as_col(
-            models, samples, args.output,
+            models,
+            samples,
+            args.output,
             show_model_label=show_model_label,
             num_panel=args.dataset_as_col_num_panel,
         )
     elif args.dataset_as_row:
         _compile_figure_dataset_as_row(
-            models, samples, args.output,
+            models,
+            samples,
+            args.output,
             show_model_label=show_model_label,
             num_panel=args.dataset_as_row_num_panel,
             num_row_per_ds=args.dataset_as_row_num_row_per_ds,
         )
     else:
-        _compile_figure(models, samples, args.row_per_model, args.output, show_model_label=show_model_label)
+        _compile_figure(
+            models,
+            samples,
+            args.row_per_model,
+            args.output,
+            show_model_label=show_model_label,
+        )
 
 
 if __name__ == "__main__":

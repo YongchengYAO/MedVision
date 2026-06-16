@@ -73,7 +73,9 @@ def cal_metrics_AD_task(results):
     if nmae_precomputed is not None:
         nmae_raw = nmae_precomputed.get("NMAE")
         nmae = float(nmae_raw) if nmae_raw is not None else np.nan
-        nmae_success = bool(nmae_precomputed.get("success", False)) and np.isfinite(nmae)
+        nmae_success = bool(nmae_precomputed.get("success", False)) and np.isfinite(
+            nmae
+        )
     elif success and doc_meta is not None and doc_meta.get("metric_type") == "distance":
         # Fallback: recompute diagonal from stored or hash-derived scale.
         # Tier 2 (pixel_size_scale present): uses the scale factor stored at eval time — guaranteed correct.
@@ -299,7 +301,11 @@ def process_label_group(label, data):
             continue
 
         count_total += 1
-        mock_results = {"filtered_resps": [response], "target": target, "doc_meta": doc_meta}
+        mock_results = {
+            "filtered_resps": [response],
+            "target": target,
+            "doc_meta": doc_meta,
+        }
         metrics_dict = cal_metrics_AD_task(mock_results)
         _update_metric_counters_AD_task(metrics_dict, counters)
 
@@ -392,7 +398,8 @@ def find_and_group_jsonl_files(model_path):
     """
     # Find all JSONL files in the model folder (exclude analysis output files)
     jsonl_files = [
-        f for f in glob.glob(os.path.join(model_path, "*.jsonl"))
+        f
+        for f in glob.glob(os.path.join(model_path, "*.jsonl"))
         if not ("_proc_acc" in os.path.basename(f) or "_eq_acc" in os.path.basename(f))
     ]
 
@@ -474,7 +481,11 @@ def process_jsonl_file(
                 # Construct label: dataset_metricType_metricKey
                 # Example: "FeTA24_distance_BPD" or "Ceph-Biometrics-400_angle_SNA"
                 label_name = f"{dataset_name}_{metric_type}_{metric_key}"
-                scale_mode = "anisotropic" if "scaledPS" in os.path.basename(jsonl_path) else None
+                scale_mode = (
+                    "anisotropic"
+                    if "scaledPS" in os.path.basename(jsonl_path)
+                    else None
+                )
                 doc_meta = {
                     "image_file": doc.get("image_file"),
                     "slice_dim": doc.get("slice_dim"),
@@ -593,14 +604,22 @@ def process_parsed_file_in_model_folder(
     )
 
     # Save raw values JSON file (targets and predictions for each sample)
-    values_filename = SUMMARY_FILENAME_AD_VALUES if limit is None else f"{SUMMARY_FILENAME_AD_VALUES.removesuffix('.json')}_limit{limit}.json" 
+    values_filename = (
+        SUMMARY_FILENAME_AD_VALUES
+        if limit is None
+        else f"{SUMMARY_FILENAME_AD_VALUES.removesuffix('.json')}_limit{limit}.json"
+    )
     values_path = os.path.join(parsed_files_dir, values_filename)
     with open(values_path, "w") as f:
         json.dump(convert_numpy_to_python(all_data), f, indent=2)
     print(f"Saved target and model-predicted values to {values_path}")
 
     # Save aggregated metrics JSON file (metrics per label)
-    metrics_filename = SUMMARY_FILENAME_AD_METRICS if limit is None else f"{SUMMARY_FILENAME_AD_METRICS.removesuffix('.json')}_limit{limit}.json"
+    metrics_filename = (
+        SUMMARY_FILENAME_AD_METRICS
+        if limit is None
+        else f"{SUMMARY_FILENAME_AD_METRICS.removesuffix('.json')}_limit{limit}.json"
+    )
     metrics_path = os.path.join(parsed_files_dir, metrics_filename)
     with open(metrics_path, "w") as f:
         json.dump(convert_numpy_to_python(summary_metrics), f, indent=2)
@@ -634,7 +653,9 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
     model_dirs = get_subfolders(task_dir)
 
     # Prepare output file path
-    output_filename = f"summary_AD_task{'_limit' + str(limit) if limit is not None else ''}.txt"
+    output_filename = (
+        f"summary_AD_task{'_limit' + str(limit) if limit is not None else ''}.txt"
+    )
     output_file_path = os.path.join(task_dir, output_filename)
 
     # Collect all output lines
@@ -657,7 +678,11 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
             print(f"\nSkipping model directory (no parsed folder): {model_dir}")
             continue
 
-        metrics_filename = SUMMARY_FILENAME_AD_METRICS if limit is None else f"{SUMMARY_FILENAME_AD_METRICS.removesuffix('.json')}_limit{limit}.json"
+        metrics_filename = (
+            SUMMARY_FILENAME_AD_METRICS
+            if limit is None
+            else f"{SUMMARY_FILENAME_AD_METRICS.removesuffix('.json')}_limit{limit}.json"
+        )
         metrics_file = os.path.join(parsed_dir, metrics_filename)
 
         with open(metrics_file, "r") as f:
@@ -1086,7 +1111,10 @@ def main(**kwargs):
             f"Using task_dir: {task_dir}\nModel directories within this folder will be looped over."
         )
         _process_task_directory(
-            task_dir, limit, processes=processes, skip_model_wo_parsed_files=skip_model_wo_parsed_files
+            task_dir,
+            limit,
+            processes=processes,
+            skip_model_wo_parsed_files=skip_model_wo_parsed_files,
         )
 
     elif model_dir is not None:

@@ -5,10 +5,16 @@ import subprocess
 
 from medvision_bm.benchmark.eval_utils import parse_sample_indices
 from medvision_bm.utils import (
-    ensure_hf_hub_installed, install_flash_attention_torch_and_deps_py310_v2,
-    install_medvision_ds, install_vendored_lmms_eval, load_tasks,
-    load_tasks_status, set_cuda_num_processes, setup_env_hf_medvision_ds,
-    update_task_status)
+    ensure_hf_hub_installed,
+    install_flash_attention_torch_and_deps_py310_v2,
+    install_medvision_ds,
+    install_vendored_lmms_eval,
+    load_tasks,
+    load_tasks_status,
+    set_cuda_num_processes,
+    setup_env_hf_medvision_ds,
+    update_task_status,
+)
 
 
 def install_llavamed_dependencies_pre(dir_third_party: str):
@@ -257,7 +263,7 @@ def main():
     # ------
     setup_env_hf_medvision_ds(data_dir)
     if not args.skip_env_setup:
-        # NOTE: Install huggingface-hub, required version may vary for different models, check requirements 
+        # NOTE: Install huggingface-hub, required version may vary for different models, check requirements
         ensure_hf_hub_installed(hf_hub_version="0.35.3")
         install_llavamed_dependencies_pre(dir_third_party)
         install_vendored_lmms_eval(proj_dependency="llava_med")
@@ -304,7 +310,9 @@ def main():
             model_args += f",reshape_image_hw={s}"
 
         if args.stop_strings:
-            model_args += f",stop_strings={json.dumps(args.stop_strings, separators=(',', ':'))}"
+            model_args += (
+                f",stop_strings={json.dumps(args.stop_strings, separators=(',', ':'))}"
+            )
 
         parsed_sample_indices = None
         if args.sample_indices is not None:

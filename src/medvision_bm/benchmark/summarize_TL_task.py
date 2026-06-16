@@ -64,7 +64,9 @@ def cal_metrics_TL_task(results):
     if nmae_precomputed is not None:
         nmae_raw = nmae_precomputed.get("NMAE")
         nmae = float(nmae_raw) if nmae_raw is not None else np.nan
-        nmae_success = bool(nmae_precomputed.get("success", False)) and np.isfinite(nmae)
+        nmae_success = bool(nmae_precomputed.get("success", False)) and np.isfinite(
+            nmae
+        )
     elif success and doc_meta is not None:
         # Fallback: recompute diagonal from stored or hash-derived scale.
         # Tier 2 (pixel_size_scale present): uses the scale factor stored at eval time — guaranteed correct.
@@ -237,7 +239,11 @@ def process_label_group_TL(parent_class, data):
 
     # Process each target-response pair
     for target, response, doc_meta in zip(targets, responses, doc_metas):
-        mock_results = {"filtered_resps": [response], "target": target, "doc_meta": doc_meta}
+        mock_results = {
+            "filtered_resps": [response],
+            "target": target,
+            "doc_meta": doc_meta,
+        }
         metrics_dict = cal_metrics_TL_task(mock_results)
         _update_metric_counters_TL_task(metrics_dict, counters)
 
@@ -267,7 +273,9 @@ def calculate_summary_metrics_per_anatomy_TL_task(grouped_data, processes=None):
         with multiprocessing.Pool(processes=processes) as pool:
             results = pool.starmap(process_label_group_TL, items)
     else:
-        results = [process_label_group_TL(parent_class, data) for parent_class, data in items]
+        results = [
+            process_label_group_TL(parent_class, data) for parent_class, data in items
+        ]
 
     # Collect results
     for parent_class, task_metrics in results:
@@ -283,7 +291,12 @@ def _build_removed_set(json_path):
     with open(json_path) as f:
         entries = json.load(f)
     return frozenset(
-        (e["image_file"], _dim_map[e["slice_dim"]], int(e["slice_idx"]), int(e["task_ID"]))
+        (
+            e["image_file"],
+            _dim_map[e["slice_dim"]],
+            int(e["slice_idx"]),
+            int(e["task_ID"]),
+        )
         for e in entries
     )
 
@@ -292,7 +305,7 @@ def _relative_image_file(full_path, dataset_name):
     """Extract the relative image file path (after the dataset-name component) from an absolute path."""
     marker = f"/{dataset_name}/"
     idx = full_path.find(marker)
-    return full_path[idx + len(marker):] if idx >= 0 else Path(full_path).name
+    return full_path[idx + len(marker) :] if idx >= 0 else Path(full_path).name
 
 
 def process_jsonl_file_TL_task(
@@ -338,7 +351,12 @@ def process_jsonl_file_TL_task(
                 # Skip samples removed in the updated dataset
                 if removed_set is not None:
                     _img = doc.get("image_file", "")
-                    _key = (_relative_image_file(_img, dataset_name), slice_dim, doc.get("slice_idx"), task_id)
+                    _key = (
+                        _relative_image_file(_img, dataset_name),
+                        slice_dim,
+                        doc.get("slice_idx"),
+                        task_id,
+                    )
                     if _key in removed_set:
                         count += 1
                         continue
@@ -425,7 +443,8 @@ def process_parsed_file_in_model_folder(
         return
 
     jsonl_files = [
-        f for f in glob.glob(os.path.join(parsed_files_dir, "*.jsonl"))
+        f
+        for f in glob.glob(os.path.join(parsed_files_dir, "*.jsonl"))
         if not ("_proc_acc" in os.path.basename(f) or "_eq_acc" in os.path.basename(f))
     ]
 
@@ -440,9 +459,13 @@ def process_parsed_file_in_model_folder(
             if ds_name and ds_name not in _removed_cache:
                 fname = removed_samples_filename
                 json_path = os.path.join(removed_samples_dir, ds_name, fname)
-                _removed_cache[ds_name] = _build_removed_set(json_path) if os.path.exists(json_path) else None
+                _removed_cache[ds_name] = (
+                    _build_removed_set(json_path) if os.path.exists(json_path) else None
+                )
             removed_set = _removed_cache.get(ds_name) if ds_name else None
-        file_data = process_jsonl_file_TL_task(jsonl_file, limit, removed_set=removed_set)
+        file_data = process_jsonl_file_TL_task(
+            jsonl_file, limit, removed_set=removed_set
+        )
         all_data.extend(file_data)
 
     # Skip processing if no data was collected
@@ -457,7 +480,13 @@ def process_parsed_file_in_model_folder(
     grouped_data = group_by_label_modality_slice(all_data_6)
 
     # Build parallel doc_metas using the same key construction as group_by_label_modality_slice
-    _imgmod_map = {"MRI": "MR", "CT": "CT", "ultrasound": "US", "X-ray": "XR", "PET": "PET"}
+    _imgmod_map = {
+        "MRI": "MR",
+        "CT": "CT",
+        "ultrasound": "US",
+        "X-ray": "XR",
+        "PET": "PET",
+    }
     _slice_map = {0: "S", 1: "C", 2: "A"}
     for t in all_data:
         imgModality, label_name, _tgt, _resp, _tid, slice_dim, doc_meta = t
@@ -481,24 +510,32 @@ def process_parsed_file_in_model_folder(
     )
 
     # Build filename suffix: _filtered and/or _limit{N}
-    _suffix = ("_filtered" if removed_samples_dir else "") + (f"_limit{limit}" if limit is not None else "")
+    _suffix = ("_filtered" if removed_samples_dir else "") + (
+        f"_limit{limit}" if limit is not None else ""
+    )
 
     # Save values JSON file
-    values_filename = f"{SUMMARY_FILENAME_TL_VALUES.removesuffix('.json')}{_suffix}.json"
+    values_filename = (
+        f"{SUMMARY_FILENAME_TL_VALUES.removesuffix('.json')}{_suffix}.json"
+    )
     values_path = os.path.join(parsed_files_dir, values_filename)
     with open(values_path, "w") as f:
         json.dump(convert_numpy_to_python(grouped_data), f, indent=2)
     print(f"Saved target and model-predicted values to {values_path}")
 
     # Save summary metrics JSON file
-    metrics_filename = f"{SUMMARY_FILENAME_TL_METRICS.removesuffix('.json')}{_suffix}.json"
+    metrics_filename = (
+        f"{SUMMARY_FILENAME_TL_METRICS.removesuffix('.json')}{_suffix}.json"
+    )
     metrics_path = os.path.join(parsed_files_dir, metrics_filename)
     with open(metrics_path, "w") as f:
         json.dump(convert_numpy_to_python(summary_metrics), f, indent=2)
     print(f"Saved summary metrics to {metrics_path}")
 
 
-def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False, removed_samples_dir=None):
+def print_model_summaries(
+    task_dir, limit=None, skip_model_wo_parsed_files=False, removed_samples_dir=None
+):
     """
     Print and save summary metrics for all models in a task directory.
 
@@ -512,7 +549,9 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
     model_dirs = get_subfolders(task_dir)
 
     # Build filename suffix consistent with process_parsed_file_in_model_folder
-    _suffix = ("_filtered" if removed_samples_dir else "") + (f"_limit{limit}" if limit is not None else "")
+    _suffix = ("_filtered" if removed_samples_dir else "") + (
+        f"_limit{limit}" if limit is not None else ""
+    )
 
     # Prepare output file path
     output_filename = f"summary_TL_task{_suffix}.txt"
@@ -538,7 +577,9 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
             print(f"\nSkipping model directory (no parsed folder): {model_dir}")
             continue
 
-        metrics_filename = f"{SUMMARY_FILENAME_TL_METRICS.removesuffix('.json')}{_suffix}.json"
+        metrics_filename = (
+            f"{SUMMARY_FILENAME_TL_METRICS.removesuffix('.json')}{_suffix}.json"
+        )
         metrics_file = os.path.join(parsed_dir, metrics_filename)
 
         with open(metrics_file, "r") as f:
@@ -633,7 +674,8 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
             )
         if model_summary["weighted_nmae_count"] > 0:
             model_summary["weighted_avg_nmae"] = (
-                model_summary["weighted_sum_nmae"] / model_summary["weighted_nmae_count"]
+                model_summary["weighted_sum_nmae"]
+                / model_summary["weighted_nmae_count"]
             )
 
         # Compute micro-averaged (sample-weighted) MRE<k accuracy metrics
@@ -747,8 +789,12 @@ def print_model_summaries(task_dir, limit=None, skip_model_wo_parsed_files=False
 
 
 def _process_task_directory(
-    task_dir, limit, processes=None, skip_model_wo_parsed_files=False,
-    removed_samples_dir=None, removed_samples_filename=None,
+    task_dir,
+    limit,
+    processes=None,
+    skip_model_wo_parsed_files=False,
+    removed_samples_dir=None,
+    removed_samples_filename=None,
 ):
     """
     Process all model directories within a task directory.
@@ -780,17 +826,29 @@ def _process_task_directory(
 
         print(f"\nProcessing model directory: {model_dir}")
         process_parsed_file_in_model_folder(
-            model_dir, limit, processes=processes,
+            model_dir,
+            limit,
+            processes=processes,
             removed_samples_dir=removed_samples_dir,
             removed_samples_filename=removed_samples_filename,
         )
 
     # Print summary metrics at the end
-    print_model_summaries(task_dir, limit, skip_model_wo_parsed_files, removed_samples_dir=removed_samples_dir)
+    print_model_summaries(
+        task_dir,
+        limit,
+        skip_model_wo_parsed_files,
+        removed_samples_dir=removed_samples_dir,
+    )
 
 
-def _process_single_model_directory(model_dir, limit, processes=None,
-                                    removed_samples_dir=None, removed_samples_filename=None):
+def _process_single_model_directory(
+    model_dir,
+    limit,
+    processes=None,
+    removed_samples_dir=None,
+    removed_samples_filename=None,
+):
     """
     Process a single model directory.
 
@@ -803,7 +861,9 @@ def _process_single_model_directory(model_dir, limit, processes=None,
     """
     print(f"\nProcessing model directory: {model_dir}")
     process_parsed_file_in_model_folder(
-        model_dir, limit, processes=processes,
+        model_dir,
+        limit,
+        processes=processes,
         removed_samples_dir=removed_samples_dir,
         removed_samples_filename=removed_samples_filename,
     )
@@ -835,7 +895,9 @@ def main(**kwargs):
             f"Using task_dir: {task_dir}\nModel directories within this folder will be looped over."
         )
         _process_task_directory(
-            task_dir, limit, processes=processes,
+            task_dir,
+            limit,
+            processes=processes,
             skip_model_wo_parsed_files=skip_model_wo_parsed_files,
             removed_samples_dir=removed_samples_dir,
             removed_samples_filename=removed_samples_filename,
@@ -846,7 +908,9 @@ def main(**kwargs):
             f"Using model_dir: {model_dir}\nProcessing all JSONL files within this directory."
         )
         _process_single_model_directory(
-            model_dir, limit, processes=processes,
+            model_dir,
+            limit,
+            processes=processes,
             removed_samples_dir=removed_samples_dir,
             removed_samples_filename=removed_samples_filename,
         )

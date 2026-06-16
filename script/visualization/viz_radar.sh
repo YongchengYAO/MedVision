@@ -48,13 +48,13 @@ FIG_NAME="${FIG_NAME:-radar_${TASK_TYPE}.png}"
 
 METRICS_ARG=()
 if [ -n "$METRICS_LIST" ]; then
-    read -ra _metrics <<< "$METRICS_LIST"
+    read -ra _metrics <<<"$METRICS_LIST"
     METRICS_ARG=(--metrics_list "${_metrics[@]}")
 fi
 
 VERBOSE_ARG=()
 if [ -n "$VERBOSE_MODEL" ]; then
-    read -ra _verbose <<< "$VERBOSE_MODEL"
+    read -ra _verbose <<<"$VERBOSE_MODEL"
     VERBOSE_ARG=(--verbose_model "${_verbose[@]}")
 fi
 

@@ -1,10 +1,11 @@
 import json
 import os
-import yaml
-import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
 from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import yaml
 
 from medvision_bm.utils.configs import (
     SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_DETECT_METRICS,
@@ -129,8 +130,28 @@ def plot_metrics_multi_model(in_dir, out_dir, model_name_display_map, folders):
             )
             colors.append(darker_color)
 
-    markers = ["o", "s", "D", "p", "d", "^", "v", "<", ">", "X",
-               "P", "H", "*", "h", "8", "1", "2", "3", "4", "x"]
+    markers = [
+        "o",
+        "s",
+        "D",
+        "p",
+        "d",
+        "^",
+        "v",
+        "<",
+        ">",
+        "X",
+        "P",
+        "H",
+        "*",
+        "h",
+        "8",
+        "1",
+        "2",
+        "3",
+        "4",
+        "x",
+    ]
 
     for i, metric in enumerate(metrics):
         ax = axs[i]
@@ -161,9 +182,7 @@ def plot_metrics_multi_model(in_dir, out_dir, model_name_display_map, folders):
         ax.set_xlim(0, 0.5)
         ax.set_ylim(-0.05, 1.05)
         ax.set_xticks(np.arange(0, 0.55, 0.05))
-        ax.set_xticklabels(
-            [f"{x:.2f}" for x in np.arange(0, 0.55, 0.05)], fontsize=14
-        )
+        ax.set_xticklabels([f"{x:.2f}" for x in np.arange(0, 0.55, 0.05)], fontsize=14)
         ax.tick_params(axis="y", labelsize=14)
 
     # Sample-size bar chart (fourth subplot)
@@ -207,6 +226,7 @@ def plot_metrics_multi_model(in_dir, out_dir, model_name_display_map, folders):
     ax.tick_params(axis="both", labelsize=14)
 
     from matplotlib.ticker import FuncFormatter
+
     ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{int(x):,}"))
 
     x_disp, _ = ax.transAxes.transform((0.2, 0))

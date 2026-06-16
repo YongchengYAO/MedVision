@@ -193,7 +193,7 @@ def main():
     # ------
     setup_env_hf_medvision_ds(data_dir)
     if not args.skip_env_setup:
-        # NOTE: Install huggingface-hub, required version may vary for different models, check requirements 
+        # NOTE: Install huggingface-hub, required version may vary for different models, check requirements
         ensure_hf_hub_installed(hf_hub_version="0.36.0")
         install_vendored_lmms_eval()
         install_medvision_ds(data_dir)
@@ -218,8 +218,8 @@ def main():
 
         batch_size = args.batch_size_per_gpu * num_processes
         model_args = (
-            f"model_hf={model_hf}," 
-            f"max_new_tokens={max_new_tokens}," 
+            f"model_hf={model_hf},"
+            f"max_new_tokens={max_new_tokens},"
             "use_pipeline=True"
         )
 

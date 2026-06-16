@@ -90,7 +90,9 @@ def load_model_metrics(json_path, metrics_list, task_type="Detection"):
     num_samples = []
 
     for target, metrics in data.items():
-        if task_type in ("Detection", "TL") and any(k in target.lower() for k in EXCLUDED_KEYS):
+        if task_type in ("Detection", "TL") and any(
+            k in target.lower() for k in EXCLUDED_KEYS
+        ):
             continue
         for metric in metrics_list:
             if metric not in metrics:
@@ -107,7 +109,9 @@ def load_model_metrics(json_path, metrics_list, task_type="Detection"):
     df_dict["num_samples"] = num_samples
 
     df = pd.DataFrame(df_dict)
-    return df.sort_values(metrics_list[0] if metrics_list else "Target", ascending=False)
+    return df.sort_values(
+        metrics_list[0] if metrics_list else "Target", ascending=False
+    )
 
 
 def is_purple_label(label_name):
@@ -123,8 +127,15 @@ def is_purple_label(label_name):
     return any(
         term in text
         for term in [
-            "tumor", "cancer", "cyst", "stroke", "lesion",
-            "resection cavity", "edema", "metastatic", "vestibular schwannoma",
+            "tumor",
+            "cancer",
+            "cyst",
+            "stroke",
+            "lesion",
+            "resection cavity",
+            "edema",
+            "metastatic",
+            "vestibular schwannoma",
         ]
     )
 
@@ -146,12 +157,19 @@ def _reconstruct_detect_label(doc):
     task_id_raw = doc.get("taskID")
     slice_dim = doc.get("slice_dim")
     label_idx = doc.get("label")
-    if dataset_name is None or task_id_raw is None or slice_dim is None or label_idx is None:
+    if (
+        dataset_name is None
+        or task_id_raw is None
+        or slice_dim is None
+        or label_idx is None
+    ):
         return None
 
     task_id = int(task_id_raw)
     try:
-        result = get_labelsMap_imgModality_from_seg_benchmark_plan(dataset_name, task_id)
+        result = get_labelsMap_imgModality_from_seg_benchmark_plan(
+            dataset_name, task_id
+        )
     except (ValueError, Exception):
         return None
     if not result or isinstance(result, dict):
@@ -169,7 +187,13 @@ def _reconstruct_detect_label(doc):
     if parent_class is None:
         return None
 
-    modality_map = {"MRI": "MR", "CT": "CT", "ultrasound": "US", "X-ray": "XR", "PET": "PET"}
+    modality_map = {
+        "MRI": "MR",
+        "CT": "CT",
+        "ultrasound": "US",
+        "X-ray": "XR",
+        "PET": "PET",
+    }
     modality = modality_map.get(img_modality, img_modality)
     slicetype_map = {0: "S", 1: "C", 2: "A"}
     slicetype = slicetype_map.get(slice_dim)
@@ -200,8 +224,12 @@ def _reconstruct_tl_label(doc):
         return None
 
     task_id = int(task_id_raw)
-    label_idx, _ = get_targetLabel_imgModality_from_biometry_benchmark_plan(dataset_name, task_id)
-    labels_map, img_modality = get_labelsMap_imgModality_from_biometry_benchmark_plan(dataset_name, task_id)
+    label_idx, _ = get_targetLabel_imgModality_from_biometry_benchmark_plan(
+        dataset_name, task_id
+    )
+    labels_map, img_modality = get_labelsMap_imgModality_from_biometry_benchmark_plan(
+        dataset_name, task_id
+    )
     label_name = labels_map.get(str(label_idx))
     if label_name is None:
         return None
@@ -210,7 +238,13 @@ def _reconstruct_tl_label(doc):
     if new_label is None:
         return None
 
-    modality_map = {"MRI": "MR", "CT": "CT", "ultrasound": "US", "X-ray": "XR", "PET": "PET"}
+    modality_map = {
+        "MRI": "MR",
+        "CT": "CT",
+        "ultrasound": "US",
+        "X-ray": "XR",
+        "PET": "PET",
+    }
     modality = modality_map.get(img_modality, img_modality)
     slicetype_map = {0: "S", 1: "C", 2: "A"}
     slicetype = slicetype_map.get(slice_dim)
@@ -260,7 +294,9 @@ def load_per_sample_values(parsed_dir, metric_name, common_labels, task_type="AD
                     bp = doc.get("biometric_profile")
                     if bp is None or "metric_key" not in bp:
                         continue
-                    label = f"{doc['dataset_name']}_{bp['metric_type']}_{bp['metric_key']}"
+                    label = (
+                        f"{doc['dataset_name']}_{bp['metric_type']}_{bp['metric_key']}"
+                    )
 
                 if label not in common_set:
                     continue
@@ -282,7 +318,11 @@ def load_per_sample_values(parsed_dir, metric_name, common_labels, task_type="AD
                     if "success" in raw and not raw["success"]:
                         continue
                     value = next(
-                        (v for k, v in raw.items() if k != "success" and isinstance(v, (int, float))),
+                        (
+                            v
+                            for k, v in raw.items()
+                            if k != "success" and isinstance(v, (int, float))
+                        ),
                         None,
                     )
                 elif isinstance(raw, (int, float)):
@@ -355,19 +395,40 @@ def plot_violin_on_spoke(
     whisker_hi = plot_vals[plot_vals <= hi_fence].max()
     box_hw = max_half_width * 0.40
 
-    box_thetas = [angle - box_hw, angle + box_hw, angle + box_hw, angle - box_hw, angle - box_hw]
+    box_thetas = [
+        angle - box_hw,
+        angle + box_hw,
+        angle + box_hw,
+        angle - box_hw,
+        angle - box_hw,
+    ]
     box_rs = [q1, q1, q3, q3, q1]
     ax.fill(box_thetas, box_rs, color="white", alpha=0.35, zorder=4)
     ax.plot(box_thetas, box_rs, color=color, linewidth=1.5, zorder=5)
 
     ax.plot([angle, angle], [whisker_lo, q1], color=color, linewidth=1.5, zorder=5)
     ax.plot([angle, angle], [q3, whisker_hi], color=color, linewidth=1.5, zorder=5)
-    ax.plot([angle - box_hw * 0.6, angle + box_hw * 0.6], [whisker_lo, whisker_lo],
-            color=color, linewidth=1.5, zorder=5)
-    ax.plot([angle - box_hw * 0.6, angle + box_hw * 0.6], [whisker_hi, whisker_hi],
-            color=color, linewidth=1.5, zorder=5)
-    ax.plot([angle - box_hw, angle + box_hw], [median, median],
-            color=color, linewidth=2.5, zorder=6)
+    ax.plot(
+        [angle - box_hw * 0.6, angle + box_hw * 0.6],
+        [whisker_lo, whisker_lo],
+        color=color,
+        linewidth=1.5,
+        zorder=5,
+    )
+    ax.plot(
+        [angle - box_hw * 0.6, angle + box_hw * 0.6],
+        [whisker_hi, whisker_hi],
+        color=color,
+        linewidth=1.5,
+        zorder=5,
+    )
+    ax.plot(
+        [angle - box_hw, angle + box_hw],
+        [median, median],
+        color=color,
+        linewidth=2.5,
+        zorder=6,
+    )
 
     rng = np.random.default_rng(seed=42)
     for val in plot_vals:
@@ -378,7 +439,10 @@ def plot_violin_on_spoke(
         local_hw = half_widths[idx]
         jitter = rng.uniform(-local_hw, local_hw)
         ax.plot(
-            angle + jitter, val, "o", color=color,
+            angle + jitter,
+            val,
+            "o",
+            color=color,
             markersize=6 if is_outlier else 4.5,
             alpha=0.35,
             zorder=8 if is_outlier else 7,
@@ -431,8 +495,11 @@ def plot_radar_chart(
 
         display_name = model_name_display_map.get(model_name, model_name)
         ax.plot(
-            angles, values_plot,
-            linestyle="-", linewidth=3, alpha=0.9,
+            angles,
+            values_plot,
+            linestyle="-",
+            linewidth=3,
+            alpha=0.9,
             label=display_name,
             color=base_colors[i % len(base_colors)],
         )
@@ -459,7 +526,9 @@ def plot_radar_chart(
         for num, name in zip(label_numbers, label_names)
     ]
     ax.set_xticklabels([str(num) for num in label_numbers], fontsize=16)
-    for tick_label, (num, color, fontweight) in zip(ax.get_xticklabels(), colored_labels):
+    for tick_label, (num, color, fontweight) in zip(
+        ax.get_xticklabels(), colored_labels
+    ):
         tick_label.set_color(color)
         tick_label.set_fontweight(fontweight)
 
@@ -481,12 +550,19 @@ def plot_radar_chart(
             # For inverted metrics reverse the transform to show original values.
             label_text = f"{(1 - y_val):.1f}" if should_invert else f"{y_val:.1f}"
         ax.text(
-            0, y_val, label_text,
-            horizontalalignment="center", verticalalignment="center",
-            fontsize=16, fontweight="bold", zorder=10,
+            0,
+            y_val,
+            label_text,
+            horizontalalignment="center",
+            verticalalignment="center",
+            fontsize=16,
+            fontweight="bold",
+            zorder=10,
         )
 
-    display_metric_name = metric_name[3:] if metric_name.lower().startswith("avg") else metric_name
+    display_metric_name = (
+        metric_name[3:] if metric_name.lower().startswith("avg") else metric_name
+    )
     arrow = " ↓" if should_invert else " ↑"
     ax.grid(True)
     return display_metric_name + arrow
@@ -527,8 +603,16 @@ def abbreviate_label_name(name):
 
     m = _RE_ANGLE.match(name)
     if m:
-        dataset, p1, p2, p3, p4 = m.group(1), m.group(2), m.group(3), m.group(4), m.group(5)
-        return f"{_DATASET_ABBR.get(dataset, dataset)}: a({{P{p1},P{p2}}},{{P{p3},P{p4}}})"
+        dataset, p1, p2, p3, p4 = (
+            m.group(1),
+            m.group(2),
+            m.group(3),
+            m.group(4),
+            m.group(5),
+        )
+        return (
+            f"{_DATASET_ABBR.get(dataset, dataset)}: a({{P{p1},P{p2}}},{{P{p3},P{p4}}})"
+        )
 
     name = name.replace("Tumor/Lesion", "T/L").replace("Lesion/Tumor", "T/L")
     return name.strip()
@@ -633,23 +717,38 @@ def plot_label_mapping(
             else:
                 color, fontweight = "black", "normal"
             text_kwargs = dict(
-                transform=ax.transAxes, fontsize=16, verticalalignment="top",
-                color=color, fontweight=fontweight,
+                transform=ax.transAxes,
+                fontsize=16,
+                verticalalignment="top",
+                color=color,
+                fontweight=fontweight,
             )
             if label_fontfamily is not None:
                 text_kwargs["fontfamily"] = label_fontfamily
-            ax.text(x_pos, y_pos - i * line_height, f"{num}: {abbreviated_name}", **text_kwargs)
+            ax.text(
+                x_pos,
+                y_pos - i * line_height,
+                f"{num}: {abbreviated_name}",
+                **text_kwargs,
+            )
 
     max_lines = max(len(col) for col in columns)
     next_y = y_pos - max_lines * line_height
 
     if legend_handles and legend_labels:
-        n_legend_cols = legend_col if legend_col is not None else (2 if len(legend_handles) > 4 else 1)
+        n_legend_cols = (
+            legend_col
+            if legend_col is not None
+            else (2 if len(legend_handles) > 4 else 1)
+        )
         ax.legend(
-            legend_handles, legend_labels,
+            legend_handles,
+            legend_labels,
             loc="upper left",
             bbox_to_anchor=(col_x_positions[0], next_y - line_height * 0.5),
-            fontsize=16, ncol=n_legend_cols, frameon=True,
+            fontsize=16,
+            ncol=n_legend_cols,
+            frameon=True,
         )
 
     has_modality = any("@" in name for name in label_mapping.values())
@@ -691,16 +790,21 @@ def plot_metrics_multi_model(
     model_display_name = config.get("model_display_name", {})
     models = list(model_display_name.keys())
     if not models:
-        raise ValueError("Config must define model_display_name with at least one model key.")
+        raise ValueError(
+            "Config must define model_display_name with at least one model key."
+        )
 
     if task_type == "Detection":
         from medvision_bm.utils.configs import SUMMARY_FILENAME_DETECT_METRICS
+
         json_filename = SUMMARY_FILENAME_DETECT_METRICS
     elif task_type == "AD":
         from medvision_bm.utils.configs import SUMMARY_FILENAME_AD_METRICS
+
         json_filename = SUMMARY_FILENAME_AD_METRICS
     elif task_type == "TL":
         from medvision_bm.utils.configs import SUMMARY_FILENAME_TL_METRICS
+
         json_filename = SUMMARY_FILENAME_TL_METRICS.replace(".json", "_filtered.json")
     else:
         raise ValueError(f"Unsupported task_type: {task_type}")
@@ -717,14 +821,18 @@ def plot_metrics_multi_model(
         if task_type == "Detection":
             filtered_df = df[df["num_samples"] >= minimum_group_size]
             if len(filtered_df) == 0:
-                print(f"[Warning] Model {model} skipped: no labels with ≥ {minimum_group_size} samples.")
+                print(
+                    f"[Warning] Model {model} skipped: no labels with ≥ {minimum_group_size} samples."
+                )
                 continue
             model_data[model] = filtered_df
         else:
             model_data[model] = df
 
     if len(model_data) == 0:
-        print(f"No models found with valid data (minimum sample size: {minimum_group_size})")
+        print(
+            f"No models found with valid data (minimum sample size: {minimum_group_size})"
+        )
         return
 
     all_labels = [set(df["Target"]) for df in model_data.values()]
@@ -754,16 +862,27 @@ def plot_metrics_multi_model(
     if verbose_models:
         for metric in metrics_list:
             verbose_samples_by_metric[metric] = {}
-            print(f"\n[Info] Loading per-sample data for verbose models on metric: {metric}")
+            print(
+                f"\n[Info] Loading per-sample data for verbose models on metric: {metric}"
+            )
             for verbose_model_name in verbose_models:
-                verbose_parsed_dir = os.path.join(task_dir, verbose_model_name, "parsed")
-                verbose_samples_by_metric[metric][verbose_model_name] = load_per_sample_values(
-                    verbose_parsed_dir, metric, common_labels, task_type=task_type
+                verbose_parsed_dir = os.path.join(
+                    task_dir, verbose_model_name, "parsed"
+                )
+                verbose_samples_by_metric[metric][verbose_model_name] = (
+                    load_per_sample_values(
+                        verbose_parsed_dir, metric, common_labels, task_type=task_type
+                    )
                 )
                 n_loaded = sum(
-                    len(v) for v in verbose_samples_by_metric[metric][verbose_model_name].values()
+                    len(v)
+                    for v in verbose_samples_by_metric[metric][
+                        verbose_model_name
+                    ].values()
                 )
-                print(f"  {verbose_model_name} / {metric}: {n_loaded} samples across {len(common_labels)} labels")
+                print(
+                    f"  {verbose_model_name} / {metric}: {n_loaded} samples across {len(common_labels)} labels"
+                )
 
     num_metrics = len(metrics_list)
     RADAR_INCHES = radar_cell_inches
@@ -799,7 +918,9 @@ def plot_metrics_multi_model(
             LABEL_INCHES = 0
         gs_rows = num_metric_rows
         gs_cols = num_metric_cols + (1 if show_label_name else 0)
-        width_ratios = [RADAR_INCHES] * num_metric_cols + ([LABEL_INCHES] if show_label_name else [])
+        width_ratios = [RADAR_INCHES] * num_metric_cols + (
+            [LABEL_INCHES] if show_label_name else []
+        )
         height_ratios = None
         fig_width = RADAR_INCHES * num_metric_cols + LABEL_INCHES
         fig_height = RADAR_INCHES * num_metric_rows
@@ -807,8 +928,13 @@ def plot_metrics_multi_model(
         label_panel_height = RADAR_INCHES * num_metric_rows
 
     fig = plt.figure(figsize=(fig_width, fig_height))
-    gs = GridSpec(gs_rows, gs_cols, figure=fig,
-                  width_ratios=width_ratios, height_ratios=height_ratios)
+    gs = GridSpec(
+        gs_rows,
+        gs_cols,
+        figure=fig,
+        width_ratios=width_ratios,
+        height_ratios=height_ratios,
+    )
 
     axes = []
     for idx in range(num_metrics):
@@ -843,13 +969,22 @@ def plot_metrics_multi_model(
         metric_data = {}
         max_value = 0
         for model_name, df in model_data.items():
-            df_filtered = df[df["Target"].isin(common_labels)].set_index("Target").reindex(common_labels)
+            df_filtered = (
+                df[df["Target"].isin(common_labels)]
+                .set_index("Target")
+                .reindex(common_labels)
+            )
             values = df_filtered[metric].tolist()
             metric_data[model_name] = values
             max_value = max(max_value, max(values))
 
         _title = plot_radar_chart(
-            metric_data, metric, label_numbers, common_labels, axes[idx], max_value,
+            metric_data,
+            metric,
+            label_numbers,
+            common_labels,
+            axes[idx],
+            max_value,
             model_display_name,
             verbose_samples_by_model=verbose_samples_by_metric.get(metric),
             verbose_model_colors=verbose_model_colors,
@@ -860,17 +995,29 @@ def plot_metrics_multi_model(
     handles, leg_labels = axes[0].get_legend_handles_labels()
     if show_label_name:
         _label_title, _label_x = plot_label_mapping(
-            label_mapping, mapping_ax, task_type,
+            label_mapping,
+            mapping_ax,
+            task_type,
             panel_width_inches=label_panel_width,
             panel_height_inches=label_panel_height,
-            legend_handles=handles, legend_labels=leg_labels,
-            label_col=label_col, legend_col=legend_col,
+            legend_handles=handles,
+            legend_labels=leg_labels,
+            label_col=label_col,
+            legend_col=legend_col,
         )
         axis_titles[mapping_ax] = (_label_x, _label_title, "left")
     else:
-        _legend_ncol = legend_col if legend_col is not None else (2 if len(handles) > 4 else 1)
-        fig.legend(handles, leg_labels, loc="lower center", bbox_to_anchor=(0.5, 0.0),
-                   fontsize=16, ncol=_legend_ncol)
+        _legend_ncol = (
+            legend_col if legend_col is not None else (2 if len(handles) > 4 else 1)
+        )
+        fig.legend(
+            handles,
+            leg_labels,
+            loc="lower center",
+            bbox_to_anchor=(0.5, 0.0),
+            fontsize=16,
+            ncol=_legend_ncol,
+        )
 
     plt.tight_layout(pad=0.5, w_pad=0.5, h_pad=4.0)
 
@@ -897,9 +1044,15 @@ def plot_metrics_multi_model(
         target_y_fig = (row_top_px.get(row_key, 0.0) + title_gap_px) / fig_h_px
         trans = blended_transform_factory(ax.transAxes, fig.transFigure)
         ax.text(
-            x_axes, target_y_fig, title_text,
-            transform=trans, fontsize=24, fontweight="bold",
-            horizontalalignment=ha, verticalalignment="bottom", clip_on=False,
+            x_axes,
+            target_y_fig,
+            title_text,
+            transform=trans,
+            fontsize=24,
+            fontweight="bold",
+            horizontalalignment=ha,
+            verticalalignment="bottom",
+            clip_on=False,
         )
 
     output_file = os.path.join(fig_dir, fig_name)
@@ -915,31 +1068,47 @@ def main():
         description="Plot radar charts for metrics across multiple models"
     )
     parser.add_argument(
-        "--task_type", type=str, required=True,
+        "--task_type",
+        type=str,
+        required=True,
         help="Task type: AD, TL, or Detection.",
     )
     parser.add_argument(
-        "--config_yaml", type=str, required=True,
+        "--config_yaml",
+        type=str,
+        required=True,
         help="Path to YAML config file (model_display_name dict).",
     )
     parser.add_argument(
-        "--fig_dir", type=str, required=True,
+        "--fig_dir",
+        type=str,
+        required=True,
         help="Directory to save the output figure.",
     )
     parser.add_argument(
-        "--task_dir", type=str, required=True,
+        "--task_dir",
+        type=str,
+        required=True,
         help="Directory containing model folders (each with a parsed/ subdirectory).",
     )
     parser.add_argument(
-        "--fig_name", type=str, required=True,
+        "--fig_name",
+        type=str,
+        required=True,
         help="Output figure filename (e.g., radar_detection.png).",
     )
     parser.add_argument(
-        "--metrics_list", type=str, nargs="+", default=["Precision", "F1"],
+        "--metrics_list",
+        type=str,
+        nargs="+",
+        default=["Precision", "F1"],
         help="Metric names to plot (e.g., Precision F1 Recall).",
     )
     parser.add_argument(
-        "--verbose_model", type=str, nargs="+", default=None,
+        "--verbose_model",
+        type=str,
+        nargs="+",
+        default=None,
         help=(
             "Model name(s) whose per-sample distributions are overlaid as violin "
             "plots on each radar spoke. Must match keys in model_display_name. "
@@ -947,29 +1116,42 @@ def main():
         ),
     )
     parser.add_argument(
-        "--show_scatter", action="store_true", default=False,
+        "--show_scatter",
+        action="store_true",
+        default=False,
         help="Overlay jittered scatter on violin (only with --verbose_model).",
     )
     parser.add_argument(
-        "--show_label_name", action="store_true", default=False,
+        "--show_label_name",
+        action="store_true",
+        default=False,
         help="Add a label number-to-name mapping panel alongside the radar plots.",
     )
     parser.add_argument(
-        "--radar_cell_inches", type=float, default=8,
+        "--radar_cell_inches",
+        type=float,
+        default=8,
         help="Width in inches for each radar subplot cell (default: 8).",
     )
     parser.add_argument(
-        "--label_col", type=int, default=None,
+        "--label_col",
+        type=int,
+        default=None,
         help="Columns in the label panel (default: auto).",
     )
     parser.add_argument(
-        "--legend_col", type=int, default=None,
+        "--legend_col",
+        type=int,
+        default=None,
         help="Columns in the model legend (default: auto).",
     )
 
     args = parser.parse_args()
-    assert args.task_type in ["AD", "TL", "Detection"], \
-        f"Invalid task_type '{args.task_type}'. Must be one of: AD, TL, Detection."
+    assert args.task_type in [
+        "AD",
+        "TL",
+        "Detection",
+    ], f"Invalid task_type '{args.task_type}'. Must be one of: AD, TL, Detection."
 
     config = load_config(args.config_yaml)
     plot_metrics_multi_model(

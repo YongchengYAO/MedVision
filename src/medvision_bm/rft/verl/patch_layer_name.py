@@ -10,7 +10,9 @@ from tqdm import tqdm
 
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description="Clean PEFT/LoRA wrappers from safetensors checkpoint files from verl.")
+    parser = argparse.ArgumentParser(
+        description="Clean PEFT/LoRA wrappers from safetensors checkpoint files from verl."
+    )
     parser.add_argument(
         "--model_dir",
         type=str,
@@ -33,7 +35,9 @@ def parse_arguments():
     assert os.path.isdir(model_dir), f"Model path {model_dir} is not a directory."
 
     if args.push_to_hub:
-        assert args.repo_id is not None, "repo_id must be provided when push_to_hub is set."
+        assert (
+            args.repo_id is not None
+        ), "repo_id must be provided when push_to_hub is set."
 
     return args
 
@@ -66,7 +70,9 @@ def process_single_file(file_path):
         except Exception as e:
             return f"Failed: {str(e)}"
 
-        has_peft_wrapper = any(k.startswith("base_model.model.") for k in state_dict.keys())
+        has_peft_wrapper = any(
+            k.startswith("base_model.model.") for k in state_dict.keys()
+        )
         if not has_peft_wrapper:
             return "Skipped"
 
@@ -104,7 +110,9 @@ def process_single_file(file_path):
 
 def patch_layer_names(model_dir):
     file_paths = [
-        os.path.join(model_dir, filename) for filename in os.listdir(model_dir) if filename.endswith(".safetensors")
+        os.path.join(model_dir, filename)
+        for filename in os.listdir(model_dir)
+        if filename.endswith(".safetensors")
     ]
 
     # Use number of CPUs available
@@ -116,7 +124,9 @@ def patch_layer_names(model_dir):
     failed_count = 0
 
     with multiprocessing.Pool(processes=num_processes) as pool:
-        pbar = tqdm(pool.imap_unordered(process_single_file, file_paths), total=len(file_paths))
+        pbar = tqdm(
+            pool.imap_unordered(process_single_file, file_paths), total=len(file_paths)
+        )
         for result in pbar:
             if result == "Modified":
                 modified_count += 1
@@ -126,9 +136,13 @@ def patch_layer_names(model_dir):
                 failed_count += 1
                 tqdm.write(f"Error: {result}")
 
-            pbar.set_postfix(modified=modified_count, skipped=skipped_count, failed=failed_count)
+            pbar.set_postfix(
+                modified=modified_count, skipped=skipped_count, failed=failed_count
+            )
 
-    print(f"\nProcessing complete. Modified: {modified_count}, Skipped: {skipped_count}, Failed: {failed_count}")
+    print(
+        f"\nProcessing complete. Modified: {modified_count}, Skipped: {skipped_count}, Failed: {failed_count}"
+    )
 
 
 def patch_index_file(model_dir):

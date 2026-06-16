@@ -376,7 +376,7 @@ def _doc_to_text_AngleDistanceTask(doc, model_name, model_hf, new_shape_hw=None)
 
     # Get resized image shape
     img_shape_resized, img_shape_content_hw = get_resized_img_shape(
-        model_name, img_2d_raw, {"model_hf":model_hf}
+        model_name, img_2d_raw, {"model_hf": model_hf}
     )  # implicit/dynamic resizing from VLM
 
     # Adjust pixel size based on the resize ratio
@@ -507,7 +507,7 @@ def _doc_to_text_AngleDistanceTask_CoT(doc, model_name, model_hf, new_shape_hw=N
 
     # [!] Get resized image shape (implicit/dynamic resizing from VLM)
     img_shape_implicit_resize, img_shape_content_hw = get_resized_img_shape(
-        model_name, img_explicit_resize_2d, {"model_hf":model_hf}
+        model_name, img_explicit_resize_2d, {"model_hf": model_hf}
     )
 
     # Adjust pixel size based on the resize ratio
@@ -619,7 +619,7 @@ def _doc_to_text_AngleDistanceTask_CoT(doc, model_name, model_hf, new_shape_hw=N
     #   - P1': (x_1, y_1) = (idx_dim1, image_size_height - idx_dim0)
     # --------------------------------------
 
-    # [!] Get the raw image shape (before explicit and implicit resizing) 
+    # [!] Get the raw image shape (before explicit and implicit resizing)
     _, img_raw_2d = _load_nifti_2d(img_path, slice_dim, slice_idx)
     raw_img_h, raw_img_w = img_raw_2d.shape
 
@@ -826,7 +826,7 @@ def img_proccessor_nii2png_save2dataset(example, new_shape_hw=None):
 def _format_data_AngleDistanceTask(
     example,
     model_name,
-    model_hf, 
+    model_hf,
     process_img=False,
     save_processed_img_to_disk=False,
     new_shape_hw=None,
@@ -972,7 +972,7 @@ def _doc_to_text_TumorLesionTask(doc, model_name, model_hf, new_shape_hw=None):
 
     # Get resized image shape
     img_shape_resized, img_shape_content_hw = get_resized_img_shape(
-        model_name, img_2d_raw, {"model_hf":model_hf}
+        model_name, img_2d_raw, {"model_hf": model_hf}
     )  # implicit/dynamic resizing from VLM
 
     # Adjust pixel size based on the resize ratio
@@ -1176,8 +1176,8 @@ def _doc_to_text_TumorLesionTask_CoT(doc, model_name, model_hf, new_shape_hw=Non
 
     # [!] Get resized image shape (implicit resizing from VLM)
     img_shape_implicit_resize, img_shape_content_hw = get_resized_img_shape(
-        model_name, img_explicit_resize_2d, {"model_hf":model_hf}
-    ) 
+        model_name, img_explicit_resize_2d, {"model_hf": model_hf}
+    )
 
     # Adjust pixel size based on the resize ratio
     original_height, original_width = img_shape
@@ -1235,7 +1235,7 @@ def _doc_to_text_TumorLesionTask_CoT(doc, model_name, model_hf, new_shape_hw=Non
     # --------------------------------------
     # Gather values to fill in the CoT template
 
-    # [!] Get the raw image shape (before explicit and implicit resizing) 
+    # [!] Get the raw image shape (before explicit and implicit resizing)
     _, img_raw_2d = _load_nifti_2d(img_path, slice_dim, slice_idx)
     raw_img_h, raw_img_w = img_raw_2d.shape
 
@@ -1317,7 +1317,9 @@ def _format_data_TumorLesionTask(
 ):
     target = _doc_to_target_TumorLesionTask(example)
     target_str = ", ".join([f"{value:.3f}" for value in target])
-    prompt, _ = _doc_to_text_TumorLesionTask(example, model_name, model_hf, new_shape_hw)
+    prompt, _ = _doc_to_text_TumorLesionTask(
+        example, model_name, model_hf, new_shape_hw
+    )
 
     example["messages"] = [
         {
@@ -1461,7 +1463,10 @@ def _doc_to_text_DetectionTask(doc):
 
 def _doc_to_text_DetectionTask_CoT(doc):
     """Convert document to text."""
-    from medvision_bm.sft.sft_prompts import COT_INSTRUCT_DETECTION, FORMAT_PROMPT_DETECTION_REASONING
+    from medvision_bm.sft.sft_prompts import (
+        COT_INSTRUCT_DETECTION,
+        FORMAT_PROMPT_DETECTION_REASONING,
+    )
 
     # Import the dataset-specific module from medvision_ds.datasets
     dataset_name = doc["dataset_name"]
@@ -1867,7 +1872,9 @@ def safe_concatenate_datasets(datasets_list):
     return combined_dataset
 
 
-def group_train_test_split(dataset, group_column, test_size, seed=None, stratify_column=None):
+def group_train_test_split(
+    dataset, group_column, test_size, seed=None, stratify_column=None
+):
     """
     Splits a HF Dataset into train and validation sets ensuring samples with the
     same value in 'group_column' are in the same split.
@@ -2130,13 +2137,19 @@ def load_split_limit_dataset(
 
 
 def format_dataset(
-    dataset, mapping_func, mapping_func_args, num_workers_format_dataset, writer_batch_size=1000
+    dataset,
+    mapping_func,
+    mapping_func_args,
+    num_workers_format_dataset,
+    writer_batch_size=1000,
 ):
     # Format the dataset with parallelism
     # Use conservative parallelism for formatting to avoid OOM
     available_cpus = get_cgroup_limited_cpus()
     format_workers = min(num_workers_format_dataset, available_cpus)
-    print(f"\n[Info] Formatting dataset with {format_workers} workers (writer_batch_size={writer_batch_size})...")
+    print(
+        f"\n[Info] Formatting dataset with {format_workers} workers (writer_batch_size={writer_batch_size})..."
+    )
     dataset = dataset.map(
         mapping_func,
         fn_kwargs=mapping_func_args,
@@ -2453,7 +2466,7 @@ def prepare_trainer(
 
     # PEFT configuration
     peft_config = LoraConfig(
-        lora_alpha=32, # scaling factor = lora_alpha / r, controls the strength of the LoRA update
+        lora_alpha=32,  # scaling factor = lora_alpha / r, controls the strength of the LoRA update
         lora_dropout=0.05,
         r=16,
         bias="none",
@@ -3162,7 +3175,7 @@ def parse_validate_args_multiTask():
     args = parse_args_multiTask()
 
     # Validate model family name
-    check_model_supported(args.model_family_name) 
+    check_model_supported(args.model_family_name)
 
     # Arguments
     # ------------------------------------------------------------
@@ -3297,14 +3310,15 @@ def mask_non_assistant_turns(input_ids, labels, tokenizer):
 def _build_tooluse_messages_AD(prompt, values_dict):
     """Build 5-turn messages list for one AD tool-use training sample."""
     import json
+
     from medvision_bm.sft.sft_prompts_tooluse import (
-        TOOL_DEF,
-        PYTHON_TEMPLATE_DISTANCE,
-        PYTHON_TEMPLATE_ANGLE,
-        COT_THINK_DISTANCE_TOOLUSE,
-        COT_THINK_ANGLE_TOOLUSE,
-        COT_INSTRUCT_DISTANCE_TOOLUSE,
         COT_INSTRUCT_ANGLE_TOOLUSE,
+        COT_INSTRUCT_DISTANCE_TOOLUSE,
+        COT_THINK_ANGLE_TOOLUSE,
+        COT_THINK_DISTANCE_TOOLUSE,
+        PYTHON_TEMPLATE_ANGLE,
+        PYTHON_TEMPLATE_DISTANCE,
+        TOOL_DEF,
     )
 
     metric_type = values_dict["metric_type"]
@@ -3342,7 +3356,9 @@ def _build_tooluse_messages_AD(prompt, values_dict):
 
     tool_result = safe_exec_python(code)
     tool_call_json = json.dumps({"name": "execute_python", "arguments": {"code": code}})
-    assistant_turn3 = f"<think> {think_text} </think><tool_call>{tool_call_json}</tool_call>"
+    assistant_turn3 = (
+        f"<think> {think_text} </think><tool_call>{tool_call_json}</tool_call>"
+    )
     assistant_turn5 = f"<answer> {tool_result} </answer>"
 
     prompt_base = prompt.rsplit("Report the reasoning process", 1)[0].rstrip()
@@ -3357,7 +3373,12 @@ def _build_tooluse_messages_AD(prompt, values_dict):
         {"role": "assistant", "content": [{"type": "text", "text": assistant_turn3}]},
         {
             "role": "tool",
-            "content": [{"type": "text", "text": f"<tool_response>{tool_result}</tool_response>"}],
+            "content": [
+                {
+                    "type": "text",
+                    "text": f"<tool_response>{tool_result}</tool_response>",
+                }
+            ],
         },
         {"role": "assistant", "content": [{"type": "text", "text": assistant_turn5}]},
     ]
@@ -3366,11 +3387,12 @@ def _build_tooluse_messages_AD(prompt, values_dict):
 def _build_tooluse_messages_TL(prompt, values_dict):
     """Build 5-turn messages list for one TL tool-use training sample."""
     import json
+
     from medvision_bm.sft.sft_prompts_tooluse import (
-        TOOL_DEF,
-        PYTHON_TEMPLATE_TL,
-        COT_THINK_TL_TOOLUSE,
         COT_INSTRUCT_TL_TOOLUSE,
+        COT_THINK_TL_TOOLUSE,
+        PYTHON_TEMPLATE_TL,
+        TOOL_DEF,
     )
 
     code = PYTHON_TEMPLATE_TL.format(
@@ -3390,7 +3412,9 @@ def _build_tooluse_messages_TL(prompt, values_dict):
     think_text = fill_in_template(COT_THINK_TL_TOOLUSE, values_dict)
     tool_result = safe_exec_python(code)
     tool_call_json = json.dumps({"name": "execute_python", "arguments": {"code": code}})
-    assistant_turn3 = f"<think> {think_text} </think><tool_call>{tool_call_json}</tool_call>"
+    assistant_turn3 = (
+        f"<think> {think_text} </think><tool_call>{tool_call_json}</tool_call>"
+    )
     assistant_turn5 = f"<answer> {tool_result} </answer>"
 
     prompt_base = prompt.rsplit("Report the reasoning process", 1)[0].rstrip()
@@ -3405,7 +3429,12 @@ def _build_tooluse_messages_TL(prompt, values_dict):
         {"role": "assistant", "content": [{"type": "text", "text": assistant_turn3}]},
         {
             "role": "tool",
-            "content": [{"type": "text", "text": f"<tool_response>{tool_result}</tool_response>"}],
+            "content": [
+                {
+                    "type": "text",
+                    "text": f"<tool_response>{tool_result}</tool_response>",
+                }
+            ],
         },
         {"role": "assistant", "content": [{"type": "text", "text": assistant_turn5}]},
     ]
@@ -3424,9 +3453,13 @@ def _format_data_AngleDistanceTask_tooluse(
     )
     example["messages"] = _build_tooluse_messages_AD(prompt, values_dict)
     if process_img:
-        example["processed_images"] = img_proccessor_nii2png_save2dataset(example, new_shape_hw)
+        example["processed_images"] = img_proccessor_nii2png_save2dataset(
+            example, new_shape_hw
+        )
     if save_processed_img_to_disk:
-        example["image_file_png"] = img_proccessor_nii2png_save2disk(example, new_shape_hw)
+        example["image_file_png"] = img_proccessor_nii2png_save2disk(
+            example, new_shape_hw
+        )
     return example
 
 
@@ -3443,7 +3476,11 @@ def _format_data_TumorLesionTask_tooluse(
     )
     example["messages"] = _build_tooluse_messages_TL(prompt, values_dict)
     if process_img:
-        example["processed_images"] = img_proccessor_nii2png_save2dataset(example, new_shape_hw)
+        example["processed_images"] = img_proccessor_nii2png_save2dataset(
+            example, new_shape_hw
+        )
     if save_processed_img_to_disk:
-        example["image_file_png"] = img_proccessor_nii2png_save2disk(example, new_shape_hw)
+        example["image_file_png"] = img_proccessor_nii2png_save2disk(
+            example, new_shape_hw
+        )
     return example

@@ -32,7 +32,7 @@ top_k=20
 # stop string for generate_until tasks. Thinking models put blank lines between CoT steps, so
 # that "\n\n" stop halts generation right after <step-1-answer>, before <answer> is produced.
 # Passing an explicit --stop_strings (a) gives a clean terminator at the end of the answer and
-# (b) signals the wrapper to drop the auto-injected "\n\n" stop (see vllm_qwen3vl.py). 
+# (b) signals the wrapper to drop the auto-injected "\n\n" stop (see vllm_qwen3vl.py).
 stop_string='</answer>'
 
 # Other configs (safe to leave as is)
@@ -91,20 +91,20 @@ export MedVision_PLANNER_VERSION='1.0.0'
 # --skip_update_status \
 # ---
 python -m medvision_bm.benchmark.eval__qwen3_vl \
---lmmseval_module vllm_qwen3vl \
---model_hf_id $model_hf_id \
---model_name $model_name \
---results_dir $result_dir \
---data_dir $data_dir \
---tasks_list_json_path $tasks_list_json_path \
---task_status_json_path $task_status_json_path \
---batch_size_per_gpu $batch_size_per_gpu \
---gpu_memory_utilization $gpu_memory_utilization \
---sample_limit $sample_limit \
---temperature $temperature \
---top_p $top_p \
---top_k $top_k \
---stop_strings "$stop_string"
+    --lmmseval_module vllm_qwen3vl \
+    --model_hf_id $model_hf_id \
+    --model_name $model_name \
+    --results_dir $result_dir \
+    --data_dir $data_dir \
+    --tasks_list_json_path $tasks_list_json_path \
+    --task_status_json_path $task_status_json_path \
+    --batch_size_per_gpu $batch_size_per_gpu \
+    --gpu_memory_utilization $gpu_memory_utilization \
+    --sample_limit $sample_limit \
+    --temperature $temperature \
+    --top_p $top_p \
+    --top_k $top_k \
+    --stop_strings "$stop_string"
 # ---
 
 conda deactivate

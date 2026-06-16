@@ -159,7 +159,9 @@ def process_model_dir(model_dir, task_folder, base_fig_dir, limit_per_jsonl):
                 print(f"    WARNING: image not found: {img_path}")
                 continue
             try:
-                pixel_sizes_from_nii, img_2d = _load_nifti_2d(img_path, slice_dim, slice_idx)
+                pixel_sizes_from_nii, img_2d = _load_nifti_2d(
+                    img_path, slice_dim, slice_idx
+                )
                 img_2d = normalize_img(doc, img_2d)
             except Exception as e:
                 print(f"    WARNING: failed to load image {img_path}: {e}")
@@ -222,16 +224,16 @@ def main():
     if args.task_dir is not None:
         task_folder = os.path.basename(args.task_dir.rstrip("/"))
         model_dirs = sorted(
-            d
-            for d in glob.glob(os.path.join(args.task_dir, "*/"))
-            if os.path.isdir(d)
+            d for d in glob.glob(os.path.join(args.task_dir, "*/")) if os.path.isdir(d)
         )
         if not model_dirs:
             print(f"No model directories found in {args.task_dir}")
             return
         for model_dir in model_dirs:
             print(f"Model: {os.path.basename(model_dir.rstrip('/'))}")
-            process_model_dir(model_dir, task_folder, args.fig_dir, args.limit_per_jsonl)
+            process_model_dir(
+                model_dir, task_folder, args.fig_dir, args.limit_per_jsonl
+            )
     else:
         model_dir = args.model_dir.rstrip("/")
         task_folder = os.path.basename(os.path.dirname(model_dir))

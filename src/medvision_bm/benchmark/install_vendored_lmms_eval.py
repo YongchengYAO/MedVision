@@ -1,7 +1,7 @@
 import argparse
 
 from medvision_bm.utils import install_vendored_lmms_eval
-    
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -27,6 +27,7 @@ def main() -> None:
         install_vendored_lmms_eval(proj_dependency=opt_deps)
     else:
         install_vendored_lmms_eval()
+
 
 if __name__ == "__main__":
     main()

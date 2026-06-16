@@ -37,7 +37,7 @@ if [ -n "$LIMIT_PER_JSONL" ]; then
 fi
 
 INPUT_ARGS=()
-[ -n "$TASK_DIR"  ] && INPUT_ARGS+=(--task_dir  "$TASK_DIR")
+[ -n "$TASK_DIR" ] && INPUT_ARGS+=(--task_dir "$TASK_DIR")
 [ -n "$MODEL_DIR" ] && INPUT_ARGS+=(--model_dir "$MODEL_DIR")
 
 python "$SCRIPT_DIR/viz_detection_boxes.py" \

@@ -31,10 +31,10 @@ import numpy as np
 from medvision_bm.utils.configs import AD_NEAR_ZERO_GT_THRESHOLD
 from medvision_bm.utils.tool_execution import safe_exec_python
 
-
 # ---------------------------------------------------------------------------
 # Metric
 # ---------------------------------------------------------------------------
+
 
 def _cal_equation_MRE(model_val, python_val):
     return float(abs(model_val - python_val) / (abs(python_val) + 1e-15))
@@ -45,21 +45,21 @@ def _cal_equation_MRE(model_val, python_val):
 # ---------------------------------------------------------------------------
 
 _BINOPS = {
-    ast.Add:  _op.add,
-    ast.Sub:  _op.sub,
+    ast.Add: _op.add,
+    ast.Sub: _op.sub,
     ast.Mult: _op.mul,
-    ast.Div:  _op.truediv,
-    ast.Pow:  _op.pow,
+    ast.Div: _op.truediv,
+    ast.Pow: _op.pow,
 }
 
 _MATH_FUNCS = {
-    "sqrt":    _math.sqrt,
-    "acos":    _math.acos,
-    "asin":    _math.asin,
-    "atan":    _math.atan,
-    "atan2":   _math.atan2,
+    "sqrt": _math.sqrt,
+    "acos": _math.acos,
+    "asin": _math.asin,
+    "atan": _math.atan,
+    "atan2": _math.atan2,
     "degrees": _math.degrees,
-    "abs":     abs,
+    "abs": abs,
 }
 
 
@@ -73,16 +73,16 @@ def _eval_node(node):
         if isinstance(node.op, ast.UAdd):
             return val
     if isinstance(node, ast.BinOp):
-        left  = _eval_node(node.left)
+        left = _eval_node(node.left)
         right = _eval_node(node.right)
         fn = _BINOPS.get(type(node.op))
         if fn is not None:
             return fn(left, right)
     if isinstance(node, ast.Call):
         if isinstance(node.func, ast.Attribute):
-            fn_name = node.func.attr   # math.sqrt -> "sqrt"
+            fn_name = node.func.attr  # math.sqrt -> "sqrt"
         elif isinstance(node.func, ast.Name):
-            fn_name = node.func.id     # abs -> "abs"
+            fn_name = node.func.id  # abs -> "abs"
         else:
             raise ValueError(f"Unsupported call node: {ast.dump(node)}")
         fn = _MATH_FUNCS.get(fn_name)
@@ -104,11 +104,11 @@ def _compute_expr(py_expr):
 # ---------------------------------------------------------------------------
 
 _FUNC_MAP = {
-    "arccos":  "math.acos",
-    "arcsin":  "math.asin",
+    "arccos": "math.acos",
+    "arcsin": "math.asin",
     "arctan2": "math.atan2",
-    "arctan":  "math.atan",
-    "sqrt":    "math.sqrt",
+    "arctan": "math.atan",
+    "sqrt": "math.sqrt",
 }
 
 
@@ -165,7 +165,7 @@ def _to_python_expr(raw, wrap_degrees=False):
 # Step block extraction
 # ---------------------------------------------------------------------------
 
-_NNR  = r"\d+(?:\.\d+)?"
+_NNR = r"\d+(?:\.\d+)?"
 _NNRG = rf"({_NNR})"
 
 
@@ -189,6 +189,7 @@ def _extract_step_answer(solution, k):
 # Tooluse helpers
 # ---------------------------------------------------------------------------
 
+
 def _extract_tool_call_code(solution):
     m = re.search(r"<tool_call>(.*?)</tool_call>", solution, re.DOTALL)
     if not m:
@@ -211,7 +212,7 @@ def _exec_tool_and_parse(solution):
     m_ans = re.search(r"<answer>(.*?)</answer>", solution, re.DOTALL)
     if not m_ans:
         return None, None
-    py_nums  = re.findall(r"\d+(?:\.\d+)?", stdout)
+    py_nums = re.findall(r"\d+(?:\.\d+)?", stdout)
     ans_nums = re.findall(r"\d+(?:\.\d+)?", m_ans.group(1))
     if not py_nums or not ans_nums:
         return None, None
@@ -225,17 +226,18 @@ def _exec_tool_and_parse(solution):
 # Per-sample analyzers
 # ---------------------------------------------------------------------------
 
+
 def analyze_distance_sample(solution):
     """Evaluate the distance equation in step-3-reasoning vs step-3-answer."""
     reasoning = _extract_reasoning_block(solution, 3)
     model_val = _extract_step_answer(solution, 3)
 
     result = {
-        "metric_type":         "distance",
-        "step3_model_answer":  model_val,
-        "step3_raw_expr":      None,
-        "step3_python_eval":   None,
-        "step3_equation_MRE":  None,
+        "metric_type": "distance",
+        "step3_model_answer": model_val,
+        "step3_raw_expr": None,
+        "step3_python_eval": None,
+        "step3_equation_MRE": None,
     }
     if reasoning is None:
         return result
@@ -246,14 +248,14 @@ def analyze_distance_sample(solution):
         py_val, tu_val = _exec_tool_and_parse(solution)
         if py_val is not None and tu_val is not None:
             result["step3_model_answer"] = tu_val
-            result["step3_python_eval"]  = py_val
+            result["step3_python_eval"] = py_val
             result["step3_equation_MRE"] = _cal_equation_MRE(tu_val, py_val)
         return result
 
     try:
         py_expr = _to_python_expr(raw)
-        py_val  = _compute_expr(py_expr)
-        result["step3_python_eval"]  = float(py_val)
+        py_val = _compute_expr(py_expr)
+        result["step3_python_eval"] = float(py_val)
         result["step3_equation_MRE"] = _cal_equation_MRE(model_val, py_val)
     except Exception as e:
         result["step3_eval_error"] = str(e)
@@ -266,11 +268,11 @@ def analyze_angle_sample(solution):
     model_val = _extract_step_answer(solution, 3)
 
     result = {
-        "metric_type":         "angle",
-        "step3_model_answer":  model_val,
-        "step3_raw_expr":      None,
-        "step3_python_eval":   None,
-        "step3_equation_MRE":  None,
+        "metric_type": "angle",
+        "step3_model_answer": model_val,
+        "step3_raw_expr": None,
+        "step3_python_eval": None,
+        "step3_equation_MRE": None,
     }
     if reasoning is None:
         return result
@@ -281,14 +283,14 @@ def analyze_angle_sample(solution):
         py_val, tu_val = _exec_tool_and_parse(solution)
         if py_val is not None and tu_val is not None:
             result["step3_model_answer"] = tu_val
-            result["step3_python_eval"]  = py_val
+            result["step3_python_eval"] = py_val
             result["step3_equation_MRE"] = _cal_equation_MRE(tu_val, py_val)
         return result
 
     try:
         py_expr = _to_python_expr(raw, wrap_degrees=True)
-        py_val  = _compute_expr(py_expr)
-        result["step3_python_eval"]  = float(py_val)
+        py_val = _compute_expr(py_expr)
+        result["step3_python_eval"] = float(py_val)
         result["step3_equation_MRE"] = _cal_equation_MRE(model_val, py_val)
     except Exception as e:
         result["step3_eval_error"] = str(e)
@@ -299,9 +301,10 @@ def analyze_angle_sample(solution):
 # Process a single JSONL file
 # ---------------------------------------------------------------------------
 
+
 def process_jsonl(jsonl_path, output_suffix):
     jsonl_path = Path(jsonl_path)
-    out_path   = jsonl_path.with_name(jsonl_path.stem + output_suffix + ".jsonl")
+    out_path = jsonl_path.with_name(jsonl_path.stem + output_suffix + ".jsonl")
 
     n_total = n_distance = n_angle = n_parse_fail = 0
     results = []
@@ -314,21 +317,21 @@ def process_jsonl(jsonl_path, output_suffix):
             sample = json.loads(line)
             n_total += 1
 
-            doc      = sample.get("doc", {})
-            doc_id   = sample.get("doc_id")
+            doc = sample.get("doc", {})
+            doc_id = sample.get("doc_id")
             solution = sample.get("resps", [[""]])[0]
             if isinstance(solution, list):
                 solution = solution[0] if solution else ""
 
-            bp          = doc.get("biometric_profile", {})
+            bp = doc.get("biometric_profile", {})
             metric_type = bp.get("metric_type", "")
 
             record = {
-                "doc_id":      doc_id,
-                "dataset":     doc.get("dataset_name"),
+                "doc_id": doc_id,
+                "dataset": doc.get("dataset_name"),
                 "metric_type": metric_type,
-                "metric_key":  bp.get("metric_key"),
-                "image_file":  doc.get("image_file"),
+                "metric_key": bp.get("metric_key"),
+                "image_file": doc.get("image_file"),
             }
 
             try:
@@ -352,8 +355,11 @@ def process_jsonl(jsonl_path, output_suffix):
             f.write(json.dumps(r) + "\n")
 
     def _stats(key, mtype):
-        vals = [r[key] for r in results
-                if r.get("metric_type") == mtype and r.get(key) is not None]
+        vals = [
+            r[key]
+            for r in results
+            if r.get("metric_type") == mtype and r.get(key) is not None
+        ]
         if not vals:
             return None, None, 0
         return float(np.mean(vals)), float(np.std(vals)), len(vals)
@@ -365,16 +371,18 @@ def process_jsonl(jsonl_path, output_suffix):
     )
     for key, label, mtype in [
         ("step3_equation_MRE", "Step3 equation MRE (distance)", "distance"),
-        ("step3_equation_MRE", "Step3 equation MRE (angle)",    "angle"),
+        ("step3_equation_MRE", "Step3 equation MRE (angle)", "angle"),
     ]:
         n_mtype = n_distance if mtype == "distance" else n_angle
         if n_mtype == 0:
             continue
         mean, sd, n = _stats(key, mtype)
-        fail     = n_mtype - n
+        fail = n_mtype - n
         mean_str = f"{mean:.4f}" if mean is not None else "nan"
-        sd_str   = f"{sd:.4f}"   if sd   is not None else "nan"
-        print(f"  [{mtype}] {label}: mean={mean_str} ± sd={sd_str} (n={n}, fail={fail})")
+        sd_str = f"{sd:.4f}" if sd is not None else "nan"
+        print(
+            f"  [{mtype}] {label}: mean={mean_str} ± sd={sd_str} (n={n}, fail={fail})"
+        )
     print(f"  Output: {out_path}")
     return results
 
@@ -382,6 +390,7 @@ def process_jsonl(jsonl_path, output_suffix):
 # ---------------------------------------------------------------------------
 # Path discovery helpers
 # ---------------------------------------------------------------------------
+
 
 def _collect_from_model_dir(model_dir):
     paths = []
@@ -435,7 +444,12 @@ def _aggregate_by_label_AD(all_results):
         if label is None:
             continue
         if label not in grouped:
-            grouped[label] = {"metric_type": r.get("metric_type"), "eq_mre": [], "n_samples": 0, "n_ignored": 0}
+            grouped[label] = {
+                "metric_type": r.get("metric_type"),
+                "eq_mre": [],
+                "n_samples": 0,
+                "n_ignored": 0,
+            }
         g = grouped[label]
         g["n_samples"] += 1
         v = r.get("step3_equation_MRE")
@@ -468,7 +482,11 @@ def _process_model_dir(model_dir, output_suffix):
     if not parsed_dir.is_dir():
         print(f"[skip] no parsed/ dir: {model_dir}")
         return None
-    jsonl_paths = [p for p in sorted(parsed_dir.glob("*.jsonl")) if "_eq_acc" not in p.stem and "_proc_acc" not in p.stem]
+    jsonl_paths = [
+        p
+        for p in sorted(parsed_dir.glob("*.jsonl"))
+        if "_eq_acc" not in p.stem and "_proc_acc" not in p.stem
+    ]
     if not jsonl_paths:
         print(f"[skip] no JSONL files in: {parsed_dir}")
         return None
@@ -490,7 +508,7 @@ def _process_model_dir(model_dir, output_suffix):
 def _print_model_summary_AD(model_dir, summary):
     """Write a weighted-average + group + label-table summary TXT for a single model."""
     model_dir = Path(model_dir)
-    out_path  = model_dir / SUMMARY_EQ_ACC_AD_MODEL_FILENAME
+    out_path = model_dir / SUMMARY_EQ_ACC_AD_MODEL_FILENAME
     lines = []
 
     def _p(text):
@@ -509,22 +527,31 @@ def _print_model_summary_AD(model_dir, summary):
         groups[_group_classify_AD(label)].append(lm)
         v = lm.get("step3_avg_equation_MRE", float("nan"))
         if v is not None and not np.isnan(v):
-            wsum += v * n_valid; wcount += n_valid
+            wsum += v * n_valid
+            wcount += n_valid
 
     overall = wsum / wcount if wcount > 0 else float("nan")
-    _p(f"Weighted Average → Step3_eq_MRE: {overall:.4f} (Valid: {wcount}, Total: {total_n})")
+    _p(
+        f"Weighted Average → Step3_eq_MRE: {overall:.4f} (Valid: {wcount}, Total: {total_n})"
+    )
 
     _p("\nGroup averages:")
     _p(f"{'Group':<15} | {'Step3_eq_MRE':<14} | {'Valid':<8} | {'Samples':<8}")
     _p("-" * 53)
     for gname in ("FeTA-Distance", "Ceph-Angle", "Ceph-Distance"):
         ga = _calc_group_avg_AD(groups[gname])
-        _p(f"{gname:<15} | {ga['step3_avg_equation_MRE']:<14.4f} | {ga.get('n_valid', 0):<8} | {ga['n_samples']:<8}")
+        _p(
+            f"{gname:<15} | {ga['step3_avg_equation_MRE']:<14.4f} | {ga.get('n_valid', 0):<8} | {ga['n_samples']:<8}"
+        )
 
     _p("\nLabel-specific metrics:")
-    _p(f"{'Label':<50} | {'Type':<8} | {'Step3_eq_MRE':<14} | {'Valid':<6} | {'Ignored':<7} | {'Samples':<8}")
+    _p(
+        f"{'Label':<50} | {'Type':<8} | {'Step3_eq_MRE':<14} | {'Valid':<6} | {'Ignored':<7} | {'Samples':<8}"
+    )
     _p("-" * 112)
-    for label, lm in sorted(summary.items(), key=lambda x: x[1].get("n_samples", 0), reverse=True):
+    for label, lm in sorted(
+        summary.items(), key=lambda x: x[1].get("n_samples", 0), reverse=True
+    ):
         _p(
             f"{label:<50} | "
             f"{lm.get('metric_type', ''):<8} | "
@@ -589,7 +616,12 @@ def _print_cross_model_summaries_AD(task_dir):
 
         total_n = 0
         wsum, wcount = 0.0, 0
-        groups = {"FeTA-Distance": [], "Ceph-Angle": [], "Ceph-Distance": [], "Other": []}
+        groups = {
+            "FeTA-Distance": [],
+            "Ceph-Angle": [],
+            "Ceph-Distance": [],
+            "Other": [],
+        }
 
         for label, lm in metrics.items():
             n_valid = lm.get("n_valid", 0)
@@ -603,19 +635,27 @@ def _print_cross_model_summaries_AD(task_dir):
                 wcount += n_valid
 
         overall = wsum / wcount if wcount > 0 else float("nan")
-        _p(f"Weighted Average → Step3_eq_MRE: {overall:.4f} (Valid: {wcount}, Total: {total_n})")
+        _p(
+            f"Weighted Average → Step3_eq_MRE: {overall:.4f} (Valid: {wcount}, Total: {total_n})"
+        )
 
         _p("\nGroup averages:")
         _p(f"{'Group':<15} | {'Step3_eq_MRE':<14} | {'Valid':<8} | {'Samples':<8}")
         _p("-" * 53)
         for gname in ("FeTA-Distance", "Ceph-Angle", "Ceph-Distance"):
             ga = _calc_group_avg_AD(groups[gname])
-            _p(f"{gname:<15} | {ga['step3_avg_equation_MRE']:<14.4f} | {ga.get('n_valid', 0):<8} | {ga['n_samples']:<8}")
+            _p(
+                f"{gname:<15} | {ga['step3_avg_equation_MRE']:<14.4f} | {ga.get('n_valid', 0):<8} | {ga['n_samples']:<8}"
+            )
 
         _p("\nLabel-specific metrics:")
-        _p(f"{'Label':<50} | {'Type':<8} | {'Step3_eq_MRE':<14} | {'Valid':<6} | {'Ignored':<7} | {'Samples':<8}")
+        _p(
+            f"{'Label':<50} | {'Type':<8} | {'Step3_eq_MRE':<14} | {'Valid':<6} | {'Ignored':<7} | {'Samples':<8}"
+        )
         _p("-" * 112)
-        for label, lm in sorted(metrics.items(), key=lambda x: x[1].get("n_samples", 0), reverse=True):
+        for label, lm in sorted(
+            metrics.items(), key=lambda x: x[1].get("n_samples", 0), reverse=True
+        ):
             _p(
                 f"{label:<50} | "
                 f"{lm.get('metric_type', ''):<8} | "
@@ -635,24 +675,30 @@ def _print_cross_model_summaries_AD(task_dir):
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Analyze equation computing accuracy for A/D task JSONL files."
     )
     parser.add_argument(
-        "--task_dir", default=None,
+        "--task_dir",
+        default=None,
         help="Task results directory; each immediate subdir is a model folder with parsed/ subdir.",
     )
     parser.add_argument(
-        "--model_dir", default=None,
+        "--model_dir",
+        default=None,
         help="Single model directory containing a parsed/ subfolder with JSONL files.",
     )
     parser.add_argument(
-        "--jsonl", nargs="+", default=None,
+        "--jsonl",
+        nargs="+",
+        default=None,
         help="One or more explicit JSONL file paths (or glob patterns) to analyze.",
     )
     parser.add_argument(
-        "--output_suffix", default="_eq_acc",
+        "--output_suffix",
+        default="_eq_acc",
         help="Suffix appended before .jsonl in the output filename (default: _eq_acc).",
     )
     args = parser.parse_args()
@@ -674,7 +720,9 @@ def main():
 
     if args.task_dir:
         model_dirs = sorted(d for d in Path(args.task_dir).iterdir() if d.is_dir())
-        print(f"[Info] Discovered {len(model_dirs)} model dir(s) under: {args.task_dir}")
+        print(
+            f"[Info] Discovered {len(model_dirs)} model dir(s) under: {args.task_dir}"
+        )
         for model_dir in model_dirs:
             _process_model_dir(model_dir, args.output_suffix)
         _print_cross_model_summaries_AD(args.task_dir)

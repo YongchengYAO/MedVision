@@ -1,15 +1,16 @@
-import os
-import yaml
 import argparse
 import math
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
+import os
 from pathlib import Path
 
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import yaml
+
 from medvision_bm.utils.configs import (
-    SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_MEAN_METRICS,
     SUMMARY_FILENAME_PER_BOX_IMG_RATIO_FINELABEL_DETECT_MEAN_METRICS,
+    SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_MEAN_METRICS,
 )
 
 SAMPLE_SIZE_THRESHOLD_LABEL = (
@@ -21,8 +22,12 @@ SAMPLE_SIZE_THRESHOLD_BOX = (
 
 
 def plot_label_composition_and_metrics(
-    all_data, model_name_display_map, figsize=(22, 26), min_sample_size=50,
-    output_dir=None, output_filename=None,
+    all_data,
+    model_name_display_map,
+    figsize=(22, 26),
+    min_sample_size=50,
+    output_dir=None,
+    output_filename=None,
 ):
     """
     Plot the composition of sample size and metrics for each label across all models.
@@ -94,8 +99,26 @@ def plot_label_composition_and_metrics(
     ]
 
     markers = [
-        "o", "s", "D", "p", "d", "^", "v", "<", ">", "X",
-        "P", "H", "*", "h", "8", "1", "2", "3", "4", "x",
+        "o",
+        "s",
+        "D",
+        "p",
+        "d",
+        "^",
+        "v",
+        "<",
+        ">",
+        "X",
+        "P",
+        "H",
+        "*",
+        "h",
+        "8",
+        "1",
+        "2",
+        "3",
+        "4",
+        "x",
     ]
 
     for metric_idx, metric in enumerate(metrics_to_plot):
@@ -114,7 +137,10 @@ def plot_label_composition_and_metrics(
                 index="label", columns="box_img_group", values=metric, fill_value=0
             )
             model_sample_pivot = model_data.pivot_table(
-                index="label", columns="box_img_group", values="sample_size", fill_value=0,
+                index="label",
+                columns="box_img_group",
+                values="sample_size",
+                fill_value=0,
             )
 
             model_pivot = model_pivot.reindex(label_order, fill_value=0)
@@ -132,7 +158,9 @@ def plot_label_composition_and_metrics(
 
                     mask = (values > 0) & (sample_sizes >= SAMPLE_SIZE_THRESHOLD_BOX)
                     if np.any(mask):
-                        face_color = color if marker in ["1", "2", "3", "4", "x"] else "none"
+                        face_color = (
+                            color if marker in ["1", "2", "3", "4", "x"] else "none"
+                        )
                         ax.scatter(
                             bar_positions[mask],
                             values[mask],
@@ -159,7 +187,9 @@ def plot_label_composition_and_metrics(
     for i in range(0, len(bar_positions), 2):
         start_pos = bar_positions[i] - section_width / 2
         end_pos = start_pos + section_width
-        ax_sample.axvspan(start_pos, end_pos, facecolor="lightgrey", alpha=0.2, zorder=0)
+        ax_sample.axvspan(
+            start_pos, end_pos, facecolor="lightgrey", alpha=0.2, zorder=0
+        )
 
     left = np.zeros(len(pivot_df))
     for i, box_group in enumerate(box_groups):
@@ -184,8 +214,15 @@ def plot_label_composition_and_metrics(
         if any(
             term in text
             for term in [
-                "tumor", "cancer", "cyst", "stroke", "lesion",
-                "resection cavity", "edema", "metastatic", "vestibular schwannoma",
+                "tumor",
+                "cancer",
+                "cyst",
+                "stroke",
+                "lesion",
+                "resection cavity",
+                "edema",
+                "metastatic",
+                "vestibular schwannoma",
             ]
         ):
             tick.set_color("#770087")
@@ -262,7 +299,9 @@ def main(in_dir, out_dir, model_name_display_map, folders, use_label_level=True)
         csv_filename = SUMMARY_FILENAME_PER_BOX_IMG_RATIO_FINELABEL_DETECT_MEAN_METRICS
         fig_filename = "fig_detection__metrics-boxSize__labelLevel.png"
     else:
-        csv_filename = SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_MEAN_METRICS
+        csv_filename = (
+            SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_MEAN_METRICS
+        )
         fig_filename = "fig_detection__metrics-boxSize__anatomyLevel.png"
 
     all_data = {}
@@ -328,4 +367,10 @@ if __name__ == "__main__":
     model_name_display_map = cfg["model_display_name"]
     folders = list(model_name_display_map.keys())
 
-    main(args.in_dir, args.out_dir, model_name_display_map, folders, use_label_level=use_label_level)
+    main(
+        args.in_dir,
+        args.out_dir,
+        model_name_display_map,
+        folders,
+        use_label_level=use_label_level,
+    )

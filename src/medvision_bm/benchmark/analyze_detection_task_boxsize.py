@@ -49,7 +49,14 @@ def _find_boxcoordinate_jsonl_files(model_dir):
 
 def _group_by_boxImgRatio(data):
     result = defaultdict(
-        lambda: {"mae": [], "iou": [], "f1": [], "precision": [], "recall": [], "success": []}
+        lambda: {
+            "mae": [],
+            "iou": [],
+            "f1": [],
+            "precision": [],
+            "recall": [],
+            "success": [],
+        }
     )
     for box_img_ratio, mae, iou, f1, precision, recall, success in data:
         label = "Box/Image >= 90%"
@@ -192,7 +199,12 @@ def calculate_summary_metrics_per_boxImgRatio(grouped_data):
         count_total = len(f1s)
 
         for mae, iou, f1, prec, rec, success in zip(
-            data["mae"], data["iou"], f1s, data["precision"], data["recall"], data["success"]
+            data["mae"],
+            data["iou"],
+            f1s,
+            data["precision"],
+            data["recall"],
+            data["success"],
         ):
             metrics_dict = {
                 "avgMAE": {"MAE": mae, "success": success},
@@ -271,7 +283,9 @@ def process_jsonl_file(jsonl_path, limit=None):
             )
             label_name = labels_map.get(str(label))
             if label_name:
-                results.append((box_img_ratio, mae, iou, f1, precision, recall, success))
+                results.append(
+                    (box_img_ratio, mae, iou, f1, precision, recall, success)
+                )
 
             count += 1
             if limit is not None and count >= limit:
@@ -372,7 +386,9 @@ def main(**kwargs):
             f"Using task_dir: {task_dir}\nModel directories within this folder will be looped over."
         )
         _process_task_directory(
-            task_dir, limit, processes=processes,
+            task_dir,
+            limit,
+            processes=processes,
             skip_model_wo_parsed_files=skip_model_wo_parsed_files,
         )
     elif model_dir is not None:

@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 
+from medvision_bm.benchmark.eval_utils import parse_sample_indices
 from medvision_bm.utils import (
     ensure_hf_hub_installed,
     install_medvision_ds,
@@ -17,8 +18,6 @@ from medvision_bm.utils import (
     setup_env_vllm,
     update_task_status,
 )
-
-from medvision_bm.benchmark.eval_utils import parse_sample_indices
 
 
 def install_transformers_for_qwen3vl(transformers_version="4.57.0"):
@@ -87,15 +86,23 @@ def resolve_qwen3vl_hf_overrides(model_hf_id: str) -> dict:
             vision_start_token_id = getattr(config, "vision_start_token_id")
 
         if vision_start_token_id is None:
-            tokenizer = AutoTokenizer.from_pretrained(model_hf_id, trust_remote_code=True)
+            tokenizer = AutoTokenizer.from_pretrained(
+                model_hf_id, trust_remote_code=True
+            )
             # Common vision start tokens used by Qwen VL-style tokenizers.
             for token in ("<|vision_start|>", "<|vision_start_token|>"):
                 token_id = tokenizer.convert_tokens_to_ids(token)
-                if isinstance(token_id, int) and token_id >= 0 and token_id != tokenizer.unk_token_id:
+                if (
+                    isinstance(token_id, int)
+                    and token_id >= 0
+                    and token_id != tokenizer.unk_token_id
+                ):
                     vision_start_token_id = token_id
                     break
     except Exception as e:
-        print(f"[Warning] Failed to auto-resolve vision_start_token_id for {model_hf_id}: {e}")
+        print(
+            f"[Warning] Failed to auto-resolve vision_start_token_id for {model_hf_id}: {e}"
+        )
 
     if vision_start_token_id is None:
         # Qwen VL default; used only as a fallback if config/tokenizer probing fails.

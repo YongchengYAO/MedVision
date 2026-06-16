@@ -16,8 +16,8 @@ Display convention:
 """
 
 import argparse
-import gzip
 import glob
+import gzip
 import json
 import os
 import re
@@ -41,7 +41,12 @@ def _build_removed_set(json_path):
     with open(json_path) as f:
         entries = json.load(f)
     return frozenset(
-        (e["image_file"], _dim_map[e["slice_dim"]], int(e["slice_idx"]), int(e["task_ID"]))
+        (
+            e["image_file"],
+            _dim_map[e["slice_dim"]],
+            int(e["slice_idx"]),
+            int(e["task_ID"]),
+        )
         for e in entries
     )
 
@@ -50,7 +55,8 @@ def _relative_image_file(full_path, dataset_name):
     """Extract the relative image file path (after the dataset-name component) from an absolute path."""
     marker = f"/{dataset_name}/"
     idx = full_path.find(marker)
-    return full_path[idx + len(marker):] if idx >= 0 else Path(full_path).name
+    return full_path[idx + len(marker) :] if idx >= 0 else Path(full_path).name
+
 
 def _extract_coords_from_tag(text, n):
     """Extract the last n floats in [0, 1] from step-k-answer tag content.
@@ -126,10 +132,10 @@ def load_nifti_slice(nii_path, slice_dim, slice_idx, doc):
 
 def _load_json_gz(path):
     """Load JSON or gzip-compressed JSON file."""
-    if str(path).endswith('.gz'):
-        with gzip.open(path, 'rt', encoding='utf-8') as f:
+    if str(path).endswith(".gz"):
+        with gzip.open(path, "rt", encoding="utf-8") as f:
             return json.load(f)
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -141,21 +147,23 @@ def _extract_gt_axis_pts(doc):
     Reads the landmark JSON referenced by doc['landmark_file'] and projects P1–P4
     3D voxel coordinates onto the 2D slice plane.
     """
-    lm_file = doc.get('landmark_file')
+    lm_file = doc.get("landmark_file")
     if not lm_file or not os.path.exists(lm_file):
         return None, None
     try:
         lm_data = _load_json_gz(lm_file)
-        sd = doc['slice_dim']
-        si = doc['slice_idx']
-        key = {0: 'slice_landmarks_x', 1: 'slice_landmarks_y', 2: 'slice_landmarks_z'}[sd]
-        matched = [e for e in lm_data[key] if e.get('slice_idx') == si]
+        sd = doc["slice_dim"]
+        si = doc["slice_idx"]
+        key = {0: "slice_landmarks_x", 1: "slice_landmarks_y", 2: "slice_landmarks_z"}[
+            sd
+        ]
+        matched = [e for e in lm_data[key] if e.get("slice_idx") == si]
         if not matched:
             return None, None
 
         landmarks = {}
         for entry in matched:
-            lms = entry.get('landmarks', {})
+            lms = entry.get("landmarks", {})
             if isinstance(lms, list):
                 lms = lms[0]
             landmarks.update(lms)
@@ -169,19 +177,26 @@ def _extract_gt_axis_pts(doc):
             return (c3d[0], c3d[1])
 
         pts = {}
-        for name in ('P1', 'P2', 'P3', 'P4'):
+        for name in ("P1", "P2", "P3", "P4"):
             c3d = landmarks.get(name)
             if c3d is None:
                 return None, None
             pts[name] = _proj(c3d)
 
-        return [pts['P1'], pts['P2']], [pts['P3'], pts['P4']]
+        return [pts["P1"], pts["P2"]], [pts["P3"], pts["P4"]]
     except Exception:
         return None, None
 
 
-def process_model_dir(model_dir, task_folder, base_fig_dir, limit_per_jsonl, show_coords=False,
-                      removed_samples_dir=None, removed_samples_filename=None):
+def process_model_dir(
+    model_dir,
+    task_folder,
+    base_fig_dir,
+    limit_per_jsonl,
+    show_coords=False,
+    removed_samples_dir=None,
+    removed_samples_filename=None,
+):
     model_name = os.path.basename(model_dir.rstrip("/"))
     out_dir = os.path.join(base_fig_dir, task_folder, model_name)
     os.makedirs(out_dir, exist_ok=True)
@@ -233,10 +248,17 @@ def process_model_dir(model_dir, task_folder, base_fig_dir, limit_per_jsonl, sho
                 if dataset_name not in _removed_cache:
                     fn = removed_samples_filename
                     p = os.path.join(removed_samples_dir, dataset_name, fn)
-                    _removed_cache[dataset_name] = _build_removed_set(p) if os.path.exists(p) else None
+                    _removed_cache[dataset_name] = (
+                        _build_removed_set(p) if os.path.exists(p) else None
+                    )
                 removed_set = _removed_cache.get(dataset_name)
                 if removed_set is not None:
-                    _key = (_relative_image_file(img_path, dataset_name), slice_dim, slice_idx, int(task_id))
+                    _key = (
+                        _relative_image_file(img_path, dataset_name),
+                        slice_dim,
+                        slice_idx,
+                        int(task_id),
+                    )
                     if _key in removed_set:
                         continue
 
@@ -329,7 +351,7 @@ def main():
         type=str,
         default=None,
         help="Root directory containing per-dataset removed_samples JSON files "
-             "(e.g. .../Data/Datasets). Matching samples are skipped.",
+        "(e.g. .../Data/Datasets). Matching samples are skipped.",
     )
     parser.add_argument(
         "--removed_samples_filename",
@@ -345,9 +367,7 @@ def main():
     if args.task_dir is not None:
         task_folder = os.path.basename(args.task_dir.rstrip("/"))
         model_dirs = sorted(
-            d
-            for d in glob.glob(os.path.join(args.task_dir, "*/"))
-            if os.path.isdir(d)
+            d for d in glob.glob(os.path.join(args.task_dir, "*/")) if os.path.isdir(d)
         )
         if not model_dirs:
             print(f"No model directories found in {args.task_dir}")
@@ -355,7 +375,11 @@ def main():
         for model_dir in model_dirs:
             print(f"Model: {os.path.basename(model_dir.rstrip('/'))}")
             process_model_dir(
-                model_dir, task_folder, args.fig_dir, args.limit_per_jsonl, args.show_coords,
+                model_dir,
+                task_folder,
+                args.fig_dir,
+                args.limit_per_jsonl,
+                args.show_coords,
                 removed_samples_dir=args.removed_samples_dir,
                 removed_samples_filename=args.removed_samples_filename,
             )
@@ -365,7 +389,11 @@ def main():
         task_folder = os.path.basename(os.path.dirname(model_dir))
         print(f"Model: {os.path.basename(model_dir)}")
         process_model_dir(
-            model_dir, task_folder, args.fig_dir, args.limit_per_jsonl, args.show_coords,
+            model_dir,
+            task_folder,
+            args.fig_dir,
+            args.limit_per_jsonl,
+            args.show_coords,
             removed_samples_dir=args.removed_samples_dir,
             removed_samples_filename=args.removed_samples_filename,
         )

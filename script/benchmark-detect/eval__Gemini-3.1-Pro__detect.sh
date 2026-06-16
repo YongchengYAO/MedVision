@@ -29,7 +29,6 @@ api_provider="openrouter"
 google_model_code="google/gemini-3.1-pro-preview"
 # ---
 
-
 # API key check + sanitization (pod-injected env vars can carry a trailing newline,
 # which breaks HTTP auth headers)
 if [ "${api_provider}" = "google" ]; then
@@ -47,7 +46,6 @@ if [ -z "${!api_key_var:-}" ]; then
 fi
 export "${api_key_var}"="$(printf '%s' "${!api_key_var}" | tr -d '\n')"
 
-
 # Other configs (safe to leave as is)
 task_tag="MedVision-detect-CoT"
 result_dir="${benchmark_dir}/Results/${task_tag}"
@@ -55,7 +53,6 @@ tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-detect-CoT.jso
 task_status_json_path="${benchmark_dir}/completed_tasks/completed_tasks_${task_tag}.json"
 sample_limit=100
 reshape_image_hw="512x512"
-
 
 # Install medvision_bm (locked shared build)
 set -euo pipefail
@@ -82,17 +79,17 @@ python -m medvision_bm.benchmark.install_vendored_lmms_eval --lmms_eval_opt_deps
 pip install -r "${benchmark_dir}/requirements/requirements_eval_gemini.txt" --no-deps
 
 python -m medvision_bm.benchmark.eval__gemini \
---skip_env_setup \
---api_provider $api_provider \
---google_model_code $google_model_code \
---model_name $model_name \
---results_dir $result_dir \
---data_dir $data_dir \
---tasks_list_json_path $tasks_list_json_path \
---task_status_json_path $task_status_json_path \
---batch_size $batch_size \
---sample_limit $sample_limit \
---reshape_image_hw $reshape_image_hw \
+    --skip_env_setup \
+    --api_provider $api_provider \
+    --google_model_code $google_model_code \
+    --model_name $model_name \
+    --results_dir $result_dir \
+    --data_dir $data_dir \
+    --tasks_list_json_path $tasks_list_json_path \
+    --task_status_json_path $task_status_json_path \
+    --batch_size $batch_size \
+    --sample_limit $sample_limit \
+    --reshape_image_hw $reshape_image_hw
 # ---
 
 # # (Method 2) Automatically install requirements in the eval script (simpler, but may incur package version conflicts or bugs introduced by new versions of packages)

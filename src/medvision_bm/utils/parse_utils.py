@@ -160,12 +160,8 @@ def cal_F1(pred, target):
     # Calculate F1 (Dice Similarity Coefficient)
     # F1 = 2 * intersection / (area1 + area2)
     denominator = pred_area + target_area
-    f1 = (
-        (2.0 * intersection_area) / denominator
-        if denominator > 0
-        else np.nan
-    )
-    
+    f1 = (2.0 * intersection_area) / denominator if denominator > 0 else np.nan
+
     if not np.isnan(f1):
         f1 = min(f1, 1.0)
 
@@ -210,7 +206,7 @@ def cal_Precision(pred, target):
 
     # Calculate Precision
     Precision = intersection_area / pred_area if pred_area > 0 else np.nan
-    
+
     # Robustness clamp
     if not np.isnan(Precision):
         Precision = min(Precision, 1.0)
@@ -222,11 +218,11 @@ def cal_Recall(pred, target):
     """
     Calculates Recall with robustness fixes for floating point errors
     and invalid box checks.
-    
+
     Args:
         pred: (list or np.array) [xmin, ymin, xmax, ymax]
         target: (list or np.array) [xmin, ymin, xmax, ymax]
-    
+
     Returns:
         float: Recall value (0.0 to 1.0)
     """
@@ -267,9 +263,9 @@ def cal_Recall(pred, target):
     if target_area <= 0:
         raise ValueError("Target box has non-positive area.")
 
-    # Calculate Recall 
+    # Calculate Recall
     recall = intersection_area / target_area
-    
+
     # CRITICAL FIX: Floating point clamping
     # Simple clip to handle precision errors (e.g. 1.000000000004 -> 1.0)
     return min(recall, 1.0)

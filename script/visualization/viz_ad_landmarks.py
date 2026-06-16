@@ -48,6 +48,7 @@ _SLICE_DIM_NAMES = {0: "Sagittal", 1: "Coronal", 2: "Axial"}
 # GT landmark loading helpers
 # ---------------------------------------------------------------------------
 
+
 def _load_json(path):
     path = Path(path)
     if path.suffix == ".gz":
@@ -77,7 +78,11 @@ def _load_slice_landmarks(doc, landmark_keys):
     slice_dim = doc["slice_dim"]
     slice_idx = doc["slice_idx"]
 
-    dim_to_key = {0: "slice_landmarks_x", 1: "slice_landmarks_y", 2: "slice_landmarks_z"}
+    dim_to_key = {
+        0: "slice_landmarks_x",
+        1: "slice_landmarks_y",
+        2: "slice_landmarks_z",
+    }
     lm_slice_ls = lm_data[dim_to_key[slice_dim]]
 
     matched = [e for e in lm_slice_ls if e.get("slice_idx") == slice_idx]
@@ -172,6 +177,7 @@ def _get_gt_coords(doc):
 # Model prediction parsing
 # ---------------------------------------------------------------------------
 
+
 def _extract_coords_from_tag(text, n):
     """Extract the last n floats in [0, 1] from step-k-answer tag content.
     Handles both strict format '(x, y)' and named-variable format
@@ -244,7 +250,10 @@ def _parse_angle_preds(resp_text, H, W):
 # Processing
 # ---------------------------------------------------------------------------
 
-def process_model_dir(model_dir, task_folder, base_fig_dir, limit_per_jsonl, show_coords=False):
+
+def process_model_dir(
+    model_dir, task_folder, base_fig_dir, limit_per_jsonl, show_coords=False
+):
     model_name = os.path.basename(model_dir.rstrip("/"))
     out_dir = os.path.join(base_fig_dir, task_folder, model_name)
     os.makedirs(out_dir, exist_ok=True)
@@ -304,7 +313,9 @@ def process_model_dir(model_dir, task_folder, base_fig_dir, limit_per_jsonl, sho
                 print(f"    WARNING: image not found: {img_path}")
                 continue
             try:
-                pixel_sizes_from_nii, img_2d = _load_nifti_2d(img_path, slice_dim, slice_idx)
+                pixel_sizes_from_nii, img_2d = _load_nifti_2d(
+                    img_path, slice_dim, slice_idx
+                )
                 img_2d = normalize_img(doc, img_2d)
             except Exception as e:
                 print(f"    WARNING: failed to load image {img_path}: {e}")
@@ -385,7 +396,11 @@ def main():
         for model_dir in model_dirs:
             print(f"Model: {os.path.basename(model_dir.rstrip('/'))}")
             process_model_dir(
-                model_dir, task_folder, args.fig_dir, args.limit_per_jsonl, args.show_coords
+                model_dir,
+                task_folder,
+                args.fig_dir,
+                args.limit_per_jsonl,
+                args.show_coords,
             )
     else:
         model_dir = args.model_dir.rstrip("/")

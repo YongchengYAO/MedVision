@@ -121,9 +121,21 @@ DATASETS_NAME2PACKAGE = {
 # NOTE: A list of dictionaries specifying tasks that require standard image normalization.
 # This is mainly designed to skip HU-based CT image normalization for contrast CT scans, such as KiPA22.
 TASK_LIST_FORCE_STANDARD_IMAGE_NORMALIZATION = [
-    {"dataset_name": "KiPA22", "taskID": "01", "taskType": "Tumor-Lesion-Size"}, # TL task 
-    {"dataset_name": "KiPA22", "taskID": "01", "taskType": "Box-Size"}, # Detection task
-    {"dataset_name": "KiPA22", "taskID": "01", "taskType": "Mask-Size"}, # Mask-Size task 
+    {
+        "dataset_name": "KiPA22",
+        "taskID": "01",
+        "taskType": "Tumor-Lesion-Size",
+    },  # TL task
+    {
+        "dataset_name": "KiPA22",
+        "taskID": "01",
+        "taskType": "Box-Size",
+    },  # Detection task
+    {
+        "dataset_name": "KiPA22",
+        "taskID": "01",
+        "taskType": "Mask-Size",
+    },  # Mask-Size task
 ]
 # ----------------------------------------------------------------
 
@@ -689,39 +701,39 @@ HU_window_WL_map = {
 }
 
 CT_HU_windows_WL = {
-    'Artery': HU_window_WL_map['soft_tissue'],
-    'Vein': HU_window_WL_map['soft_tissue'],
-    'Brain': HU_window_WL_map['brain'],
-    'Brain Tumor/Lesion': HU_window_WL_map['brain'],
-    'Heart': HU_window_WL_map['soft_tissue'],
-    'Lung': HU_window_WL_map['lung'],
-    'Lung Tumor/Lesion': HU_window_WL_map['lung'],
-    'Liver': HU_window_WL_map['soft_tissue'],
-    'Liver Tumor/Lesion': HU_window_WL_map['soft_tissue'],
-    'Kidney': HU_window_WL_map['soft_tissue'],
-    'Kidney Tumor/Lesion': HU_window_WL_map['soft_tissue'],
-    'Pancreas': HU_window_WL_map['soft_tissue'],
-    'Pancreas Tumor/Lesion': HU_window_WL_map['soft_tissue'],
-    'Gallbladder': HU_window_WL_map['soft_tissue'],
-    'Spleen': HU_window_WL_map['soft_tissue'],
-    'Adrenal Gland': HU_window_WL_map['soft_tissue'],
-    'Colon': HU_window_WL_map['soft_tissue'],
-    'Colon Tumor/Lesion': HU_window_WL_map['soft_tissue'],
-    'Intestine': HU_window_WL_map['soft_tissue'],
-    'Esophagus': HU_window_WL_map['soft_tissue'],
-    'Stomach': HU_window_WL_map['soft_tissue'],
-    'Urinary System': HU_window_WL_map['soft_tissue'],
-    'Uterus': HU_window_WL_map['soft_tissue'],
-    'Prostate': HU_window_WL_map['soft_tissue'],
-    'Head-Neck': HU_window_WL_map['soft_tissue'],
-    'Head-Neck Tumor/Lesion': HU_window_WL_map['soft_tissue'],
-    'Hip': HU_window_WL_map['bone'],
-    'Rib': HU_window_WL_map['bone'],
-    'Spine': HU_window_WL_map['bone'],
-    'Knee Bone': HU_window_WL_map['bone'],
-    'Knee Soft Tissue': HU_window_WL_map['soft_tissue'],
-    'Metastatic Lymph Node': HU_window_WL_map['soft_tissue'],
-    'Miscellaneous Tumor/Lesion': HU_window_WL_map['soft_tissue'],
-    'Jawbone': HU_window_WL_map['bone'],
-    'Tooth': HU_window_WL_map['bone'],
+    "Artery": HU_window_WL_map["soft_tissue"],
+    "Vein": HU_window_WL_map["soft_tissue"],
+    "Brain": HU_window_WL_map["brain"],
+    "Brain Tumor/Lesion": HU_window_WL_map["brain"],
+    "Heart": HU_window_WL_map["soft_tissue"],
+    "Lung": HU_window_WL_map["lung"],
+    "Lung Tumor/Lesion": HU_window_WL_map["lung"],
+    "Liver": HU_window_WL_map["soft_tissue"],
+    "Liver Tumor/Lesion": HU_window_WL_map["soft_tissue"],
+    "Kidney": HU_window_WL_map["soft_tissue"],
+    "Kidney Tumor/Lesion": HU_window_WL_map["soft_tissue"],
+    "Pancreas": HU_window_WL_map["soft_tissue"],
+    "Pancreas Tumor/Lesion": HU_window_WL_map["soft_tissue"],
+    "Gallbladder": HU_window_WL_map["soft_tissue"],
+    "Spleen": HU_window_WL_map["soft_tissue"],
+    "Adrenal Gland": HU_window_WL_map["soft_tissue"],
+    "Colon": HU_window_WL_map["soft_tissue"],
+    "Colon Tumor/Lesion": HU_window_WL_map["soft_tissue"],
+    "Intestine": HU_window_WL_map["soft_tissue"],
+    "Esophagus": HU_window_WL_map["soft_tissue"],
+    "Stomach": HU_window_WL_map["soft_tissue"],
+    "Urinary System": HU_window_WL_map["soft_tissue"],
+    "Uterus": HU_window_WL_map["soft_tissue"],
+    "Prostate": HU_window_WL_map["soft_tissue"],
+    "Head-Neck": HU_window_WL_map["soft_tissue"],
+    "Head-Neck Tumor/Lesion": HU_window_WL_map["soft_tissue"],
+    "Hip": HU_window_WL_map["bone"],
+    "Rib": HU_window_WL_map["bone"],
+    "Spine": HU_window_WL_map["bone"],
+    "Knee Bone": HU_window_WL_map["bone"],
+    "Knee Soft Tissue": HU_window_WL_map["soft_tissue"],
+    "Metastatic Lymph Node": HU_window_WL_map["soft_tissue"],
+    "Miscellaneous Tumor/Lesion": HU_window_WL_map["soft_tissue"],
+    "Jawbone": HU_window_WL_map["bone"],
+    "Tooth": HU_window_WL_map["bone"],
 }

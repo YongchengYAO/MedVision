@@ -17,7 +17,7 @@ model_hf_id="google/gemma-4-31B-it"
 model_name="gemma-4-31B-it"
 batch_size_per_gpu=10
 gpu_memory_utilization=0.95
-max_model_len=8192  # cap Gemma 4's 256K context so KV cache fits on a single 80GB GPU
+max_model_len=8192 # cap Gemma 4's 256K context so KV cache fits on a single 80GB GPU
 
 # Stop string.
 # REQUIRED: lmms-eval auto-injects the fewshot delimiter "\n\n" as a stop string for
@@ -83,18 +83,18 @@ export MedVision_PLANNER_VERSION='1.0.0'
 # --skip_update_status \
 # ---
 python -m medvision_bm.benchmark.eval__gemma4 \
---model_hf_id $model_hf_id \
---model_name $model_name \
---results_dir $result_dir \
---data_dir $data_dir \
---tasks_list_json_path $tasks_list_json_path \
---task_status_json_path $task_status_json_path \
---batch_size_per_gpu $batch_size_per_gpu \
---gpu_memory_utilization $gpu_memory_utilization \
---sample_limit $sample_limit \
---max_model_len $max_model_len \
---no-enable_thinking \
---stop_strings "$stop_string"
+    --model_hf_id $model_hf_id \
+    --model_name $model_name \
+    --results_dir $result_dir \
+    --data_dir $data_dir \
+    --tasks_list_json_path $tasks_list_json_path \
+    --task_status_json_path $task_status_json_path \
+    --batch_size_per_gpu $batch_size_per_gpu \
+    --gpu_memory_utilization $gpu_memory_utilization \
+    --sample_limit $sample_limit \
+    --max_model_len $max_model_len \
+    --no-enable_thinking \
+    --stop_strings "$stop_string"
 # ---
 
 conda deactivate

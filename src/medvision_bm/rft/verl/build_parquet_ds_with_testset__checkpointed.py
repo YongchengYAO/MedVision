@@ -87,17 +87,21 @@ _TASK_FORMAT_MAP = {
 # Dispatch format function (picklable — no function objects in fn_kwargs)
 # ---------------------------------------------------------------------------
 
+
 def _dispatch_format(example, use_cot, model_name, model_hf, new_shape_hw):
     """Apply the correct per-task format function based on the '_task_tag' column."""
     task_tag = example["_task_tag"]
     func_key = "cot" if use_cot else "no_cot"
     func = _TASK_FORMAT_MAP[task_tag][func_key]
-    return func(example, model_name=model_name, model_hf=model_hf, new_shape_hw=new_shape_hw)
+    return func(
+        example, model_name=model_name, model_hf=model_hf, new_shape_hw=new_shape_hw
+    )
 
 
 # ---------------------------------------------------------------------------
 # Checkpoint helpers
 # ---------------------------------------------------------------------------
+
 
 def _load_checkpoint(path):
     if os.path.exists(path):
@@ -118,7 +122,14 @@ def _save_checkpoint(path, ckpt):
         json.dump(ckpt, f, indent=2)
 
 
-def _load_raw_test_dataset(tasks_json, tag_ds, test_limit, num_workers, download_mode, test_limit_per_subset=None):
+def _load_raw_test_dataset(
+    tasks_json,
+    tag_ds,
+    test_limit,
+    num_workers,
+    download_mode,
+    test_limit_per_subset=None,
+):
     """Load raw test samples from MedVision *_Test HF configs (no images).
 
     Mirrors the loading block in ds_utils.load_split_limit_dataset_tr_val_ts.
@@ -131,7 +142,9 @@ def _load_raw_test_dataset(tasks_json, tag_ds, test_limit, num_workers, download
     workers = min(num_workers, available_cpus, len(tasks))
 
     data_dir = os.environ.get("MedVision_DATA_DIR")
-    assert data_dir is not None, "\n [Error] MedVision_DATA_DIR environment variable must be set."
+    assert (
+        data_dir is not None
+    ), "\n [Error] MedVision_DATA_DIR environment variable must be set."
     with open(os.path.join(data_dir, ".downloaded_datasets.json")) as f:
         downloaded = list(json.load(f).keys())
     for task in tasks:
@@ -158,7 +171,11 @@ def _load_raw_test_dataset(tasks_json, tag_ds, test_limit, num_workers, download
             task = future_to_task[future]
             try:
                 ds = future.result(timeout=120)
-                if test_limit_per_subset is not None and test_limit_per_subset > 0 and test_limit_per_subset < len(ds):
+                if (
+                    test_limit_per_subset is not None
+                    and test_limit_per_subset > 0
+                    and test_limit_per_subset < len(ds)
+                ):
                     ds = ds.shuffle(seed=SEED).select(range(test_limit_per_subset))
                 datasets_list.append(ds)
                 print(f"  ✓ Test {task} ({len(datasets_list)}/{len(tasks)})")
@@ -169,7 +186,9 @@ def _load_raw_test_dataset(tasks_json, tag_ds, test_limit, num_workers, download
                 print(f"  ❌ Test {task} failed: {exc}")
 
     if failed:
-        raise RuntimeError(f"Failed to load test data for {len(failed)} task(s): {failed}")
+        raise RuntimeError(
+            f"Failed to load test data for {len(failed)} task(s): {failed}"
+        )
 
     combined = concatenate_datasets(datasets_list)
     del datasets_list
@@ -184,6 +203,7 @@ def _load_raw_test_dataset(tasks_json, tag_ds, test_limit, num_workers, download
 # ---------------------------------------------------------------------------
 # Argument parser (mirrors build_parquet_ds_with_testset.py plus --shard_size)
 # ---------------------------------------------------------------------------
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
@@ -392,6 +412,7 @@ def parse_arguments():
 # Main build function
 # ---------------------------------------------------------------------------
 
+
 def build_parquet_dataset_checkpointed(**kwargs):
     model_family_name = kwargs["model_family_name"]
     shard_size = kwargs.get("shard_size", 50000)
@@ -448,30 +469,38 @@ def build_parquet_dataset_checkpointed(**kwargs):
     # ------------------------------------------------------------------
     active_tasks = []
     if kwargs.get("tasks_list_json_path_detect"):
-        active_tasks.append((
-            kwargs["tasks_list_json_path_detect"],
-            train_limit_detect,
-            val_limit_detect,
-            "BoxSize",
-        ))
+        active_tasks.append(
+            (
+                kwargs["tasks_list_json_path_detect"],
+                train_limit_detect,
+                val_limit_detect,
+                "BoxSize",
+            )
+        )
     if kwargs.get("tasks_list_json_path_AD"):
-        active_tasks.append((
-            kwargs["tasks_list_json_path_AD"],
-            train_limit_AD,
-            val_limit_AD,
-            "BiometricsFromLandmarks",
-        ))
+        active_tasks.append(
+            (
+                kwargs["tasks_list_json_path_AD"],
+                train_limit_AD,
+                val_limit_AD,
+                "BiometricsFromLandmarks",
+            )
+        )
     if kwargs.get("tasks_list_json_path_TL"):
-        active_tasks.append((
-            kwargs["tasks_list_json_path_TL"],
-            train_limit_TL,
-            val_limit_TL,
-            "TumorLesionSize",
-        ))
+        active_tasks.append(
+            (
+                kwargs["tasks_list_json_path_TL"],
+                train_limit_TL,
+                val_limit_TL,
+                "TumorLesionSize",
+            )
+        )
 
     if not active_tasks:
-        raise ValueError("No task JSON paths provided. At least one of "
-                         "--tasks_list_json_path_detect / _AD / _TL must be set.")
+        raise ValueError(
+            "No task JSON paths provided. At least one of "
+            "--tasks_list_json_path_detect / _AD / _TL must be set."
+        )
 
     mapping_func_args = {
         "use_cot": use_cot,
@@ -492,14 +521,14 @@ def build_parquet_dataset_checkpointed(**kwargs):
     print("STEP 1: Loading raw datasets (no images)")
     print("=" * 60)
 
-    raw_train_parts = []   # list of raw_Dataset slices per task
-    raw_val_parts = []     # list of raw_Dataset per task
+    raw_train_parts = []  # list of raw_Dataset slices per task
+    raw_val_parts = []  # list of raw_Dataset per task
 
     for tasks_json, per_task_train_lim, per_task_val_lim, task_tag in active_tasks:
         print(f"\n  Loading task '{task_tag}' from {tasks_json} ...")
         raw_ds = load_split_limit_dataset(
             tasks_list_json_path=tasks_json,
-            limit_train_sample=-1,          # load all; we apply limit below
+            limit_train_sample=-1,  # load all; we apply limit below
             limit_val_sample=per_task_val_lim,
             num_workers_concat_datasets=num_workers_concat,
             tag_ds=task_tag,
@@ -552,8 +581,8 @@ def build_parquet_dataset_checkpointed(**kwargs):
             indices = np.random.choice(total_raw, size=train_limit_total, replace=True)
             combined_raw_train = combined_raw_train.select(indices)
         else:
-            combined_raw_train = (
-                combined_raw_train.shuffle(seed=SEED).select(range(train_limit_total))
+            combined_raw_train = combined_raw_train.shuffle(seed=SEED).select(
+                range(train_limit_total)
             )
     else:
         combined_raw_train = combined_raw_train.shuffle(seed=SEED)
@@ -708,23 +737,29 @@ def build_parquet_dataset_checkpointed(**kwargs):
 
             test_task_configs = []
             if kwargs.get("tasks_list_json_path_detect"):
-                test_task_configs.append((
-                    kwargs["tasks_list_json_path_detect"],
-                    _test_limit_for("test_sample_limit_task_Detection"),
-                    "BoxSize",
-                ))
+                test_task_configs.append(
+                    (
+                        kwargs["tasks_list_json_path_detect"],
+                        _test_limit_for("test_sample_limit_task_Detection"),
+                        "BoxSize",
+                    )
+                )
             if kwargs.get("tasks_list_json_path_AD"):
-                test_task_configs.append((
-                    kwargs["tasks_list_json_path_AD"],
-                    _test_limit_for("test_sample_limit_task_AD"),
-                    "BiometricsFromLandmarks",
-                ))
+                test_task_configs.append(
+                    (
+                        kwargs["tasks_list_json_path_AD"],
+                        _test_limit_for("test_sample_limit_task_AD"),
+                        "BiometricsFromLandmarks",
+                    )
+                )
             if kwargs.get("tasks_list_json_path_TL"):
-                test_task_configs.append((
-                    kwargs["tasks_list_json_path_TL"],
-                    _test_limit_for("test_sample_limit_task_TL"),
-                    "TumorLesionSize",
-                ))
+                test_task_configs.append(
+                    (
+                        kwargs["tasks_list_json_path_TL"],
+                        _test_limit_for("test_sample_limit_task_TL"),
+                        "TumorLesionSize",
+                    )
+                )
 
             _per_subset_test = kwargs.get("test_sample_limit_per_subset")
             if _per_subset_test is not None and _per_subset_test < 0:
@@ -738,7 +773,9 @@ def build_parquet_dataset_checkpointed(**kwargs):
                     tag_ds=task_tag,
                     test_limit=per_task_test_lim,
                     num_workers=num_workers_concat,
-                    download_mode=kwargs.get("ds_download_mode", "reuse_dataset_if_exists"),
+                    download_mode=kwargs.get(
+                        "ds_download_mode", "reuse_dataset_if_exists"
+                    ),
                     test_limit_per_subset=_per_subset_test,
                 )
                 raw_test = raw_test.add_column("_task_tag", [task_tag] * len(raw_test))
@@ -769,10 +806,14 @@ def build_parquet_dataset_checkpointed(**kwargs):
                 test_size = len(test_cleaned)
                 if global_test_limit > test_size:
                     np.random.seed(SEED)
-                    indices = np.random.choice(test_size, size=global_test_limit, replace=True)
+                    indices = np.random.choice(
+                        test_size, size=global_test_limit, replace=True
+                    )
                     test_cleaned = test_cleaned.select(indices)
                 else:
-                    test_cleaned = test_cleaned.shuffle(seed=SEED).select(range(global_test_limit))
+                    test_cleaned = test_cleaned.shuffle(seed=SEED).select(
+                        range(global_test_limit)
+                    )
             else:
                 test_cleaned = test_cleaned.shuffle(seed=SEED)
 
@@ -804,8 +845,7 @@ def build_parquet_dataset_checkpointed(**kwargs):
         missing = [p for p in shard_paths if not os.path.exists(p)]
         if missing:
             raise FileNotFoundError(
-                f"Cannot merge: {len(missing)} shard(s) missing:\n"
-                + "\n".join(missing)
+                f"Cannot merge: {len(missing)} shard(s) missing:\n" + "\n".join(missing)
             )
 
         writer = None

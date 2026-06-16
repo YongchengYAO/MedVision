@@ -115,7 +115,14 @@ def plot_tl_axes_on_image(
             zorder=2,
         )
         _extra_legend_handles.append(
-            mlines.Line2D([], [], color="#A21CAF", linestyle="--", linewidth=4, label="GT major axis")
+            mlines.Line2D(
+                [],
+                [],
+                color="#A21CAF",
+                linestyle="--",
+                linewidth=4,
+                label="GT major axis",
+            )
         )
     if gt_minor_pts is not None:
         plt.plot(
@@ -127,7 +134,14 @@ def plot_tl_axes_on_image(
             zorder=2,
         )
         _extra_legend_handles.append(
-            mlines.Line2D([], [], color="#4F46E5", linestyle="--", linewidth=4, label="GT minor axis")
+            mlines.Line2D(
+                [],
+                [],
+                color="#4F46E5",
+                linestyle="--",
+                linewidth=4,
+                label="GT minor axis",
+            )
         )
 
     if major_axis_pts is not None:
@@ -195,7 +209,7 @@ def plot_tl_axes_on_image(
     else:
         scale_pixels_dim0, scale_pixels_dim1 = num_pixels_dim_max, num_pixels_dim_min
     start_x = int(img_height * 0.05)  # dim0
-    start_y = int(img_width * 0.05)   # dim1
+    start_y = int(img_width * 0.05)  # dim1
     end_x = start_x + scale_pixels_dim0
     end_y = start_y + scale_pixels_dim1
     plt.plot([start_x, end_x], [start_y, start_y], "w-", linewidth=4)
@@ -221,7 +235,9 @@ def plot_tl_axes_on_image(
 
     plt.tick_params(labelsize=20)
     _ax_handles, _ = plt.gca().get_legend_handles_labels()
-    plt.legend(handles=_extra_legend_handles + _ax_handles, loc="upper right", fontsize=16)
+    plt.legend(
+        handles=_extra_legend_handles + _ax_handles, loc="upper right", fontsize=16
+    )
     plt.tight_layout(pad=1.5, rect=[0.05, 0.05, 0.95, 0.95])
 
     os.makedirs(os.path.dirname(fig_path), exist_ok=True)
@@ -319,7 +335,9 @@ def plot_detection_on_image(
             )
         )
         legend_handles.append(
-            mlines.Line2D([], [], color="#F37020", ls="-", linewidth=4, label="Pred bbox")
+            mlines.Line2D(
+                [], [], color="#F37020", ls="-", linewidth=4, label="Pred bbox"
+            )
         )
 
     # L-shaped scale bar (lower-left corner) — identical to plot_tl_axes_on_image
@@ -424,32 +442,62 @@ def plot_ad_on_image(
         gt_p1, gt_p2 = gt_pts["p1"], gt_pts["p2"]
 
         plt.plot(
-            [gt_p1[0], gt_p2[0]], [gt_p1[1], gt_p2[1]],
-            color="#A21CAF", linestyle="--", linewidth=4, zorder=2,
+            [gt_p1[0], gt_p2[0]],
+            [gt_p1[1], gt_p2[1]],
+            color="#A21CAF",
+            linestyle="--",
+            linewidth=4,
+            zorder=2,
         )
         plt.scatter(
-            [gt_p1[0], gt_p2[0]], [gt_p1[1], gt_p2[1]],
+            [gt_p1[0], gt_p2[0]],
+            [gt_p1[1], gt_p2[1]],
             color=[_DOT_COLORS[0], _DOT_COLORS[1]],
-            edgecolors="black", s=80, linewidth=1.5, zorder=4,
+            edgecolors="black",
+            s=80,
+            linewidth=1.5,
+            zorder=4,
         )
 
         legend_handles = [
-            mlines.Line2D([], [], color="#A21CAF", linestyle="--", linewidth=3, label="GT landmarks"),
+            mlines.Line2D(
+                [],
+                [],
+                color="#A21CAF",
+                linestyle="--",
+                linewidth=3,
+                label="GT landmarks",
+            ),
         ]
 
         if pred_pts is not None:
             pr_p1, pr_p2 = pred_pts
             plt.plot(
-                [pr_p1[0], pr_p2[0]], [pr_p1[1], pr_p2[1]],
-                color="#F37020", linestyle="-", linewidth=3, zorder=3,
+                [pr_p1[0], pr_p2[0]],
+                [pr_p1[1], pr_p2[1]],
+                color="#F37020",
+                linestyle="-",
+                linewidth=3,
+                zorder=3,
             )
             plt.scatter(
-                [pr_p1[0], pr_p2[0]], [pr_p1[1], pr_p2[1]],
+                [pr_p1[0], pr_p2[0]],
+                [pr_p1[1], pr_p2[1]],
                 color=[_DOT_COLORS[2], _DOT_COLORS[3]],
-                edgecolors="black", s=60, linewidth=1.5, zorder=4,
+                edgecolors="black",
+                s=60,
+                linewidth=1.5,
+                zorder=4,
             )
             legend_handles.append(
-                mlines.Line2D([], [], color="#F37020", linestyle="-", linewidth=3, label="Pred landmarks")
+                mlines.Line2D(
+                    [],
+                    [],
+                    color="#F37020",
+                    linestyle="-",
+                    linewidth=3,
+                    label="Pred landmarks",
+                )
             )
 
         if show_coords:
@@ -461,7 +509,10 @@ def plot_ad_on_image(
                     f"({x_rel:.3f}, {y_rel:.3f})",
                     xy=(pt[0], pt[1]),
                     xytext=(pt[0] + offset_x, pt[1]),
-                    color=color, fontsize=7, va="center", zorder=5,
+                    color=color,
+                    fontsize=7,
+                    va="center",
+                    zorder=5,
                 )
             if pred_pts is not None:
                 for pt, color in [(pr_p1, _DOT_COLORS[2]), (pr_p2, _DOT_COLORS[3])]:
@@ -471,7 +522,10 @@ def plot_ad_on_image(
                         f"({x_rel:.3f}, {y_rel:.3f})",
                         xy=(pt[0], pt[1]),
                         xytext=(pt[0] + offset_x, pt[1]),
-                        color=color, fontsize=7, va="center", zorder=5,
+                        color=color,
+                        fontsize=7,
+                        va="center",
+                        zorder=5,
                     )
 
     else:  # angle
@@ -479,36 +533,60 @@ def plot_ad_on_image(
         gt_l2p1, gt_l2p2 = gt_pts["l2p1"], gt_pts["l2p2"]
 
         plt.plot(
-            [gt_l1p1[0], gt_l1p2[0]], [gt_l1p1[1], gt_l1p2[1]],
-            color="#A21CAF", linestyle="--", linewidth=4, zorder=2,
+            [gt_l1p1[0], gt_l1p2[0]],
+            [gt_l1p1[1], gt_l1p2[1]],
+            color="#A21CAF",
+            linestyle="--",
+            linewidth=4,
+            zorder=2,
         )
         plt.plot(
-            [gt_l2p1[0], gt_l2p2[0]], [gt_l2p1[1], gt_l2p2[1]],
-            color="#4F46E5", linestyle="--", linewidth=4, zorder=2,
+            [gt_l2p1[0], gt_l2p2[0]],
+            [gt_l2p1[1], gt_l2p2[1]],
+            color="#4F46E5",
+            linestyle="--",
+            linewidth=4,
+            zorder=2,
         )
 
         legend_handles = [
-            mlines.Line2D([], [], color="#A21CAF", linestyle="--", linewidth=3, label="GT line 1"),
-            mlines.Line2D([], [], color="#4F46E5", linestyle="--", linewidth=3, label="GT line 2"),
+            mlines.Line2D(
+                [], [], color="#A21CAF", linestyle="--", linewidth=3, label="GT line 1"
+            ),
+            mlines.Line2D(
+                [], [], color="#4F46E5", linestyle="--", linewidth=3, label="GT line 2"
+            ),
         ]
 
         if pred_pts is not None:
             pr_l1p1, pr_l1p2, pr_l2p1, pr_l2p2 = pred_pts
             plt.plot(
-                [pr_l1p1[0], pr_l1p2[0]], [pr_l1p1[1], pr_l1p2[1]],
-                color="#F37020", linestyle="-", linewidth=3, zorder=3,
+                [pr_l1p1[0], pr_l1p2[0]],
+                [pr_l1p1[1], pr_l1p2[1]],
+                color="#F37020",
+                linestyle="-",
+                linewidth=3,
+                zorder=3,
             )
             plt.plot(
-                [pr_l2p1[0], pr_l2p2[0]], [pr_l2p1[1], pr_l2p2[1]],
-                color="#FBBC05", linestyle="-", linewidth=3, zorder=3,
+                [pr_l2p1[0], pr_l2p2[0]],
+                [pr_l2p1[1], pr_l2p2[1]],
+                color="#FBBC05",
+                linestyle="-",
+                linewidth=3,
+                zorder=3,
             )
 
             all_pred_pts = [pr_l1p1, pr_l1p2, pr_l2p1, pr_l2p2]
             for j, pt in enumerate(all_pred_pts):
                 plt.scatter(
-                    pt[0], pt[1],
-                    color=_DOT_COLORS[j], edgecolors="black",
-                    s=60, linewidth=1.5, zorder=4,
+                    pt[0],
+                    pt[1],
+                    color=_DOT_COLORS[j],
+                    edgecolors="black",
+                    s=60,
+                    linewidth=1.5,
+                    zorder=4,
                 )
                 if show_coords:
                     offset_x = img_height * 0.015
@@ -518,12 +596,29 @@ def plot_ad_on_image(
                         f"({x_rel:.3f}, {y_rel:.3f})",
                         xy=(pt[0], pt[1]),
                         xytext=(pt[0] + offset_x, pt[1]),
-                        color=_DOT_COLORS[j], fontsize=7, va="center", zorder=5,
+                        color=_DOT_COLORS[j],
+                        fontsize=7,
+                        va="center",
+                        zorder=5,
                     )
 
             legend_handles += [
-                mlines.Line2D([], [], color="#F37020", linestyle="-", linewidth=3, label="Pred line 1"),
-                mlines.Line2D([], [], color="#FBBC05", linestyle="-", linewidth=3, label="Pred line 2"),
+                mlines.Line2D(
+                    [],
+                    [],
+                    color="#F37020",
+                    linestyle="-",
+                    linewidth=3,
+                    label="Pred line 1",
+                ),
+                mlines.Line2D(
+                    [],
+                    [],
+                    color="#FBBC05",
+                    linestyle="-",
+                    linewidth=3,
+                    label="Pred line 2",
+                ),
             ]
 
     # L-shaped scale bar (lower-left corner)
@@ -543,9 +638,12 @@ def plot_ad_on_image(
     plt.plot([start_x, end_x], [start_y, start_y], "w-", linewidth=4)
     plt.plot([start_x, start_x], [start_y, end_y], "w-", linewidth=4)
     plt.text(
-        end_x + img_height * 0.01, start_y,
+        end_x + img_height * 0.01,
+        start_y,
         f"{scale_mm} mm",
-        color="white", horizontalalignment="left", fontsize=20,
+        color="white",
+        horizontalalignment="left",
+        fontsize=20,
     )
 
     if slice_dim == 0:

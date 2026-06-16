@@ -110,4 +110,8 @@ def parser_args():
 if __name__ == "__main__":
     args = parser_args()
 
-    install_sft_dependencies(data_dir=args.data_dir, requirement=args.requirement, lmms_eval_opt_deps=args.lmms_eval_opt_deps)
+    install_sft_dependencies(
+        data_dir=args.data_dir,
+        requirement=args.requirement,
+        lmms_eval_opt_deps=args.lmms_eval_opt_deps,
+    )

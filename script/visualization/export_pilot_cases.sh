@@ -63,9 +63,9 @@ MV_V0="MedVision__fullRFT__qwen25vl-7b-fullSFT__AD-TL-D__512x512__PRxAnswer_s250
 # per task config). To APPEND a new API model without re-rendering the existing models' PNGs,
 # add its line below and run with SKIP_EXISTING=1 (see usage above).
 TL_MODELS=(
-	"MedVision-V0 (7B)=$RESULTS/MedVision-TL-v2-CoT/${MV_V0}"
-	"Claude-Fable-5=$RESULTS/MedVision-TL-CoT/Claude-Fable-5"
-	"Gemini-3.1-Pro=$RESULTS/MedVision-TL-CoT/Gemini-3.1-Pro"
+    "MedVision-V0 (7B)=$RESULTS/MedVision-TL-v2-CoT/${MV_V0}"
+    "Claude-Fable-5=$RESULTS/MedVision-TL-CoT/Claude-Fable-5"
+    "Gemini-3.1-Pro=$RESULTS/MedVision-TL-CoT/Gemini-3.1-Pro"
 )
 
 PAGE_DIR="${PAGE_DIR:-/mnt/vincent-pvc-rwm/Github/medvision-vlm.github.io}"

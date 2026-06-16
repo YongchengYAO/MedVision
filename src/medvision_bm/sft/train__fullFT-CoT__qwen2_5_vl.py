@@ -49,6 +49,7 @@ try:
         _PS.wait_for_everyone()
 
 except Exception:
+
     def is_main_process() -> bool:
         r = os.environ.get("RANK") or os.environ.get("LOCAL_RANK")
         return r in (None, "", "0")
@@ -89,7 +90,9 @@ def main(
     if kwargs.get("prepared_ds_dir") is not None:
         prepared_ds_dir = kwargs.get("prepared_ds_dir")
         if is_main_process():
-            print(f"[Info] Using user-specified prepared dataset directory: {prepared_ds_dir}\n")
+            print(
+                f"[Info] Using user-specified prepared dataset directory: {prepared_ds_dir}\n"
+            )
     else:
         prepared_ds_dir = os.path.join(
             data_dir,
@@ -104,7 +107,9 @@ def main(
 
         if is_main_process():
             os.makedirs(prepared_ds_dir, exist_ok=True)
-            print(f"[Info] Using default prepared dataset directory: {prepared_ds_dir}\n")
+            print(
+                f"[Info] Using default prepared dataset directory: {prepared_ds_dir}\n"
+            )
 
     if is_main_process():
         if not kwargs.get("skip_process_dataset"):
@@ -114,30 +119,54 @@ def main(
 
             if kwargs.get("tasks_list_json_path_AD") is not None:
                 dataset_AD = _prepare_dataset_task(
-                    kwargs, "tasks_list_json_path_AD", train_limit_AD, val_limit_AD,
-                    _format_data_AngleDistanceTask_CoT, model_family_name, base_model_hf,
-                    tag_ds="BiometricsFromLandmarks", task_label="AD",
-                    temperature_sampler_task_column=kwargs.get("temperature_sampler_task_column"),
+                    kwargs,
+                    "tasks_list_json_path_AD",
+                    train_limit_AD,
+                    val_limit_AD,
+                    _format_data_AngleDistanceTask_CoT,
+                    model_family_name,
+                    base_model_hf,
+                    tag_ds="BiometricsFromLandmarks",
+                    task_label="AD",
+                    temperature_sampler_task_column=kwargs.get(
+                        "temperature_sampler_task_column"
+                    ),
                 )
                 train_ds_list.append(dataset_AD["train"])
                 val_ds_list.append(dataset_AD["validation"])
 
             if kwargs.get("tasks_list_json_path_detect") is not None:
                 dataset_detect = _prepare_dataset_task(
-                    kwargs, "tasks_list_json_path_detect", train_limit_detect, val_limit_detect,
-                    _format_data_DetectionTask_CoT, model_family_name, base_model_hf,
-                    tag_ds="BoxSize", task_label="Detection",
-                    temperature_sampler_task_column=kwargs.get("temperature_sampler_task_column"),
+                    kwargs,
+                    "tasks_list_json_path_detect",
+                    train_limit_detect,
+                    val_limit_detect,
+                    _format_data_DetectionTask_CoT,
+                    model_family_name,
+                    base_model_hf,
+                    tag_ds="BoxSize",
+                    task_label="Detection",
+                    temperature_sampler_task_column=kwargs.get(
+                        "temperature_sampler_task_column"
+                    ),
                 )
                 train_ds_list.append(dataset_detect["train"])
                 val_ds_list.append(dataset_detect["validation"])
 
             if kwargs.get("tasks_list_json_path_TL") is not None:
                 dataset_TL = _prepare_dataset_task(
-                    kwargs, "tasks_list_json_path_TL", train_limit_TL, val_limit_TL,
-                    _format_data_TumorLesionTask_CoT, model_family_name, base_model_hf,
-                    tag_ds="TumorLesionSize", task_label="TL",
-                    temperature_sampler_task_column=kwargs.get("temperature_sampler_task_column"),
+                    kwargs,
+                    "tasks_list_json_path_TL",
+                    train_limit_TL,
+                    val_limit_TL,
+                    _format_data_TumorLesionTask_CoT,
+                    model_family_name,
+                    base_model_hf,
+                    tag_ds="TumorLesionSize",
+                    task_label="TL",
+                    temperature_sampler_task_column=kwargs.get(
+                        "temperature_sampler_task_column"
+                    ),
                 )
                 train_ds_list.append(dataset_TL["train"])
                 val_ds_list.append(dataset_TL["validation"])
@@ -151,11 +180,16 @@ def main(
                 train_size = len(dataset["train"])
                 if train_limit > train_size:
                     import numpy as np
+
                     np.random.seed(SEED)
-                    indices = np.random.choice(train_size, size=train_limit, replace=True)
+                    indices = np.random.choice(
+                        train_size, size=train_limit, replace=True
+                    )
                     dataset["train"] = dataset["train"].select(indices)
                 else:
-                    dataset["train"] = dataset["train"].shuffle(seed=SEED).select(range(train_limit))
+                    dataset["train"] = (
+                        dataset["train"].shuffle(seed=SEED).select(range(train_limit))
+                    )
             else:
                 dataset["train"] = dataset["train"].shuffle(seed=SEED)
 
@@ -164,11 +198,16 @@ def main(
                 val_size = len(dataset["validation"])
                 if val_limit > val_size:
                     import numpy as np
+
                     np.random.seed(SEED)
                     indices = np.random.choice(val_size, size=val_limit, replace=True)
                     dataset["validation"] = dataset["validation"].select(indices)
                 else:
-                    dataset["validation"] = dataset["validation"].shuffle(seed=SEED).select(range(val_limit))
+                    dataset["validation"] = (
+                        dataset["validation"]
+                        .shuffle(seed=SEED)
+                        .select(range(val_limit))
+                    )
             else:
                 dataset["validation"] = dataset["validation"].shuffle(seed=SEED)
 
@@ -179,7 +218,9 @@ def main(
 
     if kwargs.get("process_dataset_only"):
         if is_main_process():
-            print(f"Data processing completed. Prepared dataset saved at '{prepared_ds_dir}'.")
+            print(
+                f"Data processing completed. Prepared dataset saved at '{prepared_ds_dir}'."
+            )
         return
 
     dataset = load_from_disk(prepared_ds_dir)
@@ -213,10 +254,14 @@ def main(
         os.makedirs(checkpoint_dir, exist_ok=True)
         last_checkpoint = get_last_checkpoint(checkpoint_dir)
         if last_checkpoint is not None:
-            train_resume_from_checkpoint(trainer=trainer, last_checkpoint=last_checkpoint)
+            train_resume_from_checkpoint(
+                trainer=trainer, last_checkpoint=last_checkpoint
+            )
         else:
             if is_main_process():
-                print(f"No valid checkpoint found in '{checkpoint_dir}'. Starting training from scratch.")
+                print(
+                    f"No valid checkpoint found in '{checkpoint_dir}'. Starting training from scratch."
+                )
             trainer.train()
     else:
         trainer.train()
@@ -232,9 +277,19 @@ def main(
     torch.cuda.empty_cache()
 
 
-def _prepare_dataset_task(kwargs, path_key, train_limit, val_limit, mapping_func,
-                           model_family_name, base_model_hf, *, tag_ds, task_label,
-                           temperature_sampler_task_column):
+def _prepare_dataset_task(
+    kwargs,
+    path_key,
+    train_limit,
+    val_limit,
+    mapping_func,
+    model_family_name,
+    base_model_hf,
+    *,
+    tag_ds,
+    task_label,
+    temperature_sampler_task_column,
+):
     from medvision_bm.sft.sft_utils import prepare_dataset
 
     ds = prepare_dataset(

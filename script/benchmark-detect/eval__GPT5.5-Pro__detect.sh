@@ -73,16 +73,16 @@ python -m medvision_bm.benchmark.install_vendored_lmms_eval --lmms_eval_opt_deps
 # TODO: pin via pip freeze after first successful run (no requirements_eval_openai.txt yet)
 
 python -m medvision_bm.benchmark.eval__openai \
---skip_env_setup \
---api_provider $api_provider \
---openai_model_code $openai_model_code \
---model_name $model_name \
---results_dir $result_dir \
---data_dir $data_dir \
---tasks_list_json_path $tasks_list_json_path \
---task_status_json_path $task_status_json_path \
---batch_size $batch_size \
---sample_limit $sample_limit \
+    --skip_env_setup \
+    --api_provider $api_provider \
+    --openai_model_code $openai_model_code \
+    --model_name $model_name \
+    --results_dir $result_dir \
+    --data_dir $data_dir \
+    --tasks_list_json_path $tasks_list_json_path \
+    --task_status_json_path $task_status_json_path \
+    --batch_size $batch_size \
+    --sample_limit $sample_limit
 # ---
 
 # # (Method 2) Automatically install requirements in the eval script (simpler, but may incur package version conflicts or bugs introduced by new versions of packages)

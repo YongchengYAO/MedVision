@@ -25,9 +25,8 @@ batch_size=1
 #api_provider="anthropic"
 #anthropic_model_code="claude-fable-5"
 api_provider="openrouter"
-anthropic_model_code="anthropic/claude-fable-5"   # exact OpenRouter ID, verified live
+anthropic_model_code="anthropic/claude-fable-5" # exact OpenRouter ID, verified live
 # ---
-
 
 # API key check + sanitization (pod-injected env vars can carry a trailing newline,
 # which breaks HTTP auth headers)
@@ -49,7 +48,6 @@ tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-TL-CoT.json"
 task_status_json_path="${benchmark_dir}/completed_tasks/completed_tasks_${task_tag}.json"
 sample_limit=100
 reshape_image_hw="512x512"
-
 
 # Install medvision_bm (locked shared build)
 set -euo pipefail
@@ -76,17 +74,17 @@ python -m medvision_bm.benchmark.install_vendored_lmms_eval --lmms_eval_opt_deps
 pip install -r "${benchmark_dir}/requirements/requirements_eval_claude.txt" --no-deps
 
 python -m medvision_bm.benchmark.eval__claude \
---skip_env_setup \
---api_provider $api_provider \
---anthropic_model_code $anthropic_model_code \
---model_name $model_name \
---results_dir $result_dir \
---data_dir $data_dir \
---tasks_list_json_path $tasks_list_json_path \
---task_status_json_path $task_status_json_path \
---batch_size $batch_size \
---sample_limit $sample_limit \
---reshape_image_hw $reshape_image_hw \
+    --skip_env_setup \
+    --api_provider $api_provider \
+    --anthropic_model_code $anthropic_model_code \
+    --model_name $model_name \
+    --results_dir $result_dir \
+    --data_dir $data_dir \
+    --tasks_list_json_path $tasks_list_json_path \
+    --task_status_json_path $task_status_json_path \
+    --batch_size $batch_size \
+    --sample_limit $sample_limit \
+    --reshape_image_hw $reshape_image_hw
 # ---
 
 # # (Method 2) Automatically install requirements in the eval script (simpler, but may incur package version conflicts or bugs introduced by new versions of packages)

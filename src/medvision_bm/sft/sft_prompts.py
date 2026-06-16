@@ -1,10 +1,10 @@
 # NOTE:
 # Prompts in this file are used not only for SFT training but also model evaluation in the MedVision benchmark.
-# Therefore, any modification to the prompts in this file may affect both SFT training and evaluation. 
+# Therefore, any modification to the prompts in this file may affect both SFT training and evaluation.
 # Please proceed with caution when editing this file.
 #
-# Caveat: 
-# Some prompts (e.g., FORMAT_PROMPT_TL_REASONING and FORMAT_PROMPT_TUMOR_LESION_SIZE) are similar but used in different vanues. 
+# Caveat:
+# Some prompts (e.g., FORMAT_PROMPT_TL_REASONING and FORMAT_PROMPT_TUMOR_LESION_SIZE) are similar but used in different vanues.
 # Do not remove any prompt just because it looks similar to another one.
 
 # ======================================================================================================
@@ -30,8 +30,7 @@ FORMAT_PROMPT_BOX_COORDINATES = (
 )
 
 FORMAT_PROMPT_MASK_SIZE = (
-    f"{GENERAL_FORMAT_PROMPT}"
-    "The answer should be a single decimal number."
+    f"{GENERAL_FORMAT_PROMPT}" "The answer should be a single decimal number."
 )
 
 FORMAT_PROMPT_TUMOR_LESION_SIZE = (
@@ -41,13 +40,11 @@ FORMAT_PROMPT_TUMOR_LESION_SIZE = (
 )
 
 FORMAT_PROMPT_BIOMETRICS = (
-    f"{GENERAL_FORMAT_PROMPT}"
-    "The answer should be a single decimal number."
+    f"{GENERAL_FORMAT_PROMPT}" "The answer should be a single decimal number."
 )
 
 FORMAT_PROMPT_1_DECIMAL_NUMBER = (
-    f"{GENERAL_FORMAT_PROMPT}"
-    "The answer should be a single decimal number."
+    f"{GENERAL_FORMAT_PROMPT}" "The answer should be a single decimal number."
 )
 # ======================================================================================================
 

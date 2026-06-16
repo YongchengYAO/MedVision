@@ -387,7 +387,14 @@ _GT_BINS = [
 
 def _group_by_boxImgRatio(data):
     result = defaultdict(
-        lambda: {"mae": [], "iou": [], "f1": [], "precision": [], "recall": [], "success": []}
+        lambda: {
+            "mae": [],
+            "iou": [],
+            "f1": [],
+            "precision": [],
+            "recall": [],
+            "success": [],
+        }
     )
     for box_img_ratio, mae, iou, f1, precision, recall, success in data:
         label = "Box/Image >= 90%"
@@ -415,7 +422,12 @@ def calculate_summary_metrics_per_boxImgRatio(grouped_data):
         counters = _initialize_metric_counters_detection_task()
         count_total = len(f1s)
         for mae, iou, f1, prec, rec, success in zip(
-            data["mae"], data["iou"], f1s, data["precision"], data["recall"], data["success"]
+            data["mae"],
+            data["iou"],
+            f1s,
+            data["precision"],
+            data["recall"],
+            data["success"],
         ):
             metrics_dict = {
                 "avgMAE": {"MAE": mae, "success": success},
@@ -426,7 +438,9 @@ def calculate_summary_metrics_per_boxImgRatio(grouped_data):
                 "SuccessRate": {"success": success},
             }
             _update_metric_counters_detection_task(metrics_dict, counters)
-        summary_metrics[bin_label] = _calculate_final_metrics_detection_task(counters, count_total)
+        summary_metrics[bin_label] = _calculate_final_metrics_detection_task(
+            counters, count_total
+        )
     return summary_metrics
 
 
@@ -460,12 +474,16 @@ def _read_gt_for_random_baseline(jsonl_path, limit=None):
                 box_img_ratio = data["box_img_ratio"]
             elif "bounding_boxes" in doc:
                 dims = doc["bounding_boxes"]["dimensions"][0]
-                box_img_ratio = (dims[0] * dims[1]) / (image_size_2d[0] * image_size_2d[1])
+                box_img_ratio = (dims[0] * dims[1]) / (
+                    image_size_2d[0] * image_size_2d[1]
+                )
             else:
                 coords = json.loads(target) if isinstance(target, str) else target
                 box_img_ratio = abs(coords[2] - coords[0]) * abs(coords[3] - coords[1])
 
-            labels_map, _ = get_labelsMap_imgModality_from_seg_benchmark_plan(dataset_name, task_id)
+            labels_map, _ = get_labelsMap_imgModality_from_seg_benchmark_plan(
+                dataset_name, task_id
+            )
             if labels_map.get(str(label)):
                 results.append((target, box_img_ratio, image_size_2d))
 
@@ -502,13 +520,16 @@ def generate_random_detection_baseline(ref_model_parsed_dir, out_dir, limit=None
     # order is stable regardless of which reference model's directory is scanned.
     jsonl_files = sorted(
         (
-            f for f in glob.glob(os.path.join(ref_model_parsed_dir, "*.jsonl"))
+            f
+            for f in glob.glob(os.path.join(ref_model_parsed_dir, "*.jsonl"))
             if "_BoxCoordinate_" in os.path.basename(f)
         ),
         key=lambda f: re.sub(r"^\d{8}_\d{6}_", "", os.path.basename(f)),
     )
     if not jsonl_files:
-        raise FileNotFoundError(f"No BoxCoordinate JSONL files in {ref_model_parsed_dir}")
+        raise FileNotFoundError(
+            f"No BoxCoordinate JSONL files in {ref_model_parsed_dir}"
+        )
 
     all_data = []
     for jsonl_file in tqdm(jsonl_files, desc="Reading reference JSONL files"):
@@ -516,8 +537,10 @@ def generate_random_detection_baseline(ref_model_parsed_dir, out_dir, limit=None
 
     grouped_data = _group_gt_by_boxImgRatio(all_data)
 
-    summary_metrics = calculate_summary_metrics_per_anatomy_detection_task_for_randomModel(
-        grouped_data, num_simulations=RANDOM_BOX_SIMULATIONS
+    summary_metrics = (
+        calculate_summary_metrics_per_anatomy_detection_task_for_randomModel(
+            grouped_data, num_simulations=RANDOM_BOX_SIMULATIONS
+        )
     )
 
     random_model_path = os.path.join(out_dir, "random_detection")
@@ -582,14 +605,20 @@ def process_jsonl_file_detection_task(jsonl_path, limit=None):
                 box_img_ratio = data["box_img_ratio"]
             elif "bounding_boxes" in doc:
                 dims = doc["bounding_boxes"]["dimensions"][0]
-                box_img_ratio = (dims[0] * dims[1]) / (image_size_2d[0] * image_size_2d[1])
+                box_img_ratio = (dims[0] * dims[1]) / (
+                    image_size_2d[0] * image_size_2d[1]
+                )
             else:
                 coords = target if isinstance(target, list) else json.loads(target)
                 box_img_ratio = abs(coords[2] - coords[0]) * abs(coords[3] - coords[1])
 
-            labels_map, _ = get_labelsMap_imgModality_from_seg_benchmark_plan(dataset_name, task_id)
+            labels_map, _ = get_labelsMap_imgModality_from_seg_benchmark_plan(
+                dataset_name, task_id
+            )
             if labels_map.get(str(label)):
-                results.append((box_img_ratio, mae, iou, f1, precision, recall, success))
+                results.append(
+                    (box_img_ratio, mae, iou, f1, precision, recall, success)
+                )
 
             count += 1
             if limit is not None and count >= limit:
@@ -756,7 +785,10 @@ def main(**kwargs):
             f"Using task_dir: {task_dir}\nModel directories within this folder will be looped over."
         )
         _process_task_directory(
-            task_dir, limit, processes=processes, skip_model_wo_parsed_files=skip_model_wo_parsed_files
+            task_dir,
+            limit,
+            processes=processes,
+            skip_model_wo_parsed_files=skip_model_wo_parsed_files,
         )
 
     elif model_dir is not None:
@@ -770,7 +802,9 @@ def main(**kwargs):
         generate_random_detection_baseline(ref_model_dir, out_dir, limit)
 
     else:
-        raise ValueError("One of --task_dir, --model_dir, or --ref_model_dir must be provided.")
+        raise ValueError(
+            "One of --task_dir, --model_dir, or --ref_model_dir must be provided."
+        )
 
 
 def parse_args():
@@ -837,11 +871,21 @@ def parse_args():
 
     args = parser.parse_args()
 
-    modes = sum([args.task_dir is not None, args.model_dir is not None, args.ref_model_dir is not None])
+    modes = sum(
+        [
+            args.task_dir is not None,
+            args.model_dir is not None,
+            args.ref_model_dir is not None,
+        ]
+    )
     if modes == 0:
-        parser.error("One of --task_dir, --model_dir, or --ref_model_dir must be provided.")
+        parser.error(
+            "One of --task_dir, --model_dir, or --ref_model_dir must be provided."
+        )
     if modes > 1:
-        parser.error("--task_dir, --model_dir, and --ref_model_dir are mutually exclusive.")
+        parser.error(
+            "--task_dir, --model_dir, and --ref_model_dir are mutually exclusive."
+        )
     if args.ref_model_dir is not None and args.out_dir is None:
         parser.error("--out_dir is required when using --ref_model_dir.")
     if args.skip_model_wo_parsed_files and args.task_dir is None:

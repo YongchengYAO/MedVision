@@ -40,7 +40,7 @@ flock "${lockfile}" bash -c '
     python -m pip install --force-reinstall "${latest_wheel}"
 '
 
-# Use MedVision dataset v1.0.0 
+# Use MedVision dataset v1.0.0
 export MedVision_PLANNER_VERSION='1.0.0'
 
 # Run
@@ -49,16 +49,16 @@ export MedVision_PLANNER_VERSION='1.0.0'
 # --skip_env_setup \
 # --skip_update_status \
 
-python -m  medvision_bm.benchmark.eval__llava_med \
---model_hf_id $model_hf_id \
---model_name $model_name \
---results_dir $result_dir \
---data_dir $data_dir \
---dir_third_party $dir_third_party \
---tasks_list_json_path $tasks_list_json_path \
---task_status_json_path $task_status_json_path \
---batch_size_per_gpu $batch_size_per_gpu \
---sample_limit $sample_limit \
+python -m medvision_bm.benchmark.eval__llava_med \
+    --model_hf_id $model_hf_id \
+    --model_name $model_name \
+    --results_dir $result_dir \
+    --data_dir $data_dir \
+    --dir_third_party $dir_third_party \
+    --tasks_list_json_path $tasks_list_json_path \
+    --task_status_json_path $task_status_json_path \
+    --batch_size_per_gpu $batch_size_per_gpu \
+    --sample_limit $sample_limit
 
 conda deactivate
 # conda remove -n $ENV_NAME --all -y

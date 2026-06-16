@@ -11,11 +11,14 @@ def parse_sample_indices(s: str) -> list:
     if ":" in s:
         parts = s.split(":")
         if len(parts) != 2:
-            raise ValueError(f"Invalid sample_indices format '{s}'. Use [start:stop] or [start,stop,step].")
+            raise ValueError(
+                f"Invalid sample_indices format '{s}'. Use [start:stop] or [start,stop,step]."
+            )
         return list(range(int(parts[0]), int(parts[1])))
     else:
         parts = [int(x) for x in s.split(",")]
         if len(parts) not in (2, 3):
-            raise ValueError(f"Invalid sample_indices format '{s}'. Use [start:stop] or [start,stop,step].")
+            raise ValueError(
+                f"Invalid sample_indices format '{s}'. Use [start:stop] or [start,stop,step]."
+            )
         return list(range(*parts))
-        

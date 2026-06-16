@@ -126,7 +126,7 @@ def main(
                 f"ds__AD{train_limit_AD}_D{train_limit_detect}_TL{train_limit_TL}_all{train_limit_total}",
             )
             if new_shape_hw is not None:
-                prepared_ds_dir += f"__resized-wh-{new_shape_hw[1]}x{new_shape_hw[0]}" 
+                prepared_ds_dir += f"__resized-wh-{new_shape_hw[1]}x{new_shape_hw[0]}"
             else:
                 prepared_ds_dir += f"__original"
 
@@ -170,10 +170,12 @@ def main(
                     )
                     # Keep task label for optional temperature-based sampling.
                     dataset_AD["train"] = dataset_AD["train"].add_column(
-                        kwargs.get("temperature_sampler_task_column"), ["AD"] * len(dataset_AD["train"])
+                        kwargs.get("temperature_sampler_task_column"),
+                        ["AD"] * len(dataset_AD["train"]),
                     )
                     dataset_AD["validation"] = dataset_AD["validation"].add_column(
-                        kwargs.get("temperature_sampler_task_column"), ["AD"] * len(dataset_AD["validation"])
+                        kwargs.get("temperature_sampler_task_column"),
+                        ["AD"] * len(dataset_AD["validation"]),
                     )
                     train_ds_list.append(dataset_AD["train"])
                     val_ds_list.append(dataset_AD["validation"])
@@ -242,10 +244,12 @@ def main(
                     )
                     # Keep task label for optional temperature-based sampling.
                     dataset_TL["train"] = dataset_TL["train"].add_column(
-                        kwargs.get("temperature_sampler_task_column"), ["TL"] * len(dataset_TL["train"])
+                        kwargs.get("temperature_sampler_task_column"),
+                        ["TL"] * len(dataset_TL["train"]),
                     )
                     dataset_TL["validation"] = dataset_TL["validation"].add_column(
-                        kwargs.get("temperature_sampler_task_column"), ["TL"] * len(dataset_TL["validation"])
+                        kwargs.get("temperature_sampler_task_column"),
+                        ["TL"] * len(dataset_TL["validation"]),
                     )
                     train_ds_list.append(dataset_TL["train"])
                     val_ds_list.append(dataset_TL["validation"])
@@ -261,8 +265,11 @@ def main(
                     train_size = len(dataset["train"])
                     if train_limit > train_size:
                         import numpy as np
+
                         np.random.seed(SEED)
-                        indices = np.random.choice(train_size, size=train_limit, replace=True)
+                        indices = np.random.choice(
+                            train_size, size=train_limit, replace=True
+                        )
                         dataset["train"] = dataset["train"].select(indices)
                     else:
                         dataset["train"] = (
@@ -280,8 +287,11 @@ def main(
                     if val_limit > val_size:
                         # Allow sampling with replacement if limit exceeds dataset size
                         import numpy as np
+
                         np.random.seed(SEED)
-                        indices = np.random.choice(val_size, size=val_limit, replace=True)
+                        indices = np.random.choice(
+                            val_size, size=val_limit, replace=True
+                        )
                         dataset["validation"] = dataset["validation"].select(indices)
                     else:
                         dataset["validation"] = (

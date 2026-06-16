@@ -40,7 +40,7 @@ flock "${lockfile}" bash -c '
     python -m pip install --force-reinstall "${latest_wheel}"
 '
 
-# Use MedVision dataset v1.0.0 
+# Use MedVision dataset v1.0.0
 export MedVision_PLANNER_VERSION='1.0.0'
 
 # Important: Fix module import failure in distributed subprocess
@@ -52,16 +52,16 @@ export PYTHONPATH="${dir_third_party}/HuatuoGPT-Vision:$PYTHONPATH"
 # --skip_env_setup \
 # --skip_update_status \
 
-python -m  medvision_bm.benchmark.eval__huatuogpt_vision \
---model_hf_id $model_hf_id \
---model_name $model_name \
---results_dir $result_dir \
---dir_third_party $dir_third_party \
---data_dir $data_dir \
---tasks_list_json_path $tasks_list_json_path \
---task_status_json_path $task_status_json_path \
---batch_size_per_gpu $batch_size_per_gpu \
---sample_limit $sample_limit \
+python -m medvision_bm.benchmark.eval__huatuogpt_vision \
+    --model_hf_id $model_hf_id \
+    --model_name $model_name \
+    --results_dir $result_dir \
+    --dir_third_party $dir_third_party \
+    --data_dir $data_dir \
+    --tasks_list_json_path $tasks_list_json_path \
+    --task_status_json_path $task_status_json_path \
+    --batch_size_per_gpu $batch_size_per_gpu \
+    --sample_limit $sample_limit
 
 conda deactivate
 # conda remove -n $ENV_NAME --all -y

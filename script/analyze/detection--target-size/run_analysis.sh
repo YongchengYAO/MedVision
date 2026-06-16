@@ -30,14 +30,38 @@ PROCESSES=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --task_dir)                   TASK_DIR="$2";    shift 2 ;;
-        --model_dir)                  MODEL_DIR="$2";   shift 2 ;;
-        --config)                     CONFIG="$2";      shift 2 ;;
-        --out_dir)                    OUT_DIR="$2";     shift 2 ;;
-        --limit)                      LIMIT="$2";       shift 2 ;;
-        --skip_model_wo_parsed_files) SKIP_FLAG="--skip_model_wo_parsed_files"; shift ;;
-        --processes|-p)               PROCESSES="$2";   shift 2 ;;
-        *) echo "Unknown argument: $1"; exit 1 ;;
+        --task_dir)
+            TASK_DIR="$2"
+            shift 2
+            ;;
+        --model_dir)
+            MODEL_DIR="$2"
+            shift 2
+            ;;
+        --config)
+            CONFIG="$2"
+            shift 2
+            ;;
+        --out_dir)
+            OUT_DIR="$2"
+            shift 2
+            ;;
+        --limit)
+            LIMIT="$2"
+            shift 2
+            ;;
+        --skip_model_wo_parsed_files)
+            SKIP_FLAG="--skip_model_wo_parsed_files"
+            shift
+            ;;
+        --processes | -p)
+            PROCESSES="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            exit 1
+            ;;
     esac
 done
 
@@ -57,11 +81,11 @@ fi
 # ── Step 1: Parse results (+ random baseline when --task_dir) ─────────────────
 echo "[1/2] Parsing detection results"
 ANALYZE_ARGS=()
-[[ -n "${TASK_DIR}" ]]   && ANALYZE_ARGS+=(--task_dir  "${TASK_DIR}")
-[[ -n "${MODEL_DIR}" ]]  && ANALYZE_ARGS+=(--model_dir "${MODEL_DIR}")
-[[ -n "${LIMIT}" ]]      && ANALYZE_ARGS+=(--limit "${LIMIT}")
-[[ -n "${SKIP_FLAG}" ]]  && ANALYZE_ARGS+=("${SKIP_FLAG}")
-[[ -n "${PROCESSES}" ]]  && ANALYZE_ARGS+=(--processes "${PROCESSES}")
+[[ -n "${TASK_DIR}" ]] && ANALYZE_ARGS+=(--task_dir "${TASK_DIR}")
+[[ -n "${MODEL_DIR}" ]] && ANALYZE_ARGS+=(--model_dir "${MODEL_DIR}")
+[[ -n "${LIMIT}" ]] && ANALYZE_ARGS+=(--limit "${LIMIT}")
+[[ -n "${SKIP_FLAG}" ]] && ANALYZE_ARGS+=("${SKIP_FLAG}")
+[[ -n "${PROCESSES}" ]] && ANALYZE_ARGS+=(--processes "${PROCESSES}")
 
 python -m medvision_bm.benchmark.analyze_detection_task_boxsize_vs_random \
     "${ANALYZE_ARGS[@]}"

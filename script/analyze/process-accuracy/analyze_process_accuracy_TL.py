@@ -34,11 +34,19 @@ from medvision_bm.utils.parse_utils import (
     get_targetLabel_imgModality_from_biometry_benchmark_plan,
 )
 
+
 def _cal_norm_L2_dist(pred_xy, gt_xy):
-    return float(np.sqrt((pred_xy[0] - gt_xy[0])**2 + (pred_xy[1] - gt_xy[1])**2) / np.sqrt(2))
+    return float(
+        np.sqrt((pred_xy[0] - gt_xy[0]) ** 2 + (pred_xy[1] - gt_xy[1]) ** 2)
+        / np.sqrt(2)
+    )
+
 
 def _cal_nMAE(pred, gt, scale):
-    return float(np.mean(np.abs(np.array(pred, float) - np.array(gt, float))/(scale + 1e-15)))
+    return float(
+        np.mean(np.abs(np.array(pred, float) - np.array(gt, float)) / (scale + 1e-15))
+    )
+
 
 def _cal_MRE(pred, gt):
     gt = np.array(gt, float)
@@ -48,6 +56,7 @@ def _cal_MRE(pred, gt):
 # ---------------------------------------------------------------------------
 # Landmark file helpers (mirrors sft_utils.py logic)
 # ---------------------------------------------------------------------------
+
 
 def _load_json(path):
     path = Path(path)
@@ -72,7 +81,7 @@ def _extract_3d_to_2d(coor_3d, slice_dim):
 def _to_wh(array_coor_2d, img_h, img_w):
     """
     Convert array coords to normalized (w, h) image coords.
-    
+
     # ------------------------------------------------------------------
     # NOTE: CAVEAT!
     # !!! We need to convert the coordinates from the benchmark planner format to the output format. !!!
@@ -115,12 +124,16 @@ def _extract_gt_from_doc(doc):
         return None, f"biometric_profile parse error: {e}"
 
     try:
-        lm_data   = _load_json(doc["landmark_file"])
+        lm_data = _load_json(doc["landmark_file"])
         slice_dim = doc["slice_dim"]
         slice_idx = doc["slice_idx"]
         img_h, img_w = doc["image_size_2d"]  # raw image [height, width]
 
-        dim_to_key = {0: "slice_landmarks_x", 1: "slice_landmarks_y", 2: "slice_landmarks_z"}
+        dim_to_key = {
+            0: "slice_landmarks_x",
+            1: "slice_landmarks_y",
+            2: "slice_landmarks_z",
+        }
         lm_slice_ls = lm_data[dim_to_key[slice_dim]]
 
         matched = [e for e in lm_slice_ls if e.get("slice_idx") == slice_idx]
@@ -144,12 +157,12 @@ def _extract_gt_from_doc(doc):
             result[p_name] = _to_wh(coor_2d, img_h, img_w)
 
         return {
-            "P1_wh":      result["P1"],
-            "P2_wh":      result["P2"],
-            "P3_wh":      result["P3"],
-            "P4_wh":      result["P4"],
-            "gt_major":   gt_major,
-            "gt_minor":   gt_minor,
+            "P1_wh": result["P1"],
+            "P2_wh": result["P2"],
+            "P3_wh": result["P3"],
+            "P4_wh": result["P4"],
+            "gt_major": gt_major,
+            "gt_minor": gt_minor,
         }, None
 
     except Exception as e:
@@ -160,16 +173,23 @@ def _extract_gt_from_doc(doc):
 # Regex patterns (mirror medvision_tl.py)
 # ---------------------------------------------------------------------------
 
-_RP  = r"(?:0(?:\.\d+)?|1(?:\.0+)?)"
+_RP = r"(?:0(?:\.\d+)?|1(?:\.0+)?)"
 _RPG = rf"({_RP})"
-_NNR  = r"\d+(?:\.\d+)?"
+_NNR = r"\d+(?:\.\d+)?"
 _NNRG = rf"({_NNR})"
-_CG   = rf"\(\s*{_RPG}\s*,\s*{_RPG}\s*\)"
+_CG = rf"\(\s*{_RPG}\s*,\s*{_RPG}\s*\)"
 
 
-def _tag(n): return rf"<{n}>"
-def _end(n): return rf"</{n}>"
-def _rea(k): return rf"{_tag(f'step-{k}-reasoning')}.*?{_end(f'step-{k}-reasoning')}"
+def _tag(n):
+    return rf"<{n}>"
+
+
+def _end(n):
+    return rf"</{n}>"
+
+
+def _rea(k):
+    return rf"{_tag(f'step-{k}-reasoning')}.*?{_end(f'step-{k}-reasoning')}"
 
 
 PATTERNS_TL_GROUP = {
@@ -199,6 +219,7 @@ def _search(pat, txt):
 # Per-sample analyzer
 # ---------------------------------------------------------------------------
 
+
 def analyze_tl_sample(solution, gt, scale):
     """
     Compute per-step metrics for a T/L sample.
@@ -209,61 +230,77 @@ def analyze_tl_sample(solution, gt, scale):
       - gt_major (major axis length)  → step 3 MRE
       - gt_minor (minor axis length)  → step 4 MRE
     """
-    p1, p2   = gt["P1_wh"], gt["P2_wh"]
-    p3, p4   = gt["P3_wh"], gt["P4_wh"]
-    gm, gmi  = gt["gt_major"], gt["gt_minor"]
+    p1, p2 = gt["P1_wh"], gt["P2_wh"]
+    p3, p4 = gt["P3_wh"], gt["P4_wh"]
+    gm, gmi = gt["gt_major"], gt["gt_minor"]
 
     result = {
-        "metric_type":      "tl",
-        "gt_P1_wh":         p1,
-        "gt_P2_wh":         p2,
-        "gt_P3_wh":         p3,
-        "gt_P4_wh":         p4,
-        "gt_major_length":  gm,
-        "gt_minor_length":  gmi,
+        "metric_type": "tl",
+        "gt_P1_wh": p1,
+        "gt_P2_wh": p2,
+        "gt_P3_wh": p3,
+        "gt_P4_wh": p4,
+        "gt_major_length": gm,
+        "gt_minor_length": gmi,
     }
 
     # --- Step 1: major axis (P1, P2) ---
-    m1 = _search(PATTERNS_TL_GROUP[1], solution) or _search(PATTERNS_TL_ANSWER_ONLY[1], solution)
+    m1 = _search(PATTERNS_TL_GROUP[1], solution) or _search(
+        PATTERNS_TL_ANSWER_ONLY[1], solution
+    )
     if m1:
         pred = [float(m1.group(i)) for i in range(1, 5)]
         result["step1_pred"] = pred
         pred_pts = [[pred[0], pred[1]], [pred[2], pred[3]]]
-        d1 = (_cal_norm_L2_dist(pred_pts[0], p1) + _cal_norm_L2_dist(pred_pts[1], p2)) / 2
-        d2 = (_cal_norm_L2_dist(pred_pts[0], p2) + _cal_norm_L2_dist(pred_pts[1], p1)) / 2
+        d1 = (
+            _cal_norm_L2_dist(pred_pts[0], p1) + _cal_norm_L2_dist(pred_pts[1], p2)
+        ) / 2
+        d2 = (
+            _cal_norm_L2_dist(pred_pts[0], p2) + _cal_norm_L2_dist(pred_pts[1], p1)
+        ) / 2
         result["step1_normL2"] = min(d1, d2)
     else:
         result["step1_pred"] = result["step1_normL2"] = None
 
     # --- Step 2: minor axis (P3, P4) ---
-    m2 = _search(PATTERNS_TL_GROUP[2], solution) or _search(PATTERNS_TL_ANSWER_ONLY[2], solution)
+    m2 = _search(PATTERNS_TL_GROUP[2], solution) or _search(
+        PATTERNS_TL_ANSWER_ONLY[2], solution
+    )
     if m2:
         pred = [float(m2.group(i)) for i in range(1, 5)]
         result["step2_pred"] = pred
         pred_pts = [[pred[0], pred[1]], [pred[2], pred[3]]]
-        d1 = (_cal_norm_L2_dist(pred_pts[0], p3) + _cal_norm_L2_dist(pred_pts[1], p4)) / 2
-        d2 = (_cal_norm_L2_dist(pred_pts[0], p4) + _cal_norm_L2_dist(pred_pts[1], p3)) / 2
+        d1 = (
+            _cal_norm_L2_dist(pred_pts[0], p3) + _cal_norm_L2_dist(pred_pts[1], p4)
+        ) / 2
+        d2 = (
+            _cal_norm_L2_dist(pred_pts[0], p4) + _cal_norm_L2_dist(pred_pts[1], p3)
+        ) / 2
         result["step2_normL2"] = min(d1, d2)
     else:
         result["step2_pred"] = result["step2_normL2"] = None
 
     # --- Step 3: major axis length ---
-    m3 = _search(PATTERNS_TL_GROUP[3], solution) or _search(PATTERNS_TL_ANSWER_ONLY[3], solution)
+    m3 = _search(PATTERNS_TL_GROUP[3], solution) or _search(
+        PATTERNS_TL_ANSWER_ONLY[3], solution
+    )
     if m3:
         pred = float(m3.group(1))
         result["step3_pred"] = pred
-        result["step3_MRE"]  = _cal_MRE([pred], [gm])
-        result["step3_nMAE"]  = _cal_nMAE([pred], [gm], scale)
+        result["step3_MRE"] = _cal_MRE([pred], [gm])
+        result["step3_nMAE"] = _cal_nMAE([pred], [gm], scale)
     else:
         result["step3_pred"] = result["step3_MRE"] = result["step3_nMAE"] = None
 
     # --- Step 4: minor axis length ---
-    m4 = _search(PATTERNS_TL_GROUP[4], solution) or _search(PATTERNS_TL_ANSWER_ONLY[4], solution)
+    m4 = _search(PATTERNS_TL_GROUP[4], solution) or _search(
+        PATTERNS_TL_ANSWER_ONLY[4], solution
+    )
     if m4:
         pred = float(m4.group(1))
         result["step4_pred"] = pred
-        result["step4_MRE"]  = _cal_MRE([pred], [gmi])
-        result["step4_nMAE"]  = _cal_nMAE([pred], [gmi], scale)
+        result["step4_MRE"] = _cal_MRE([pred], [gmi])
+        result["step4_nMAE"] = _cal_nMAE([pred], [gmi], scale)
     else:
         result["step4_pred"] = result["step4_MRE"] = result["step4_nMAE"] = None
 
@@ -274,10 +311,10 @@ def analyze_tl_sample(solution, gt, scale):
             major_pred = float(m_tool.group(1))
             minor_pred = float(m_tool.group(2))
             result["step3_pred"] = major_pred
-            result["step3_MRE"]  = _cal_MRE([major_pred], [gm])
+            result["step3_MRE"] = _cal_MRE([major_pred], [gm])
             result["step3_nMAE"] = _cal_nMAE([major_pred], [gm], scale)
             result["step4_pred"] = minor_pred
-            result["step4_MRE"]  = _cal_MRE([minor_pred], [gmi])
+            result["step4_MRE"] = _cal_MRE([minor_pred], [gmi])
             result["step4_nMAE"] = _cal_nMAE([minor_pred], [gmi], scale)
 
     return result
@@ -294,7 +331,12 @@ def _build_removed_set(json_path):
     with open(json_path) as f:
         entries = json.load(f)
     return frozenset(
-        (e["image_file"], _DIM_MAP[e["slice_dim"]], int(e["slice_idx"]), int(e["task_ID"]))
+        (
+            e["image_file"],
+            _DIM_MAP[e["slice_dim"]],
+            int(e["slice_idx"]),
+            int(e["task_ID"]),
+        )
         for e in entries
     )
 
@@ -302,16 +344,17 @@ def _build_removed_set(json_path):
 def _relative_image_file(full_path, dataset_name):
     marker = f"/{dataset_name}/"
     idx = full_path.find(marker)
-    return full_path[idx + len(marker):] if idx >= 0 else Path(full_path).name
+    return full_path[idx + len(marker) :] if idx >= 0 else Path(full_path).name
 
 
 # ---------------------------------------------------------------------------
 # Process a single JSONL file
 # ---------------------------------------------------------------------------
 
+
 def process_jsonl(jsonl_path, output_suffix, removed_set=None, dataset_name=None):
     jsonl_path = Path(jsonl_path)
-    out_path   = jsonl_path.with_name(jsonl_path.stem + output_suffix + ".jsonl")
+    out_path = jsonl_path.with_name(jsonl_path.stem + output_suffix + ".jsonl")
 
     n_total = n_gt_fail = n_parse_fail = n_success = 0
     results = []
@@ -324,8 +367,8 @@ def process_jsonl(jsonl_path, output_suffix, removed_set=None, dataset_name=None
             sample = json.loads(line)
             n_total += 1
 
-            doc      = sample.get("doc", {})
-            doc_id   = sample.get("doc_id")
+            doc = sample.get("doc", {})
+            doc_id = sample.get("doc_id")
             solution = sample.get("resps", [[""]])[0]
             if isinstance(solution, list):
                 solution = solution[0] if solution else ""
@@ -342,10 +385,10 @@ def process_jsonl(jsonl_path, output_suffix, removed_set=None, dataset_name=None
                     continue
 
             record = {
-                "doc_id":    doc_id,
-                "dataset":   doc.get("dataset_name"),
-                "taskID":    doc.get("taskID"),
-                "taskType":  doc.get("taskType"),
+                "doc_id": doc_id,
+                "dataset": doc.get("dataset_name"),
+                "taskID": doc.get("taskID"),
+                "taskType": doc.get("taskType"),
                 "image_file": doc.get("image_file"),
                 "slice_dim": doc.get("slice_dim"),
                 "slice_idx": doc.get("slice_idx"),
@@ -364,9 +407,15 @@ def process_jsonl(jsonl_path, output_suffix, removed_set=None, dataset_name=None
                 # scale distance error by the image diagonal to get a more interpretable relative error metric (e.g. 0.05 means 5% of the image diagonal)
                 image_size_2d = doc.get("image_size_2d")
                 pixel_size = doc.get("pixel_size")
-                image_diagonal = np.sqrt((image_size_2d[0]*pixel_size[0])**2 + (image_size_2d[1]*pixel_size[1])**2)
+                image_diagonal = np.sqrt(
+                    (image_size_2d[0] * pixel_size[0]) ** 2
+                    + (image_size_2d[1] * pixel_size[1]) ** 2
+                )
                 record.update(analyze_tl_sample(solution, gt, image_diagonal))
-                if all(record.get(k) is not None for k in ("step1_normL2", "step2_normL2", "step3_MRE", "step4_MRE")):
+                if all(
+                    record.get(k) is not None
+                    for k in ("step1_normL2", "step2_normL2", "step3_MRE", "step4_MRE")
+                ):
                     n_success += 1
             except Exception as e:
                 n_parse_fail += 1
@@ -385,10 +434,16 @@ def process_jsonl(jsonl_path, output_suffix, removed_set=None, dataset_name=None
         return float(np.mean(vals)), float(np.std(vals)), len(vals)
 
     n_tl = n_total - n_gt_fail
-    success_str = f", success_reasoning_rate={100*n_success/n_tl:.1f}% {n_success}/{n_tl}(tl)" if n_tl > 0 else ""
+    success_str = (
+        f", success_reasoning_rate={100*n_success/n_tl:.1f}% {n_success}/{n_tl}(tl)"
+        if n_tl > 0
+        else ""
+    )
 
     print(f"\n[{jsonl_path.name}]")
-    print(f"  Total: {n_total}  (gt_fail={n_gt_fail}, parse_fail={n_parse_fail}{success_str})")
+    print(
+        f"  Total: {n_total}  (gt_fail={n_gt_fail}, parse_fail={n_parse_fail}{success_str})"
+    )
     for key, label in [
         ("step1_normL2", "Step1 normalized L2 distance (major endpts)"),
         ("step2_normL2", "Step2 normalized L2 distance (minor endpts)"),
@@ -401,7 +456,7 @@ def process_jsonl(jsonl_path, output_suffix, removed_set=None, dataset_name=None
             continue
         mean, sd, n = _stats(key)
         mean_str = f"{mean:.4f}" if mean is not None else "nan"
-        sd_str   = f"{sd:.4f}"   if sd   is not None else "nan"
+        sd_str = f"{sd:.4f}" if sd is not None else "nan"
         print(f"  {label}: mean={mean_str} ± sd={sd_str} (n={n})")
     print(f"  Output: {out_path}")
     return results
@@ -410,6 +465,7 @@ def process_jsonl(jsonl_path, output_suffix, removed_set=None, dataset_name=None
 # ---------------------------------------------------------------------------
 # Path discovery helpers
 # ---------------------------------------------------------------------------
+
 
 def _collect_from_model_dir(model_dir):
     paths = []
@@ -457,8 +513,14 @@ def _get_tl_label(record):
     if dataset is None or task_id is None or slice_dim is None:
         return None
     try:
-        label, _ = get_targetLabel_imgModality_from_biometry_benchmark_plan(dataset, int(task_id))
-        labels_map, img_modality = get_labelsMap_imgModality_from_biometry_benchmark_plan(dataset, int(task_id))
+        label, _ = get_targetLabel_imgModality_from_biometry_benchmark_plan(
+            dataset, int(task_id)
+        )
+        labels_map, img_modality = (
+            get_labelsMap_imgModality_from_biometry_benchmark_plan(
+                dataset, int(task_id)
+            )
+        )
         label_name = labels_map.get(str(label))
         if label_name is None:
             return None
@@ -485,22 +547,38 @@ def _aggregate_by_label_TL(all_results):
             continue
         if label not in grouped:
             grouped[label] = {
-                "s1": [], "s2": [], "s3_mre": [], "s4_mre": [],
-                "s3_msc": [], "s4_msc": [],
-                "n_success": 0, "n_samples": 0,
+                "s1": [],
+                "s2": [],
+                "s3_mre": [],
+                "s4_mre": [],
+                "s3_msc": [],
+                "s4_msc": [],
+                "n_success": 0,
+                "n_samples": 0,
             }
         g = grouped[label]
         g["n_samples"] += 1
         s1, s2 = r.get("step1_normL2"), r.get("step2_normL2")
         s3_mre, s4_mre = r.get("step3_MRE"), r.get("step4_MRE")
         s3_msc, s4_msc = r.get("step3_nMAE"), r.get("step4_nMAE")
-        if s1 is not None: g["s1"].append(s1)
-        if s2 is not None: g["s2"].append(s2)
-        if s3_mre is not None: g["s3_mre"].append(s3_mre)
-        if s4_mre is not None: g["s4_mre"].append(s4_mre)
-        if s3_msc is not None: g["s3_msc"].append(s3_msc)
-        if s4_msc is not None: g["s4_msc"].append(s4_msc)
-        if s1 is not None and s2 is not None and s3_mre is not None and s4_mre is not None:
+        if s1 is not None:
+            g["s1"].append(s1)
+        if s2 is not None:
+            g["s2"].append(s2)
+        if s3_mre is not None:
+            g["s3_mre"].append(s3_mre)
+        if s4_mre is not None:
+            g["s4_mre"].append(s4_mre)
+        if s3_msc is not None:
+            g["s3_msc"].append(s3_msc)
+        if s4_msc is not None:
+            g["s4_msc"].append(s4_msc)
+        if (
+            s1 is not None
+            and s2 is not None
+            and s3_mre is not None
+            and s4_mre is not None
+        ):
             g["n_success"] += 1
 
     def _avg(vals):
@@ -515,7 +593,9 @@ def _aggregate_by_label_TL(all_results):
             "step3_avg_nMAE": _avg(g["s3_msc"]),
             "step4_avg_nMAE": _avg(g["s4_msc"]),
             "n_samples": g["n_samples"],
-            "success_rate": g["n_success"] / g["n_samples"] if g["n_samples"] > 0 else 0.0,
+            "success_rate": (
+                g["n_success"] / g["n_samples"] if g["n_samples"] > 0 else 0.0
+            ),
         }
         for label, g in grouped.items()
     }
@@ -524,15 +604,29 @@ def _aggregate_by_label_TL(all_results):
 def _print_model_summary_TL(model_dir, summary, filtered=False):
     """Write per-model process-accuracy summary TXT to model_dir."""
     model_dir = Path(model_dir)
-    out_path  = model_dir / ("summary_proc_acc_TL_model_filtered.txt" if filtered else SUMMARY_PROC_ACC_TL_MODEL_FILENAME)
-    lines     = []
+    out_path = model_dir / (
+        "summary_proc_acc_TL_model_filtered.txt"
+        if filtered
+        else SUMMARY_PROC_ACC_TL_MODEL_FILENAME
+    )
+    lines = []
 
     def _p(text):
         lines.append(text)
 
     total_n = 0
-    wsum    = {k: 0.0 for k in ("step1_avg_normL2", "step2_avg_normL2", "step3_avg_MRE", "step4_avg_MRE", "step3_avg_nMAE", "step4_avg_nMAE")}
-    wcount  = {k: 0   for k in wsum}
+    wsum = {
+        k: 0.0
+        for k in (
+            "step1_avg_normL2",
+            "step2_avg_normL2",
+            "step3_avg_MRE",
+            "step4_avg_MRE",
+            "step3_avg_nMAE",
+            "step4_avg_nMAE",
+        )
+    }
+    wcount = {k: 0 for k in wsum}
 
     for label, lm in summary.items():
         n = lm.get("n_samples", 0)
@@ -542,7 +636,7 @@ def _print_model_summary_TL(model_dir, summary, filtered=False):
         for k in wsum:
             v = lm.get(k, float("nan"))
             if v is not None and not np.isnan(v):
-                wsum[k]   += v * n
+                wsum[k] += v * n
                 wcount[k] += n
 
     def _wf(k):
@@ -563,7 +657,9 @@ def _print_model_summary_TL(model_dir, summary, filtered=False):
         f"{'nMAE (step 3)':<14} | {'nMAE (step 4)':<14} | {'SR':<6} | {'Samples':<8}"
     )
     _p("-" * 152)
-    for label, lm in sorted(summary.items(), key=lambda x: x[1].get("n_samples", 0), reverse=True):
+    for label, lm in sorted(
+        summary.items(), key=lambda x: x[1].get("n_samples", 0), reverse=True
+    ):
         _p(
             f"{label:<52} | "
             f"{lm.get('step1_avg_normL2', float('nan')):<8.4f} | "
@@ -581,14 +677,20 @@ def _print_model_summary_TL(model_dir, summary, filtered=False):
     print(f"  [saved] per-model summary → {out_path}")
 
 
-def _process_model_dir(model_dir, output_suffix, removed_samples_dir=None, removed_samples_filename=None):
+def _process_model_dir(
+    model_dir, output_suffix, removed_samples_dir=None, removed_samples_filename=None
+):
     """Process all JSONL files in model's parsed/ dir; save per-label summary JSON."""
     model_dir = Path(model_dir)
     parsed_dir = model_dir / "parsed"
     if not parsed_dir.is_dir():
         print(f"[skip] no parsed/ dir: {model_dir}")
         return None
-    jsonl_paths = [p for p in sorted(parsed_dir.glob("*.jsonl")) if "_eq_acc" not in p.stem and "_proc_acc" not in p.stem]
+    jsonl_paths = [
+        p
+        for p in sorted(parsed_dir.glob("*.jsonl"))
+        if "_eq_acc" not in p.stem and "_proc_acc" not in p.stem
+    ]
     if not jsonl_paths:
         print(f"[skip] no JSONL files in: {parsed_dir}")
         return None
@@ -605,13 +707,25 @@ def _process_model_dir(model_dir, output_suffix, removed_samples_dir=None, remov
         removed_set = None
         if filtered and ds_name is not None:
             if ds_name not in _removed_cache:
-                json_path = Path(removed_samples_dir) / ds_name / removed_samples_filename
-                _removed_cache[ds_name] = _build_removed_set(json_path) if json_path.exists() else None
+                json_path = (
+                    Path(removed_samples_dir) / ds_name / removed_samples_filename
+                )
+                _removed_cache[ds_name] = (
+                    _build_removed_set(json_path) if json_path.exists() else None
+                )
             removed_set = _removed_cache.get(ds_name)
-        all_results.extend(process_jsonl(jp, effective_suffix, removed_set=removed_set, dataset_name=ds_name))
+        all_results.extend(
+            process_jsonl(
+                jp, effective_suffix, removed_set=removed_set, dataset_name=ds_name
+            )
+        )
 
     summary = _aggregate_by_label_TL(all_results)
-    metrics_fname = "summary_proc_acc_TL_metrics_filtered.json" if filtered else SUMMARY_PROC_ACC_TL_METRICS_FILENAME
+    metrics_fname = (
+        "summary_proc_acc_TL_metrics_filtered.json"
+        if filtered
+        else SUMMARY_PROC_ACC_TL_METRICS_FILENAME
+    )
     out_path = parsed_dir / metrics_fname
     with open(out_path, "w") as f:
         json.dump(summary, f, indent=2)
@@ -623,8 +737,16 @@ def _process_model_dir(model_dir, output_suffix, removed_samples_dir=None, remov
 def _print_cross_model_summaries_TL(task_dir, filtered=False):
     """Read per-model summary JSONs, print label table, save summary TXT."""
     task_dir = Path(task_dir)
-    metrics_fname = "summary_proc_acc_TL_metrics_filtered.json" if filtered else SUMMARY_PROC_ACC_TL_METRICS_FILENAME
-    out_path = task_dir / ("summary_proc_acc_TL_task_filtered.txt" if filtered else "summary_proc_acc_TL_task.txt")
+    metrics_fname = (
+        "summary_proc_acc_TL_metrics_filtered.json"
+        if filtered
+        else SUMMARY_PROC_ACC_TL_METRICS_FILENAME
+    )
+    out_path = task_dir / (
+        "summary_proc_acc_TL_task_filtered.txt"
+        if filtered
+        else "summary_proc_acc_TL_task.txt"
+    )
     lines = []
 
     def _p(text):
@@ -643,7 +765,17 @@ def _print_cross_model_summaries_TL(task_dir, filtered=False):
         _p(f"\nModel: {model_dir.name}")
 
         total_n = 0
-        wsum = {k: 0.0 for k in ("step1_avg_normL2", "step2_avg_normL2", "step3_avg_MRE", "step4_avg_MRE", "step3_avg_nMAE", "step4_avg_nMAE")}
+        wsum = {
+            k: 0.0
+            for k in (
+                "step1_avg_normL2",
+                "step2_avg_normL2",
+                "step3_avg_MRE",
+                "step4_avg_MRE",
+                "step3_avg_nMAE",
+                "step4_avg_nMAE",
+            )
+        }
         wcount = {k: 0 for k in wsum}
 
         for label, lm in metrics.items():
@@ -674,7 +806,9 @@ def _print_cross_model_summaries_TL(task_dir, filtered=False):
             f"{'S3_nMAE':<8} | {'S4_nMAE':<8} | {'SR':<6} | {'Samples':<8}"
         )
         _p("-" * 140)
-        for label, lm in sorted(metrics.items(), key=lambda x: x[1].get("n_samples", 0), reverse=True):
+        for label, lm in sorted(
+            metrics.items(), key=lambda x: x[1].get("n_samples", 0), reverse=True
+        ):
             _p(
                 f"{label:<52} | "
                 f"{lm.get('step1_avg_normL2', float('nan')):<8.4f} | "
@@ -697,28 +831,34 @@ def _print_cross_model_summaries_TL(task_dir, filtered=False):
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Analyze intermediate-step accuracy for T/L task JSONL files."
     )
     parser.add_argument(
-        "--task_dir", default=None,
+        "--task_dir",
+        default=None,
         help=(
             "Task results directory whose immediate subdirectories are model folders. "
             "Each model folder must contain a 'parsed/' subfolder with JSONL files."
         ),
     )
     parser.add_argument(
-        "--model_dir", default=None,
+        "--model_dir",
+        default=None,
         help="Single model directory containing a 'parsed/' subfolder with JSONL files.",
     )
     parser.add_argument(
-        "--jsonl", nargs="+", default=None,
-        help="One or more explicit JSONL file paths (or glob patterns) to analyze"
+        "--jsonl",
+        nargs="+",
+        default=None,
+        help="One or more explicit JSONL file paths (or glob patterns) to analyze",
     )
     parser.add_argument(
-        "--output_suffix", default="_proc_acc",
-        help="Suffix appended before .jsonl in the output filename (default: _proc_acc)"
+        "--output_suffix",
+        default="_proc_acc",
+        help="Suffix appended before .jsonl in the output filename (default: _proc_acc)",
     )
     parser.add_argument(
         "--removed_samples_dir",
@@ -752,7 +892,8 @@ def main():
     if args.model_dir:
         print(f"[Info] Processing model dir: {args.model_dir}")
         _process_model_dir(
-            args.model_dir, args.output_suffix,
+            args.model_dir,
+            args.output_suffix,
             removed_samples_dir=args.removed_samples_dir,
             removed_samples_filename=args.removed_samples_filename,
         )
@@ -760,10 +901,13 @@ def main():
     if args.task_dir:
         filtered = args.removed_samples_dir is not None
         model_dirs = sorted(d for d in Path(args.task_dir).iterdir() if d.is_dir())
-        print(f"[Info] Discovered {len(model_dirs)} model dir(s) under: {args.task_dir}")
+        print(
+            f"[Info] Discovered {len(model_dirs)} model dir(s) under: {args.task_dir}"
+        )
         for model_dir in model_dirs:
             _process_model_dir(
-                model_dir, args.output_suffix,
+                model_dir,
+                args.output_suffix,
                 removed_samples_dir=args.removed_samples_dir,
                 removed_samples_filename=args.removed_samples_filename,
             )

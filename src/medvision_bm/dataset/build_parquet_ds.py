@@ -74,7 +74,7 @@ def parse_arguments():
     parser.add_argument(
         "--val_sample_limit_per_task",
         type=int,
-        default=100, 
+        default=100,
         help="Limit the number of validation samples per task",
     )
     parser.add_argument(

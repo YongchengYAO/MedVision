@@ -327,7 +327,9 @@ def main():
             vllm_model_args += f",reshape_image_hw={s}"
 
         if args.stop_strings:
-            vllm_model_args += f",stop_strings={json.dumps(args.stop_strings, separators=(',', ':'))}"
+            vllm_model_args += (
+                f",stop_strings={json.dumps(args.stop_strings, separators=(',', ':'))}"
+            )
 
         parsed_sample_indices = None
         if args.sample_indices is not None:

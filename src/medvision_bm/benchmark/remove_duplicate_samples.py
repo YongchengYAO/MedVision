@@ -142,9 +142,7 @@ def main():
 
     for subfolder in subfolders:
         print(f"[{subfolder.name}]")
-        n_files, n_removed, n_json = process_subfolder(
-            subfolder, work_dir, out_dir
-        )
+        n_files, n_removed, n_json = process_subfolder(subfolder, work_dir, out_dir)
         total_jsonl_files += n_files
         total_json_copied += n_json
         total_removed += n_removed

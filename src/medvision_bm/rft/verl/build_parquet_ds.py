@@ -59,7 +59,7 @@ def parse_arguments():
         default=None,
         type=int,
         nargs=2,
-        help="Target resize shape as (height, width). Ignore to use the original size. Example: --new_shape_hw 1080 1920. Result: args.new_shape_hw → [1080, 1920]"
+        help="Target resize shape as (height, width). Ignore to use the original size. Example: --new_shape_hw 1080 1920. Result: args.new_shape_hw → [1080, 1920]",
     )
     parser.add_argument(
         "--without_cot_instruction",
@@ -199,8 +199,8 @@ def build_parquet_dataset(**kwargs):
     )
 
     # NOTE: TODO
-    # The CLI argument --without_cot_instruction is deprecated, as we want to keep the CoT instructions RFT training. 
-    # The main reason is that we adpot the SFT-CoT + RFT training pipeline, where the SFT-CoT stage use the CoT instructions in the prompts and we want to keep the prompts consistent between SFT and RFT training. 
+    # The CLI argument --without_cot_instruction is deprecated, as we want to keep the CoT instructions RFT training.
+    # The main reason is that we adpot the SFT-CoT + RFT training pipeline, where the SFT-CoT stage use the CoT instructions in the prompts and we want to keep the prompts consistent between SFT and RFT training.
     # If we remove the CoT instructions in the RFT stage, there will be a distribution shift between the SFT and RFT training data.
 
     # Prepare the output parquet dataset directory
@@ -224,7 +224,11 @@ def build_parquet_dataset(**kwargs):
     train_ds_list = []
     val_ds_list = []
     if kwargs.get("tasks_list_json_path_AD") is not None:
-        format_func = _format_data_AngleDistanceTask_CoT_verl if not kwargs.get("without_cot_instruction") else _format_data_AngleDistanceTask_verl
+        format_func = (
+            _format_data_AngleDistanceTask_CoT_verl
+            if not kwargs.get("without_cot_instruction")
+            else _format_data_AngleDistanceTask_verl
+        )
         dataset_AD = prepare_dataset_for_verl(
             tasks_list_json_path=kwargs.get("tasks_list_json_path_AD"),
             limit_train_sample=train_limit_AD,
@@ -242,7 +246,11 @@ def build_parquet_dataset(**kwargs):
         train_ds_list.append(dataset_AD["train"])
         val_ds_list.append(dataset_AD["validation"])
     if kwargs.get("tasks_list_json_path_TL") is not None:
-        format_func = _format_data_TumorLesionTask_CoT_verl if not kwargs.get("without_cot_instruction") else _format_data_TumorLesionTask_verl
+        format_func = (
+            _format_data_TumorLesionTask_CoT_verl
+            if not kwargs.get("without_cot_instruction")
+            else _format_data_TumorLesionTask_verl
+        )
         dataset_TL = prepare_dataset_for_verl(
             tasks_list_json_path=kwargs.get("tasks_list_json_path_TL"),
             limit_train_sample=train_limit_TL,
@@ -261,7 +269,11 @@ def build_parquet_dataset(**kwargs):
         val_ds_list.append(dataset_TL["validation"])
     if kwargs.get("tasks_list_json_path_detect") is not None:
         # TODO: implement _format_data_DetectionTask_CoT_verl() and _format_data_DetectionTask_verl()
-        format_func = _format_data_DetectionTask_CoT_verl if not kwargs.get("without_cot_instruction") else _format_data_DetectionTask_verl
+        format_func = (
+            _format_data_DetectionTask_CoT_verl
+            if not kwargs.get("without_cot_instruction")
+            else _format_data_DetectionTask_verl
+        )
         dataset_detect = prepare_dataset_for_verl(
             tasks_list_json_path=kwargs.get("tasks_list_json_path_detect"),
             limit_train_sample=train_limit_detect,
@@ -290,14 +302,13 @@ def build_parquet_dataset(**kwargs):
         train_size = len(dataset["train"])
         if train_limit > train_size:
             import numpy as np
+
             np.random.seed(SEED)
             indices = np.random.choice(train_size, size=train_limit, replace=True)
             dataset["train"] = dataset["train"].select(indices)
         else:
             dataset["train"] = (
-                dataset["train"]
-                .shuffle(seed=SEED)
-                .select(range(train_limit))
+                dataset["train"].shuffle(seed=SEED).select(range(train_limit))
             )
     else:
         dataset["train"] = dataset["train"].shuffle(seed=SEED)
@@ -309,18 +320,16 @@ def build_parquet_dataset(**kwargs):
         if val_limit > val_size:
             # Allow sampling with replacement if limit exceeds dataset size
             import numpy as np
+
             np.random.seed(SEED)
             indices = np.random.choice(val_size, size=val_limit, replace=True)
             dataset["validation"] = dataset["validation"].select(indices)
         else:
             dataset["validation"] = (
-                dataset["validation"]
-                .shuffle(seed=SEED)
-                .select(range(val_limit))
+                dataset["validation"].shuffle(seed=SEED).select(range(val_limit))
             )
     else:
         dataset["validation"] = dataset["validation"].shuffle(seed=SEED)
-
 
     # Save the dataset to Parquet format
     os.makedirs(parquet_ds_dir, exist_ok=True)
