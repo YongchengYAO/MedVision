@@ -6,7 +6,6 @@ import subprocess
 from huggingface_hub import snapshot_download
 
 from medvision_bm.benchmark.eval_utils import parse_sample_indices
-
 from medvision_bm.utils import (
     ensure_hf_hub_installed,
     install_flash_attention_torch_and_deps_py311_v2,
@@ -20,7 +19,7 @@ from medvision_bm.utils import (
 )
 
 
-def install_healthgpt_dependencies_post(dir_third_party: str, model_name: str):
+def install_healthgpt_dependencies_post(dir_third_party: str, model_choice: str):
     # ------------------------------
     # NOTE: This is specific to the HealthGPT model
     # NOTE: Put this section after lmms-eval installation to avoid conflicts
@@ -67,11 +66,9 @@ def install_healthgpt_dependencies_post(dir_third_party: str, model_name: str):
     )
 
     # Download model weights
-    assert model_name in [
-        "HealthGPT-XL32",
-        "HealthGPT-L14",
-    ], f"Unsupported model name: {model_name}"
-    if model_name == "HealthGPT-XL32":
+    # NOTE: branch on --model_choice (the architecture), not the run label, so a
+    # run label like "HealthGPT-L14_bugfix-0a4c5e2" still resolves to the right config.
+    if model_choice == "HealthGPT-XL32":
         hlora_path_hf = "lintw/HealthGPT-XL32"
         hlora_filename = "com_hlora_weights_QWEN_32B.bin"
         snapshot_download(
@@ -100,7 +97,7 @@ def install_healthgpt_dependencies_post(dir_third_party: str, model_name: str):
             "vq_idx_nums": vq_idx_nums,
             "model_dtype": "float16",
         }
-    elif model_name == "HealthGPT-L14":
+    elif model_choice == "HealthGPT-L14":
         hlora_path_hf = "lintw/HealthGPT-L14"
         hlora_filename = "com_hlora_weights_phi4.bin"
         snapshot_download(
@@ -129,6 +126,8 @@ def install_healthgpt_dependencies_post(dir_third_party: str, model_name: str):
             "vq_idx_nums": vq_idx_nums,
             "model_dtype": "bfloat16",
         }
+    else:
+        raise ValueError(f"Unsupported model type: {model_choice}")
     # ------------------------------
 
 
@@ -183,7 +182,14 @@ def parse_args():
         "--model_name",
         default="HealthGPT-L14",
         type=str,
-        help="Name of the model to evaluate.",
+        help="Run label for the model; used for the output folder and task-status key.",
+    )
+    parser.add_argument(
+        "--model_choice",
+        default="HealthGPT-L14",
+        type=str,
+        choices=["HealthGPT-L14", "HealthGPT-XL32"],
+        help="Model architecture to load (selects weights/base model/dtype).",
     )
     # output length arguments
     parser.add_argument(
@@ -294,6 +300,7 @@ def main():
 
     # Configuration
     model_name = args.model_name
+    model_choice = args.model_choice
     tasks_list_json_path = args.tasks_list_json_path
     result_dir = args.results_dir
     dir_third_party = args.dir_third_party
@@ -321,7 +328,7 @@ def main():
         print(
             "\n[Warning] Skipping environment setup as per argument --skip_env_setup. This should only be used for debugging.\n"
         )
-    model_configs = install_healthgpt_dependencies_post(dir_third_party, model_name)
+    model_configs = install_healthgpt_dependencies_post(dir_third_party, model_choice)
     install_flash_attention_torch_and_deps_py311_v2()
     # ------
 

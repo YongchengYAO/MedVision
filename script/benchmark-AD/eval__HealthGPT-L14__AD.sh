@@ -15,6 +15,7 @@ benchmark_dir="/root/Documents/MedVision"
 data_dir="${benchmark_dir}/Data"
 dir_third_party="${benchmark_dir}/third_party"
 model_name="HealthGPT-L14"
+model_choice="HealthGPT-L14"
 batch_size_per_gpu=10
 
 # Other configs (safe to leave as is)
@@ -39,7 +40,7 @@ flock "${lockfile}" bash -c '
     python -m pip install --force-reinstall "${latest_wheel}"
 '
 
-# Use MedVision dataset v1.0.0 
+# Use MedVision dataset v1.0.0
 export MedVision_PLANNER_VERSION='1.0.0'
 
 # Export PYTHONPATH to include HealthGPT directories for proper imports
@@ -51,15 +52,16 @@ export PYTHONPATH="${dir_third_party}/HealthGPT:$PYTHONPATH"
 # --skip_env_setup \
 # --skip_update_status \
 
-python -m  medvision_bm.benchmark.eval__healthgpt \
---model_name $model_name \
---results_dir $result_dir \
---dir_third_party $dir_third_party \
---data_dir $data_dir \
---tasks_list_json_path $tasks_list_json_path \
---task_status_json_path $task_status_json_path \
---batch_size_per_gpu $batch_size_per_gpu \
---sample_limit $sample_limit \
+python -m medvision_bm.benchmark.eval__healthgpt \
+    --model_name $model_name \
+    --model_choice $model_choice \
+    --results_dir $result_dir \
+    --dir_third_party $dir_third_party \
+    --data_dir $data_dir \
+    --tasks_list_json_path $tasks_list_json_path \
+    --task_status_json_path $task_status_json_path \
+    --batch_size_per_gpu $batch_size_per_gpu \
+    --sample_limit $sample_limit
 
 conda deactivate
 # conda remove -n $ENV_NAME --all -y
