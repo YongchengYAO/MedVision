@@ -211,7 +211,12 @@ def _final_answer(sample, n):
     text = (fr[0] if fr else "") or ""
     if not text:
         return None
-    nums = re.findall(r"-?\d+\.?\d*", text)
+    nums = [
+        s.replace(",", "")
+        for s in re.findall(
+            r"[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:[eE][-+]?\d+)?", text
+        )
+    ]
     if len(nums) < n:
         return None
     try:
@@ -458,7 +463,9 @@ def _answer_colored_resp(raw, MOD, answer_colors=None):
     if not m:
         return _esc(text)
     if answer_colors:
-        nums = re.findall(r"-?\d+\.?\d*", m.group(2))
+        nums = re.findall(
+            r"[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:[eE][-+]?\d+)?", m.group(2)
+        )
         color_map = {
             n: answer_colors[i] for i, n in enumerate(nums[: len(answer_colors)])
         }

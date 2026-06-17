@@ -1,3 +1,4 @@
+import ast
 import importlib
 import os
 import re
@@ -7,6 +8,9 @@ import nibabel as nib
 import numpy as np
 
 from medvision_bm.utils.configs import DATASETS_NAME2PACKAGE
+
+# Matches optional sign, optional thousands separators, decimal part, and exponent.
+_NUM_RE = re.compile(r"[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:[eE][-+]?\d+)?")
 
 
 def get_subfolders(task_dir):
@@ -37,8 +41,9 @@ def load_nifti_2d(img_path, slice_dim, slice_idx):
 
 
 def extract_last_k_nums(text, k):
-    # Find all numbers in the text
-    numbers = re.findall(r"-?\d+\.?\d*", text)
+    # Find all numbers in the text (strip thousands separators so the
+    # comma-joined result splits back into the same numbers downstream)
+    numbers = [m.replace(",", "") for m in _NUM_RE.findall(text)]
 
     # Return the last k numbers
     if len(numbers) < k:
@@ -52,8 +57,9 @@ def extract_last_k_nums_within_answer_tag(text, k):
     if not match:
         return ""
 
-    # Find all numbers within the answer tag
-    numbers = re.findall(r"-?\d+\.?\d*", match.group(1))
+    # Find all numbers within the answer tag (strip thousands separators so the
+    # comma-joined result splits back into the same numbers downstream)
+    numbers = [m.replace(",", "") for m in _NUM_RE.findall(match.group(1))]
 
     # Return the last k numbers
     if len(numbers) < k:
@@ -282,7 +288,7 @@ def cal_metrics_detection_task(results):
         Dictionary with metrics: avgMAE, avgIoU, F1, Precision, Recall, SuccessRate
     """
     pred = results["filtered_resps"][0]
-    target_metrics = eval(results["target"])
+    target_metrics = ast.literal_eval(results["target"])
     try:
         # Parse prediction string: split by comma and convert to float32
         prd_parts = pred.strip().split(",")
@@ -341,7 +347,7 @@ def cal_metrics(results, task_type):
         Dictionary with calculated metrics
     """
     pred = results["filtered_resps"][0]
-    target_metrics = np.array(eval(results["target"]))
+    target_metrics = np.array(ast.literal_eval(results["target"]))
 
     # Determine expected length based on task type
     if task_type == "Detection":

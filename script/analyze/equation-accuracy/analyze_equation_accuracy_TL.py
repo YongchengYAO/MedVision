@@ -244,9 +244,19 @@ def analyze_tl_sample(solution):
             stdout = safe_exec_python(code)
             m_ans = re.search(r"<answer>(.*?)</answer>", solution, re.DOTALL)
             if stdout and not stdout.startswith("ERROR:") and m_ans:
-                py_nums = [float(x) for x in re.findall(r"\d+(?:\.\d+)?", stdout)]
+                py_nums = [
+                    float(x.replace(",", ""))
+                    for x in re.findall(
+                        r"[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:[eE][-+]?\d+)?",
+                        stdout,
+                    )
+                ]
                 ans_nums = [
-                    float(x) for x in re.findall(r"\d+(?:\.\d+)?", m_ans.group(1))
+                    float(x.replace(",", ""))
+                    for x in re.findall(
+                        r"[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:[eE][-+]?\d+)?",
+                        m_ans.group(1),
+                    )
                 ]
                 if len(py_nums) >= 2 and len(ans_nums) >= 2:
                     result["step3_model_answer"] = ans_nums[0]

@@ -80,6 +80,7 @@ def _install_lmms_eval(
         cmd = (
             f"flock -w 600 {shlex.quote(tmp_build_lock_file)} bash -lc '"
             f"rm -rf {shlex.quote(build_dir)} {shlex.quote(dist_dir)} {shlex.quote(egg_info_dir)} && "
+            f"rm -f {shlex.quote(wheel_dir)}/*.whl && "
             f"python -m pip install --upgrade build && "
             f"python -m build --wheel --outdir {shlex.quote(wheel_dir)} {shlex.quote(lmms_eval_dir)} && "
             f"latest_wheel=$(ls -t {shlex.quote(wheel_dir)}/lmms_eval-*.whl | head -n1) && "
@@ -207,6 +208,7 @@ def install_medvision_ds(
     cmd_w_flock = (
         f"flock -w 600 {shlex.quote(tmp_build_lock_file)} bash -lc '"
         f"rm -rf {shlex.quote(build_dir)} {shlex.quote(dist_dir)} {shlex.quote(egg_info_dir)} && "
+        f"rm -f {shlex.quote(wheel_dir)}/*.whl && "
         f"python -m pip install --upgrade build && "
         f"python -m build --wheel --outdir {shlex.quote(wheel_dir)} {shlex.quote(dir_bmvqa)} && "
         f"latest_wheel=$(ls -t {shlex.quote(wheel_dir)}/medvision_ds-*.whl | head -n1) && "
@@ -221,6 +223,7 @@ def install_medvision_ds(
         cmd_no_flock = (
             f"bash -lc '"
             f"rm -rf {shlex.quote(build_dir)} {shlex.quote(dist_dir)} {shlex.quote(egg_info_dir)} && "
+            f"rm -f {shlex.quote(wheel_dir)}/*.whl && "
             f"python -m pip install --upgrade build && "
             f"python -m build --wheel --outdir {shlex.quote(wheel_dir)} {shlex.quote(dir_bmvqa)} && "
             f"latest_wheel=$(ls -t {shlex.quote(wheel_dir)}/medvision_ds-*.whl | head -n1) && "

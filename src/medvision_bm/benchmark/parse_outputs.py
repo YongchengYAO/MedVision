@@ -1,4 +1,5 @@
 import argparse
+import ast
 import glob
 import json
 import multiprocessing
@@ -92,7 +93,7 @@ def _patch_doc_detection_task(data, doc):
         box_size = box_dimensions[0] * box_dimensions[1]
         box_img_ratio = box_size / (image_size_2d[0] * image_size_2d[1])
     else:
-        box_relative_coords = eval(data["target"])
+        box_relative_coords = ast.literal_eval(data["target"])
         box_img_ratio = abs(box_relative_coords[2] - box_relative_coords[0]) * abs(
             box_relative_coords[3] - box_relative_coords[1]
         )

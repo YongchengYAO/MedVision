@@ -305,7 +305,10 @@ def normalize_img(doc, img_2d):
                 print(
                     "[Info] standard image normalization is forced for this task, using general normalization (which does not use HU windows)"
                 )
-            if label_map_regroup[label_name].lower() == "others":
+            if (
+                label_name is not None
+                and label_map_regroup[label_name].lower() == "others"
+            ):
                 print(
                     f"[Info] label_name {label_name} is regrouped to 'others', using general normalization (which does not use HU windows)"
                 )
@@ -2315,6 +2318,7 @@ def _make_temperature_sampler_trainer(SFTTrainer):
                 weights=self._temperature_sample_weights,
                 num_samples=self._temperature_num_samples,
                 replacement=True,
+                generator=torch.Generator().manual_seed(SEED),
             )
 
     return TemperatureSamplerSFTTrainer
@@ -2491,6 +2495,8 @@ def prepare_trainer(
     args = SFTConfig(
         run_name=run_name,
         output_dir=lora_checkpoint_dir,
+        seed=SEED,
+        data_seed=SEED,
         num_train_epochs=num_train_epochs,  # Number of training epochs
         per_device_train_batch_size=per_device_train_batch_size,
         per_device_eval_batch_size=per_device_eval_batch_size,
@@ -2616,6 +2622,8 @@ def prepare_trainer_fullFT(
     args = SFTConfig(
         run_name=run_name,
         output_dir=checkpoint_dir,
+        seed=SEED,
+        data_seed=SEED,
         num_train_epochs=num_train_epochs,
         per_device_train_batch_size=per_device_train_batch_size,
         per_device_eval_batch_size=per_device_eval_batch_size,

@@ -1,4 +1,5 @@
 import argparse
+import ast
 import glob
 import json
 import multiprocessing
@@ -43,7 +44,7 @@ def cal_metrics_AD_task(results):
         - Returns np.nan for MAE/MRE if parsing fails or validation errors occur
     """
     pred = results["filtered_resps"][0]
-    target_metrics = np.array(eval(results["target"]))
+    target_metrics = np.array(ast.literal_eval(results["target"]))
     try:
         # Parse prediction: expect comma-separated values, convert to float32
         prd_parts = pred.strip().split(",")

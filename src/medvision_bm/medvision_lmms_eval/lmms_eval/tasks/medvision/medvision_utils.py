@@ -2731,7 +2731,8 @@ def doc_to_target_BoxCoordinate(doc, lmms_eval_specific_kwargs=None):
     else:
         img_size = doc.get("image_size_2d", None)
         if img_size is None:
-            _, img_size = _load_nifti_2d(img_path, slice_dim, slice_idx)
+            _, img_2d = _load_nifti_2d(img_path, slice_dim, slice_idx)
+            img_size = img_2d.shape
 
     # Convert the coordinates from the benchmark planner format to the output format.
     imgsize_h, imgsize_w = img_size
@@ -3073,9 +3074,19 @@ def _spatial_unit(metric_unit):
     return "millimeters" if metric_unit == "degrees" else metric_unit
 
 
+# Matches optional sign, optional thousands separators, decimal, and exponent.
+# Thousands separators are stripped before returning so the comma-joined output
+# (and downstream float()) stays unambiguous; plain "12.5"/"-3.2" parse as before.
+_NUM_RE = re.compile(r"[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:[eE][-+]?\d+)?")
+
+
+def _find_nums(text):
+    return [m.replace(",", "") for m in _NUM_RE.findall(text)]
+
+
 def parser_last_4_nums(text):
     # Find all numbers in the text
-    numbers = re.findall(r"-?\d+\.?\d*", text)
+    numbers = _find_nums(text)
 
     # Return the last four numbers
     if len(numbers) < 4:
@@ -3085,7 +3096,7 @@ def parser_last_4_nums(text):
 
 def parser_last_2_nums(text):
     # Find all numbers in the text
-    numbers = re.findall(r"-?\d+\.?\d*", text)
+    numbers = _find_nums(text)
 
     # Return the last two numbers
     if len(numbers) < 2:
@@ -3095,7 +3106,7 @@ def parser_last_2_nums(text):
 
 def parser_last_k_nums(text, k):
     # Find all numbers in the text
-    numbers = re.findall(r"-?\d+\.?\d*", text)
+    numbers = _find_nums(text)
 
     # Return the last k numbers
     if len(numbers) < k:

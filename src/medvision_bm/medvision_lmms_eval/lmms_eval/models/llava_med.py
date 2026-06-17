@@ -26,6 +26,7 @@ from llava.mm_utils import (
 )
 from llava.model.builder import load_pretrained_model
 from llava.utils import disable_torch_init
+from medvision_bm.utils.configs import SEED
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
@@ -106,7 +107,7 @@ class LLaVA_Med(lmms):
         eval_logger.info(f"Loading base model from {self.model_hf}...")
 
         # Load model
-        set_seed(0)
+        set_seed(SEED)
         disable_torch_init()
         model_path = os.path.expanduser(self.model_hf)
         model_name = get_model_name_from_path(model_path)

@@ -92,7 +92,7 @@ _RESP_PATTERNS = [
 ]
 
 _STEP_TAG_RE = re.compile(r"<(/?)(step-(\d+)-(reasoning|answer))>")
-_NUM_RE = re.compile(r"\d+\.?\d*")
+_NUM_RE = re.compile(r"[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:[eE][-+]?\d+)?")
 
 # Detection task line: "Given ... return ... bounding box for the [label]."
 _TASK_LINE_RE = re.compile(
@@ -372,7 +372,7 @@ def _load_image(doc, reshape_hw):
 
 def _parse_bbox(coords_str):
     """Parse bbox coordinate string into [x_min, y_min, x_max, y_max] floats, or None."""
-    nums = re.findall(r"-?\d+\.?\d*", coords_str or "")
+    nums = [s.replace(",", "") for s in _NUM_RE.findall(coords_str or "")]
     if len(nums) < 4:
         return None
     try:

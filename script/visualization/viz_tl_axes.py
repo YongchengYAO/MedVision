@@ -63,7 +63,12 @@ def _extract_coords_from_tag(text, n):
     Handles both strict format '(x1, y1), (x2, y2)' and named-variable format
     '(x1_name, y1_name) = (0.3, 0.6); (x2_name, y2_name) = (0.7, 0.4)'."""
     vals = []
-    for tok in re.findall(r"-?\d+\.?\d*", text):
+    for tok in (
+        s.replace(",", "")
+        for s in re.findall(
+            r"[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:[eE][-+]?\d+)?", text
+        )
+    ):
         try:
             v = float(tok)
             if 0.0 <= v <= 1.0:

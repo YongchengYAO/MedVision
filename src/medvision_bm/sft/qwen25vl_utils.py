@@ -40,12 +40,17 @@ def make_collate_fn_Qwen25VL(proc):
                         example["messages"], add_generation_prompt=False, tokenize=False
                     ).strip()
                 )
-            except (OSError, ValueError, Exception) as e:
+            except (OSError, ValueError) as e:
                 # Skip examples where image loading fails
                 import warnings
 
                 warnings.warn(f"Skipping example due to image loading error: {e}")
                 continue
+
+        if not texts:
+            raise RuntimeError(
+                "All examples in this batch failed to process; no valid samples remain."
+            )
 
         batch = proc(text=texts, images=images, return_tensors="pt", padding=True)
 

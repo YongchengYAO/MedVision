@@ -43,9 +43,14 @@ def make_collate_fn_Qwen25VL_tooluse(proc):
                         tokenize=False,
                     ).strip()
                 )
-            except Exception as e:
+            except (OSError, ValueError) as e:
                 warnings.warn(f"Skipping example due to error: {e}")
                 continue
+
+        if not texts:
+            raise RuntimeError(
+                "All examples in this batch failed to process; no valid samples remain."
+            )
 
         batch = proc(text=texts, images=images, return_tensors="pt", padding=True)
 

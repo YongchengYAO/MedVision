@@ -104,7 +104,7 @@ _RESP_PATTERNS = [
 ]
 
 _STEP_TAG_RE = re.compile(r"<(/?)(step-(\d+)-(reasoning|answer))>")
-_NUM_RE = re.compile(r"\d+\.?\d*")
+_NUM_RE = re.compile(r"[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:[eE][-+]?\d+)?")
 _TASK_LINE_RE = re.compile(
     r"(Given the input medical image:\s*)(.*?)(,\s*estimate.*?enclosing the\s*)(.*?)(,\s*in (?:mm|millimeters)\..*)",
     re.DOTALL,
@@ -162,7 +162,7 @@ def _extract_tl_color_maps(raw_text):
     if not result_map:
         m = re.search(r"<answer>(.*?)</answer>", raw_text, re.DOTALL)
         if m:
-            nums = re.findall(r"\d+\.\d+", m.group(1))
+            nums = _NUM_RE.findall(m.group(1))
             if len(nums) >= 1:
                 result_map.setdefault(nums[0], C_MAJ_LEN)
             if len(nums) >= 2:
@@ -585,7 +585,7 @@ def _draw_tl_overlay_on_ax(ax, doc, proc_acc):
 
 def _parse_prediction(filtered_resps):
     text = (filtered_resps[0] if filtered_resps else "") or ""
-    nums = re.findall(r"-?\d+\.?\d*", text)
+    nums = [s.replace(",", "") for s in _NUM_RE.findall(text)]
     if len(nums) < 2:
         return None, None
     try:

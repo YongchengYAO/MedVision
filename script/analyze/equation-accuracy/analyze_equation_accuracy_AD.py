@@ -212,8 +212,19 @@ def _exec_tool_and_parse(solution):
     m_ans = re.search(r"<answer>(.*?)</answer>", solution, re.DOTALL)
     if not m_ans:
         return None, None
-    py_nums = re.findall(r"\d+(?:\.\d+)?", stdout)
-    ans_nums = re.findall(r"\d+(?:\.\d+)?", m_ans.group(1))
+    py_nums = [
+        s.replace(",", "")
+        for s in re.findall(
+            r"[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:[eE][-+]?\d+)?", stdout
+        )
+    ]
+    ans_nums = [
+        s.replace(",", "")
+        for s in re.findall(
+            r"[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:[eE][-+]?\d+)?",
+            m_ans.group(1),
+        )
+    ]
     if not py_nums or not ans_nums:
         return None, None
     try:

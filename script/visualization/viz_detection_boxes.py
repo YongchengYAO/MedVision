@@ -76,13 +76,24 @@ def parse_box_coords(resp_text):
     # Strategy 2: <answer> tag — extract 4 floats
     m2 = re.search(r"<answer>(.*?)</answer>", resp_text, re.DOTALL)
     if m2:
-        nums = re.findall(r"[-+]?\d*\.?\d+", m2.group(1))
+        nums = [
+            s.replace(",", "")
+            for s in re.findall(
+                r"[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:[eE][-+]?\d+)?",
+                m2.group(1),
+            )
+        ]
         if len(nums) >= 4:
             x1, y1, x2, y2 = [float(n) for n in nums[-4:]]
             return [min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)]
 
     # Strategy 3: last 4 numbers in full text, validated to [0, 1]
-    nums = re.findall(r"[-+]?\d*\.?\d+", resp_text)
+    nums = [
+        s.replace(",", "")
+        for s in re.findall(
+            r"[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:[eE][-+]?\d+)?", resp_text
+        )
+    ]
     if len(nums) >= 4:
         x1, y1, x2, y2 = [float(n) for n in nums[-4:]]
         if all(0.0 <= v <= 1.0 for v in [x1, y1, x2, y2]):
