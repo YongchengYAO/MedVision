@@ -391,7 +391,10 @@ def cli_evaluate_single(args: Union[argparse.Namespace, None] = None) -> None:
         args.hf_hub_log_args += f",token={os.environ.get('HF_TOKEN')}"
 
     evaluation_tracker_args = simple_parse_args_string(args.hf_hub_log_args)
-    eval_logger.info(f"Evaluation tracker args: {evaluation_tracker_args}")
+    import re
+
+    _redacted_tracker_args = {k: ("***" if re.search(r"token|secret|key|password", k, re.IGNORECASE) else v) for k, v in evaluation_tracker_args.items()}
+    eval_logger.info(f"Evaluation tracker args: {_redacted_tracker_args}")
 
     evaluation_tracker = EvaluationTracker(**evaluation_tracker_args)
 

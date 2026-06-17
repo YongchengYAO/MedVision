@@ -1435,7 +1435,7 @@ def create_doc_to_text_TumorLesionSize(preprocess_biometry_module):
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
         # Include pixel size information in question text
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {_spatial_unit(metric_unit)} (width) x {adjusted_pixel_height:.3f} {_spatial_unit(metric_unit)} (height)."
         # -------------
 
         # Question
@@ -1508,7 +1508,7 @@ def doc_to_text_TumorLesionSize_woMedImg(doc, lmms_eval_specific_kwargs=None):
     image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
     # Include pixel size information in question text
-    pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
+    pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {_spatial_unit(metric_unit)} (width) x {adjusted_pixel_height:.3f} {_spatial_unit(metric_unit)} (height)."
     # -------------
 
     # Question
@@ -1582,7 +1582,7 @@ def create_doc_to_text_TumorLesionSize_wVisualPrompt(preprocess_biometry_module)
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
         # Include pixel size information in question text
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {_spatial_unit(metric_unit)} (width) x {adjusted_pixel_height:.3f} {_spatial_unit(metric_unit)} (height)."
         # -------------
 
         # Question
@@ -1655,7 +1655,7 @@ def doc_to_text_TumorLesionSize_wVisualPrompt_woMedImg(doc, lmms_eval_specific_k
     image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
     # Include pixel size information in question text
-    pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
+    pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {_spatial_unit(metric_unit)} (width) x {adjusted_pixel_height:.3f} {_spatial_unit(metric_unit)} (height)."
     # -------------
 
     # Question
@@ -1732,7 +1732,7 @@ def create_doc_to_text_TumorLesionSize_CoT_woInstruct(preprocess_biometry_module
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
         # Include pixel size information in question text
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {_spatial_unit(metric_unit)} (width) x {adjusted_pixel_height:.3f} {_spatial_unit(metric_unit)} (height)."
         # -------------
 
         # Question
@@ -1818,7 +1818,7 @@ def create_doc_to_text_TumorLesionSize_CoT(preprocess_biometry_module):
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
         # Include pixel size information in question text
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {_spatial_unit(metric_unit)} (width) x {adjusted_pixel_height:.3f} {_spatial_unit(metric_unit)} (height)."
         # -------------
 
         # Question
@@ -2132,7 +2132,7 @@ def create_doc_to_text_BiometricsFromLandmarks(preprocess_biometry_module):
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
         # Include pixel size information in question text
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {_spatial_unit(metric_unit)} (width) x {adjusted_pixel_height:.3f} {_spatial_unit(metric_unit)} (height)."
         # -------------
 
         # Question
@@ -2241,7 +2241,7 @@ def create_doc_to_text_BiometricsFromLandmarks_wVisualPrompt(preprocess_biometry
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
         # Include pixel size information in question text
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {_spatial_unit(metric_unit)} (width) x {adjusted_pixel_height:.3f} {_spatial_unit(metric_unit)} (height)."
         # -------------
 
         # Question
@@ -2357,7 +2357,7 @@ def doc_to_text_BiometricsFromLandmarks_wVisualPrompt_woMedImg(doc, lmms_eval_sp
     image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
     # Include pixel size information in question text
-    pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
+    pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {_spatial_unit(metric_unit)} (width) x {adjusted_pixel_height:.3f} {_spatial_unit(metric_unit)} (height)."
     # -------------
 
     # Question
@@ -2440,7 +2440,7 @@ def create_doc_to_text_BiometricsFromLandmarks_CoT_woInstruct(preprocess_biometr
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
         # Include pixel size information in question text
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {_spatial_unit(metric_unit)} (width) x {adjusted_pixel_height:.3f} {_spatial_unit(metric_unit)} (height)."
         # -------------
 
         # Question
@@ -2567,7 +2567,7 @@ def create_doc_to_text_BiometricsFromLandmarks_CoT(preprocess_biometry_module):
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
 
         # Include pixel size information in question text
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {_spatial_unit(metric_unit)} (width) x {adjusted_pixel_height:.3f} {_spatial_unit(metric_unit)} (height)."
         # ------------- 
 
         # Question
@@ -3065,6 +3065,14 @@ def _normalize_metric_unit(metric_unit):
     raise ValueError(f"Unsupported metric_unit: {metric_unit}")
 
 
+def _spatial_unit(metric_unit):
+    """Spatial unit for the image/pixel-size text. Pixel size is always a spatial
+    length, so for angle tasks (metric_unit == "degrees") it must NOT inherit the
+    answer's unit; fall back to the NIfTI voxel's spatial unit (millimeters).
+    For length tasks the answer unit is already spatial, so return it unchanged."""
+    return "millimeters" if metric_unit == "degrees" else metric_unit
+
+
 def parser_last_4_nums(text):
     # Find all numbers in the text
     numbers = re.findall(r"-?\d+\.?\d*", text)
@@ -3259,7 +3267,7 @@ def create_doc_to_text_TumorLesionSize_CoT_scaledPS(preprocess_biometry_module):
         adjusted_pixel_width = adjusted_pixel_width * S
 
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {_spatial_unit(metric_unit)} (width) x {adjusted_pixel_height:.3f} {_spatial_unit(metric_unit)} (height)."
 
         if image_description != "" and image_description is not None:
             image_prompt = ": " + image_description
@@ -3397,7 +3405,7 @@ def create_doc_to_text_BiometricsFromLandmarks_CoT_scaledPS(preprocess_biometry_
         adjusted_pixel_width = adjusted_pixel_width * S_w
 
         image_size_text = f"The image size is {resized_img_w} pixels (width) x {resized_img_h} pixels (height)."
-        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {metric_unit} (width) x {adjusted_pixel_height:.3f} {metric_unit} (height)."
+        pixel_size_text = f"The pixel size for this image is {adjusted_pixel_width:.3f} {_spatial_unit(metric_unit)} (width) x {adjusted_pixel_height:.3f} {_spatial_unit(metric_unit)} (height)."
 
         if metric_type == "distance":
             cot_instruction = COT_INSTRUCT_DISTANCE

@@ -1629,6 +1629,7 @@ def _doc_to_target_DetectionTask_CoT(values_dict):
 def _format_data_DetectionTask(
     example,
     model_name=None,
+    model_hf=None,
     process_img=False,
     save_processed_img_to_disk=False,
     new_shape_hw=None,
@@ -2040,7 +2041,7 @@ def load_split_limit_dataset(
         f"[Info] Using {concat_workers} workers for dataset loading (available CPUs: {available_cpus})"
     )
 
-    datasets_list = []
+    task_to_ds = {}
     failed_tasks = []
 
     # Process datasets with controlled parallelism
@@ -2072,8 +2073,8 @@ def load_split_limit_dataset(
             task = future_to_task[future]
             try:
                 ds = future.result(timeout=120)  # 2 minute timeout per task
-                datasets_list.append(ds)
-                print(f"✓ Completed {task} ({len(datasets_list)}/{len(tasks)})")
+                task_to_ds[task] = ds
+                print(f"✓ Completed {task} ({len(task_to_ds)}/{len(tasks)})")
 
                 # Monitor memory usage
                 memory_percent = psutil.virtual_memory().percent
@@ -2096,13 +2097,20 @@ def load_split_limit_dataset(
             "❌ ERROR: Some tasks failed to load. Check the logs above for details."
         )
 
-    # Combine all datasets
+    # Combine all datasets.
+    # NOTE: Reassemble in the deterministic `tasks` (JSON) order rather than the
+    # as_completed() arrival order above, so the concatenated row layout is identical
+    # across runs. This keeps the seeded shuffle/split downstream reproducible and
+    # prevents crash+resume in the checkpointed parquet builder from re-sharding a
+    # different ordering (duplicated/missing samples). All tasks are present here
+    # because any failure would have raised above.
     print("\n[Info] Combining datasets...")
+    datasets_list = [task_to_ds[task] for task in tasks]
     combined_dataset = concatenate_datasets(datasets_list)
     print(f"[Info] Combined dataset has {len(combined_dataset)} total samples")
 
     # Clear intermediate datasets to free memory
-    del datasets_list
+    del datasets_list, task_to_ds
     gc.collect()
 
     # Split the dataset into training and validation sets

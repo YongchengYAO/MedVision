@@ -103,6 +103,7 @@ def run_evaluation_for_task(
         "--log_samples",
         "--output_path",
         output_path,
+        "--verbosity=DEBUG",
     ]
     if sample_indices is not None:
         cmd += ["--sample_indices", json.dumps(sample_indices)]

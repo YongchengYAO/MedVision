@@ -66,4 +66,10 @@ result = safe_exec_python("raise ValueError('test error')")
 assert result.startswith("ERROR:"), f"expected ERROR:, got {result!r}"
 print(f"  raised exception     : {result[:50]!r}  PASS")
 
+# --- AST sandbox escape: dunder subclass traversal must be rejected ---
+escape = "print(().__class__.__bases__[0].__subclasses__())"
+result = safe_exec_python(escape)
+assert result.startswith("ERROR: disallowed"), f"expected ERROR: disallowed, got {result!r}"
+print(f"  blocked dunder escape: {result[:50]!r}  PASS")
+
 print("OK")
