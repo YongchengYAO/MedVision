@@ -8,6 +8,8 @@ print("  trained tokens contain <answer>    (turn 5 trained correctly)")
 print("  system content NOT in trained tokens")
 print("  tool-response content NOT in trained tokens")
 print("  at least some tokens are masked (labels == -100)")
+print("  assistant turn HEADERS masked (completion-only: header not trained)")
+print("  exactly 2 of 5 <|im_end|> kept in loss (the two assistant-turn closers)")
 print("NOTE: skips gracefully if transformers or the processor is not available.")
 import sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path("src").resolve()))
@@ -91,5 +93,34 @@ print(f"  system content masked    : not in trained tokens  PASS")
 
 assert "<tool_response>" not in decoded, "FAIL: tool-response leaked into trained tokens"
 print(f"  tool-response masked     : not in trained tokens  PASS")
+
+# --- completion-only masking: lock in header-masking + exact EOS-in-loss count ---
+# (these would FAIL on the old state-machine helper that kept assistant headers in loss)
+im_start_id = tokenizer.convert_tokens_to_ids("<|im_start|>")
+im_end_id = tokenizer.convert_tokens_to_ids("<|im_end|>")
+assistant_id = tokenizer.convert_tokens_to_ids("assistant")
+nl_enc = tokenizer.encode("\n", add_special_tokens=False)
+newline_id = nl_enc[0] if len(nl_enc) == 1 else None
+
+assistant_turns = 0
+for i in range(total - 1):
+    if input_ids[i].item() == im_start_id and input_ids[i + 1].item() == assistant_id:
+        assistant_turns += 1
+        assert labels[i].item() == -100, "FAIL: assistant <|im_start|> not masked"
+        assert labels[i + 1].item() == -100, "FAIL: assistant role token not masked"
+        if (
+            newline_id is not None
+            and i + 2 < total
+            and input_ids[i + 2].item() == newline_id
+        ):
+            assert labels[i + 2].item() == -100, "FAIL: assistant header newline not masked"
+assert assistant_turns == 2, f"SETUP ERROR: expected 2 assistant turns, got {assistant_turns}"
+assert "<|im_start|>" not in decoded, "FAIL: assistant header leaked into trained tokens"
+print(f"  assistant headers masked : {assistant_turns} headers masked, none in trained  PASS")
+
+imend_total = int((input_ids == im_end_id).sum().item())
+imend_in_loss = int(((input_ids == im_end_id) & (labels != -100)).sum().item())
+assert imend_in_loss == 2, f"FAIL: expected 2 <|im_end|> in loss, got {imend_in_loss}"
+print(f"  closing <|im_end| in loss: {imend_in_loss}/{imend_total} (the 2 assistant closers)  PASS")
 
 print("OK")

@@ -1,4 +1,4 @@
-from medvision_bm.sft.sft_utils import _doc_to_visual
+from medvision_bm.sft.sft_utils import _doc_to_visual, mask_non_assistant_turns
 
 
 # NOTE: This is model-specific collate function.
@@ -51,13 +51,17 @@ def make_collate_fn_Qwen25VL(proc):
 
         labels = batch["input_ids"].clone()
         image_token_id = proc.tokenizer.convert_tokens_to_ids(proc.image_token)
-        image_begin_token_id = [proc.tokenizer.convert_tokens_to_ids("<|im_start|>")]
-        image_end_token_id = [proc.tokenizer.convert_tokens_to_ids("<|im_end|>")]
-
         labels[labels == proc.tokenizer.pad_token_id] = -100
-        labels[labels == image_begin_token_id] = -100
         labels[labels == image_token_id] = -100
-        labels[labels == image_end_token_id] = -100
+
+        # Per-sample turn-level masking: mask all non-assistant turns (system/user)
+        # so only assistant answers contribute to the loss. Without this the entire
+        # user prompt (incl. the long pixel-size arithmetic text) was trained on,
+        # diluting the loss. Mirrors make_collate_fn_Qwen25VL_tooluse.
+        for i in range(labels.shape[0]):
+            labels[i] = mask_non_assistant_turns(
+                batch["input_ids"][i], labels[i], proc.tokenizer
+            )
 
         batch["labels"] = labels
         return batch

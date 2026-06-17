@@ -3294,24 +3294,49 @@ def parse_sample_limits(**kwargs):
 
 
 def mask_non_assistant_turns(input_ids, labels, tokenizer):
-    """Set labels to -100 for all non-assistant turns (system, user, tool)."""
+    """Mask everything except assistant response content + its closing <|im_end|>.
+
+    Completion-only masking: for every assistant turn the header
+    ``<|im_start|>assistant\\n`` is masked (it is chat-template scaffolding the
+    model never needs to generate), along with all system/user/tool turns; loss
+    is computed only on the response tokens and the ``<|im_end|>`` that
+    terminates the assistant turn. The trailing newline after ``<|im_end|>`` is
+    also masked.
+    """
     im_start_id = tokenizer.convert_tokens_to_ids("<|im_start|>")
+    im_end_id = tokenizer.convert_tokens_to_ids("<|im_end|>")
     assistant_id = tokenizer.convert_tokens_to_ids("assistant")
+    newline_enc = tokenizer.encode("\n", add_special_tokens=False)
+    newline_id = newline_enc[0] if len(newline_enc) == 1 else None
 
     seq_len = input_ids.shape[0]
-    in_assistant_turn = False
     i = 0
     while i < seq_len:
-        tok = input_ids[i].item()
-        if tok == im_start_id:
-            role_pos = i + 1
-            if role_pos < seq_len and input_ids[role_pos].item() == assistant_id:
-                in_assistant_turn = True
-            else:
-                in_assistant_turn = False
-        if not in_assistant_turn:
+        is_assistant_header = (
+            input_ids[i].item() == im_start_id
+            and i + 1 < seq_len
+            and input_ids[i + 1].item() == assistant_id
+        )
+        if is_assistant_header:
+            labels[i] = -100  # <|im_start|>
+            labels[i + 1] = -100  # "assistant"
+            j = i + 2
+            if (
+                newline_id is not None
+                and j < seq_len
+                and input_ids[j].item() == newline_id
+            ):
+                labels[j] = -100  # role-header newline
+                j += 1
+            # Train response content up to and including the closing <|im_end|>.
+            while j < seq_len and input_ids[j].item() != im_end_id:
+                j += 1
+            if j < seq_len:  # the closing <|im_end|> stays in the loss
+                j += 1
+            i = j
+        else:
             labels[i] = -100
-        i += 1
+            i += 1
     return labels
 
 
