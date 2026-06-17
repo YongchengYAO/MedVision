@@ -24,6 +24,7 @@ Usage:
 """
 
 import argparse
+import ast
 import gzip
 import importlib
 import json
@@ -53,6 +54,100 @@ def _cal_nMAE(pred, gt, scale):
 def _cal_MRE(pred, gt):
     gt = np.array(gt, float)
     return float(np.mean(np.abs(np.array(pred, float) - gt) / (gt + 1e-15)))
+
+
+# ---------------------------------------------------------------------------
+# scaledPS helpers
+#
+# On "scaledPS" inputs the model is prompted with a *scaled* pixel size, so its
+# predicted distance/angle is in scaled units and the benchmark scores it against
+# the *scaled* GT stored in the JSONL "target" field. The plain GT in
+# biometric_profile (metric_value) is UNSCALED, so it must not be used for these
+# files. These helpers recover the scaled GT and a matching scaled diagonal; both
+# are no-ops on regular (non-scaledPS) files.
+# ---------------------------------------------------------------------------
+
+
+def _parse_eval_target(target, kind):
+    """Parse the eval ``target`` field (the scaled GT eval actually scored against).
+
+    kind="tl" -> [major, minor] floats; kind="ad" -> single float.
+    Returns None on missing/unparseable input (caller falls back to unscaled GT).
+    """
+    if target is None:
+        return None
+    try:
+        if kind == "tl":
+            val = target
+            if isinstance(val, str):
+                try:
+                    val = json.loads(val)
+                except json.JSONDecodeError:
+                    val = ast.literal_eval(val)
+            return [float(val[0]), float(val[1])]
+        return float(str(target).strip().strip("[]"))
+    except (ValueError, TypeError, SyntaxError, IndexError):
+        return None
+
+
+# Set once if the heavy medvision_utils import fails, so the (systemic) cause is
+# reported a single time instead of silently yielding NaN for every sample.
+_DIAGONAL_IMPORT_WARNED = False
+
+
+def _scaled_diagonal(doc, pixel_size_scale, mode, *, tl_uniform_scale=None):
+    """Scaled physical diagonal for the nMAE denominator on scaledPS samples.
+
+    Mirrors the authoritative reconstruction in benchmark/parse_outputs.py: prefer
+    the stored ``pixel_size_scale`` (exact); for TL fall back to a uniform scale
+    derived from target/metric_value; otherwise (e.g. AD with no stored scale)
+    return NaN so the caller's nMAE is NaN while the MRE stays correct.
+
+    Two distinct NaN sources are kept apart: a missing/failed *import* of
+    _compute_physical_diagonal is systemic (every nMAE would be NaN), so it is
+    announced loudly once; a per-sample *compute* failure (e.g. a missing NIfTI)
+    stays a silent NaN so one bad sample never kills the rest of the MRE output.
+    """
+    explicit = pixel_size_scale
+    if explicit is None and tl_uniform_scale is not None:
+        explicit = {"s_h": tl_uniform_scale, "s_w": tl_uniform_scale, "mode": "uniform"}
+    if explicit is None:
+        return float("nan")
+    try:
+        from medvision_bm.medvision_lmms_eval.lmms_eval.tasks.medvision.medvision_utils import (
+            _compute_physical_diagonal,
+        )
+    except Exception as e:
+        global _DIAGONAL_IMPORT_WARNED
+        if not _DIAGONAL_IMPORT_WARNED:
+            print(
+                "[error] cannot import _compute_physical_diagonal "
+                f"({type(e).__name__}: {e}); scaledPS nMAE will be NaN. Run this "
+                "analysis in the full eval env (torch/transformers/nibabel/"
+                "medvision_ds), e.g. via analyze__proc_acc__model_level.sh.",
+                file=sys.stderr,
+            )
+            _DIAGONAL_IMPORT_WARNED = True
+        return float("nan")
+    try:
+        doc_meta = {
+            k: doc.get(k)
+            for k in (
+                "image_file",
+                "slice_dim",
+                "slice_idx",
+                "taskID",
+                "label",
+                "image_size_2d",
+            )
+        }
+        return float(
+            _compute_physical_diagonal(
+                doc_meta, scale_mode=mode, explicit_scale=explicit
+            )
+        )
+    except Exception:
+        return float("nan")
 
 
 # ---------------------------------------------------------------------------
@@ -417,9 +512,11 @@ def analyze_angle_sample(solution, gt):
 def process_jsonl(jsonl_path, output_suffix):
     jsonl_path = Path(jsonl_path)
     out_path = jsonl_path.with_name(jsonl_path.stem + output_suffix + ".jsonl")
+    is_scaledPS = "scaledPS" in jsonl_path.name
 
     n_total = n_distance = n_angle = n_gt_fail = n_parse_fail = 0
     n_dist_success = n_angle_success = 0
+    n_scaledps_noscale = 0
     results = []
 
     with open(jsonl_path) as f:
@@ -456,6 +553,14 @@ def process_jsonl(jsonl_path, output_suffix):
                 results.append(record)
                 continue
 
+            # scaledPS: the model answers in scaled units and eval scores against
+            # the scaled GT stored in `target`; use it for both distance and angle
+            # MRE. No-op for regular (S=1) files.
+            if is_scaledPS:
+                tgt = _parse_eval_target(sample.get("target"), "ad")
+                if tgt is not None:
+                    gt["gt_value"] = tgt
+
             record["metric_type"] = gt["metric_type"]
             try:
                 if gt["metric_type"] == "distance":
@@ -463,10 +568,17 @@ def process_jsonl(jsonl_path, output_suffix):
                     # scale distance error by the image diagonal to get a more interpretable relative error metric (e.g. 0.05 means 5% of the image diagonal)
                     image_size_2d = doc.get("image_size_2d")
                     pixel_size = doc.get("pixel_size")
-                    image_diagonal = np.sqrt(
-                        (image_size_2d[0] * pixel_size[0]) ** 2
-                        + (image_size_2d[1] * pixel_size[1]) ** 2
-                    )
+                    if is_scaledPS:
+                        if sample.get("pixel_size_scale") is None:
+                            n_scaledps_noscale += 1
+                        image_diagonal = _scaled_diagonal(
+                            doc, sample.get("pixel_size_scale"), "anisotropic"
+                        )
+                    else:
+                        image_diagonal = np.sqrt(
+                            (image_size_2d[0] * pixel_size[0]) ** 2
+                            + (image_size_2d[1] * pixel_size[1]) ** 2
+                        )
                     record.update(analyze_distance_sample(solution, gt, image_diagonal))
                     if all(
                         record.get(k) is not None
@@ -534,6 +646,12 @@ def process_jsonl(jsonl_path, output_suffix):
         fail = mtype_total[mtype] - n
         print(
             f"  [{mtype}] {label}: mean={mean_str} ± sd={sd_str} (n={n}, fail={fail})"
+        )
+    if n_scaledps_noscale > 0:
+        print(
+            f"  [warn] {n_scaledps_noscale} scaledPS distance sample(s) lack a stored "
+            f"pixel_size_scale; the anisotropic scale cannot be recovered from the scalar "
+            f"target, so their step-3 nMAE is NaN (step-3 MRE is still correct)."
         )
     print(f"  Output: {out_path}")
     return results

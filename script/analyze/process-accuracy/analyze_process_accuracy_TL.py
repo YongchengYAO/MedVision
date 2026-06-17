@@ -20,6 +20,7 @@ Usage:
 """
 
 import argparse
+import ast
 import gzip
 import json
 import re
@@ -51,6 +52,100 @@ def _cal_nMAE(pred, gt, scale):
 def _cal_MRE(pred, gt):
     gt = np.array(gt, float)
     return float(np.mean(np.abs(np.array(pred, float) - gt) / (gt + 1e-15)))
+
+
+# ---------------------------------------------------------------------------
+# scaledPS helpers
+#
+# On "scaledPS" inputs the model is prompted with a *scaled* pixel size, so its
+# predicted lengths are in scaled-mm and the benchmark scores them against the
+# *scaled* GT stored in the JSONL "target" field. The plain GT in
+# biometric_profile (metric_value_*_axis) is UNSCALED, so it must not be used
+# for these files. These helpers recover the scaled GT and a matching scaled
+# diagonal; both are no-ops on regular (non-scaledPS) files.
+# ---------------------------------------------------------------------------
+
+
+def _parse_eval_target(target, kind):
+    """Parse the eval ``target`` field (the scaled GT eval actually scored against).
+
+    kind="tl" -> [major, minor] floats; kind="ad" -> single float.
+    Returns None on missing/unparseable input (caller falls back to unscaled GT).
+    """
+    if target is None:
+        return None
+    try:
+        if kind == "tl":
+            val = target
+            if isinstance(val, str):
+                try:
+                    val = json.loads(val)
+                except json.JSONDecodeError:
+                    val = ast.literal_eval(val)
+            return [float(val[0]), float(val[1])]
+        return float(str(target).strip().strip("[]"))
+    except (ValueError, TypeError, SyntaxError, IndexError):
+        return None
+
+
+# Set once if the heavy medvision_utils import fails, so the (systemic) cause is
+# reported a single time instead of silently yielding NaN for every sample.
+_DIAGONAL_IMPORT_WARNED = False
+
+
+def _scaled_diagonal(doc, pixel_size_scale, mode, *, tl_uniform_scale=None):
+    """Scaled physical diagonal for the nMAE denominator on scaledPS samples.
+
+    Mirrors the authoritative reconstruction in benchmark/parse_outputs.py: prefer
+    the stored ``pixel_size_scale`` (exact); for TL fall back to a uniform scale
+    derived from target/metric_value; otherwise (e.g. AD with no stored scale)
+    return NaN so the caller's nMAE is NaN while the MRE stays correct.
+
+    Two distinct NaN sources are kept apart: a missing/failed *import* of
+    _compute_physical_diagonal is systemic (every nMAE would be NaN), so it is
+    announced loudly once; a per-sample *compute* failure (e.g. a missing NIfTI)
+    stays a silent NaN so one bad sample never kills the rest of the MRE output.
+    """
+    explicit = pixel_size_scale
+    if explicit is None and tl_uniform_scale is not None:
+        explicit = {"s_h": tl_uniform_scale, "s_w": tl_uniform_scale, "mode": "uniform"}
+    if explicit is None:
+        return float("nan")
+    try:
+        from medvision_bm.medvision_lmms_eval.lmms_eval.tasks.medvision.medvision_utils import (
+            _compute_physical_diagonal,
+        )
+    except Exception as e:
+        global _DIAGONAL_IMPORT_WARNED
+        if not _DIAGONAL_IMPORT_WARNED:
+            print(
+                "[error] cannot import _compute_physical_diagonal "
+                f"({type(e).__name__}: {e}); scaledPS nMAE will be NaN. Run this "
+                "analysis in the full eval env (torch/transformers/nibabel/"
+                "medvision_ds), e.g. via analyze__proc_acc__model_level.sh.",
+                file=sys.stderr,
+            )
+            _DIAGONAL_IMPORT_WARNED = True
+        return float("nan")
+    try:
+        doc_meta = {
+            k: doc.get(k)
+            for k in (
+                "image_file",
+                "slice_dim",
+                "slice_idx",
+                "taskID",
+                "label",
+                "image_size_2d",
+            )
+        }
+        return float(
+            _compute_physical_diagonal(
+                doc_meta, scale_mode=mode, explicit_scale=explicit
+            )
+        )
+    except Exception:
+        return float("nan")
 
 
 # ---------------------------------------------------------------------------
@@ -355,6 +450,7 @@ def _relative_image_file(full_path, dataset_name):
 def process_jsonl(jsonl_path, output_suffix, removed_set=None, dataset_name=None):
     jsonl_path = Path(jsonl_path)
     out_path = jsonl_path.with_name(jsonl_path.stem + output_suffix + ".jsonl")
+    is_scaledPS = "scaledPS" in jsonl_path.name
 
     n_total = n_gt_fail = n_parse_fail = n_success = 0
     results = []
@@ -403,14 +499,34 @@ def process_jsonl(jsonl_path, output_suffix, removed_set=None, dataset_name=None
                 results.append(record)
                 continue
 
+            # scaledPS: the model answers in scaled-mm and eval scores against the
+            # scaled GT stored in `target`; use it (and a scaled diagonal) so this
+            # diagnostic matches the eval pipeline. No-op for regular (S=1) files.
+            tl_uniform_scale = None
+            if is_scaledPS:
+                tgt = _parse_eval_target(sample.get("target"), "tl")
+                if tgt is not None:
+                    unscaled_major = gt["gt_major"]
+                    gt["gt_major"], gt["gt_minor"] = tgt
+                    if unscaled_major:
+                        tl_uniform_scale = gt["gt_major"] / unscaled_major
+
             try:
                 # scale distance error by the image diagonal to get a more interpretable relative error metric (e.g. 0.05 means 5% of the image diagonal)
                 image_size_2d = doc.get("image_size_2d")
                 pixel_size = doc.get("pixel_size")
-                image_diagonal = np.sqrt(
-                    (image_size_2d[0] * pixel_size[0]) ** 2
-                    + (image_size_2d[1] * pixel_size[1]) ** 2
-                )
+                if is_scaledPS:
+                    image_diagonal = _scaled_diagonal(
+                        doc,
+                        sample.get("pixel_size_scale"),
+                        "uniform",
+                        tl_uniform_scale=tl_uniform_scale,
+                    )
+                else:
+                    image_diagonal = np.sqrt(
+                        (image_size_2d[0] * pixel_size[0]) ** 2
+                        + (image_size_2d[1] * pixel_size[1]) ** 2
+                    )
                 record.update(analyze_tl_sample(solution, gt, image_diagonal))
                 if all(
                     record.get(k) is not None
