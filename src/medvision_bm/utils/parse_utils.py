@@ -346,13 +346,18 @@ def cal_metrics(results, task_type):
     Returns:
         Dictionary with calculated metrics
     """
+    # Detection shares ONE implementation with the authoritative summarize path
+    # (cal_metrics_detection_task): overlap metrics (IoU/F1/P/R) count failures as 0,
+    # not NaN. Delegating keeps parse_outputs and summarize_detection_task from ever
+    # disagreeing on detection metrics.
+    if task_type == "Detection":
+        return cal_metrics_detection_task(results)
+
     pred = results["filtered_resps"][0]
     target_metrics = np.array(ast.literal_eval(results["target"]))
 
     # Determine expected length based on task type
-    if task_type == "Detection":
-        expected_length = 4
-    elif task_type == "TL":
+    if task_type == "TL":
         expected_length = 2
     elif task_type == "AD":
         expected_length = 1
@@ -369,49 +374,23 @@ def cal_metrics(results, task_type):
         if len(pred_metrics) != expected_length:
             mean_absolute_error = np.nan
             mean_relative_error = np.nan
-            IoU = np.nan
-            f1 = np.nan
-            precision = np.nan
-            recall = np.nan
             success = False
         else:
             absolute_error = np.abs(pred_metrics - target_metrics)
             mean_absolute_error = np.mean(absolute_error)
-
-            if task_type == "Detection":
-                IoU = cal_IoU(pred_metrics, target_metrics)
-                f1 = cal_F1(pred_metrics, target_metrics)
-                precision = cal_Precision(pred_metrics, target_metrics)
-                recall = cal_Recall(pred_metrics, target_metrics)
-            else:
-                mean_relative_error = np.mean(absolute_error / (target_metrics + 1e-15))
-
+            mean_relative_error = np.mean(absolute_error / (target_metrics + 1e-15))
             success = True
     except Exception:
         mean_absolute_error = np.nan
         mean_relative_error = np.nan
-        IoU = np.nan
-        f1 = np.nan
-        precision = np.nan
-        recall = np.nan
         success = False
 
     # NOTE: The key name is important. It is referred in the "metric" field of the yaml file for this task.
-    if task_type == "Detection":
-        return {
-            "avgMAE": {"MAE": mean_absolute_error, "success": success},
-            "avgIoU": {"IoU": IoU},
-            "F1": {"F1": f1},
-            "Precision": {"Precision": precision},
-            "Recall": {"Recall": recall},
-            "SuccessRate": {"success": success},
-        }
-    else:  # TL or AD
-        return {
-            "avgMAE": {"MAE": mean_absolute_error, "success": success},
-            "avgMRE": {"MRE": mean_relative_error, "success": success},
-            "SuccessRate": {"success": success},
-        }
+    return {
+        "avgMAE": {"MAE": mean_absolute_error, "success": success},
+        "avgMRE": {"MRE": mean_relative_error, "success": success},
+        "SuccessRate": {"success": success},
+    }
 
 
 def get_labelsMap_imgModality_from_seg_benchmark_plan(dataset_name, task_id):

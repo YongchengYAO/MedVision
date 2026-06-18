@@ -517,7 +517,7 @@ def _format_data_DetectionTask_verl(
 
     # Reuse existing function for SFT with CoT for Detection Task
     # We can extract GT landmark coordinates from value_dict
-    prompt, values_dict = _doc_to_text_DetectionTask(example)
+    prompt = _doc_to_text_DetectionTask(example)
     target = _doc_to_target_DetectionTask(example)
     if not isinstance(target, list):
         target = [target]
@@ -553,16 +553,18 @@ def _format_data_DetectionTask_verl(
     #   - upperright_corner_wh
     # Dimensions definition:
     #   - *_corner_wh: [relative width, relative height]
-    # Note: the origin of coordinate depends on _doc_to_text_DetectionTask_CoT()
+    # Note: the origin of coordinate depends on _doc_to_target_DetectionTask()
+    # The non-CoT formatter returns only the prompt string, so build extra_info from
+    # target = _doc_to_target_DetectionTask() = [coor0_w, coor0_h, coor1_w, coor1_h].
     # ---
     extra_info = {
         "lowerleft_corner_wh": [
-            float(values_dict["<coor0_w>"]),
-            float(values_dict["<coor0_h>"]),
+            float(target[0]),
+            float(target[1]),
         ],
         "upperright_corner_wh": [
-            float(values_dict["<coor1_w>"]),
-            float(values_dict["<coor1_h>"]),
+            float(target[2]),
+            float(target[3]),
         ],
     }
 
