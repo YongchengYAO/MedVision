@@ -50,6 +50,7 @@ from matplotlib.gridspec import GridSpec
 from matplotlib.transforms import blended_transform_factory
 
 from medvision_bm.utils.configs import EXCLUDED_KEYS, MINIMUM_GROUP_SIZE
+from medvision_bm.utils.plot_utils import save_fig_capped
 
 
 def load_config(config_path):
@@ -1056,7 +1057,7 @@ def plot_metrics_multi_model(
         )
 
     output_file = os.path.join(fig_dir, fig_name)
-    plt.savefig(output_file, dpi=300, bbox_inches="tight")
+    save_fig_capped(output_file, bbox_inches="tight")
     print(f"Figure saved to: {output_file}")
     plt.close()
 

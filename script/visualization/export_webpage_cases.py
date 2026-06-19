@@ -71,6 +71,7 @@ from medvision_bm.utils.plot_utils import (  # noqa: E402
     plot_ad_on_image,
     plot_detection_on_image,
     plot_tl_axes_on_image,
+    save_fig_capped,
 )
 
 # ── Generic helpers ───────────────────────────────────────────────────────────
@@ -787,7 +788,7 @@ def _image_only(sample, out_path):
     plt.imshow(img.T, cmap="gray", origin="lower", aspect=psz[1] / psz[0])
     plt.axis("off")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    plt.savefig(out_path, bbox_inches="tight", dpi=120)
+    save_fig_capped(out_path, bbox_inches="tight")
     plt.close(fig)
 
 

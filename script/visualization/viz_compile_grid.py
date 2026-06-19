@@ -47,6 +47,8 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
 
+from medvision_bm.utils.plot_utils import FIG_DPI, save_fig_capped, save_img_capped
+
 from medvision_bm.utils.configs import SEED
 
 MODEL_NAME_MAP = {
@@ -191,7 +193,7 @@ def _compile_figure(models, samples, row_per_model, output, show_model_label=Tru
 
     out_path = Path(output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(str(out_path), bbox_inches="tight", dpi=150)
+    save_fig_capped(str(out_path), fig=fig, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved: {out_path}")
 
@@ -299,7 +301,7 @@ def _compile_figure_dataset_as_col(
             panel_size,
             show_model_label,
         )
-        fig.savefig(str(out_path), bbox_inches="tight", dpi=150)
+        save_fig_capped(str(out_path), fig=fig, bbox_inches="tight")
         plt.close(fig)
     else:
         import io
@@ -317,7 +319,7 @@ def _compile_figure_dataset_as_col(
                 show_model_label,
             )
             buf = io.BytesIO()
-            fig.savefig(buf, format="png", bbox_inches="tight", dpi=150)
+            fig.savefig(buf, format="png", bbox_inches="tight", dpi=FIG_DPI)
             plt.close(fig)
             buf.seek(0)
             panel_images.append(Image.open(buf).copy())
@@ -329,7 +331,7 @@ def _compile_figure_dataset_as_col(
         for img in panel_images:
             result.paste(img, (0, y))
             y += img.height
-        result.save(str(out_path))
+        save_img_capped(result, str(out_path))
 
     print(f"Saved: {out_path}")
 
@@ -461,7 +463,7 @@ def _compile_figure_dataset_as_row(
             show_model_label,
             num_row_per_ds=num_row_per_ds,
         )
-        fig.savefig(str(out_path), bbox_inches="tight", dpi=150)
+        save_fig_capped(str(out_path), fig=fig, bbox_inches="tight")
         plt.close(fig)
     else:
         import io
@@ -480,7 +482,7 @@ def _compile_figure_dataset_as_row(
                 num_row_per_ds=num_row_per_ds,
             )
             buf = io.BytesIO()
-            fig.savefig(buf, format="png", bbox_inches="tight", dpi=150)
+            fig.savefig(buf, format="png", bbox_inches="tight", dpi=FIG_DPI)
             plt.close(fig)
             buf.seek(0)
             panel_images.append(Image.open(buf).copy())
@@ -492,7 +494,7 @@ def _compile_figure_dataset_as_row(
         for img in panel_images:
             result.paste(img, (x, 0))
             x += img.width
-        result.save(str(out_path))
+        save_img_capped(result, str(out_path))
 
     print(f"Saved: {out_path}")
 

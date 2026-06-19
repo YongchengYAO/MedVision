@@ -4,6 +4,45 @@ import matplotlib.lines as mlines
 import numpy as np
 from matplotlib import pyplot as plt
 
+# Target render dpi and per-image megapixel cap for all MedVision figures.
+# arXiv warns (from Feb 2026) on images larger than 34 MP (~A4 at 600 dpi); we
+# keep every figure at or below that pixel ceiling. See info.arxiv.org/help/sizes.
+FIG_DPI = 300
+MAX_FIG_MP = 34  # megapixels
+
+
+def save_fig_capped(
+    out_path, *, fig=None, dpi=FIG_DPI, max_megapixels=MAX_FIG_MP, **savefig_kwargs
+):
+    """Save a matplotlib figure to ``out_path`` at up to ``dpi``, clamping the dpi
+    so the rendered pixel count stays within ``max_megapixels`` (arXiv's per-image
+    ceiling). Pixels = (w_in * dpi) * (h_in * dpi), so the max dpi that fits the
+    budget is ``sqrt(max_megapixels * 1e6 / (w_in * h_in))``. ``bbox_inches="tight"``
+    only trims whitespace, so clamping on the full figsize is conservative — the
+    saved image lands at or just under the cap.
+
+    Returns the dpi actually used.
+    """
+    fig = fig if fig is not None else plt.gcf()
+    w_in, h_in = fig.get_size_inches()
+    max_dpi = (max_megapixels * 1e6 / (w_in * h_in)) ** 0.5
+    used = int(min(dpi, max_dpi))
+    fig.savefig(out_path, dpi=used, **savefig_kwargs)
+    return used
+
+
+def save_img_capped(img, out_path, *, max_megapixels=MAX_FIG_MP, **save_kwargs):
+    """Save a PIL image to ``out_path``, downscaling its pixel dimensions so the
+    total pixel count stays within ``max_megapixels``. Used for PIL-stitched grids,
+    which have no dpi knob.
+    """
+    w, h = img.size
+    max_px = max_megapixels * 1e6
+    if w * h > max_px:
+        scale = (max_px / (w * h)) ** 0.5
+        img = img.resize((max(1, int(w * scale)), max(1, int(h * scale))))
+    img.save(out_path, **save_kwargs)
+
 
 def _get_appropriate_scale(pixel_size, img_size, init_scale=10):
     """
@@ -241,7 +280,7 @@ def plot_tl_axes_on_image(
     plt.tight_layout(pad=1.5, rect=[0.05, 0.05, 0.95, 0.95])
 
     os.makedirs(os.path.dirname(fig_path), exist_ok=True)
-    plt.savefig(fig_path, bbox_inches="tight")
+    save_fig_capped(fig_path, bbox_inches="tight")
     plt.close()
 
 
@@ -380,7 +419,7 @@ def plot_detection_on_image(
     plt.tight_layout(pad=1.5, rect=[0.05, 0.05, 0.95, 0.95])
 
     os.makedirs(os.path.dirname(fig_path), exist_ok=True)
-    plt.savefig(fig_path, bbox_inches="tight")
+    save_fig_capped(fig_path, bbox_inches="tight")
     plt.close()
 
 
@@ -661,5 +700,5 @@ def plot_ad_on_image(
     plt.tight_layout(pad=1.5, rect=[0.05, 0.05, 0.95, 0.95])
 
     os.makedirs(os.path.dirname(fig_path), exist_ok=True)
-    plt.savefig(fig_path, bbox_inches="tight")
+    save_fig_capped(fig_path, bbox_inches="tight")
     plt.close()

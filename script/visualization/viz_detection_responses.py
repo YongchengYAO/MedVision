@@ -24,6 +24,7 @@ import numpy as np
 from scipy.ndimage import zoom
 
 from medvision_bm.sft.sft_utils import normalize_img
+from medvision_bm.utils.plot_utils import save_fig_capped
 
 # ── Color palette (light) ─────────────────────────────────────────────────────
 C_FIG_BG = "#FFFFFF"
@@ -717,7 +718,7 @@ def _plot_sample(sample, out_path, reshape_hw):
     )
     _draw_detection_overlay_on_ax(ax_ovl, doc, sample)
 
-    plt.savefig(out_path, dpi=120, facecolor=C_FIG_BG)
+    save_fig_capped(out_path, facecolor=C_FIG_BG)
     plt.close(fig)
     return out_path
 
