@@ -139,13 +139,18 @@ class TaskConfig(dict):
             if "temperature" in self.generation_kwargs:
                 self.generation_kwargs["temperature"] = float(self.generation_kwargs["temperature"])
 
-            if "until" not in self.generation_kwargs:
-                self.generation_kwargs["until"] = [self.fewshot_delimiter]
+            # NOTE: `until` is intentionally NOT defaulted to [fewshot_delimiter]. The
+            # fewshot delimiter ("\n\n") is a prompt-construction concern and must not
+            # double as a decoding stop: forwarding it to the generation engine truncates
+            # multi-paragraph (e.g. CoT) outputs at the first blank line. With `until`
+            # unset, generation terminates on the model's EOS token; string-level stops
+            # are applied only when explicitly requested via --stop_strings.
         else:
             if "generate_until" in self.output_type:
-                # ensure that we greedily generate in absence of explicit arguments otherwise
+                # ensure that we greedily generate in absence of explicit arguments
+                # otherwise; rely on the model's EOS token for stopping (see NOTE above on
+                # why the fewshot delimiter is not used as a decoding stop).
                 self.generation_kwargs = {
-                    "until": None if self.fewshot_delimiter is None else [self.fewshot_delimiter],
                     "do_sample": False,
                 }
 

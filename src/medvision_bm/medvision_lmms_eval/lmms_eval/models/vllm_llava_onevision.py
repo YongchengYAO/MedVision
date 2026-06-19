@@ -281,11 +281,13 @@ class VLLM_Llava_OneVision(lmms):
                 if "top_p" not in gen_kwargs:
                     gen_kwargs["top_p"] = 0.95
 
-                until = gen_kwargs.get("until") or []
-                if isinstance(until, str):
-                    until = [until]
-                until_list = [s for s in until if s is not None]
-                stop = list(dict.fromkeys(until_list + self.stop_strings))
+                # String-level stop sequences are applied ONLY when explicitly provided via
+                # --stop_strings. The task config's `until` (lmms-eval defaults it to the
+                # fewshot delimiter "\n\n"; see api/task.py) is NOT forwarded as a decoding
+                # stop -- the fewshot delimiter must not double as a generation terminator,
+                # or it truncates multi-paragraph CoT after the first blank line. Default
+                # stopping relies on the model's EOS token.
+                stop = list(dict.fromkeys(self.stop_strings))
 
                 params = {
                     "temperature": gen_kwargs["temperature"],

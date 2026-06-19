@@ -296,21 +296,14 @@ class VLLM_Gemma4(lmms):
                 if "top_p" not in gen_kwargs:
                     gen_kwargs["top_p"] = 0.95
 
-                until = gen_kwargs.get("until") or []
-                if isinstance(until, str):
-                    until = [until]
-                until_list = [s for s in until if s is not None]
-                # Only when the user supplies explicit stop strings via --stop_strings (e.g.
-                # "</answer>") do we drop the newline/whitespace-only entries that lmms-eval
-                # auto-injects into `until` (the fewshot delimiter "\n\n"; see api/task.py).
-                # Gemma 4's CoT puts blank lines between <step-k> blocks, so a "\n\n" stop halts
-                # generation mid-reasoning, before <answer> is produced. Gating on self.stop_strings
-                # keeps the default path unchanged -- models with no explicit terminator still
-                # benefit from the "\n\n" runaway-stop -- while an explicit stop string then defines
-                # exactly where generation should end. (Mirrors vllm_qwen3vl.py.)
-                if self.stop_strings:
-                    until_list = [s for s in until_list if s.strip() != ""]
-                stop = list(dict.fromkeys(until_list + self.stop_strings))
+                # String-level stop sequences are applied ONLY when explicitly provided via
+                # --stop_strings. The task config's `until` (lmms-eval defaults it to the
+                # fewshot delimiter "\n\n"; see api/task.py) is NOT forwarded as a decoding
+                # stop -- the fewshot delimiter must not double as a generation terminator,
+                # or it truncates multi-paragraph CoT after the first blank line (Gemma 4's
+                # CoT puts blank lines between <step-k> blocks). Default stopping relies on
+                # the model's EOS token.
+                stop = list(dict.fromkeys(self.stop_strings))
 
                 params = {
                     "temperature": gen_kwargs["temperature"],

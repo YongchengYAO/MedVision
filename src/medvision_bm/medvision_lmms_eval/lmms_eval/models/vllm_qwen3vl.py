@@ -340,21 +340,14 @@ class VLLM_Qwen3VL(lmms):
                 if "top_k" not in gen_kwargs:
                     gen_kwargs["top_k"] = self.top_k
 
-                until = gen_kwargs.get("until") or []
-                if isinstance(until, str):
-                    until = [until]
-                until_list = [s for s in until if s is not None]
-                # Only when the user supplies explicit stop strings via --stop_strings (e.g.
-                # "</answer>") do we drop the newline/whitespace-only entries that lmms-eval
-                # auto-injects into `until` (the fewshot delimiter "\n\n"; see api/task.py).
-                # Qwen3-VL "Thinking" models put blank lines between CoT steps, so a "\n\n" stop
-                # halts generation right after <step-1-answer>, before <answer> is ever produced.
-                # Gating on self.stop_strings keeps the default path unchanged -- models that
-                # have no explicit terminator still benefit from the "\n\n" runaway-stop -- while
-                # an explicit stop string then defines exactly where generation should end.
-                if self.stop_strings:
-                    until_list = [s for s in until_list if s.strip() != ""]
-                stop = list(dict.fromkeys(until_list + self.stop_strings))
+                # String-level stop sequences are applied ONLY when explicitly provided via
+                # --stop_strings. The task config's `until` (lmms-eval defaults it to the
+                # fewshot delimiter "\n\n"; see api/task.py) is NOT forwarded as a decoding
+                # stop -- the fewshot delimiter must not double as a generation terminator,
+                # or it truncates multi-paragraph CoT after the first blank line (Qwen3-VL
+                # "Thinking" puts blank lines between CoT steps, halting right after
+                # <step-1-answer>). Default stopping relies on the model's EOS token.
+                stop = list(dict.fromkeys(self.stop_strings))
 
                 params = {
                     "temperature": gen_kwargs["temperature"],
