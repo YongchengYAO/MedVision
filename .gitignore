@@ -219,6 +219,7 @@ dev-*
 
 .claude
 CLAUDE.md
+docs/superpowers/
 
 # Git worktrees
 .worktrees/

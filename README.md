@@ -3,7 +3,7 @@
 
   # MedVision: Dataset and Benchmark for Quantitative Medical Image Analysis
 
-  | 🌏 [**Project**](https://medvision-vlm.github.io) | 🧑🏻‍💻 [**Code**](https://github.com/YongchengYAO/MedVision) | 🩻 [**Dataset**](https://huggingface.co/datasets/YongchengYAO/MedVision) | 🐳 [**Docker**](https://hub.docker.com/r/vincentycyao/medvision/tags) | 🤗 [**Models**](https://huggingface.co/collections/YongchengYAO/medvision-v0) | 📖 [**arXiv**](https://arxiv.org/abs/2511.18676) |
+  | 🌏 [**Project**](https://medvision-vlm.github.io) | 🧑🏻‍💻 [**Code**](https://github.com/YongchengYAO/MedVision) | 🩻 [**Dataset**](https://huggingface.co/datasets/YongchengYAO/MedVision) | 🐳 [**Docker**](https://hub.docker.com/r/vincentycyao/medvision/tags) | 🤗 [**Models**](https://huggingface.co/collections/YongchengYAO/medvision-v0) | 🚀 [**Demo**](https://huggingface.co/spaces/YongchengYAO/MedVision-V0-demo) | 📖 [**arXiv**](https://arxiv.org/abs/2511.18676) |
 
   🔎 Benchmarking VLMs for detection, tumor/lesion size estimation, and angle/distance measurement from medical images 📏
 

@@ -1,42 +1,56 @@
 # Model Image Processing in MedVision
 
-How each benchmark model's *perceived* image resolution is determined, and how the image-size / pixel-size statements in the quantitative-task prompts are kept consistent with it.
+How each benchmark model's *perceived* image resolution is determined, and how the image-size / pixel-size numbers in the quantitative-task prompts are kept consistent with it.
 
-> Companion to the [New models guide](New-Models-Guide.md). This page documents the per-model image-processing pipeline as implemented **today**. For the history and rationale of the perceived-size correctness fixes (LLaVA-OneVision, InternVL3, the CLIP-336 trio), see [`Perceived-Size-Bugfix.md`](Perceived-Size-Bugfix.md).
+> Companion to the [New models guide](New-Models-Guide.md). This page documents the per-model image-processing pipeline as implemented **today**.
 
 ## Why this matters
 
-MedVision's quantitative tasks — Tumor/Lesion size (**TL**) and Angle/Distance (**AD**) — put the **image size** and **pixel size** into the text prompt, and the model must do the pixel→mm arithmetic itself. These numbers must describe the resolution the model's vision encoder **actually perceives after its internal resize** — not the raw NIfTI slice size. If they don't, the model reasons against a different scale than the ground truth assumes and every measurement is wrong.
+### In plain terms
 
-Because every VLM resizes differently (fixed square, "smart resize", tile grids, server-side API rules), the perceived size is model-specific. The invariant is maintained **independently for each axis** (height and width):
+MedVision's quantitative tasks — Tumor/Lesion size (**TL**) and Angle/Distance (**AD**) — put the **image size** and **pixel size** into the text prompt and ask the model to do the pixel→mm arithmetic itself. For that arithmetic to be right, those two numbers have to describe the picture the model **actually sees after its own internal resize** — not the raw NIfTI slice. If they describe a different picture, the model reasons against the wrong scale and every measurement comes out wrong.
+
+Every VLM resizes differently (fixed square, "smart resize", tile grids, server-side API rules), so the perceived size is model-specific. The rest of this page is one recipe per model for getting those two numbers right.
+
+### The invariant
+
+The physical extent of the slice must be conserved, **independently for each axis** (height and width):
 
 ```
 stated_size_axis × stated_pixel_size_axis == original_size_axis × original_pixel_size_axis   (physical extent, mm)
 ```
 
-The prompt states **two** quantities, and once a processor **pads** they come from **two different shapes**, so `get_resized_img_shape` returns both — `(perceived_canvas_hw, content_hw)`:
+### Two numbers, two sources
+
+The prompt states **two** quantities. Once a processor **pads**, they come from **two different shapes**, so `get_resized_img_shape` returns both — `(perceived_canvas_hw, content_hw)`:
 
 - **image size** = the **resized-and-padded canvas the encoder perceives** (`perceived_canvas_hw`), so the model's spatial frame matches what it sees.
-- **pixel size** = adjusted by the **resize-only** scale (`resize_ratio_axis = content_axis / original_axis`, from `content_hw`), because padding adds no physical extent — the model measures real structures inside the content, never across black padding.
+- **pixel size** = adjusted by the **resize-only** scale (`resize_ratio_axis = content_axis / original_axis`, from `content_hw`). Padding adds no physical extent — the model measures real structures inside the content, never across black padding.
 
-For a processor that **stretches/resizes** (content fills the output) the two shapes are identical. For one that **pads** (letterbox or pad-to-square) `perceived_canvas > content` on the padded axis, and the split keeps both fields correct. (Conserving physical extent alone is not a sufficient test — it holds for any returned value.)
+For a processor that **stretches/resizes** (content fills the output) the two shapes are identical. For one that **pads** (letterbox or pad-to-square) `perceived_canvas > content` on the padded axis, and the split keeps both fields correct.
 
-**Detection tasks do not need any of this**: `doc_to_text_BoxCoordinate*` asks for relative `[0,1]` coordinates and never calls `get_resized_img_shape()`. The per-model machinery below applies only to the measurement (TL/AD) prompts.
+> Conserving physical extent alone is **not** a sufficient test — it holds for any returned value. Both fields are only correct when the two shapes are supplied separately.
+
+**Detection tasks need none of this.** `doc_to_text_BoxCoordinate*` asks for relative `[0,1]` coordinates and never calls `get_resized_img_shape()`. Everything below applies only to the measurement (TL/AD) prompts.
 
 ## How it works
 
-Pipeline at prompt-build time (per sample), in [`medvision_utils.py`](../src/medvision_bm/medvision_lmms_eval/lmms_eval/tasks/medvision/medvision_utils.py):
+At prompt-build time, per sample, in [`medvision_utils.py`](../src/medvision_bm/medvision_lmms_eval/lmms_eval/tasks/medvision/medvision_utils.py):
 
-1. **Optional input reshape** — if `reshape_image_hw` is passed via `--model_args` (parsed in `evaluator.py` and injected into `lmms_eval_specific_kwargs`), the 2D slice is reshaped at NIfTI load (`_load_nifti_2d(new_shape_hw=...)`) for **both** `doc_to_visual` and `doc_to_text`, so the probe and the model always see the same input.
-2. **Perceived-size lookup** — `get_resized_img_shape(model_name, img_2d_raw, extra_kwargs)` dispatches on `model_name` (the `--model` CLI key) and returns `(perceived_canvas_hw, content_hw)` — the padded canvas the encoder sees (for the stated image size) and the resize-only content shape (for the pixel ratio). For non-padding models the two are equal. Unknown names **raise** — deliberately loud, so a new model cannot silently run with a wrong scale.
-3. **Per-axis pixel-size adjustment** — each TL/AD `doc_to_text` computes `resize_ratio_h`, `resize_ratio_w` **independently** and divides the pixel sizes by them. This conserves physical extent per axis and absorbs *anisotropic* resizes (several models below are only approximately aspect-preserving).
-4. The prompt states `The image size is {W} pixels (width) x {H} pixels (height).` and the adjusted pixel sizes.
+1. **Optional input reshape** — if `reshape_image_hw` is passed via `--model_args` (parsed in `evaluator.py`, injected into `lmms_eval_specific_kwargs`), the 2D slice is reshaped at NIfTI load (`_load_nifti_2d(new_shape_hw=...)`) for **both** `doc_to_visual` and `doc_to_text`, so the probe and the model always see the same input.
+2. **Perceived-size lookup** — `get_resized_img_shape(model_name, img_2d_raw, extra_kwargs)` dispatches on `model_name` (the `--model` CLI key) and returns `(perceived_canvas_hw, content_hw)`: the padded canvas the encoder sees (for the stated image size) and the resize-only content shape (for the pixel ratio). For non-padding models the two are equal. Unknown names **raise** — deliberately loud, so a new model cannot silently run with a wrong scale.
+3. **Per-axis pixel-size adjustment** — each TL/AD `doc_to_text` computes `resize_ratio_h` and `resize_ratio_w` **independently** and divides the pixel sizes by them. This conserves physical extent per axis and absorbs *anisotropic* resizes (several models below are only approximately aspect-preserving).
+4. **Prompt assembly** — the prompt states `The image size is {W} pixels (width) x {H} pixels (height).` plus the adjusted pixel sizes.
 
 `model_name` / `model_hf` are injected at run time from `--model` / `--model_args model_hf=...` (no task-YAML edits needed). The same branches also accept SFT aliases (`qwen25vl`, `gemma4`, `llama_3_2_vision`, …) because SFT training reuses `get_resized_img_shape()`.
 
 ## Summary table
 
-One row per active key in [`AVAILABLE_MODELS`](../src/medvision_bm/medvision_lmms_eval/lmms_eval/models/__init__.py). Strategy: **A** = fixed perceived size (processor stretches to a fixed square; content fills it), **B** = input-dependent perceived size (computed/probed per image), **C** = API rule owned by the model file (Claude/OpenAI: client pre-resize to a *fixed point* — an image the server's own resize leaves unchanged; Gemini: pass-through), **D** = no TL/AD branch.
+One row per active key in [`AVAILABLE_MODELS`](../src/medvision_bm/medvision_lmms_eval/lmms_eval/models/__init__.py). The four strategies:
+
+- **A** — fixed perceived size: the processor stretches to a fixed square, so the answer is a constant.
+- **B** — input-dependent perceived size: computed or probed per image.
+- **C** — API rule owned by the model file: Claude/OpenAI pre-resize client-side to a *fixed point* (a size the server's own resize leaves unchanged); Gemini passes through.
 
 | Model key | Strategy | Perceived-size rule |
 |---|---|---|
@@ -53,13 +67,16 @@ One row per active key in [`AVAILABLE_MODELS`](../src/medvision_bm/medvision_lmm
 | `meddr` | A | fixed 448×448 (single-tile stretch) |
 | `llava_med` | B | pad-to-square then CLIP-336; image_size = 336×336, pixel = content `336/max(H,W)` |
 | `huatuogpt_vision` | B | pad-to-square then CLIP-336; image_size = 336×336, pixel = content `336/max(H,W)` |
-| `healthgpt_l14` | B | expand2square then CLIP-336; image_size = 336×336, pixel = content `336/max(H,W)` |
+| `healthgpt` | B | expand2square then CLIP-336; image_size = 336×336, pixel = content `336/max(H,W)` (one key, both HealthGPT variants) |
 | `claude` | C | client pre-resize to fixed point: `min(1, cap/long_edge, √(tokens·750/area))` then per-side floor-28 |
 | `gemini` | C | pass-through (sent size == perceived canvas); only >3072 px long edge is downscaled |
 | `openai` | C | client pre-resize to fixed point: patch models budget-fit then floor-32; tile models `min(1, 2048/long, 768/short)` |
-| `healthgpt_xl32` | D | no branch → raises on TL/AD; Detection-safe |
 
-Commented-out registry keys (not in the benchmark): `qwen2_5_vl`, `internvl3` (HF backends, replaced by vLLM variants), `llava_onevision` (HF backend; its alias is still accepted by the branch), `llama4`, and `biomedgpt` — the latter is the only model that force-resizes client-side to a fixed 480×480 (BICUBIC) in its own file (`biomedgpt.py:64-65`) and has no TL/AD branch.
+**Commented-out registry keys** (not in the benchmark): `qwen2_5_vl`, `internvl3` (HF backends, replaced by vLLM variants), `llava_onevision` (HF backend; its alias is still accepted by the branch), `llama4`, and `biomedgpt`. The last is the only model that force-resizes client-side to a fixed 480×480 (BICUBIC) in its own file (`biomedgpt.py:64-65`) and has no TL/AD branch.
+
+**Removed orphan key:** `llama_vision` — its module lives only at `models/dev/deprecated/llama_vision.py`; the active Llama key is `vllm_llama_3_2_vision`.
+
+> **HealthGPT note:** the `healthgpt` key is a single unified module (`models/healthgpt.py`) serving **both** HealthGPT variants — L14 (phi-4 base, bfloat16) and XL32 (Qwen2.5-32B base, float16) — which share an identical expand2square + CLIP-336 pipeline. The eval entry `eval__healthgpt.py` selects the variant's weights, base model, and dtype via `--model_name`. XL32 has no benchmark shell scripts yet, so only L14 has been run.
 
 ## Official documentation
 
@@ -77,52 +94,67 @@ Durable, human-readable references for each model's image-preprocessing behavior
 | `medgemma` | [medgemma-4b-it card](https://huggingface.co/google/medgemma-4b-it) · processor: [gemma3](https://huggingface.co/docs/transformers/model_doc/gemma3) | Card: images "normalized to 896×896 … encoded to 256 tokens"; Gemma3 docs for the processor mechanics. |
 | `meddr` | [MedDr_0401 card](https://huggingface.co/Sunanhe/MedDr_0401) · 448 base: [internvl](https://huggingface.co/docs/transformers/model_doc/internvl) | Card has no resize text; the 448 InternViT base resolution is documented via the InternVL lineage. |
 | `vllm_internvl3` | [InternVL3-38B card](https://huggingface.co/OpenGVLab/InternVL3-38B) | **Documents** dynamic 448-tile preprocessing (`dynamic_preprocess`, `min/max_dynamic_patch`, `use_thumbnail`). |
-| `llava_med`, `huatuogpt_vision`, `healthgpt_l14` | [openai/clip-vit-large-patch14-336 card](https://huggingface.co/openai/clip-vit-large-patch14-336) · [transformers clip](https://huggingface.co/docs/transformers/model_doc/clip) | Shared encoder; `preprocessor_config.json` = resize-336 + center-crop. Per-model square-padding (`pad`/`expand2square`) is repo-config, see GitHub source. |
+| `llava_med`, `huatuogpt_vision`, `healthgpt` | [openai/clip-vit-large-patch14-336 card](https://huggingface.co/openai/clip-vit-large-patch14-336) · [transformers clip](https://huggingface.co/docs/transformers/model_doc/clip) | Shared encoder; `preprocessor_config.json` = resize-336 + center-crop. Per-model square-padding (`pad`/`expand2square`) is repo-config, see GitHub source. |
 | `claude` | [Anthropic vision](https://platform.claude.com/docs/en/docs/build-with-claude/vision) | 28×28-patch tokenization, long-edge cap, resize-preserving-aspect then pad to a 28-multiple. |
 | `gemini` | [Gemini image understanding](https://ai.google.dev/gemini-api/docs/image-understanding) | `media_resolution` control, 768×768-crop tiling, 258-token base for ≤384-px images. |
 | `openai` | [OpenAI images & vision](https://developers.openai.com/api/docs/guides/images-vision) | Patch-based (gpt-5.x, 32-px patches) vs tile-based (GPT-4o/o-series, 512-px tiles) families; `detail` modes; token budgets. |
 
 ## Strategy A — fixed perceived size
 
-The model's processor **stretches** every image to one fixed square (no aspect preservation, no padding), so the content fills the canvas and `get_resized_img_shape` returns a hardcoded constant. The anisotropic per-axis ratio is physically real and handled by the per-axis pixel-size adjustment. Each branch keeps a dynamic probe (`_process_img_<model>`) commented out "for debugging only", used to confirm the fixed square.
+### In plain terms
+
+The model's processor squishes **every** image to the **same fixed square** — no aspect preservation, no padding. The content fills the canvas, so the perceived size is just a hardcoded constant. The squish is anisotropic (height and width scale by different amounts), but that is physically real and handled by the per-axis pixel-size adjustment.
+
+Each branch keeps a dynamic probe (`_process_img_<model>`) commented out "for debugging only", used to confirm the fixed square.
+
+### The models
 
 | Models | Size | Basis |
 |---|---|---|
 | `vllm_gemma3`, `medgemma` | [896, 896] | `Gemma3ImageProcessor` stretch-to-896 (`do_pan_and_scan` is `null`/off in both checkpoints; MedVision passes no override). |
 | `meddr` | [448, 448] | `Sunanhe/MedDr_0401`: `pad2square: false` and no dynamic-tiling fields → single-tile `Resize((448,448))` stretch. |
 
-Notes:
-- **`do_pan_and_scan` is off by default** for `gemma3`/`medgemma`; if it were enabled the processor would emit multiple 896 crops plus a global view, which the single constant would no longer describe. MedVision never sets it.
+### Notes
+
+- **`do_pan_and_scan` is off by default** for `gemma3`/`medgemma`. If it were enabled the processor would emit multiple 896 crops plus a global view, which the single constant would no longer describe. MedVision never sets it.
 - **MedDr is *not* the InternVL3 case.** Despite sharing InternVL-chat lineage, `MedDr_0401`'s config omits `dynamic_image_size`/`max_dynamic_patch`/`use_thumbnail`, so tiling is off; it is a plain single-tile 448 stretch.
-- None of these wrappers resize client-side; the raw (optionally `reshape_image_hw`-reshaped) image goes to the engine/processor, which applies the fixed resize internally.
+- None of these wrappers resize client-side. The raw (optionally `reshape_image_hw`-reshaped) image goes to the engine/processor, which applies the fixed resize internally.
 
 ## Strategy B — input-dependent perceived size
 
-The perceived size depends on the input, so the branch computes it per image — either by probing the real image processor, by composing the processor's own geometry helpers, or (for the pad-to-square CLIP models) in closed form. Each branch returns `(perceived_canvas_hw, content_hw)`: the padded canvas the encoder sees (→ stated image size) and the resize-only content (→ pixel ratio). For the non-padding probes below (Qwen family, Gemma 4) the two are identical; the padding probes (Llama-3.2, LLaVA-OneVision, CLIP-336 trio) return them distinctly.
+### In plain terms
 
-- **Qwen2.5-VL family** (`vllm_qwen25vl`, `vllm_qwen25vl_tooluse`, `lingshu`; SFT alias `qwen25vl`) — `_process_img_qwen25vl` / `_process_img_lingshu`: `Qwen2VLImageProcessor.smart_resize` rounds each side to a multiple of `patch_size(14) × merge_size(2) = 28` and resizes (no spatial padding). Recovered from the processor's patch-grid output as `image_grid_thw[1:3] × patch_size`. The probe runs the real processor, and (for `lingshu`) literally client-side.
+Here the perceived size **depends on the image**, so the branch computes it per image — by probing the real image processor, by composing the processor's own geometry helpers, or (for the pad-to-square CLIP models) in closed form.
+
+Each branch returns `(perceived_canvas_hw, content_hw)`: the padded canvas the encoder sees (→ stated image size) and the resize-only content (→ pixel ratio). For the **non-padding** probes (Qwen family, Gemma 4) the two are identical; the **padding** probes (Llama-3.2, LLaVA-OneVision, CLIP-336 trio) return them distinctly.
+
+### Per-model rules
+
+- **Qwen2.5-VL family** (`vllm_qwen25vl`, `vllm_qwen25vl_tooluse`, `lingshu`; SFT alias `qwen25vl`) — `_process_img_qwen25vl` / `_process_img_lingshu`. `Qwen2VLImageProcessor.smart_resize` rounds each side to a multiple of `patch_size(14) × merge_size(2) = 28` and resizes (no spatial padding). Recovered from the processor's patch-grid output as `image_grid_thw[1:3] × patch_size`. The probe runs the real processor, and (for `lingshu`) literally client-side.
 - **Qwen3-VL** (`vllm_qwen3vl`; alias `qwen3vl`) — `_process_img_qwen3vl`: same `image_grid_thw × patch_size` mechanism, config-driven.
-- **Llama-3.2-Vision** (`vllm_llama_3_2_vision`; alias `llama_3_2_vision`) — `_process_img_llama_3_2_vision`: a `MllamaImageProcessor` subclass replays preprocessing up to (and only) the resize step to get the aspect-fitted **pre-pad content** on the optimal canvas of up to `max_image_tiles` 560×560 tiles. The processor then pads to the tile grid, so the probe returns `perceived = ceil(content/560)·560` per axis (the padded tile canvas the encoder sees → image size) and `content` (the resize-only shape → pixel ratio; aspect is carried separately via `aspect_ratio_ids`). vLLM 0.10.2 uses `MllamaProcessor` server-side.
-- **LLaVA-OneVision** (`vllm_llava_onevision`; alias `llava_onevision`) — `_process_img_llavaonevision`: the processor **letterboxes** — `select_best_resolution` picks an anyres canvas (multiples of 384), the image is aspect-preserving-resized into it (`get_patch_output_size`, min-scale + ceil), **then padded**. The probe returns **both**: `perceived = best_resolution_hw` (the padded canvas → image size) and `content = get_patch_output_size(np.array(img), best_hw, ChannelDimension.LAST)` (pre-pad → pixel ratio), passing the original size as `(H, W)` (`img_PIL.size[::-1]`) per the helper's contract. Both helpers are from `transformers.image_processing_utils`; vLLM 0.10.0 runs this same HF processor server-side.
-- **Gemma 4** (`vllm_gemma4`; alias `gemma4`) — `_process_img_gemma4`: Gemma4's processor outputs a flattened, sequence-padded patch list (`pixel_values: [batch, max_patches, patch²·3]`, defaults `max_patches = 280·3² = 2520`, patch dim `16²·3 = 768` — **constants, never the image size**). The probe recovers `(H, W)` from the extent of the valid (non `-1`) entries of `image_position_ids × patch_size`. The resize is only approximately aspect-preserving: one scale factor fits the patch budget, then each side is independently floored to a multiple of 48 (`pooling_kernel_size × patch_size`); upscaling allowed; no spatial padding. The per-axis pixel-size adjustment absorbs the ≤1-step anisotropy.
-- **InternVL3** (`vllm_internvl3`; alias `internvl3`) — `_process_img_internvl3`: the engine applies **dynamic tiling** — it picks the `(cols, rows)` grid (`cols·rows ≤ max_dynamic_patch + 1` for the thumbnail) whose aspect best matches the input, **stretches** the image to `448·cols × 448·rows` (a pure `image.resize`, no padding), and splits it into 448² tiles (+ a 448² thumbnail when >1 tile). The probe returns `(448·rows, 448·cols)` computed by `transformers.models.got_ocr2.image_processing_got_ocr2.get_optimal_tiled_canvas` (InternVL reuses GOT-OCR2's tiler; grid selection is identical to vLLM 0.10.0's), with `image_size`/`min_dynamic_patch`/`max_dynamic_patch`/`use_thumbnail` read from the checkpoint config. Because the stretch fills the canvas, the canvas *is* the content; the per-axis ratio is genuinely anisotropic. The fixed 448² applies only when the grid is 1×1 — squares ≤633 px and small near-square images; larger inputs tile (e.g. 768²→896², 1935×2400 (H×W)→`(1344, 1792)`). `downsample_ratio` is post-ViT token compression and does not change the spatial canvas.
-- **CLIP-336 trio** (`llava_med`, `huatuogpt_vision`, `healthgpt_l14`) — shared helper `_padsquare_clip_content_hw`: each model **pads the slice to a square** (`image_aspect_ratio: "pad"` → `expand2square`, or an explicit `expand2square()`) **before** the CLIP-ViT-L/14-336 resize + center-crop. The encoder perceives a fixed **336×336** canvas; the content occupies a sub-region (uniform scale `336/max(H,W)`) with the rest padding. The branch returns `perceived = [336, 336]` (→ image size) and `content = (round(H·336/max(H,W)), round(W·336/max(H,W)))` (closed form → pixel ratio; no library helper exposes the pre-pad content). Squares are unchanged (perceived == content == 336²); non-square inputs get the correct uniform per-axis pixel size while still stating the 336² canvas the model sees. (`healthgpt_xl32` shares the CLIP-336 tower but has no TL/AD branch — see Strategy D.)
+- **Llama-3.2-Vision** (`vllm_llama_3_2_vision`; alias `llama_3_2_vision`) — `_process_img_llama_3_2_vision`. A `MllamaImageProcessor` subclass replays preprocessing up to (and only) the resize step to get the aspect-fitted **pre-pad content** on the optimal canvas of up to `max_image_tiles` 560×560 tiles. The processor then pads to the tile grid, so the probe returns `perceived = ceil(content/560)·560` per axis (the padded tile canvas → image size) and `content` (the resize-only shape → pixel ratio; aspect is carried separately via `aspect_ratio_ids`). vLLM 0.10.2 uses `MllamaProcessor` server-side.
+- **LLaVA-OneVision** (`vllm_llava_onevision`; alias `llava_onevision`) — `_process_img_llavaonevision`. The processor **letterboxes**: `select_best_resolution` picks an anyres canvas (multiples of 384), the image is aspect-preserving-resized into it (`get_patch_output_size`, min-scale + ceil), **then padded**. The probe returns **both**: `perceived = best_resolution_hw` (the padded canvas → image size) and `content = get_patch_output_size(np.array(img), best_hw, ChannelDimension.LAST)` (pre-pad → pixel ratio), passing the original size as `(H, W)` (`img_PIL.size[::-1]`) per the helper's contract. Both helpers are from `transformers.image_processing_utils`; vLLM 0.10.0 runs this same HF processor server-side.
+- **Gemma 4** (`vllm_gemma4`; alias `gemma4`) — `_process_img_gemma4`. Gemma4's processor outputs a flattened, sequence-padded patch list (`pixel_values: [batch, max_patches, patch²·3]`, defaults `max_patches = 280·3² = 2520`, patch dim `16²·3 = 768` — **constants, never the image size**). The probe recovers `(H, W)` from the extent of the valid (non `-1`) entries of `image_position_ids × patch_size`. The resize is only approximately aspect-preserving: one scale factor fits the patch budget, then each side is independently floored to a multiple of 48 (`pooling_kernel_size × patch_size`); upscaling allowed; no spatial padding. The per-axis pixel-size adjustment absorbs the ≤1-step anisotropy.
+- **InternVL3** (`vllm_internvl3`; alias `internvl3`) — `_process_img_internvl3`. The engine applies **dynamic tiling**: it picks the `(cols, rows)` grid (`cols·rows ≤ max_dynamic_patch + 1` for the thumbnail) whose aspect best matches the input, **stretches** the image to `448·cols × 448·rows` (a pure `image.resize`, no padding), and splits it into 448² tiles (+ a 448² thumbnail when >1 tile). The probe returns `(448·rows, 448·cols)` computed by `transformers.models.got_ocr2.image_processing_got_ocr2.get_optimal_tiled_canvas` (InternVL reuses GOT-OCR2's tiler; grid selection is identical to vLLM 0.10.0's), with `image_size`/`min_dynamic_patch`/`max_dynamic_patch`/`use_thumbnail` read from the checkpoint config. Because the stretch fills the canvas, the canvas *is* the content, so the per-axis ratio is genuinely anisotropic. The fixed 448² applies only when the grid is 1×1 — squares ≤633 px and small near-square images; larger inputs tile (e.g. 768²→896², 1935×2400 (H×W)→`(1344, 1792)`). `downsample_ratio` is post-ViT token compression and does not change the spatial canvas.
+- **CLIP-336 trio** (`llava_med`, `huatuogpt_vision`, `healthgpt`) — shared helper `_padsquare_clip_content_hw`. Each model **pads the slice to a square** (`image_aspect_ratio: "pad"` → `expand2square`, or an explicit `expand2square()`) **before** the CLIP-ViT-L/14-336 resize + center-crop. The encoder perceives a fixed **336×336** canvas; the content occupies a sub-region (uniform scale `336/max(H,W)`) with the rest padding. The branch returns `perceived = [336, 336]` (→ image size) and `content = (round(H·336/max(H,W)), round(W·336/max(H,W)))` (closed form → pixel ratio; no library helper exposes the pre-pad content). Squares are unchanged (perceived == content == 336²); non-square inputs get the correct uniform per-axis pixel size while still stating the 336² canvas the model sees. (The single `healthgpt` key serves **both** HealthGPT variants — L14 and XL32 — which share this identical pipeline; the eval script picks each variant's weights, base model, and dtype via `--model_name`.)
 
 ## Strategy C — API rules (Claude, Gemini, OpenAI)
 
-For API models there is no local processor to probe; the provider resizes server-side. The providers need **different** client-side treatments, because their pipelines differ in the one property that matters — whether the perceived canvas can diverge from the sent image:
+### In plain terms
 
-- **Claude pads the canvas** (bottom/right to a multiple of 28 px) → the sent image must be made a *fixed point* of the pipeline (pre-resize to the 28-grid), or every relative coordinate is skewed.
-- **Gemini crops/resamples but never enlarges the canvas** (≤3072 px) → the sent image already *is* the perceived canvas; pass-through is the faithful rule and a Claude-style grid trick would be pointless.
-- **OpenAI's patch-based models behave like Claude**: a non-32-aligned image gets an extra row/column of edge patches that overhang the boundary ("a patch may extend beyond the image boundary"), enlarging the perceived grid → fixed-point pre-resize to the 32-grid; its tile-based models document no padding, so only the no-resize downscale is needed.
+For API models there is no local processor to probe — the provider resizes server-side. The three providers need **different** client-side treatments, because their pipelines differ in the one property that matters: **whether the perceived canvas can diverge from the sent image.**
+
+- **Claude pads the canvas** (bottom/right, to a multiple of 28 px). So the sent image must be made a *fixed point* of the pipeline (pre-resize to the 28-grid), or every relative coordinate is skewed.
+- **Gemini crops/resamples but never enlarges the canvas** (≤3072 px). The sent image already *is* the perceived canvas, so pass-through is the faithful rule — a Claude-style grid trick would be pointless.
+- **OpenAI's patch-based models behave like Claude**: a non-32-aligned image gets an extra row/column of edge patches that overhang the boundary ("a patch may extend beyond the image boundary"), enlarging the perceived grid → fixed-point pre-resize to the 32-grid. Its tile-based models document no padding, so only the no-resize downscale is needed.
 
 ### Claude
 
 `claude` makes the sent image a **fixed point** of the provider's pipeline:
 
-- `anthropic_resized_hw()` in [`claude.py`](../src/medvision_bm/medvision_lmms_eval/lmms_eval/models/claude.py) computes `scale = min(1.0, long_edge_cap / max(h,w), sqrt(max_image_tokens · 750 / (h·w)))`, then floors each side to a multiple of 28 (min 28). `_encode_image()` **pre-resizes client-side** with this formula, so the server's downscale *and* its bottom/right pad-to-28 are both no-ops: the size we send, the size Claude perceives, and the size stated in the prompt are all identical (**sent == perceived == stated**).
-- Per-model caps are explicit in `SUPPORTED_MODEL_CAPS` (high-res `(2576, 4784)` for Fable 5 / Opus 4.8 / 4.7; standard `(1568, 1568)` for Opus 4.6/4.5, Sonnet 4.6/4.5, Haiku 4.5); unknown model codes **raise** at three points (class init, per-image encode, per-prompt probe). OpenRouter ids (`anthropic/claude-opus-4.8`) are normalized before lookup.
-- The model file is the **single source of truth**: the `claude` branch in `get_resized_img_shape` lazily imports `anthropic_resized_hw` from `lmms_eval.models.claude` (no mirrored copy), so the size stated in the prompt always matches the image actually sent. The formula and caps are guarded by [`unit-test/claude-image-resize/test_claude_resize.py`](../unit-test/claude-image-resize/test_claude_resize.py). [`unit-test/claude-image-resize/check_claude_count_tokens.py`](../unit-test/claude-image-resize/check_claude_count_tokens.py) verifies the token formula empirically against the live API.
+- **The formula.** `anthropic_resized_hw()` in [`claude.py`](../src/medvision_bm/medvision_lmms_eval/lmms_eval/models/claude.py) computes `scale = min(1.0, long_edge_cap / max(h,w), sqrt(max_image_tokens · 750 / (h·w)))`, then floors each side to a multiple of 28 (min 28). `_encode_image()` **pre-resizes client-side** with this formula, so the server's downscale *and* its bottom/right pad-to-28 are both no-ops: the size we send, the size Claude perceives, and the size stated in the prompt are all identical (**sent == perceived == stated**).
+- **Per-model caps.** Explicit in `SUPPORTED_MODEL_CAPS` — high-res `(2576, 4784)` for Fable 5 / Opus 4.8 / 4.7; standard `(1568, 1568)` for Opus 4.6/4.5, Sonnet 4.6/4.5, Haiku 4.5. Unknown model codes **raise** at three points (class init, per-image encode, per-prompt probe). OpenRouter ids (`anthropic/claude-opus-4.8`) are normalized before lookup.
+- **Single source of truth.** The model file owns the rule: the `claude` branch in `get_resized_img_shape` lazily imports `anthropic_resized_hw` from `lmms_eval.models.claude` (no mirrored copy), so the size stated in the prompt always matches the image actually sent. The formula and caps are guarded by [`unit-test/claude-image-resize/test_claude_resize.py`](../unit-test/claude-image-resize/test_claude_resize.py); [`check_claude_count_tokens.py`](../unit-test/claude-image-resize/check_claude_count_tokens.py) verifies the token formula empirically against the live API.
 
 ### Gemini
 
@@ -167,7 +199,12 @@ Re-run any check with `python unit-test/gemini-image-resize/<check>.py --model <
 
 ### OpenAI
 
-Covered by [`openai.py`](../src/medvision_bm/medvision_lmms_eval/lmms_eval/models/openai.py) (key `openai`, providers `openai`/`openrouter`), for two rule families OpenAI documents ([images-vision guide](https://developers.openai.com/api/docs/guides/images-vision), verified 2026-06-12): **patch-based** models (`gpt-5.5`, `gpt-5.5-pro`, `gpt-5.4`, `gpt-5.4-mini/nano`, `gpt-5-mini/nano`, `o4-mini`) and **tile-based** models (`gpt-4o`, `gpt-4.1`, `o3`). The default benchmark model is **`gpt-5.5-pro`** (patch-based; shares the `gpt-5.5` vision family/caps). `gpt-5` **base** is deliberately **not** in the cap table — two doc-validation passes disagreed on whether it is tile- or patch-based, so rather than risk a wrong scale it raises.
+Covered by [`openai.py`](../src/medvision_bm/medvision_lmms_eval/lmms_eval/models/openai.py) (key `openai`, providers `openai`/`openrouter`), for two rule families OpenAI documents ([images-vision guide](https://developers.openai.com/api/docs/guides/images-vision), verified 2026-06-12):
+
+- **patch-based** models — `gpt-5.5`, `gpt-5.5-pro`, `gpt-5.4`, `gpt-5.4-mini/nano`, `gpt-5-mini/nano`, `o4-mini`
+- **tile-based** models — `gpt-4o`, `gpt-4.1`, `o3`
+
+The default benchmark model is **`gpt-5.5-pro`** (patch-based; shares the `gpt-5.5` vision family/caps). `gpt-5` **base** is deliberately **not** in the cap table — two doc-validation passes disagreed on whether it is tile- or patch-based, so rather than risk a wrong scale it raises.
 
 #### In plain terms
 
@@ -210,14 +247,14 @@ Two checks in [`unit-test/openai-image-resize/`](../unit-test/openai-image-resiz
 
 Re-run with `python unit-test/openai-image-resize/check_openai_count_tokens.py --provider openrouter` (or `--provider openai`) in an environment with the API key and the eval dependencies.
 
-## Strategy D — no TL/AD branch
-
-These keys have no branch in `get_resized_img_shape()`. That is **harmless for Detection** (which never calls it) but means TL/AD either raises or was never run:
-
-- **`healthgpt_xl32`** — model file exists (CLIP-336 tower, like L14), but no branch → TL/AD would raise. No XL32 benchmark scripts exist, so the raise is latent. If a branch is ever added it should mirror the CLIP-336 trio (pad-to-square content, `_padsquare_clip_content_hw(img, 336)`).
-
-Two former orphan keys were removed from the registry: `healthgpt` (no `models/healthgpt.py` module existed — `eval__healthgpt.py` resolves to `healthgpt_l14`/`healthgpt_xl32`) and `llama_vision` (its module lives only at `models/dev/deprecated/llama_vision.py`; the active Llama key is `vllm_llama_3_2_vision`).
-
 ## Coverage checklist
 
-Every active `AVAILABLE_MODELS` key → section: `claude`, `gemini`, `openai` → [C](#strategy-c--api-rules-claude-gemini-openai); `healthgpt_xl32` → [D](#strategy-d--no-tlad-branch); `vllm_gemma3`, `medgemma`, `meddr` → [A](#strategy-a--fixed-perceived-size); `vllm_qwen25vl`, `vllm_qwen25vl_tooluse`, `vllm_qwen3vl`, `lingshu`, `vllm_llama_3_2_vision`, `vllm_llava_onevision`, `vllm_gemma4`, `vllm_internvl3`, `llava_med`, `huatuogpt_vision`, `healthgpt_l14` → [B](#strategy-b--input-dependent-perceived-size). Commented-out keys (`qwen2_5_vl`, `internvl3`, `llava_onevision`, `llama4`, `biomedgpt`) → footnote under the [summary table](#summary-table).
+Every active `AVAILABLE_MODELS` key maps to a section:
+
+- **Strategy [C](#strategy-c--api-rules-claude-gemini-openai)** — `claude`, `gemini`, `openai`
+- **Strategy [A](#strategy-a--fixed-perceived-size)** — `vllm_gemma3`, `medgemma`, `meddr`
+- **Strategy [B](#strategy-b--input-dependent-perceived-size)** — `vllm_qwen25vl`, `vllm_qwen25vl_tooluse`, `vllm_qwen3vl`, `lingshu`, `vllm_llama_3_2_vision`, `vllm_llava_onevision`, `vllm_gemma4`, `vllm_internvl3`, `llava_med`, `huatuogpt_vision`, `healthgpt`
+
+Commented-out keys (`qwen2_5_vl`, `internvl3`, `llava_onevision`, `llama4`, `biomedgpt`) are covered by the footnote under the [summary table](#summary-table).
+</content>
+</invoke>
