@@ -825,6 +825,31 @@ def _process_img_qwen3vl(img_2d_raw, extra_kwargs):
     return img_shape_resized_hw
 
 
+def _process_img_minimax_m3(img_2d_raw, extra_kwargs):
+    # MiniMax-M3 (MiniMaxM3SparseForConditionalGeneration) ships a custom image processor as remote
+    # code -- MiniMaxM3VLImageProcessor in the checkpoint's image_processor.py, registered via the
+    # preprocessor_config.json auto_map -- so AutoImageProcessor needs trust_remote_code=True (the
+    # Qwen/GLM processors are built into transformers and do not).
+    #
+    # Verified against the checkpoint source (huggingface.co/MiniMaxAI/MiniMax-M3): its smart_resize
+    # is identical in shape to Qwen2.5-VL's -- factor = patch_size(14) * merge_size(2) = 28, and the
+    # returned image_grid_thw is in PATCH units, so resized_H = grid_h * patch_size. The one M3-specific
+    # twist is a tight max_pixels = 451584 (~672x672) baked into the processor (vs Qwen's ~12.8M px
+    # default), so M3 perceives slices at lower resolution -- but the processor applies that cap itself,
+    # so the probe stays identical. The preprocessor_config's process_image_mode="dynamic_res",
+    # max_image_resolution=1008 and patch_merge keys affect only the token COUNT (the processor wrapper's
+    # patch-merge compression), not the spatial resize, so they do not enter the perceived-size math.
+    img_PIL = Image.fromarray(img_2d_raw).convert("RGB")
+    model_hf = extra_kwargs["model_hf"]
+    img_processor = AutoImageProcessor.from_pretrained(model_hf, trust_remote_code=True)
+    processed_visual = img_processor([img_PIL])
+    image_grid_thw = processed_visual["image_grid_thw"][0]
+    patch_size = img_processor.patch_size
+    img_shape_resized_hw = (image_grid_thw[1] * patch_size, image_grid_thw[2] * patch_size)
+    print(f"\nOriginal image size (HxW): {img_PIL.size[::-1]}; Resized image size (HxW): {img_shape_resized_hw}")
+    return img_shape_resized_hw
+
+
 def _process_img_lingshu(img_2d_raw, extra_kwargs):
     img_PIL = Image.fromarray(img_2d_raw).convert("RGB")
     model_hf = extra_kwargs["model_hf"]
@@ -1249,6 +1274,14 @@ def get_resized_img_shape(model_name, img_2d_raw, extra_kwargs):
     img_shape_content_hw = None
     if model_name in ["qwen3vl", "vllm_qwen3vl"]:
         img_shape_resized_hw = _process_img_qwen3vl(img_2d_raw, extra_kwargs) 
+    elif model_name in ["vllm_minimax_m3", "minimax_m3"]:
+        # NOTE: MiniMax-M3's MiniMaxM3VLImageProcessor smart-resizes to a multiple of
+        # patch_size*merge_size (14*2=28) under a tight max_pixels=451584 (~672x672) and reports the
+        # grid in patch units, so resized_H = image_grid_thw[1] * patch_size (same probe shape as
+        # Qwen2.5-VL). It is custom remote code, so the probe loads it with trust_remote_code=True.
+        # Image processor (checkpoint remote code): https://huggingface.co/MiniMaxAI/MiniMax-M3/blob/main/image_processor.py
+        # Config: https://huggingface.co/MiniMaxAI/MiniMax-M3/blob/main/config.json
+        img_shape_resized_hw = _process_img_minimax_m3(img_2d_raw, extra_kwargs)
     elif model_name in ["vllm_qwen25vl", "vllm_qwen25vl_tooluse", "qwen25vl"]:
         # NOTE: Qwen2.5-VL resizes images to a size divisible by patch_size (default 14) * merge_size (default 2) = 28
         # Preprocessor config: https://huggingface.co/Qwen/Qwen2.5-VL-32B-Instruct/blob/main/preprocessor_config.json

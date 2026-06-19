@@ -127,6 +127,14 @@ qwen3_vl = [
     "transformers==4.57.0",
     "qwen-vl-utils==0.0.14",
 ]
+minimax_m3 = [
+    # MiniMax-M3 VL (MiniMaxM3SparseForConditionalGeneration). The checkpoint was converted with
+    # transformers 4.52.4 and its remote image_processor.py uses the fast image/video processor API;
+    # the eval script force-reinstalls this version last (after vLLM) so it wins dependency
+    # resolution. Used by the resize probe's AutoImageProcessor(trust_remote_code=True). vLLM (not
+    # listed here) must be a build that natively registers the minimax_m3_vl architecture.
+    "transformers==4.57.1",
+]
 gemini = [
     # >=2.8.0 for Gemini 3 support: ThinkingConfig.thinking_level does not exist in older
     # releases (verified absent in 1.47.0).

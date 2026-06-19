@@ -46,6 +46,8 @@ AVAILABLE_MODELS = {
     "meddr": "MedDr",
     # MedGemma
     "medgemma": "MedGemma",
+    # MiniMax-M3 (vision-language; 428B sparse MoE, ~23B active)
+    "vllm_minimax_m3": "VLLM_MiniMaxM3",
     # OpenAI (official OpenAI API or OpenRouter)
     "openai": "OpenAI_GPT",
     # Qwen2.5-VL
