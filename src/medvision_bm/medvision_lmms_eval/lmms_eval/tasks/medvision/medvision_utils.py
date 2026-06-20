@@ -825,6 +825,27 @@ def _process_img_qwen3vl(img_2d_raw, extra_kwargs):
     return img_shape_resized_hw
 
 
+def _process_img_glm4v(img_2d_raw, extra_kwargs):
+    # GLM-4.6V (Glm4vMoeForConditionalGeneration) and GLM-4.6V-Flash (Glm4vForConditionalGeneration)
+    # share the GLM-4V image processor (Glm4vImageProcessor), which -- like Qwen2.5-VL's
+    # Qwen2VLImageProcessor -- smart-resizes to a multiple of patch_size*merge_size (14*2=28) and
+    # returns `image_grid_thw` in PATCH units, where grid_h = resized_height // patch_size. So the
+    # resized (H, W) is recovered as (grid_h * patch_size, grid_w * patch_size). Same probe shape as
+    # Qwen; AutoImageProcessor resolves the right processor (dense vs MoE) from the checkpoint config.
+    img_PIL = Image.fromarray(img_2d_raw).convert("RGB")
+    model_hf = extra_kwargs["model_hf"]
+    img_processor = AutoImageProcessor.from_pretrained(model_hf)
+    processed_visual = img_processor([img_PIL])
+    image_grid_thw = processed_visual["image_grid_thw"][0]
+    patch_size = img_processor.patch_size
+    # GLM-4.6V ships Glm46VImageProcessor (transformers 5.x), whose image_grid_thw entries are torch
+    # tensors -- cast to int so the resized H/W are plain ints, not 0-dim tensors that would render
+    # as "tensor(392)" in the pixel-size prompt and propagate through the pixel-size arithmetic.
+    img_shape_resized_hw = (int(image_grid_thw[1]) * patch_size, int(image_grid_thw[2]) * patch_size)
+    print(f"\nOriginal image size (HxW): {img_PIL.size[::-1]}; Resized image size (HxW): {img_shape_resized_hw}")
+    return img_shape_resized_hw
+
+
 def _process_img_minimax_m3(img_2d_raw, extra_kwargs):
     # MiniMax-M3 (MiniMaxM3SparseForConditionalGeneration) ships a custom image processor as remote
     # code -- MiniMaxM3VLImageProcessor in the checkpoint's image_processor.py, registered via the
@@ -1282,6 +1303,13 @@ def get_resized_img_shape(model_name, img_2d_raw, extra_kwargs):
         # Image processor (checkpoint remote code): https://huggingface.co/MiniMaxAI/MiniMax-M3/blob/main/image_processor.py
         # Config: https://huggingface.co/MiniMaxAI/MiniMax-M3/blob/main/config.json
         img_shape_resized_hw = _process_img_minimax_m3(img_2d_raw, extra_kwargs)
+    elif model_name in ["vllm_glm4v", "glm4v"]:
+        # NOTE: GLM-4.6V / GLM-4.6V-Flash use the GLM-4V image processor (Glm4vImageProcessor),
+        # which smart-resizes to a multiple of patch_size*merge_size (14*2=28) and reports the
+        # grid in patch units, so resized_H = image_grid_thw[1] * patch_size (same as Qwen2.5-VL).
+        # Preprocessor config: https://huggingface.co/zai-org/GLM-4.6V/blob/main/preprocessor_config.json
+        # Image processor - Glm4vImageProcessor: https://github.com/huggingface/transformers/blob/main/src/transformers/models/glm4v/image_processing_glm4v.py
+        img_shape_resized_hw = _process_img_glm4v(img_2d_raw, extra_kwargs)
     elif model_name in ["vllm_qwen25vl", "vllm_qwen25vl_tooluse", "qwen25vl"]:
         # NOTE: Qwen2.5-VL resizes images to a size divisible by patch_size (default 14) * merge_size (default 2) = 28
         # Preprocessor config: https://huggingface.co/Qwen/Qwen2.5-VL-32B-Instruct/blob/main/preprocessor_config.json

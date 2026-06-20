@@ -48,6 +48,8 @@ AVAILABLE_MODELS = {
     "medgemma": "MedGemma",
     # MiniMax-M3 (vision-language; 428B sparse MoE, ~23B active)
     "vllm_minimax_m3": "VLLM_MiniMaxM3",
+    # GLM-4.6V (GLM-4.6V MoE + GLM-4.6V-Flash dense; one vLLM wrapper for both)
+    "vllm_glm4v": "VLLM_GLM4V",
     # OpenAI (official OpenAI API or OpenRouter)
     "openai": "OpenAI_GPT",
     # Qwen2.5-VL
