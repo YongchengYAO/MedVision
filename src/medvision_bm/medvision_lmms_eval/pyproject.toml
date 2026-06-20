@@ -170,6 +170,14 @@ openai = [
     # (validated with huggingface-hub==0.36.0).
     "transformers==4.57.1",
 ]
+kimi = [
+    # Moonshot Kimi K2.6 is served via an OpenAI-compatible chat-completions API
+    # (Moonshot Open Platform or OpenRouter), so only the openai SDK is required.
+    "openai",
+    # Same transformers pin and rationale as the `gemini` / `claude` / `openai` extras
+    # above (validated with huggingface-hub==0.36.0).
+    "transformers==4.57.1",
+]
 reka = [
     "httpx>=0.23.3",
     "reka-api",

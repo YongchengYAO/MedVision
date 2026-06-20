@@ -21,6 +21,8 @@ AVAILABLE_MODELS = {
     "claude": "Claude",
     # Gemini (Google Gemini API or OpenRouter; 2.5 + 3 series)
     "gemini": "Gemini",
+    # Kimi (Moonshot Open Platform or OpenRouter; K2.6 multimodal)
+    "kimi": "Kimi",
     # Gemma3
     "vllm_gemma3": "VLLM_Gemma3",
     # Gemma4

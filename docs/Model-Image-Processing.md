@@ -71,6 +71,7 @@ One row per active key in [`AVAILABLE_MODELS`](../src/medvision_bm/medvision_lmm
 | `claude` | C | client pre-resize to fixed point: `min(1, cap/long_edge, √(tokens·750/area))` then per-side floor-28 |
 | `gemini` | C | pass-through (sent size == perceived canvas); only >3072 px long edge is downscaled |
 | `openai` | C | client pre-resize to fixed point: patch models budget-fit then floor-32; tile models `min(1, 2048/long, 768/short)` |
+| `kimi` | C | client pre-resize to fixed point: MoonViT patch-budget downscale (`√(16384/patches)`, ≤7168 px/side) then floor-28 (kills server pad-up) |
 
 **Commented-out registry keys** (not in the benchmark): `qwen2_5_vl`, `internvl3` (HF backends, replaced by vLLM variants), `llava_onevision` (HF backend; its alias is still accepted by the branch), `llama4`, and `biomedgpt`. The last is the only model that force-resizes client-side to a fixed 480×480 (BICUBIC) in its own file (`biomedgpt.py:64-65`) and has no TL/AD branch.
 
@@ -98,6 +99,7 @@ Durable, human-readable references for each model's image-preprocessing behavior
 | `claude` | [Anthropic vision](https://platform.claude.com/docs/en/docs/build-with-claude/vision) | 28×28-patch tokenization, long-edge cap, resize-preserving-aspect then pad to a 28-multiple. |
 | `gemini` | [Gemini image understanding](https://ai.google.dev/gemini-api/docs/image-understanding) | `media_resolution` control, 768×768-crop tiling, 258-token base for ≤384-px images. |
 | `openai` | [OpenAI images & vision](https://developers.openai.com/api/docs/guides/images-vision) | Patch-based (gpt-5.x, 32-px patches) vs tile-based (GPT-4o/o-series, 512-px tiles) families; `detail` modes; token budgets. |
+| `kimi` | [Kimi-K2.6 card](https://huggingface.co/moonshotai/Kimi-K2.6) · MoonViT [Kimi-VL report](https://arxiv.org/abs/2504.07491) | `preprocessor_config.json` `media_proc_cfg` (`in_patch_limit` 16384, `patch_size` 14, `merge_kernel_size` 2, `patch_limit_on_one_side` 512) drives `navit_resize_image`: NaViT downscale-to-patch-budget then pad each side up to 28. API docs publish no resize math. |
 
 ## Strategy A — fixed perceived size
 
@@ -147,6 +149,7 @@ For API models there is no local processor to probe — the provider resizes ser
 - **Claude pads the canvas** (bottom/right, to a multiple of 28 px). So the sent image must be made a *fixed point* of the pipeline (pre-resize to the 28-grid), or every relative coordinate is skewed.
 - **Gemini crops/resamples but never enlarges the canvas** (≤3072 px). The sent image already *is* the perceived canvas, so pass-through is the faithful rule — a Claude-style grid trick would be pointless.
 - **OpenAI's patch-based models behave like Claude**: a non-32-aligned image gets an extra row/column of edge patches that overhang the boundary ("a patch may extend beyond the image boundary"), enlarging the perceived grid → fixed-point pre-resize to the 32-grid. Its tile-based models document no padding, so only the no-resize downscale is needed.
+- **Kimi (MoonViT) pads the canvas too**, each side **up** to a multiple of 28 px — exactly Claude's hazard. So the sent image is made a fixed point: pre-resize to the 28-grid within MoonViT's patch budget, or relative coordinates are skewed. The geometry is read from the **open weights** (the hosted API documents none), so it carries the same "assumed, empirically guarded" caveat as Gemini 3.
 
 ### Claude
 
@@ -247,11 +250,28 @@ Two checks in [`unit-test/openai-image-resize/`](../unit-test/openai-image-resiz
 
 Re-run with `python unit-test/openai-image-resize/check_openai_count_tokens.py --provider openrouter` (or `--provider openai`) in an environment with the API key and the eval dependencies.
 
+### Kimi
+
+Covered by [`kimi.py`](../src/medvision_bm/medvision_lmms_eval/lmms_eval/models/kimi.py) (key `kimi`, providers `moonshot`/`openrouter`), for Moonshot's **Kimi K2.6** multimodal model (model code `kimi-k2.6`; OpenRouter `moonshotai/kimi-k2.6`).
+
+#### In plain terms
+
+- **What we do to the image:** Kimi's vision encoder (MoonViT) reads images at native resolution but pads each side **up** to a multiple of 28 px — the same canvas-enlarging hazard as Claude. So we pre-shape the image to a **fixed point**: shrink it to fit MoonViT's patch budget, then floor each side **down** to a multiple of 28, so the server's downscale *and* its pad-up are both no-ops (**sent == perceived == stated**).
+- **The budget is in patches, not pixels.** MoonViT caps an image at `in_patch_limit = 16384` pre-merge 14×14 patches (≈3.2 M px / ≤4096 merged tokens) and `patch_limit_on_one_side = 512` patches per side (≤7168 px). `kimi_resized_hw()` computes `scale = min(1, √(16384 / ((w//14)·(h//14))), 7168/w, 7168/h)`, floors each side to 28, then trims one 28-step if the integer patch grid is still a hair over budget (so the server never re-downscales). Downscale-only — MoonViT has **no** `min_pixels` lift. MedVision's largest slice (1935×2400) sits far below the caps, so the dominant effect is the floor-to-28 alignment.
+- **What was unclear, and our assumption:** the geometry above is read from the **open weights** (`media_utils.py::navit_resize_image` + `preprocessor_config.json`); the Moonshot/OpenRouter API documents **no** server-side resize math (only a soft "resolution ≤ 4k" recommendation). We **assume** the hosted endpoint runs the same MoonViT pipeline — the same posture as Gemini 3's undocumented geometry.
+- **How it's guarded:** [`test_kimi_resize.py`](../unit-test/kimi-image-resize/test_kimi_resize.py) proves every output is a true MoonViT fixed point (28-grid, within the patch budget, ≤7168 px, never upscaled) by replaying the re-implemented server algorithm — no API needed (a 173k-pair brute-force sweep passes). [`check_kimi_coordinate_frame.py`](../unit-test/kimi-image-resize/check_kimi_coordinate_frame.py) optionally confirms against the live API that the model reports positions relative to the sent canvas.
+
+#### Details
+
+- **Single source of truth.** The model file owns the rule: the `kimi` branch in `get_resized_img_shape` lazily imports `kimi_resized_hw` from `lmms_eval.models.kimi` (no mirrored copy), so the prompt-side size and the API-sent image can never drift.
+- **Exact-match model codes.** Normalization strips the OpenRouter `moonshotai/` prefix (dots are **kept** — they're part of Moonshot ids). Matching is **exact**; an unverified sibling (`kimi-k2.5`, `kimi-k2.7-code`) **raises** until its `media_proc_cfg` budget is confirmed and added to `SUPPORTED_MODEL_CAPS`.
+- **Request path and providers.** One OpenAI-compatible Chat Completions format for both providers: `moonshot` (base_url `https://api.moonshot.ai/v1`, key `MOONSHOT_API_KEY`; override `MOONSHOT_BASE_URL` for the China endpoint `https://api.moonshot.cn/v1`) and `openrouter` (key `OPENROUTER_API_KEY`). Images are sent as base64 PNG data URLs — Moonshot's vision API rejects remote http image URLs. The `kimi` extra needs only the `openai` SDK + `transformers==4.57.1`.
+
 ## Coverage checklist
 
 Every active `AVAILABLE_MODELS` key maps to a section:
 
-- **Strategy [C](#strategy-c--api-rules-claude-gemini-openai)** — `claude`, `gemini`, `openai`
+- **Strategy [C](#strategy-c--api-rules-claude-gemini-openai)** — `claude`, `gemini`, `openai`, `kimi`
 - **Strategy [A](#strategy-a--fixed-perceived-size)** — `vllm_gemma3`, `medgemma`, `meddr`
 - **Strategy [B](#strategy-b--input-dependent-perceived-size)** — `vllm_qwen25vl`, `vllm_qwen25vl_tooluse`, `vllm_qwen3vl`, `lingshu`, `vllm_llama_3_2_vision`, `vllm_llava_onevision`, `vllm_gemma4`, `vllm_internvl3`, `llava_med`, `huatuogpt_vision`, `healthgpt`
 
