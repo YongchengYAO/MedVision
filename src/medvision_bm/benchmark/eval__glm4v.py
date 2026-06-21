@@ -313,6 +313,22 @@ def main():
         setup_env_vllm(data_dir)
     # ------
 
+    # GLM-4.6V runs on vLLM 0.19.1 (V1 engine), which executes the model in separate worker
+    # processes. Two interacting issues on multi-GPU setups must BOTH be worked around, else engine
+    # init fails with "Engine core initialization failed":
+    #   1. setup_env_vllm() forces VLLM_WORKER_MULTIPROC_METHOD=spawn. With vLLM 0.19.1 + GLM-4.6V the
+    #      *spawned* EngineCore dies silently during bootstrap (empty "Failed core proc(s): {}", no
+    #      child traceback). Using "fork" avoids that.
+    #   2. But lmms_eval's __main__ builds an accelerate Accelerator() before the model is created,
+    #      which initializes CUDA in the launcher process -- and a forked vLLM worker then cannot
+    #      re-initialize CUDA ("Cannot re-initialize CUDA in forked subprocess"). Forcing accelerate
+    #      onto CPU stops that launcher-side CUDA init; vLLM still uses the GPUs because it reads
+    #      CUDA_VISIBLE_DEVICES directly, independent of accelerate.
+    # With both set, GLM-4.6V loads and runs on 1 or 2 GPUs. The lmms_eval subprocess launched below
+    # inherits these env vars.
+    os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "fork"
+    os.environ["ACCELERATE_USE_CPU"] = "true"
+
     tasks = load_tasks(tasks_list_json_path)
 
     for task in tasks:

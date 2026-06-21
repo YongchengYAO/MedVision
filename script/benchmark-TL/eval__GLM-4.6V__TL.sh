@@ -65,36 +65,12 @@ export MedVision_PLANNER_VERSION='1.0.0'
 
 # (Method 1) Manually install requirements before running the eval script (more robust)
 # ---
-# python -m medvision_bm.benchmark.install_medvision_ds --data_dir "${data_dir}"
-# python -m medvision_bm.benchmark.install_vendored_lmms_eval --lmms_eval_opt_deps glm4v
-# pip install -r "${benchmark_dir}/requirements/requirements_eval_glm4v.txt" --no-deps
-#
-# python -m medvision_bm.benchmark.eval__glm4v \
-# --skip_env_setup \
-# --lmmseval_module vllm_glm4v \
-# --model_hf_id $model_hf_id \
-# --model_name $model_name \
-# --results_dir $result_dir \
-# --data_dir $data_dir \
-# --tasks_list_json_path $tasks_list_json_path \
-# --task_status_json_path $task_status_json_path \
-# --batch_size_per_gpu $batch_size_per_gpu \
-# --gpu_memory_utilization $gpu_memory_utilization \
-# --sample_limit $sample_limit \
-# --temperature $temperature \
-# --top_p $top_p \
-# --top_k $top_k \
-# --repetition_penalty $repetition_penalty \
-# --stop_strings "$stop_string"
-# ---
+python -m medvision_bm.benchmark.install_medvision_ds --data_dir "${data_dir}"
+python -m medvision_bm.benchmark.install_vendored_lmms_eval --lmms_eval_opt_deps glm4v
+pip install -r "${benchmark_dir}/requirements/requirements_eval_glm4v.txt" --no-deps
 
-# (Method 2) Automatically install requirements via the eval script's built-in setup pipeline
-# Add these arguments for debugging:
-# --env_setup_only \
-# --skip_env_setup \
-# --skip_update_status \
-# ---
 python -m medvision_bm.benchmark.eval__glm4v \
+    --skip_env_setup \
     --lmmseval_module vllm_glm4v \
     --model_hf_id $model_hf_id \
     --model_name $model_name \
@@ -110,6 +86,30 @@ python -m medvision_bm.benchmark.eval__glm4v \
     --top_k $top_k \
     --repetition_penalty $repetition_penalty \
     --stop_strings "$stop_string"
+# ---
+
+# (Method 2) Automatically install requirements via the eval script's built-in setup pipeline
+# Add these arguments for debugging:
+# --env_setup_only \
+# --skip_env_setup \
+# --skip_update_status \
+# ---
+# python -m medvision_bm.benchmark.eval__glm4v \
+# --lmmseval_module vllm_glm4v \
+# --model_hf_id $model_hf_id \
+# --model_name $model_name \
+# --results_dir $result_dir \
+# --data_dir $data_dir \
+# --tasks_list_json_path $tasks_list_json_path \
+# --task_status_json_path $task_status_json_path \
+# --batch_size_per_gpu $batch_size_per_gpu \
+# --gpu_memory_utilization $gpu_memory_utilization \
+# --sample_limit $sample_limit \
+# --temperature $temperature \
+# --top_p $top_p \
+# --top_k $top_k \
+# --repetition_penalty $repetition_penalty \
+# --stop_strings "$stop_string"
 # ---
 
 conda deactivate
