@@ -25,6 +25,9 @@ tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-detect-CoT.jso
 task_status_json_path="${benchmark_dir}/completed_tasks/completed_tasks_${task_tag}.json"
 sample_limit=1000
 
+# Stop string.
+stop_string='</answer>'
+
 # Install medvision_bm (locked shared build)
 set -euo pipefail
 lockfile="${benchmark_dir}/.medvision_build.lock"
@@ -61,6 +64,7 @@ python -m medvision_bm.benchmark.eval__huatuogpt_vision \
     --tasks_list_json_path $tasks_list_json_path \
     --task_status_json_path $task_status_json_path \
     --batch_size_per_gpu $batch_size_per_gpu \
+    --stop_strings $stop_strings \
     --sample_limit $sample_limit
 
 conda deactivate
