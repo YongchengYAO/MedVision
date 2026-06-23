@@ -863,10 +863,21 @@ def _process_img_minimax_m3(img_2d_raw, extra_kwargs):
     img_PIL = Image.fromarray(img_2d_raw).convert("RGB")
     model_hf = extra_kwargs["model_hf"]
     img_processor = AutoImageProcessor.from_pretrained(model_hf, trust_remote_code=True)
-    processed_visual = img_processor([img_PIL])
-    image_grid_thw = processed_visual["image_grid_thw"][0]
-    patch_size = img_processor.patch_size
-    img_shape_resized_hw = (image_grid_thw[1] * patch_size, image_grid_thw[2] * patch_size)
+    # Do NOT call img_processor([img_PIL]) here: the MiniMax-M3 processor declares a custom TypedDict
+    # `valid_kwargs` (MiniMaxM3VLImageProcessorKwargs) whose INHERITED ImagesKwargs fields (do_convert_rgb,
+    # input_data_format, device, do_resize, ...) are dropped by transformers 4.57.x's `_valid_kwargs_names`
+    # introspection (it reads only the subclass TypedDict's own annotations). The base
+    # BaseImageProcessorFast.preprocess then setdefault()s just those few names and crashes on
+    # `kwargs.pop("do_convert_rgb")` (KeyError). The resized (H, W) is fully determined by the processor's
+    # own module-level smart_resize, so call that directly with the instance's patch/merge/max_pixels.
+    # smart_resize snaps both dims to a multiple of factor = patch_size*merge_size (28, hence also a
+    # multiple of patch_size 14), so its output already equals (grid_h*patch_size, grid_w*patch_size) --
+    # i.e. exactly what the old img_processor([img]) probe returned, but without the broken kwargs path.
+    smart_resize = importlib.import_module(type(img_processor).__module__).smart_resize
+    factor = img_processor.patch_size * img_processor.merge_size
+    img_shape_resized_hw = smart_resize(
+        img_PIL.height, img_PIL.width, factor=factor, max_pixels=img_processor.max_pixels
+    )
     print(f"\nOriginal image size (HxW): {img_PIL.size[::-1]}; Resized image size (HxW): {img_shape_resized_hw}")
     return img_shape_resized_hw
 

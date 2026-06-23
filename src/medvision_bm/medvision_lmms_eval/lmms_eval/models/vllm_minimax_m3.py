@@ -1,3 +1,4 @@
+import atexit
 import base64
 import gc
 import json
@@ -56,6 +57,7 @@ class VLLM_MiniMaxM3(lmms):
         lora_path: Optional[str] = None,
         tensor_parallel_size: int = 1,
         gpu_memory_utilization: float = 0.9,
+        block_size: int = 128,
         batch_size: int = 1,
         max_frame_num: int = 32,
         max_new_tokens: int = 4096,
@@ -108,21 +110,37 @@ class VLLM_MiniMaxM3(lmms):
             lora_kwargs["enable_lora"] = True
             lora_kwargs["max_lora_rank"] = lora_rank
 
+        # block_size=128 is MANDATORY for MiniMax-M3 on every platform: MiniMax Sparse Attention (MSA)
+        # uses 128-token sparse blocks, so the KV-cache block size must match. This applies to the
+        # offline LLM() engine too (not just the online `vllm serve` flag). Independent of checkpoint
+        # (BF16 / MXFP8 / AWQ-INT4 all require it).
         self.client = LLM(
             model=self.model_hf,
             tensor_parallel_size=tensor_parallel_size,
             gpu_memory_utilization=gpu_memory_utilization,
+            block_size=block_size,
             trust_remote_code=trust_remote_code,
             **lora_kwargs,
             **kwargs,
         )
 
-        # Set padding side
+        # Set padding side. get_tokenizer() returns the engine's live tokenizer, so mutating it in place
+        # is sufficient. Recent vLLM (the MiniMax-M3 fork's v0.1.dev17667) removed LLM.set_tokenizer(), so
+        # only call it when present -- older vLLM keeps it, where the explicit set-back is a harmless no-op.
         tokenizer = self.client.get_tokenizer()
         tokenizer.padding_side = "left"
-        self.client.set_tokenizer(tokenizer)
+        if hasattr(self.client, "set_tokenizer"):
+            self.client.set_tokenizer(tokenizer)
 
         self.batch_size_per_gpu = int(batch_size)
+
+        # Defer engine teardown to interpreter exit (after lmms_eval has written this task's results).
+        # Do NOT tear down inline at the end of generate_until: for this fork's vLLM the teardown can
+        # race/SIGBUS and abort the process, and if that happens before generate_until returns, the
+        # task's generated outputs never reach lmms_eval and NO results file is written (observed: tasks
+        # reach 100% generation yet exit non-zero with an empty results dir). atexit runs the teardown
+        # only after results are on disk, so a teardown-time crash is cosmetic, not data loss.
+        atexit.register(self._shutdown_engine)
 
     def _shutdown_engine(self):
         # Deterministically tear down the vLLM engine while the interpreter is still healthy.
@@ -317,10 +335,9 @@ class VLLM_MiniMaxM3(lmms):
 
         pbar.close()
 
-        # Each MedVision task runs as its own `lmms_eval` subprocess that exits right after this
-        # call, so this is the engine's last use. Tear it down now (while the interpreter is
-        # healthy) to avoid vLLM's spurious "EngineCore died unexpectedly" teardown race.
-        self._shutdown_engine()
+        # Return results BEFORE any engine teardown. Teardown is deferred to atexit (registered in
+        # __init__) so it runs only after lmms_eval has written this task's results -- tearing the
+        # engine down here previously aborted the process before `return res`, losing the whole task.
         return res
 
     def loglikelihood(self, requests: List[Instance]) -> List[Tuple[float, bool]]:

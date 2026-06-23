@@ -1,8 +1,10 @@
 import argparse
+import glob
 import json
 import os
 import subprocess
 import sys
+import time
 
 from medvision_bm.benchmark.eval_utils import parse_sample_indices
 from medvision_bm.utils import (
@@ -67,7 +69,7 @@ def run_evaluation_for_task_vllm_proxy(
         "--log_samples",
         "--output_path",
         output_path,
-        "--verbosity=DEBUG",
+        "--verbosity=INFO",
     ]
     if sample_indices is not None:
         cmd += ["--sample_indices", json.dumps(sample_indices)]
@@ -170,6 +172,16 @@ def parse_args():
         default=0.99,
         type=float,
         help="GPU memory utilization fraction, used in vllm",
+    )
+    parser.add_argument(
+        "--cpu_offload_gb",
+        default=0,
+        type=int,
+        help=(
+            "GiB of model weights to offload to CPU RAM (vLLM cpu_offload_gb). 0 = no offload. "
+            "Use this to fit a model larger than VRAM on a single GPU -- e.g. MiniMax-M3 AWQ-INT4 "
+            "(~214GB weights) on one H200 (140GB) needs ~120 (slow: weights stream GPU<->CPU)."
+        ),
     )
     parser.add_argument(
         "--vllm_version",
@@ -331,7 +343,26 @@ def main():
             f"temperature={args.temperature},"
             f"top_p={args.top_p},"
             f"top_k={args.top_k},"
-            f"dtype={dtype}"
+            f"dtype={dtype},"
+            # Cap multimodal profiling to what MedVision actually sends: 1 image, no video. Without this,
+            # vLLM's profile_run() builds a maximum-size 32-frame video to size the encoder cache, an ~8.8 GiB
+            # activation spike that OOMs the GPU when the AWQ-INT4 weights already fill ~61/79 GiB per card.
+            # The vendored simple_parse_args_string splits commas brace-aware, so this dict survives parsing
+            # and the wrapper json.loads it before passing to LLM(). MedVision is single-image, no video.
+            f'limit_mm_per_prompt={{"image":1,"video":0}},'
+            # Disable vLLM's custom (peer-to-peer) all-reduce at TP>1. It registers cross-GPU CUDA IPC
+            # handles, which fail inside this pod ("Cuda error custom_all_reduce.cuh:455 'invalid argument'")
+            # because container IPC/P2P between the 4 GPUs is restricted -- a TP worker then dies hard (no
+            # Python traceback) and takes the whole TP group down in a reload loop. Falling back to NCCL
+            # all-reduce (already initialized) is correct and robust here. Harmless no-op at TP=1.
+            f"disable_custom_all_reduce=True,"
+            # Cap the context length. MiniMax-M3 advertises a 1,048,576-token (1M) max_seq_len; vLLM then
+            # demands enough KV cache to serve one full-length request (~44 GiB) and aborts when only ~11 GiB
+            # remains after the 60.7 GiB AWQ-INT4 weights fill each 80 GB card ("available KV cache memory
+            # ... estimated maximum model length is 260096"). MedVision is a single image + question + CoT,
+            # far under this; 32768 needs ~1.4 GiB KV and leaves room to batch. Raise only if prompts grow.
+            f"max_model_len=32768,"
+            f"cpu_offload_gb={args.cpu_offload_gb}"  # 0 = no offload (vLLM default); >0 fits big models on 1 GPU
             + (
                 f",stop_strings={json.dumps(args.stop_strings, separators=(',', ':'))}"
                 if args.stop_strings
@@ -356,22 +387,34 @@ def main():
         if args.sample_indices is not None:
             parsed_sample_indices = parse_sample_indices(args.sample_indices)
 
+        output_path = os.path.join(result_dir, model_name)
+        task_start = time.time()
         rc = run_evaluation_for_task_vllm_proxy(
             lmmseval_module=args.lmmseval_module,
             model_args=vllm_model_args,
             task=task,
             batch_size=batch_size,
             sample_limit=sample_limit,
-            output_path=os.path.join(result_dir, model_name),
+            output_path=output_path,
             sample_indices=parsed_sample_indices,
             log_sys_prompt=args.log_sys_prompt,
         )
 
-        if rc == 0:
+        # Mark "completed" only if this run actually wrote a results file -- NOT on exit code alone.
+        # lmms_eval writes "<ts>_samples_<task>.jsonl" once generation finishes; the vLLM engine then
+        # tears down and can exit non-zero (a teardown race) AFTER results are on disk. Conversely a
+        # process can exit 0 yet write nothing. Gating on a fresh samples file (mtime at/after task
+        # start) means results-on-disk -> completed (even if rc != 0), no-results -> re-run next time
+        # (even if rc == 0). The freshness check avoids matching a stale file from an earlier run.
+        samples = glob.glob(os.path.join(output_path, f"*samples_{task}.jsonl"))
+        wrote_results = any(os.path.getmtime(p) >= task_start - 1 for p in samples)
+        if wrote_results:
+            if rc != 0:
+                print(f"Note: Task {task} wrote results but exited rc={rc} (engine teardown); marking completed.")
             if not args.skip_update_status:
                 update_task_status(task_status_json_path, model_name, task)
         else:
-            print(f"Warning: Task {task} failed (return code {rc})")
+            print(f"Warning: Task {task} produced no results file (return code {rc}); NOT marking completed.")
 
 
 if __name__ == "__main__":
