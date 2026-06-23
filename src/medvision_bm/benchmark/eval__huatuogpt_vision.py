@@ -116,6 +116,17 @@ def parse_args():
         type=str,
         help="Reshape images to this height and width (format: H,W) before feeding into the model. Default is None.",
     )
+    parser.add_argument(
+        "--stop_strings",
+        nargs="*",
+        default=None,
+        metavar="STRING",
+        help=(
+            "Stop strings for generation (e.g. '</answer>'). "
+            "Generation halts at the first match. "
+            "Passed to the model as stop sequences for all tasks."
+        ),
+    )
     # resource-specific arguments
     parser.add_argument(
         "--batch_size_per_gpu",
@@ -265,6 +276,11 @@ def main():
             else:
                 s = raw
             model_args += f",reshape_image_hw={s}"
+
+        if args.stop_strings:
+            model_args += (
+                f",stop_strings={json.dumps(args.stop_strings, separators=(',', ':'))}"
+            )
 
         parsed_sample_indices = None
         if args.sample_indices is not None:

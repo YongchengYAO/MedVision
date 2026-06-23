@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 from typing import List, Optional, Tuple
@@ -5,7 +6,7 @@ from typing import List, Optional, Tuple
 import torch
 from accelerate import Accelerator
 from tqdm import tqdm
-from transformers import logging
+from transformers import StoppingCriteria, StoppingCriteriaList, logging
 
 logging.set_verbosity_error()
 
@@ -20,6 +21,38 @@ sys.path.append(dir_huatuogpt_vision)
 from cli import HuatuoChatbot
 
 
+class _KeywordsStoppingCriteria(StoppingCriteria):
+    """Stop generation once any keyword string appears in the newly generated text.
+
+    Only the tokens generated *after* the prompt are decoded and checked, so a
+    keyword that also occurs in the prompt (e.g. the ``</answer>`` tag the model
+    is instructed to emit) does not trigger an immediate stop. A single instance
+    is shared across all samples via the chatbot's ``gen_kwargs``, so ``reset()``
+    must be called before every generation.
+    """
+
+    def __init__(self, keywords: List[str], tokenizer):
+        self.keywords = keywords
+        self.tokenizer = tokenizer
+        self._start_len = None
+
+    def reset(self):
+        self._start_len = None
+
+    def __call__(self, input_ids: torch.LongTensor, scores, **kwargs) -> bool:
+        # On the first decoding step, everything seen so far is the prompt plus
+        # the single token just generated; remember where generation starts.
+        if self._start_len is None:
+            self._start_len = max(input_ids.shape[1] - 1, 0)
+        for seq in input_ids:
+            text = self.tokenizer.decode(
+                seq[self._start_len:], skip_special_tokens=True
+            )
+            if not any(kw in text for kw in self.keywords):
+                return False
+        return True
+
+
 @register_model("huatuogpt_vision")
 class HuatuoGPT_Vision(lmms):
     """
@@ -29,11 +62,14 @@ class HuatuoGPT_Vision(lmms):
     def __init__(
         self,
         model_hf: str = "FreedomIntelligence/HuatuoGPT-Vision-34B",
+        stop_strings: Optional[str] = None,
         **kwargs,
     ) -> None:
         super().__init__()
         self.model_hf = model_hf
+        self.stop_strings: List[str] = json.loads(stop_strings) if stop_strings else []
         self.prepare_model()
+        self._setup_stopping_criteria()
 
     @property
     def tokenizer(self):
@@ -70,6 +106,18 @@ class HuatuoGPT_Vision(lmms):
         # Load model
         self.huatuo_chatbot = HuatuoChatbot(self.model_hf, device=self._device)
 
+    def _setup_stopping_criteria(self):
+        # Wire optional stop strings into the chatbot's generation kwargs so that
+        # `self.model.generate(..., **gen_kwargs)` halts at the first match.
+        self._stopping_criteria = None
+        if self.stop_strings:
+            self._stopping_criteria = _KeywordsStoppingCriteria(
+                self.stop_strings, self.huatuo_chatbot.tokenizer
+            )
+            self.huatuo_chatbot.gen_kwargs["stopping_criteria"] = StoppingCriteriaList(
+                [self._stopping_criteria]
+            )
+
     def flatten(self, input):
         new_list = []
         for i in input:
@@ -97,6 +145,8 @@ class HuatuoGPT_Vision(lmms):
             visuals = self.flatten(visuals)
 
             # Get model outputs
+            if self._stopping_criteria is not None:
+                self._stopping_criteria.reset()
             response = self.huatuo_chatbot.inference(text=contexts, images=visuals)
             if _greedy:
                 self.resp_cache_put(task, _key, response)
