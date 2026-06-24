@@ -14,7 +14,7 @@ conda activate "${ENV_NAME}"
 benchmark_dir="/mnt/vincent-pvc-rwm/Github/MedVision/"
 #benchmark_dir="/root/Documents/MedVision"
 data_dir="${benchmark_dir}/Data"
-model_name="GPT-5.5-Pro"
+model_name="GPT-5.5"
 batch_size=1
 reasoning_effort="low"
 max_tokens=4096
@@ -25,9 +25,9 @@ max_tokens=4096
 #   requires OPENROUTER_API_KEY instead of OPENAI_API_KEY.
 # ---
 #api_provider="openai"
-#openai_model_code="gpt-5.5-pro"
+#openai_model_code="gpt-5.5"
 api_provider="openrouter"
-openai_model_code="openai/gpt-5.5-pro"
+openai_model_code="openai/gpt-5.5"
 # ---
 
 # API key check + sanitization (pod-injected env vars can carry a trailing newline,
@@ -44,11 +44,12 @@ fi
 export "${api_key_var}"="$(printf '%s' "${!api_key_var}" | tr -d '\n')"
 
 # Other configs (safe to leave as is)
-task_tag="MedVision-detect-CoT"
+task_tag="MedVision-TL-CoT"
 result_dir="${benchmark_dir}/Results/${task_tag}"
-tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-detect-CoT.json"
+tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-TL-CoT.json"
 task_status_json_path="${benchmark_dir}/completed_tasks/completed_tasks_${task_tag}.json"
 sample_limit=100
+reshape_image_hw="512x512"
 
 # Install medvision_bm (locked shared build)
 set -euo pipefail
@@ -72,7 +73,7 @@ export MedVision_PLANNER_VERSION='1.0.0'
 # ---
 python -m medvision_bm.benchmark.install_medvision_ds --data_dir "${data_dir}"
 python -m medvision_bm.benchmark.install_vendored_lmms_eval --lmms_eval_opt_deps openai
-# TODO: pin via pip freeze after first successful run (no requirements_eval_openai.txt yet)
+pip install -r "${benchmark_dir}/requirements/requirements_eval_gpt.txt" --no-deps
 
 python -m medvision_bm.benchmark.eval__openai \
     --skip_env_setup \
@@ -86,7 +87,8 @@ python -m medvision_bm.benchmark.eval__openai \
     --tasks_list_json_path $tasks_list_json_path \
     --task_status_json_path $task_status_json_path \
     --batch_size $batch_size \
-    --sample_limit $sample_limit
+    --sample_limit $sample_limit \
+    --reshape_image_hw $reshape_image_hw
 # ---
 
 # # (Method 2) Automatically install requirements in the eval script (simpler, but may incur package version conflicts or bugs introduced by new versions of packages)
@@ -94,7 +96,7 @@ python -m medvision_bm.benchmark.eval__openai \
 # # --env_setup_only \
 # # --skip_env_setup \
 # # --skip_update_status \
-# python -m medvision_bm.benchmark.eval__openai \
+#python -m medvision_bm.benchmark.eval__openai \
 # --api_provider $api_provider \
 # --openai_model_code $openai_model_code \
 # --model_name $model_name \
@@ -106,6 +108,7 @@ python -m medvision_bm.benchmark.eval__openai \
 # --task_status_json_path $task_status_json_path \
 # --batch_size $batch_size \
 # --sample_limit $sample_limit \
+# --reshape_image_hw $reshape_image_hw \
 
 conda deactivate
-# conda remove -n $ENV_NAME --all -y
+## conda remove -n $ENV_NAME --all -y

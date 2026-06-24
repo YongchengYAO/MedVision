@@ -16,6 +16,8 @@ benchmark_dir="/mnt/vincent-pvc-rwm/Github/MedVision/"
 data_dir="${benchmark_dir}/Data"
 model_name="GPT-5.5-Pro"
 batch_size=1
+reasoning_effort="low"
+max_tokens=4096
 
 # API provider and model code
 # - openai (direct): https://developers.openai.com/api/docs/models
@@ -46,7 +48,7 @@ task_tag="MedVision-AD-CoT"
 result_dir="${benchmark_dir}/Results/${task_tag}"
 tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-AD-CoT.json"
 task_status_json_path="${benchmark_dir}/completed_tasks/completed_tasks_${task_tag}.json"
-sample_limit=1000
+sample_limit=100
 
 # Install medvision_bm (locked shared build)
 set -euo pipefail
@@ -77,6 +79,8 @@ python -m medvision_bm.benchmark.eval__openai \
     --api_provider $api_provider \
     --openai_model_code $openai_model_code \
     --model_name $model_name \
+    --reasoning_effort $reasoning_effort \
+    --max_tokens $max_tokens \
     --results_dir $result_dir \
     --data_dir $data_dir \
     --tasks_list_json_path $tasks_list_json_path \
@@ -94,6 +98,8 @@ python -m medvision_bm.benchmark.eval__openai \
 # --api_provider $api_provider \
 # --openai_model_code $openai_model_code \
 # --model_name $model_name \
+# --reasoning_effort $reasoning_effort \
+# --max_tokens $max_tokens \
 # --results_dir $result_dir \
 # --data_dir $data_dir \
 # --tasks_list_json_path $tasks_list_json_path \

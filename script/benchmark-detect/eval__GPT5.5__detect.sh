@@ -14,7 +14,7 @@ conda activate "${ENV_NAME}"
 benchmark_dir="/mnt/vincent-pvc-rwm/Github/MedVision/"
 #benchmark_dir="/root/Documents/MedVision"
 data_dir="${benchmark_dir}/Data"
-model_name="GPT-5.5-Pro"
+model_name="GPT-5.5"
 batch_size=1
 reasoning_effort="low"
 max_tokens=4096
@@ -25,9 +25,9 @@ max_tokens=4096
 #   requires OPENROUTER_API_KEY instead of OPENAI_API_KEY.
 # ---
 #api_provider="openai"
-#openai_model_code="gpt-5.5-pro"
+#openai_model_code="gpt-5.5"
 api_provider="openrouter"
-openai_model_code="openai/gpt-5.5-pro"
+openai_model_code="openai/gpt-5.5"
 # ---
 
 # API key check + sanitization (pod-injected env vars can carry a trailing newline,
