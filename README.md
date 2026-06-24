@@ -30,47 +30,31 @@
 
 # 🏆 Benchmarked Models
 
-MedVision benchmarks **19 vision–language models** — open-weight general-purpose and medical VLMs plus proprietary API models — on detection, tumor/lesion size, and angle/distance measurement. The live **open leaderboard** (per-task score tables + a **frontier API-model pilot study**) lives on the [**🌏 project page**](https://medvision-vlm.github.io).
+MedVision benchmarks **19 vision–language models** — open-weight general-purpose and medical VLMs plus proprietary API models — on detection, tumor/lesion size, and angle/distance measurement. The live **open leaderboard** (per-task score tables + a **frontier API-model pilot study**) lives on the [**project page**](https://medvision-vlm.github.io).
 
 #### ⭐ Ours
 
-| | Model | Params |
-|:--:|:--|:--:|
-|  | **[MedVision-V0](https://huggingface.co/YongchengYAO/MedVision-V0-7B)** | 7B |
+<p align="left">
+<b><a href="https://huggingface.co/YongchengYAO/MedVision-V0-7B">MedVision-V0</a></b>
+</p>
 
 #### 🌐 General-purpose VLMs (open-weight)
 
-| | Model | Params |
-|:--:|:--|:--:|
-| <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/qwen-color.png" height="20" alt="Qwen"/> | [Qwen2.5-VL](https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct) | 7B |
-| <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/qwen-color.png" height="20" alt="Qwen"/> | [Qwen3-VL-Thinking](https://huggingface.co/Qwen/Qwen3-VL-32B-Thinking) | 32B |
-| <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/internlm-color.png" height="20" alt="InternVL"/> | [InternVL3](https://huggingface.co/OpenGVLab/InternVL3-38B) | 38B |
-| <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/gemma-color.png" height="20" alt="Gemma"/> | [Gemma-3](https://huggingface.co/google/gemma-3-27b-it) | 27B |
-| <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/gemma-color.png" height="20" alt="Gemma"/> | [Gemma-4](https://huggingface.co/google/gemma-4-31B-it) | 31B |
-| <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/meta-color.png" height="20" alt="Meta"/> | [Llama-3.2-Vision](https://huggingface.co/meta-llama/Llama-3.2-11B-Vision-Instruct) | 11B |
-| <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/llava-color.png" height="20" alt="LLaVA"/> | [LLaVA-OneVision](https://huggingface.co/llava-hf/llava-onevision-qwen2-72b-ov-hf) | 72B |
-| <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/chatglm-color.png" height="20" alt="GLM"/> | [GLM-4.6V](https://huggingface.co/zai-org/GLM-4.6V) | — |
-| <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/chatglm-color.png" height="20" alt="GLM"/> | [GLM-4.6V-Flash](https://huggingface.co/zai-org/GLM-4.6V-Flash) | — |
+<p align="left">
+<img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/qwen-color.png" height="20" alt="Qwen"/> <a href="https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct">Qwen2.5-VL</a>, <a href="https://huggingface.co/Qwen/Qwen3-VL-32B-Thinking">Qwen3-VL-Thinking</a> &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/internlm-color.png" height="20" alt="InternVL"/> <a href="https://huggingface.co/OpenGVLab/InternVL3-38B">InternVL3</a> &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/gemma-color.png" height="20" alt="Gemma"/> <a href="https://huggingface.co/google/gemma-3-27b-it">Gemma-3</a>, <a href="https://huggingface.co/google/gemma-4-31B-it">Gemma-4</a> &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/meta-color.png" height="20" alt="Meta"/> <a href="https://huggingface.co/meta-llama/Llama-3.2-11B-Vision-Instruct">Llama-3.2-Vision</a> &nbsp;·&nbsp; <a href="https://huggingface.co/llava-hf/llava-onevision-qwen2-72b-ov-hf">LLaVA-OneVision</a> &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/glmv-color.png" height="20" alt="GLM"/> <a href="https://huggingface.co/zai-org/GLM-4.6V">GLM-4.6V</a>, <a href="https://huggingface.co/zai-org/GLM-4.6V-Flash">GLM-4.6V-Flash</a>
+</p>
 
 #### 🏥 Medical VLMs (open-weight)
 
-| | Model | Params |
-|:--:|:--|:--:|
-| <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/gemma-color.png" height="20" alt="Gemma"/> | [MedGemma](https://huggingface.co/google/medgemma-4b-it) | 4B |
-| <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/llava-color.png" height="20" alt="LLaVA"/> | [LLaVA-Med](https://huggingface.co/microsoft/llava-med-v1.5-mistral-7b) | 7B |
-|  | [Lingshu](https://huggingface.co/lingshu-medical-mllm/Lingshu-32B) | 32B |
-|  | [MedDr](https://huggingface.co/Sunanhe/MedDr_0401) | 40B |
-|  | [HuatuoGPT-Vision](https://huggingface.co/FreedomIntelligence/HuatuoGPT-Vision-34B) | 34B |
-|  | [HealthGPT-L14](https://huggingface.co/lintw/HealthGPT-L14) | 14B |
+<p align="left">
+<img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/gemma-color.png" height="20" alt="Gemma"/> <a href="https://huggingface.co/google/medgemma-4b-it">MedGemma</a> &nbsp;·&nbsp; <a href="https://huggingface.co/microsoft/llava-med-v1.5-mistral-7b">LLaVA-Med</a>, <a href="https://huggingface.co/lingshu-medical-mllm/Lingshu-32B">Lingshu</a>, <a href="https://huggingface.co/Sunanhe/MedDr_0401">MedDr</a>, <a href="https://huggingface.co/FreedomIntelligence/HuatuoGPT-Vision-34B">HuatuoGPT-Vision</a>, <a href="https://huggingface.co/lintw/HealthGPT-L14">HealthGPT-L14</a>
+</p>
 
 #### ☁️ Proprietary / API
 
-| | Model | Provider |
-|:--:|:--|:--|
-| <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/claude-color.png" height="20" alt="Claude"/> | [Claude-Fable-5](https://www.anthropic.com/claude) | Anthropic |
-| <picture><source media="(prefers-color-scheme: dark)" srcset="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/dark/openai.png"><img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/openai.png" height="20" alt="OpenAI"/></picture> | [GPT-5.5-Pro](https://openai.com) | OpenAI |
-| <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/gemini-color.png" height="20" alt="Gemini"/> | [Gemini-3.1-Pro](https://deepmind.google/models/gemini/) | Google |
-| <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/kimi-color.png" height="20" alt="Kimi"/> | [Kimi-K2.6](https://huggingface.co/moonshotai/Kimi-K2.6) | Moonshot |
+<p align="left">
+<img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/claude-color.png" height="20" alt="Claude"/> Claude-Fable-5 &nbsp;·&nbsp; <picture><source media="(prefers-color-scheme: dark)" srcset="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/dark/openai.png"><img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/openai.png" height="20" alt="OpenAI"/></picture> GPT-5.5-Pro &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/gemini-color.png" height="20" alt="Gemini"/> Gemini-3.1-Pro &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/kimi-color.png" height="20" alt="Kimi"/> Kimi-K2.6
+</p>
 
 > The project-page leaderboard currently publishes full score tables for the 12 off-the-shelf VLMs + MedVision-V0, plus a Claude-Fable-5 / Gemini-3.1-Pro API pilot on tumor/lesion size. Newer entries (Qwen3-VL-Thinking, Gemma-4, GLM-4.6V/-Flash, GPT-5.5-Pro, Kimi-K2.6) have eval scripts wired up and are being rolled into the leaderboard.
 

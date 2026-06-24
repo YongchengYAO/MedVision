@@ -71,7 +71,7 @@ def run_evaluation_for_task_vllm_proxy(
         "--log_samples",
         "--output_path",
         output_path,
-        "--verbosity=DEBUG",
+        "--verbosity=INFO",
     ]
     if sample_indices is not None:
         cmd += ["--sample_indices", json.dumps(sample_indices)]
