@@ -1,0 +1,114 @@
+{
+    "autoPET-III_TumorLesionSize_Task01_Axial-CoT": {
+        "isotropic": 87,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task01_Axial-CoT": {
+        "isotropic": 2,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task02_Axial-CoT": {
+        "isotropic": 94,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task03_Axial-CoT": {
+        "isotropic": 99,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task04_Axial-CoT": {
+        "isotropic": 182,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task05_Axial-CoT": {
+        "isotropic": 204,
+        "anisotropic": 1
+    },
+    "BraTS24_TumorLesionSize_Task06_Axial-CoT": {
+        "isotropic": 9,
+        "anisotropic": 2
+    },
+    "BraTS24_TumorLesionSize_Task07_Axial-CoT": {
+        "isotropic": 80,
+        "anisotropic": 1
+    },
+    "BraTS24_TumorLesionSize_Task08_Axial-CoT": {
+        "isotropic": 89,
+        "anisotropic": 1
+    },
+    "BraTS24_TumorLesionSize_Task09_Axial-CoT": {
+        "isotropic": 12,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task10_Axial-CoT": {
+        "isotropic": 207,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task11_Axial-CoT": {
+        "isotropic": 2,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task12_Axial-CoT": {
+        "isotropic": 4,
+        "anisotropic": 0
+    },
+    "HNTSMRG24_TumorLesionSize_Task01_Axial-CoT": {
+        "isotropic": 4,
+        "anisotropic": 0
+    },
+    "HNTSMRG24_TumorLesionSize_Task02_Axial-CoT": {
+        "isotropic": 95,
+        "anisotropic": 0
+    },
+    "HNTSMRG24_TumorLesionSize_Task03_Axial-CoT": {
+        "isotropic": 40,
+        "anisotropic": 0
+    },
+    "HNTSMRG24_TumorLesionSize_Task04_Axial-CoT": {
+        "isotropic": 73,
+        "anisotropic": 0
+    },
+    "KiPA22_TumorLesionSize_Task01_Axial-CoT": {
+        "isotropic": 391,
+        "anisotropic": 0
+    },
+    "KiTS23_TumorLesionSize_Task01_Axial-CoT": {
+        "isotropic": 673,
+        "anisotropic": 0
+    },
+    "MSD_TumorLesionSize_Task01_Axial-CoT": {
+        "isotropic": 67,
+        "anisotropic": 0
+    },
+    "MSD_TumorLesionSize_Task02_Axial-CoT": {
+        "isotropic": 38,
+        "anisotropic": 0
+    },
+    "MSD_TumorLesionSize_Task03_Axial-CoT": {
+        "isotropic": 194,
+        "anisotropic": 0
+    },
+    "MSD_TumorLesionSize_Task04_Axial-CoT": {
+        "isotropic": 25,
+        "anisotropic": 0
+    },
+    "MSD_TumorLesionSize_Task05_Axial-CoT": {
+        "isotropic": 231,
+        "anisotropic": 0
+    },
+    "MSD_TumorLesionSize_Task06_Axial-CoT": {
+        "isotropic": 176,
+        "anisotropic": 0
+    },
+    "MSD_TumorLesionSize_Task07_Axial-CoT": {
+        "isotropic": 19,
+        "anisotropic": 0
+    },
+    "MSD_TumorLesionSize_Task08_Axial-CoT": {
+        "isotropic": 72,
+        "anisotropic": 0
+    },
+    "__all_tasks__": {
+        "isotropic": 3169,
+        "anisotropic": 5
+    }
+}

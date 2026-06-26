@@ -1,0 +1,222 @@
+{
+    "AbdomenAtlas1.0Mini_BoxCoordinate_Task01_Axial": {
+        "isotropic": 2113220,
+        "anisotropic": 607
+    },
+    "AbdomenCT-1K_BoxCoordinate_Task01_Axial": {
+        "isotropic": 130036,
+        "anisotropic": 293
+    },
+    "ACDC_BoxCoordinate_Task01_Axial": {
+        "isotropic": 5267,
+        "anisotropic": 0
+    },
+    "AMOS22_BoxCoordinate_Task01_Axial": {
+        "isotropic": 81697,
+        "anisotropic": 0
+    },
+    "AMOS22_BoxCoordinate_Task02_Axial": {
+        "isotropic": 8762,
+        "anisotropic": 18016
+    },
+    "autoPET-III_BoxCoordinate_Task01_Axial": {
+        "isotropic": 6396,
+        "anisotropic": 0
+    },
+    "autoPET-III_BoxCoordinate_Task02_Axial": {
+        "isotropic": 6240,
+        "anisotropic": 0
+    },
+    "BCV15_BoxCoordinate_Task01_Axial": {
+        "isotropic": 7853,
+        "anisotropic": 0
+    },
+    "BCV15_BoxCoordinate_Task02_Axial": {
+        "isotropic": 3145,
+        "anisotropic": 0
+    },
+    "BraTS24_BoxCoordinate_Task01_Axial": {
+        "isotropic": 45641,
+        "anisotropic": 0
+    },
+    "BraTS24_BoxCoordinate_Task02_Axial": {
+        "isotropic": 46194,
+        "anisotropic": 0
+    },
+    "BraTS24_BoxCoordinate_Task03_Axial": {
+        "isotropic": 46382,
+        "anisotropic": 0
+    },
+    "BraTS24_BoxCoordinate_Task04_Axial": {
+        "isotropic": 46516,
+        "anisotropic": 0
+    },
+    "BraTS24_BoxCoordinate_Task05_Axial": {
+        "isotropic": 7577,
+        "anisotropic": 27
+    },
+    "BraTS24_BoxCoordinate_Task06_Axial": {
+        "isotropic": 11611,
+        "anisotropic": 169
+    },
+    "BraTS24_BoxCoordinate_Task07_Axial": {
+        "isotropic": 11681,
+        "anisotropic": 274
+    },
+    "BraTS24_BoxCoordinate_Task08_Axial": {
+        "isotropic": 11814,
+        "anisotropic": 295
+    },
+    "BraTS24_BoxCoordinate_Task09_Axial": {
+        "isotropic": 11235,
+        "anisotropic": 278
+    },
+    "BraTS24_BoxCoordinate_Task10_Axial": {
+        "isotropic": 7197,
+        "anisotropic": 0
+    },
+    "BraTS24_BoxCoordinate_Task11_Axial": {
+        "isotropic": 6853,
+        "anisotropic": 0
+    },
+    "BraTS24_BoxCoordinate_Task12_Axial": {
+        "isotropic": 7267,
+        "anisotropic": 0
+    },
+    "BraTS24_BoxCoordinate_Task13_Axial": {
+        "isotropic": 7103,
+        "anisotropic": 0
+    },
+    "CAMUS_BoxCoordinate_Task01_Axial": {
+        "isotropic": 40374,
+        "anisotropic": 0
+    },
+    "CrossMoDA_BoxCoordinate_Task01_Axial": {
+        "isotropic": 780,
+        "anisotropic": 0
+    },
+    "FeTA24_BoxCoordinate_Task01_Axial": {
+        "isotropic": 10747,
+        "anisotropic": 0
+    },
+    "FLARE22_BoxCoordinate_Task01_Axial": {
+        "isotropic": 16250,
+        "anisotropic": 0
+    },
+    "HNTSMRG24_BoxCoordinate_Task01_Axial": {
+        "isotropic": 2677,
+        "anisotropic": 0
+    },
+    "HNTSMRG24_BoxCoordinate_Task02_Axial": {
+        "isotropic": 3663,
+        "anisotropic": 0
+    },
+    "ISLES24_BoxCoordinate_Task01_Axial": {
+        "isotropic": 596,
+        "anisotropic": 4
+    },
+    "ISLES24_BoxCoordinate_Task02_Axial": {
+        "isotropic": 614,
+        "anisotropic": 0
+    },
+    "KiPA22_BoxCoordinate_Task01_Axial": {
+        "isotropic": 10872,
+        "anisotropic": 0
+    },
+    "KiTS23_BoxCoordinate_Task01_Axial": {
+        "isotropic": 14063,
+        "anisotropic": 0
+    },
+    "MSD_BoxCoordinate_Task01_Axial": {
+        "isotropic": 6142,
+        "anisotropic": 0
+    },
+    "MSD_BoxCoordinate_Task02_Axial": {
+        "isotropic": 6142,
+        "anisotropic": 0
+    },
+    "MSD_BoxCoordinate_Task03_Axial": {
+        "isotropic": 6142,
+        "anisotropic": 0
+    },
+    "MSD_BoxCoordinate_Task04_Axial": {
+        "isotropic": 6142,
+        "anisotropic": 0
+    },
+    "MSD_BoxCoordinate_Task05_Axial": {
+        "isotropic": 777,
+        "anisotropic": 0
+    },
+    "MSD_BoxCoordinate_Task06_Axial": {
+        "isotropic": 570,
+        "anisotropic": 0
+    },
+    "MSD_BoxCoordinate_Task07_Axial": {
+        "isotropic": 3303,
+        "anisotropic": 0
+    },
+    "MSD_BoxCoordinate_Task08_Axial": {
+        "isotropic": 2996,
+        "anisotropic": 0
+    },
+    "MSD_BoxCoordinate_Task09_Axial": {
+        "isotropic": 9848,
+        "anisotropic": 0
+    },
+    "MSD_BoxCoordinate_Task10_Axial": {
+        "isotropic": 1010,
+        "anisotropic": 0
+    },
+    "MSD_BoxCoordinate_Task11_Axial": {
+        "isotropic": 6387,
+        "anisotropic": 0
+    },
+    "MSD_BoxCoordinate_Task12_Axial": {
+        "isotropic": 433,
+        "anisotropic": 0
+    },
+    "MSD_BoxCoordinate_Task13_Axial": {
+        "isotropic": 433,
+        "anisotropic": 0
+    },
+    "MSD_BoxCoordinate_Task14_Axial": {
+        "isotropic": 631,
+        "anisotropic": 0
+    },
+    "OAIZIB-CM_BoxCoordinate_Task01_Axial": {
+        "isotropic": 0,
+        "anisotropic": 138584
+    },
+    "SKM-TEA_BoxCoordinate_Task01_Axial": {
+        "isotropic": 0,
+        "anisotropic": 14953
+    },
+    "SKM-TEA_BoxCoordinate_Task02_Axial": {
+        "isotropic": 0,
+        "anisotropic": 14953
+    },
+    "ToothFairy2_BoxCoordinate_Task01_Axial": {
+        "isotropic": 381592,
+        "anisotropic": 0
+    },
+    "TopCoW24_BoxCoordinate_Task01_Axial": {
+        "isotropic": 11237,
+        "anisotropic": 247
+    },
+    "TopCoW24_BoxCoordinate_Task02_Axial": {
+        "isotropic": 3282,
+        "anisotropic": 0
+    },
+    "TotalSegmentator_BoxCoordinate_Task01_Axial": {
+        "isotropic": 2174791,
+        "anisotropic": 0
+    },
+    "TotalSegmentator_BoxCoordinate_Task02_Axial": {
+        "isotropic": 95431,
+        "anisotropic": 93318
+    },
+    "__all_tasks__": {
+        "isotropic": 5447612,
+        "anisotropic": 282018
+    }
+}

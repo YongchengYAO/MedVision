@@ -1,0 +1,26 @@
+{
+    "Ceph-Biometrics-400_BiometricsFromLandmarks_Distance_Task01_Sagittal-CoT": {
+        "isotropic": 1320,
+        "anisotropic": 0
+    },
+    "Ceph-Biometrics-400_BiometricsFromLandmarks_Angle_Task01_Sagittal-CoT": {
+        "isotropic": 960,
+        "anisotropic": 0
+    },
+    "FeTA24_BiometricsFromLandmarks_Task01_Sagittal-CoT": {
+        "isotropic": 40,
+        "anisotropic": 0
+    },
+    "FeTA24_BiometricsFromLandmarks_Task01_Coronal-CoT": {
+        "isotropic": 20,
+        "anisotropic": 0
+    },
+    "FeTA24_BiometricsFromLandmarks_Task01_Axial-CoT": {
+        "isotropic": 40,
+        "anisotropic": 0
+    },
+    "__all_tasks__": {
+        "isotropic": 2380,
+        "anisotropic": 0
+    }
+}

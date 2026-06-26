@@ -1,0 +1,33 @@
+{
+    "Ceph-Biometrics-400_BiometricsFromLandmarks_Distance_Task01_Sagittal-CoT": {
+        "0.100x0.100": 1320
+    },
+    "Ceph-Biometrics-400_BiometricsFromLandmarks_Angle_Task01_Sagittal-CoT": {
+        "0.100x0.100": 960
+    },
+    "FeTA24_BiometricsFromLandmarks_Task01_Sagittal-CoT": {
+        "0.500x0.500": 28,
+        "0.508x0.508": 8,
+        "0.469x0.469": 2,
+        "0.547x0.547": 2
+    },
+    "FeTA24_BiometricsFromLandmarks_Task01_Coronal-CoT": {
+        "0.500x0.500": 14,
+        "0.508x0.508": 4,
+        "0.469x0.469": 1,
+        "0.547x0.547": 1
+    },
+    "FeTA24_BiometricsFromLandmarks_Task01_Axial-CoT": {
+        "0.500x0.500": 28,
+        "0.508x0.508": 8,
+        "0.469x0.469": 2,
+        "0.547x0.547": 2
+    },
+    "__all_tasks__": {
+        "0.100x0.100": 2280,
+        "0.500x0.500": 70,
+        "0.508x0.508": 20,
+        "0.469x0.469": 5,
+        "0.547x0.547": 5
+    }
+}

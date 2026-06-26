@@ -1,0 +1,114 @@
+{
+    "autoPET-III_TumorLesionSize_Task01_Sagittal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 64
+    },
+    "BraTS24_TumorLesionSize_Task01_Sagittal-CoT": {
+        "isotropic": 20,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task02_Sagittal-CoT": {
+        "isotropic": 111,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task03_Sagittal-CoT": {
+        "isotropic": 54,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task04_Sagittal-CoT": {
+        "isotropic": 154,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task05_Sagittal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 191
+    },
+    "BraTS24_TumorLesionSize_Task06_Sagittal-CoT": {
+        "isotropic": 18,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task07_Sagittal-CoT": {
+        "isotropic": 111,
+        "anisotropic": 39
+    },
+    "BraTS24_TumorLesionSize_Task08_Sagittal-CoT": {
+        "isotropic": 78,
+        "anisotropic": 41
+    },
+    "BraTS24_TumorLesionSize_Task09_Sagittal-CoT": {
+        "isotropic": 6,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task10_Sagittal-CoT": {
+        "isotropic": 140,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task11_Sagittal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task12_Sagittal-CoT": {
+        "isotropic": 13,
+        "anisotropic": 0
+    },
+    "HNTSMRG24_TumorLesionSize_Task01_Sagittal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 5
+    },
+    "HNTSMRG24_TumorLesionSize_Task02_Sagittal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 8
+    },
+    "HNTSMRG24_TumorLesionSize_Task03_Sagittal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 26
+    },
+    "HNTSMRG24_TumorLesionSize_Task04_Sagittal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 54
+    },
+    "KiPA22_TumorLesionSize_Task01_Sagittal-CoT": {
+        "isotropic": 278,
+        "anisotropic": 0
+    },
+    "KiTS23_TumorLesionSize_Task01_Sagittal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 838
+    },
+    "MSD_TumorLesionSize_Task01_Sagittal-CoT": {
+        "isotropic": 60,
+        "anisotropic": 0
+    },
+    "MSD_TumorLesionSize_Task02_Sagittal-CoT": {
+        "isotropic": 16,
+        "anisotropic": 0
+    },
+    "MSD_TumorLesionSize_Task03_Sagittal-CoT": {
+        "isotropic": 111,
+        "anisotropic": 0
+    },
+    "MSD_TumorLesionSize_Task04_Sagittal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 12
+    },
+    "MSD_TumorLesionSize_Task05_Sagittal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 270
+    },
+    "MSD_TumorLesionSize_Task06_Sagittal-CoT": {
+        "isotropic": 13,
+        "anisotropic": 115
+    },
+    "MSD_TumorLesionSize_Task07_Sagittal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 1
+    },
+    "MSD_TumorLesionSize_Task08_Sagittal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 25
+    },
+    "__all_tasks__": {
+        "isotropic": 1183,
+        "anisotropic": 1689
+    }
+}

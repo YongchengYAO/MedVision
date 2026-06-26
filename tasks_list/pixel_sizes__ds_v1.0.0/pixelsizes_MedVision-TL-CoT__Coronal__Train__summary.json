@@ -1,0 +1,114 @@
+{
+    "autoPET-III_TumorLesionSize_Task01_Coronal": {
+        "isotropic": 0,
+        "anisotropic": 142
+    },
+    "BraTS24_TumorLesionSize_Task01_Coronal": {
+        "isotropic": 12,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task02_Coronal": {
+        "isotropic": 359,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task03_Coronal": {
+        "isotropic": 216,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task04_Coronal": {
+        "isotropic": 607,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task05_Coronal": {
+        "isotropic": 1,
+        "anisotropic": 947
+    },
+    "BraTS24_TumorLesionSize_Task06_Coronal": {
+        "isotropic": 42,
+        "anisotropic": 18
+    },
+    "BraTS24_TumorLesionSize_Task07_Coronal": {
+        "isotropic": 153,
+        "anisotropic": 63
+    },
+    "BraTS24_TumorLesionSize_Task08_Coronal": {
+        "isotropic": 105,
+        "anisotropic": 112
+    },
+    "BraTS24_TumorLesionSize_Task09_Coronal": {
+        "isotropic": 29,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task10_Coronal": {
+        "isotropic": 182,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task11_Coronal": {
+        "isotropic": 15,
+        "anisotropic": 0
+    },
+    "BraTS24_TumorLesionSize_Task12_Coronal": {
+        "isotropic": 7,
+        "anisotropic": 0
+    },
+    "HNTSMRG24_TumorLesionSize_Task01_Coronal": {
+        "isotropic": 0,
+        "anisotropic": 24
+    },
+    "HNTSMRG24_TumorLesionSize_Task02_Coronal": {
+        "isotropic": 0,
+        "anisotropic": 88
+    },
+    "HNTSMRG24_TumorLesionSize_Task03_Coronal": {
+        "isotropic": 0,
+        "anisotropic": 35
+    },
+    "HNTSMRG24_TumorLesionSize_Task04_Coronal": {
+        "isotropic": 0,
+        "anisotropic": 140
+    },
+    "KiPA22_TumorLesionSize_Task01_Coronal": {
+        "isotropic": 627,
+        "anisotropic": 0
+    },
+    "KiTS23_TumorLesionSize_Task01_Coronal": {
+        "isotropic": 0,
+        "anisotropic": 2391
+    },
+    "MSD_TumorLesionSize_Task01_Coronal": {
+        "isotropic": 171,
+        "anisotropic": 0
+    },
+    "MSD_TumorLesionSize_Task02_Coronal": {
+        "isotropic": 56,
+        "anisotropic": 0
+    },
+    "MSD_TumorLesionSize_Task03_Coronal": {
+        "isotropic": 252,
+        "anisotropic": 0
+    },
+    "MSD_TumorLesionSize_Task04_Coronal": {
+        "isotropic": 0,
+        "anisotropic": 16
+    },
+    "MSD_TumorLesionSize_Task05_Coronal": {
+        "isotropic": 0,
+        "anisotropic": 865
+    },
+    "MSD_TumorLesionSize_Task06_Coronal": {
+        "isotropic": 65,
+        "anisotropic": 236
+    },
+    "MSD_TumorLesionSize_Task07_Coronal": {
+        "isotropic": 0,
+        "anisotropic": 68
+    },
+    "MSD_TumorLesionSize_Task08_Coronal": {
+        "isotropic": 0,
+        "anisotropic": 98
+    },
+    "__all_tasks__": {
+        "isotropic": 2899,
+        "anisotropic": 5243
+    }
+}

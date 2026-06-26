@@ -1,0 +1,222 @@
+{
+    "AbdomenAtlas1.0Mini_BoxCoordinate_Task01_Coronal-CoT": {
+        "isotropic": 65183,
+        "anisotropic": 901407
+    },
+    "AbdomenCT-1K_BoxCoordinate_Task01_Coronal-CoT": {
+        "isotropic": 1461,
+        "anisotropic": 99842
+    },
+    "ACDC_BoxCoordinate_Task01_Coronal-CoT": {
+        "isotropic": 1254,
+        "anisotropic": 0
+    },
+    "AMOS22_BoxCoordinate_Task01_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 61427
+    },
+    "AMOS22_BoxCoordinate_Task02_Coronal-CoT": {
+        "isotropic": 2221,
+        "anisotropic": 4576
+    },
+    "autoPET-III_BoxCoordinate_Task01_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 805
+    },
+    "autoPET-III_BoxCoordinate_Task02_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 973
+    },
+    "BCV15_BoxCoordinate_Task01_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 5714
+    },
+    "BCV15_BoxCoordinate_Task02_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 1317
+    },
+    "BraTS24_BoxCoordinate_Task01_Coronal-CoT": {
+        "isotropic": 23468,
+        "anisotropic": 0
+    },
+    "BraTS24_BoxCoordinate_Task02_Coronal-CoT": {
+        "isotropic": 23299,
+        "anisotropic": 0
+    },
+    "BraTS24_BoxCoordinate_Task03_Coronal-CoT": {
+        "isotropic": 22800,
+        "anisotropic": 0
+    },
+    "BraTS24_BoxCoordinate_Task04_Coronal-CoT": {
+        "isotropic": 22186,
+        "anisotropic": 0
+    },
+    "BraTS24_BoxCoordinate_Task05_Coronal-CoT": {
+        "isotropic": 34,
+        "anisotropic": 4120
+    },
+    "BraTS24_BoxCoordinate_Task06_Coronal-CoT": {
+        "isotropic": 3554,
+        "anisotropic": 2230
+    },
+    "BraTS24_BoxCoordinate_Task07_Coronal-CoT": {
+        "isotropic": 3620,
+        "anisotropic": 1854
+    },
+    "BraTS24_BoxCoordinate_Task08_Coronal-CoT": {
+        "isotropic": 3244,
+        "anisotropic": 1972
+    },
+    "BraTS24_BoxCoordinate_Task09_Coronal-CoT": {
+        "isotropic": 3654,
+        "anisotropic": 1893
+    },
+    "BraTS24_BoxCoordinate_Task10_Coronal-CoT": {
+        "isotropic": 2236,
+        "anisotropic": 0
+    },
+    "BraTS24_BoxCoordinate_Task11_Coronal-CoT": {
+        "isotropic": 2339,
+        "anisotropic": 0
+    },
+    "BraTS24_BoxCoordinate_Task12_Coronal-CoT": {
+        "isotropic": 2090,
+        "anisotropic": 0
+    },
+    "BraTS24_BoxCoordinate_Task13_Coronal-CoT": {
+        "isotropic": 2308,
+        "anisotropic": 0
+    },
+    "CAMUS_BoxCoordinate_Task01_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 128704
+    },
+    "CrossMoDA_BoxCoordinate_Task01_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 368
+    },
+    "FeTA24_BoxCoordinate_Task01_Coronal-CoT": {
+        "isotropic": 3788,
+        "anisotropic": 0
+    },
+    "FLARE22_BoxCoordinate_Task01_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 12018
+    },
+    "HNTSMRG24_BoxCoordinate_Task01_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 1267
+    },
+    "HNTSMRG24_BoxCoordinate_Task02_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 2040
+    },
+    "ISLES24_BoxCoordinate_Task01_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 742
+    },
+    "ISLES24_BoxCoordinate_Task02_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 693
+    },
+    "KiPA22_BoxCoordinate_Task01_Coronal-CoT": {
+        "isotropic": 3332,
+        "anisotropic": 0
+    },
+    "KiTS23_BoxCoordinate_Task01_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 8039
+    },
+    "MSD_BoxCoordinate_Task01_Coronal-CoT": {
+        "isotropic": 3815,
+        "anisotropic": 0
+    },
+    "MSD_BoxCoordinate_Task02_Coronal-CoT": {
+        "isotropic": 3815,
+        "anisotropic": 0
+    },
+    "MSD_BoxCoordinate_Task03_Coronal-CoT": {
+        "isotropic": 3815,
+        "anisotropic": 0
+    },
+    "MSD_BoxCoordinate_Task04_Coronal-CoT": {
+        "isotropic": 3815,
+        "anisotropic": 0
+    },
+    "MSD_BoxCoordinate_Task05_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 391
+    },
+    "MSD_BoxCoordinate_Task06_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 294
+    },
+    "MSD_BoxCoordinate_Task07_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 2164
+    },
+    "MSD_BoxCoordinate_Task08_Coronal-CoT": {
+        "isotropic": 1000,
+        "anisotropic": 0
+    },
+    "MSD_BoxCoordinate_Task09_Coronal-CoT": {
+        "isotropic": 489,
+        "anisotropic": 6927
+    },
+    "MSD_BoxCoordinate_Task10_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 281
+    },
+    "MSD_BoxCoordinate_Task11_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 2416
+    },
+    "MSD_BoxCoordinate_Task12_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 358
+    },
+    "MSD_BoxCoordinate_Task13_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 358
+    },
+    "MSD_BoxCoordinate_Task14_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 1156
+    },
+    "OAIZIB-CM_BoxCoordinate_Task01_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 75960
+    },
+    "SKM-TEA_BoxCoordinate_Task01_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 23419
+    },
+    "SKM-TEA_BoxCoordinate_Task02_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 23419
+    },
+    "ToothFairy2_BoxCoordinate_Task01_Coronal-CoT": {
+        "isotropic": 116397,
+        "anisotropic": 0
+    },
+    "TopCoW24_BoxCoordinate_Task01_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 2827
+    },
+    "TopCoW24_BoxCoordinate_Task02_Coronal-CoT": {
+        "isotropic": 0,
+        "anisotropic": 859
+    },
+    "TotalSegmentator_BoxCoordinate_Task01_Coronal-CoT": {
+        "isotropic": 557386,
+        "anisotropic": 0
+    },
+    "TotalSegmentator_BoxCoordinate_Task02_Coronal-CoT": {
+        "isotropic": 12500,
+        "anisotropic": 51837
+    },
+    "__all_tasks__": {
+        "isotropic": 895103,
+        "anisotropic": 1434667
+    }
+}
