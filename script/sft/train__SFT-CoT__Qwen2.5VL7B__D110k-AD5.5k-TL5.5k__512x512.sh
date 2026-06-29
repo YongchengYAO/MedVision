@@ -17,6 +17,9 @@ fi
 conda activate "${ENV_NAME}"
 conda install -c nvidia cuda-toolkit=12.4 -y
 
+# Use MedVision dataset v1.0.0
+export MedVision_PLANNER_VERSION='1.0.0'
+
 # Set paths
 benchmark_dir="/root/Documents/MedVision"
 train_sft_dir="${benchmark_dir}/SFT"
