@@ -53,6 +53,7 @@ flock "${lockfile}" bash -c '
 
 # Use MedVision dataset v1.0.0
 export MedVision_PLANNER_VERSION='1.0.0'
+export MedVision_ACK_RELEASE='1.1.1'
 
 # (Method 1) Manually install requirements before running the eval script (more robust)
 # ---

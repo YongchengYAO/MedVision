@@ -5,6 +5,7 @@ set -euo pipefail
 # the HF MedVision dataset. Mirrors convert_configs_to_tasks_v1.0.0.sh.
 
 export MedVision_PLANNER_VERSION='1.0.0'
+export MedVision_ACK_RELEASE='1.1.1'
 
 # Resolve the repo root from this script's location (<repo>/script/misc/<this>.sh).
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

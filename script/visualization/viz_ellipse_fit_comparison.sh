@@ -23,6 +23,7 @@ MEDVISION_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # HF MedVision loader resolves to LOCAL data when these are set (no download).
 export MedVision_DATA_DIR="${MedVision_DATA_DIR:-$MEDVISION_DIR/Data}"
 export MedVision_PLANNER_VERSION="${MedVision_PLANNER_VERSION:-1.1.0}"
+export MedVision_ACK_RELEASE='1.1.1'
 
 N="${N:-10}"                               # figures per orientation
 ORIENTATIONS="${ORIENTATIONS:-sagittal coronal}"

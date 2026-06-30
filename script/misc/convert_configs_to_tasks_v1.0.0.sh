@@ -5,6 +5,7 @@ set -euo pipefail
 # Counts are computed by streaming each config from the HF MedVision dataset.
 
 export MedVision_PLANNER_VERSION='1.0.0'
+export MedVision_ACK_RELEASE='1.1.1'
 
 # Resolve the repo root from this script's location (<repo>/script/misc/<this>.sh).
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

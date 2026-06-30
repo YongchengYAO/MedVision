@@ -45,6 +45,7 @@ flock "${lockfile}" bash -c '
 
 # Use MedVision dataset v1.0.0
 export MedVision_PLANNER_VERSION='1.0.0'
+export MedVision_ACK_RELEASE='1.1.1'
 
 # Export PYTHONPATH to include HuatuoGPT-Vision directory for proper imports
 export PYTHONPATH="${dir_third_party}/HuatuoGPT-Vision:$PYTHONPATH"

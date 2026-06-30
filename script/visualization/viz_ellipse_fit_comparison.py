@@ -52,6 +52,7 @@ sys.path.insert(0, os.path.join(REPO, "src"))
 # (if unset) makes the cached MedVision loader return local paths, no download.
 os.environ.setdefault("MedVision_DATA_DIR", os.path.join(REPO, "Data"))
 os.environ.setdefault("MedVision_PLANNER_VERSION", "1.0.0")  # matches ds_v1.0.0 summaries
+os.environ.setdefault("MedVision_ACK_RELEASE", "1.1.1")  # ack older version vs latest release
 
 from datasets import load_dataset  # noqa: E402
 
