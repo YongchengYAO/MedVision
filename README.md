@@ -62,6 +62,11 @@ MedVision benchmarks **19 vision–language models** — open-weight general-pur
 
 # 🔥 News
 
+- [Jun 29, 2026] 🚀 Released the **MedVision** dataset (`medvision_ds`) v1.1.1 — [release notes](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.1.md)
+  - 🌟 Highlight: corrected T/L ellipse fit — fixes a transposed in-plane voxel-spacing bug (wrong axis lengths and major/minor labelling on anisotropic slices, e.g. sagittal/coronal); ~22% fewer T/L samples on anisotropic data, isotropic data (e.g. KiPA22) essentially unchanged
+  - The codebase `medvision_ds` will be automatically updated to the latest (v1.1.1)
+  - Backward compatibility: `MedVision_PLANNER_VERSION='latest'` now resolves to v1.1.1; pin `'1.1.0'` or `'1.0.0'` for earlier annotations. Only the Tumor-Lesion-Size task changed — all other tasks fall back to v1.0.0.
+  - ⚠️ New env var `MedVision_ACK_RELEASE`: required **only** when you pin an older annotation version (`MedVision_PLANNER_VERSION` below the latest), for any task — set it to the latest version (`1.1.1`) to acknowledge you have read this release note and unblock loading. See [Environment Variables](https://huggingface.co/datasets/YongchengYAO/MedVision#environment-variables).
 - [Jun 9, 2026] 🚀 Released [MedVision-V0](https://huggingface.co/collections/YongchengYAO/medvision-v0), [RFT code](https://github.com/YongchengYAO/verl/tree/medvision-rl), [preprint v2](https://arxiv.org/abs/2511.18676), [project page](https://medvision-vlm.github.io/) with interactive case viewer. 
 - [May 15, 2026] 🚀 Released the benchmarking/fine-tuning codebase `medvision_bm` v1.1.0 — [release notes](https://github.com/YongchengYAO/MedVision/blob/master/docs/codebase-release/release-v1.1.0.md)
 - [May 14, 2026] 🚀 Released the **MedVision** dataset (`medvision_ds`) v1.1.0 — [release notes](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.0.md)
@@ -907,6 +912,10 @@ MedVision is released under the [Creative Commons Attribution 4.0 International 
 <br/>
 
 # 🩵 Acknowledgement
+
+This work was supported by the United Kingdom Research and Innovation (grant EP/S02431X/1), UKRI Centre for Doctoral Training in Biomedical AI at the University of Edinburgh, School of Informatics.
+
+
 MedVision is based on some open-source projects:
 - [EvolvingLMMs-Lab/lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval): VLM evaluation framework
 - [EleutherAI/lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness): LLM evaluation framework
