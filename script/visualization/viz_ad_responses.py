@@ -435,30 +435,6 @@ def _draw_tokens(ax, tokens, x0, y0, fontsize, ax_w_in, ax_h_in):
         y -= line_h_ax
 
 
-# ── Sample filtering ───────────────────────────────────────────────────────────
-
-
-def _build_removed_set(json_path):
-    _dim_map = {"x": 0, "y": 1, "z": 2}
-    with open(json_path) as f:
-        entries = json.load(f)
-    return frozenset(
-        (
-            e["image_file"],
-            _dim_map[e["slice_dim"]],
-            int(e["slice_idx"]),
-            int(e["task_ID"]),
-        )
-        for e in entries
-    )
-
-
-def _relative_image_file(full_path, dataset_name):
-    marker = f"/{dataset_name}/"
-    idx = full_path.find(marker)
-    return full_path[idx + len(marker) :] if idx >= 0 else os.path.basename(full_path)
-
-
 # ── Image / NIfTI loading ──────────────────────────────────────────────────────
 
 
@@ -955,16 +931,6 @@ def main():
         help="Max figures per JSONL file (--model_dir mode only).",
     )
     parser.add_argument("--sample_ids", nargs="+", type=int, default=None)
-    parser.add_argument(
-        "--removed_samples_dir",
-        default=None,
-        help="Root dir with per-dataset removed_samples JSON files (e.g. .../Data/Datasets).",
-    )
-    parser.add_argument(
-        "--removed_samples_filename",
-        default="multi_cluster_samples_v1.0.0_to_v1.1.0.json",
-        help="Filename of the removed-samples JSON within each dataset subdirectory.",
-    )
     args = parser.parse_args()
 
     if args.jsonl and args.model_dir:
@@ -1009,35 +975,6 @@ def main():
 
             with open(jsonl_path) as f:
                 samples = [json.loads(l) for l in f if l.strip()]
-
-            if args.removed_samples_dir:
-                json_path = os.path.join(
-                    args.removed_samples_dir,
-                    dataset_name,
-                    args.removed_samples_filename,
-                )
-                if os.path.exists(json_path):
-                    removed_set = _build_removed_set(json_path)
-                    print(
-                        f"[Info] Loaded removed-samples filter: {json_path} ({len(removed_set)} entries)"
-                    )
-                    before = len(samples)
-                    samples = [
-                        s
-                        for s in samples
-                        if (
-                            _relative_image_file(
-                                s["doc"].get("image_file", ""), dataset_name
-                            ),
-                            s["doc"].get("slice_dim"),
-                            s["doc"].get("slice_idx"),
-                            int(s["doc"].get("taskID", 0)),
-                        )
-                        not in removed_set
-                    ]
-                    print(
-                        f"[Info] Filtered out {before - len(samples)} removed samples, {len(samples)} remaining"
-                    )
 
             if args.sample_ids is not None:
                 samples = [s for s in samples if s["doc_id"] in set(args.sample_ids)]
@@ -1092,47 +1029,6 @@ def main():
 
         with open(args.jsonl) as f:
             samples = [json.loads(l) for l in f if l.strip()]
-
-        removed_set = None
-        if args.removed_samples_dir:
-            m = re.search(r"samples_([^_]+)_", os.path.basename(args.jsonl))
-            dataset_name = m.group(1) if m else None
-            if dataset_name:
-                json_path = os.path.join(
-                    args.removed_samples_dir,
-                    dataset_name,
-                    args.removed_samples_filename,
-                )
-                if os.path.exists(json_path):
-                    removed_set = _build_removed_set(json_path)
-                    print(
-                        f"[Info] Loaded removed-samples filter: {json_path} ({len(removed_set)} entries)"
-                    )
-                else:
-                    print(f"[Warning] Removed-samples file not found: {json_path}")
-            else:
-                print(
-                    "[Warning] Could not extract dataset name from JSONL filename; filtering skipped"
-                )
-
-        if removed_set is not None:
-            m = re.search(r"samples_([^_]+)_", os.path.basename(args.jsonl))
-            dataset_name = m.group(1)
-            before = len(samples)
-            samples = [
-                s
-                for s in samples
-                if (
-                    _relative_image_file(s["doc"].get("image_file", ""), dataset_name),
-                    s["doc"].get("slice_dim"),
-                    s["doc"].get("slice_idx"),
-                    int(s["doc"].get("taskID", 0)),
-                )
-                not in removed_set
-            ]
-            print(
-                f"[Info] Filtered out {before - len(samples)} removed samples, {len(samples)} remaining"
-            )
 
         proc_acc_by_id = {}
         if proc_acc_path and os.path.exists(proc_acc_path):

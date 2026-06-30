@@ -32,25 +32,25 @@
 
 MedVision benchmarks **19 vision–language models** — open-weight general-purpose and medical VLMs plus proprietary API models — on detection, tumor/lesion size, and angle/distance measurement. The live **open leaderboard** (per-task score tables + a **frontier API-model pilot study**) lives on the [**project page**](https://medvision-vlm.github.io).
 
-#### ⭐ Ours
+#### Ours
 
 <p align="left">
 <b><a href="https://huggingface.co/YongchengYAO/MedVision-V0-7B">MedVision-V0</a></b>
 </p>
 
-#### 🌐 General-purpose VLMs (open-weight)
+#### General-purpose VLMs (open-weight)
 
 <p align="left">
 <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/qwen-color.png" height="20" alt="Qwen"/> <a href="https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct">Qwen2.5-VL</a>, <a href="https://huggingface.co/Qwen/Qwen3-VL-32B-Thinking">Qwen3-VL-Thinking</a> &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/internlm-color.png" height="20" alt="InternVL"/> <a href="https://huggingface.co/OpenGVLab/InternVL3-38B">InternVL3</a> &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/gemma-color.png" height="20" alt="Gemma"/> <a href="https://huggingface.co/google/gemma-3-27b-it">Gemma-3</a>, <a href="https://huggingface.co/google/gemma-4-31B-it">Gemma-4</a> &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/meta-color.png" height="20" alt="Meta"/> <a href="https://huggingface.co/meta-llama/Llama-3.2-11B-Vision-Instruct">Llama-3.2-Vision</a> &nbsp;·&nbsp; <a href="https://huggingface.co/llava-hf/llava-onevision-qwen2-72b-ov-hf">LLaVA-OneVision</a> &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/glmv-color.png" height="20" alt="GLM"/> <a href="https://huggingface.co/zai-org/GLM-4.6V">GLM-4.6V</a>, <a href="https://huggingface.co/zai-org/GLM-4.6V-Flash">GLM-4.6V-Flash</a>
 </p>
 
-#### 🏥 Medical VLMs (open-weight)
+#### Medical VLMs (open-weight)
 
 <p align="left">
 <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/gemma-color.png" height="20" alt="Gemma"/> <a href="https://huggingface.co/google/medgemma-4b-it">MedGemma</a> &nbsp;·&nbsp; <a href="https://huggingface.co/microsoft/llava-med-v1.5-mistral-7b">LLaVA-Med</a>, <a href="https://huggingface.co/lingshu-medical-mllm/Lingshu-32B">Lingshu</a>, <a href="https://huggingface.co/Sunanhe/MedDr_0401">MedDr</a>, <a href="https://huggingface.co/FreedomIntelligence/HuatuoGPT-Vision-34B">HuatuoGPT-Vision</a>, <a href="https://huggingface.co/lintw/HealthGPT-L14">HealthGPT-L14</a>
 </p>
 
-#### ☁️ Proprietary / API
+#### Proprietary / API
 
 <p align="left">
 <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/claude-color.png" height="20" alt="Claude"/> Claude-Fable-5 &nbsp;·&nbsp; <picture><source media="(prefers-color-scheme: dark)" srcset="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/dark/openai.png"><img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/openai.png" height="20" alt="OpenAI"/></picture> GPT-5.5-Pro &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/gemini-color.png" height="20" alt="Gemini"/> Gemini-3.1-Pro &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/kimi-color.png" height="20" alt="Kimi"/> Kimi-K2.6
@@ -65,8 +65,8 @@ MedVision benchmarks **19 vision–language models** — open-weight general-pur
 - [Jun 29, 2026] 🚀 Released the **MedVision** dataset (`medvision_ds`) v1.1.1 — [release notes](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.1.md)
   - 🌟 Highlight: corrected T/L ellipse fit — fixes a transposed in-plane voxel-spacing bug (wrong axis lengths and major/minor labelling on anisotropic slices, e.g. sagittal/coronal); ~22% fewer T/L samples on anisotropic data, isotropic data (e.g. KiPA22) essentially unchanged
   - The codebase `medvision_ds` will be automatically updated to the latest (v1.1.1)
-  - Backward compatibility: `MedVision_PLANNER_VERSION='latest'` now resolves to v1.1.1; pin `'1.1.0'` or `'1.0.0'` for earlier annotations. Only the Tumor-Lesion-Size task changed — all other tasks fall back to v1.0.0.
-  - ⚠️ New env var `MedVision_ACK_RELEASE`: required **only** when you pin an older annotation version (`MedVision_PLANNER_VERSION` below the latest), for any task — set it to the latest version (`1.1.1`) to acknowledge you have read this release note and unblock loading. See [Environment Variables](https://huggingface.co/datasets/YongchengYAO/MedVision#environment-variables).
+  - Backward compatibility: `MedVision_PLANNER_VERSION='latest'` now resolves to `'1.1.1'`; pin `'1.1.0'` or `'1.0.0'` for earlier annotations.
+  - ⚠️ New env var `MedVision_ACK_RELEASE`: required **only** when you pin an older version (`MedVision_PLANNER_VERSION` below the latest) — set it to the latest version (`1.1.1`) to acknowledge you have read this release note and unblock loading legacy data. Always set `MedVision_FORCE_INSTALL_CODE='True'` to receive notification of future releases. See [Environment Variables](https://huggingface.co/datasets/YongchengYAO/MedVision#environment-variables).
 - [Jun 9, 2026] 🚀 Released [MedVision-V0](https://huggingface.co/collections/YongchengYAO/medvision-v0), [RFT code](https://github.com/YongchengYAO/verl/tree/medvision-rl), [preprint v2](https://arxiv.org/abs/2511.18676), [project page](https://medvision-vlm.github.io/) with interactive case viewer. 
 - [May 15, 2026] 🚀 Released the benchmarking/fine-tuning codebase `medvision_bm` v1.1.0 — [release notes](https://github.com/YongchengYAO/MedVision/blob/master/docs/codebase-release/release-v1.1.0.md)
 - [May 14, 2026] 🚀 Released the **MedVision** dataset (`medvision_ds`) v1.1.0 — [release notes](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.0.md)
