@@ -338,6 +338,7 @@ def cli_evaluate(args: Union[argparse.Namespace, None] = None) -> None:
     else:
         is_main_process = False
 
+    evaluation_failed = False
     for args in args_list:
         try:
             # if is_main_process and args.wandb_args:  # thoughtfully we should only init wandb once, instead of multiple ranks to avoid network traffics and unwanted behaviors.
@@ -364,6 +365,7 @@ def cli_evaluate(args: Union[argparse.Namespace, None] = None) -> None:
                 traceback.print_exc()
                 eval_logger.error(f"Error during evaluation: {e}. Please set `--verbosity=DEBUG` to get more information.")
                 results_list.append(None)
+                evaluation_failed = True
 
     for args, results in zip(args_list, results_list):
         # cli_evaluate will return none if the process is not the main process (rank 0)
@@ -375,6 +377,11 @@ def cli_evaluate(args: Union[argparse.Namespace, None] = None) -> None:
 
     if args.wandb_args:
         wandb_logger.run.finish()
+
+    if evaluation_failed:
+        # Exit nonzero so callers (e.g. the medvision eval drivers, which mark a task
+        # completed on return code 0) can tell a swallowed evaluation error from success.
+        sys.exit(1)
 
 
 def cli_evaluate_single(args: Union[argparse.Namespace, None] = None) -> None:
