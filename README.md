@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="fig/medvision-logo.png" alt="MedVision Logo" /><br>
+  <img src="fig/medvision-logo.png" alt="MedVision Logo" width="480" /><br>
 
   # MedVision: Dataset and Benchmark for Quantitative Medical Image Analysis
 
@@ -63,24 +63,20 @@ MedVision benchmarks **19 vision–language models** — open-weight general-pur
 # 🔥 News
 
 - [Jun 29, 2026] 🚀 Released the **MedVision** dataset (`medvision_ds`) v1.1.1 — [release notes](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.1.md)
-  - 🌟 Highlight: corrected T/L ellipse fit — fixes a transposed in-plane voxel-spacing bug (wrong axis lengths and major/minor labelling on anisotropic slices, e.g. sagittal/coronal); ~22% fewer T/L samples on anisotropic data, isotropic data (e.g. KiPA22) essentially unchanged
-  - The codebase `medvision_ds` will be automatically updated to the latest (v1.1.1)
-  - Backward compatibility: `MedVision_PLANNER_VERSION='latest'` now resolves to `'1.1.1'`; pin `'1.1.0'` or `'1.0.0'` for earlier annotations.
-  - ⚠️ New env var `MedVision_ACK_RELEASE`: required **only** when you pin an older version (`MedVision_PLANNER_VERSION` below the latest) — set it to the latest version (`1.1.1`) to acknowledge you have read this release note and unblock loading legacy data. Always set `MedVision_FORCE_INSTALL_CODE='True'` to receive notification of future releases. See [Environment Variables](https://huggingface.co/datasets/YongchengYAO/MedVision#environment-variables).
-- [Jun 9, 2026] 🚀 Released [MedVision-V0](https://huggingface.co/collections/YongchengYAO/medvision-v0), [RFT code](https://github.com/YongchengYAO/verl/tree/medvision-rl), [preprint v2](https://arxiv.org/abs/2511.18676), [project page](https://medvision-vlm.github.io/) with interactive case viewer. 
-- [May 15, 2026] 🚀 Released the benchmarking/fine-tuning codebase `medvision_bm` v1.1.0 — [release notes](https://github.com/YongchengYAO/MedVision/blob/master/docs/codebase-release/release-v1.1.0.md)
-- [May 14, 2026] 🚀 Released the **MedVision** dataset (`medvision_ds`) v1.1.0 — [release notes](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.0.md)
-  - 🌟 Highlight: new T/L sample filtering (with ambiguous cases removed), more T/L samples with a single small target (cluster size > 20)
-  - The codebase `medvision_ds` will be automatically updated to the latest (v1.1.0)
-  - Backward compatibility: the env var `MedVision_PLANNER_VERSION` is required (v1.1.0+) to specify the annotation data version. Setting `MedVision_PLANNER_VERSION='1.0.0'` will fall back to **MedVision** dataset v1.0.0.
-  - 🧪 Testing backward compatibility: 
+  - **Highlight**: corrected T/L ellipse fit — fixes a transposed in-plane voxel-spacing bug (wrong axis lengths and major/minor labelling on anisotropic slices, e.g. sagittal/coronal); ~22% fewer T/L samples on anisotropic data, isotropic data (e.g., axial slices) essentially unchanged
+  - **Backward compatibility**: The codebase `medvision_ds` will be automatically updated to the latest (v1.1.1). `MedVision_PLANNER_VERSION='latest'` now resolves to `'1.1.1'`; pin `'1.1.0'` or `'1.0.0'` for earlier annotations.
+  - ⚠️ New env var `MedVision_ACK_RELEASE`: required **only** when you pin an older version (`MedVision_PLANNER_VERSION` below the latest) — **set it to the latest version (`1.1.1`) to acknowledge you have read this release note and unblock loading legacy data**. 
+  - Always set `MedVision_FORCE_INSTALL_CODE='True'` to receive notification of future releases. See [Environment Variables](https://huggingface.co/datasets/YongchengYAO/MedVision#environment-variables).
+- [Jun 9, 2026] Released [MedVision-V0](https://huggingface.co/collections/YongchengYAO/medvision-v0), [RFT code](https://github.com/YongchengYAO/verl/tree/medvision-rl), [preprint v2](https://arxiv.org/abs/2511.18676), [project page](https://medvision-vlm.github.io/) with interactive case viewer. 
+- [May 15, 2026] Released the benchmarking/fine-tuning codebase `medvision_bm` v1.1.0 — [release notes](https://github.com/YongchengYAO/MedVision/blob/master/docs/codebase-release/release-v1.1.0.md)
+- [May 14, 2026] Released the **MedVision** dataset (`medvision_ds`) v1.1.0 — [release notes](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.0.md)
+  - **Highlight**: new T/L sample filtering (with ambiguous cases removed), more T/L samples with a single small target (cluster size > 20)
+  - **Backward compatibility**: The codebase `medvision_ds` will be automatically updated to the latest (v1.1.0). `MedVision_PLANNER_VERSION` is required (v1.1.0+) to specify the annotation data version. Setting `MedVision_PLANNER_VERSION='1.0.0'` will fall back to **MedVision** dataset v1.0.0. Test backward compatibility with 
   ```python
   python unit-test/medvision-ds-planner-version/test_planner_switch_medvision_ds_v1.1.0.py --data_dir <local-data-folder>
   ```
-
-- [Dec 21, 2025] 🩻 Data & tasks preview: MedVision includes [area-estimation (`MaskSize`) tasks](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/info/ConfigurationsList_All.csv)
 - [Dec 10, 2025] Added preprint, training code, docker images, released models, new tasks/models guide
-- [Oct 8, 2025] 🚀 Release **MedVision** dataset v1.0.0
+- [Oct 8, 2025] Released **MedVision** dataset v1.0.0
 
 <br/>
 
@@ -149,9 +145,24 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
 
 <br/>
 
+# 💿 Data
+
+- **Dataset.** For the full description of the MedVision dataset (source datasets, modalities, anatomies, annotation types, and returned fields), see the [Hugging Face dataset repo](https://huggingface.co/datasets/YongchengYAO/MedVision).
+
+- **Benchmark subtasks ↔ dataset subsets.** Each subtask in this benchmark links to a subset of the MedVision dataset. The per-subtask sample sizes are listed for each dataset version:
+  - [`all_tasks__ds_v1.0.0`](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list/all_tasks__ds_v1.0.0)
+  - [`all_tasks__ds_v1.1.0`](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list/all_tasks__ds_v1.1.0)
+  - [`all_tasks__ds_v1.1.1`](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list/all_tasks__ds_v1.1.1)
+
+- **Pixel size (physical spacing) distribution.** Because the quantitative tasks require pixel→mm arithmetic, the distribution of pixel sizes across subtasks is provided in [`pixel_sizes__ds_v1.0.0`](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list/pixel_sizes__ds_v1.0.0).
+
+<br/>
+
 # 📊 Benchmark
 
-  1. The scripts in `script/benchmark-*/eval__*` should be sufficient for dependency installation, data processing, and benchmarking
+**Benchmark setting.** Proprietary/API models are evaluated in a **pilot study** that caps each subtask at **100 samples**; all other (open-weight) models use a limit of **1000 samples** per subtask. The subtasks are defined in [`tasks_list/`](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list): A/D → [`tasks_MedVision-AD-CoT.json`](https://github.com/YongchengYAO/MedVision/blob/master/tasks_list/tasks_MedVision-AD-CoT.json), T/L → [`tasks_MedVision-TL-CoT.json`](https://github.com/YongchengYAO/MedVision/blob/master/tasks_list/tasks_MedVision-TL-CoT.json), and Detection → [`tasks_MedVision-detect-CoT.json`](https://github.com/YongchengYAO/MedVision/blob/master/tasks_list/tasks_MedVision-detect-CoT.json).
+
+  1. The scripts in [`script/benchmark-*/`](https://github.com/YongchengYAO/MedVision/tree/master/script/) should be sufficient for dependency installation, data processing, and benchmarking
 
      > Set these variables:
      >
@@ -271,7 +282,7 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
 
 # 🎯 Training: SFT
 
-- **[Script]** `script/sft/train*.sh` handles dependency installation, data processing, and training.
+- **[Script]** [`script/sft/train*.sh`](https://github.com/YongchengYAO/MedVision/tree/master/script/sft) handles dependency installation, data processing, and training.
 
   > Set these variables in the script:
   >
