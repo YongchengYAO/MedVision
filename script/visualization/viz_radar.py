@@ -771,6 +771,7 @@ def plot_metrics_multi_model(
     radar_cell_inches=8,
     label_col=None,
     legend_col=None,
+    formats=("pdf",),
 ):
     """Plot radar charts for metrics across all models.
 
@@ -1056,8 +1057,10 @@ def plot_metrics_multi_model(
             clip_on=False,
         )
 
-    output_file = os.path.join(fig_dir, fig_name)
-    save_fig_capped(output_file, bbox_inches="tight")
+    stem = os.path.splitext(os.path.join(fig_dir, fig_name))[0]
+    for fmt in formats:
+        save_fig_capped(f"{stem}.{fmt}", bbox_inches="tight", transparent=True)
+    output_file = f"{stem}.{formats[0]}"
     print(f"Figure saved to: {output_file}")
     plt.close()
 
@@ -1146,6 +1149,12 @@ def main():
         default=None,
         help="Columns in the model legend (default: auto).",
     )
+    parser.add_argument(
+        "--save_as_png", action="store_true", help="Save figures as PNG."
+    )
+    parser.add_argument(
+        "--save_as_pdf", action="store_true", help="Save figures as PDF."
+    )
 
     args = parser.parse_args()
     assert args.task_type in [
@@ -1154,6 +1163,9 @@ def main():
         "Detection",
     ], f"Invalid task_type '{args.task_type}'. Must be one of: AD, TL, Detection."
 
+    formats = [
+        f for f, on in (("png", args.save_as_png), ("pdf", args.save_as_pdf)) if on
+    ] or ["pdf"]
     config = load_config(args.config_yaml)
     plot_metrics_multi_model(
         args.task_type,
@@ -1169,6 +1181,7 @@ def main():
         radar_cell_inches=args.radar_cell_inches,
         label_col=args.label_col,
         legend_col=args.legend_col,
+        formats=formats,
     )
 
 

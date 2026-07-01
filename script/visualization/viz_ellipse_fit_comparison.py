@@ -311,7 +311,7 @@ def draw_panel(ax, image_2d, mask_2d, pixel_sizes, img_fit, real_fit, view, aspe
     ax.set_title(title, fontsize=15)
 
 
-def render_case(prep, orientation, out_dir):
+def render_case(prep, orientation, out_dir, formats):
     """Write one 1x2 figure (no-scaling vs physical-aspect) for a prepared case."""
     image_2d, roi, ps = prep["image_2d"], prep["roi"], prep["pixel_sizes"]
     img_fit, real_fit = prep["img_fit"], prep["real_fit"]
@@ -341,13 +341,14 @@ def render_case(prep, orientation, out_dir):
     fig.tight_layout(rect=[0, 0.04, 1, 0.95])
 
     os.makedirs(out_dir, exist_ok=True)
-    out = os.path.join(
+    base = os.path.join(
         out_dir,
-        f"{prep['dataset']}_Task{prep['task_id']}_{prep['case']}_{orientation}_slice{prep['slice_idx']}.png",
+        f"{prep['dataset']}_Task{prep['task_id']}_{prep['case']}_{orientation}_slice{prep['slice_idx']}",
     )
-    save_fig_capped(out, fig=fig, bbox_inches="tight")
+    for fmt in formats:
+        save_fig_capped(f"{base}.{fmt}", fig=fig, bbox_inches="tight", transparent=True)
     plt.close(fig)
-    return out
+    return f"{base}.{formats[0]}"
 
 
 # --------------------------------------------------------------------------- #
@@ -361,8 +362,13 @@ def main():
                     help="require image/real major axes ≥ this many degrees apart (deg)")
     ap.add_argument("--min-anisotropy", type=float, default=1.5,
                     help="require in-plane spacing ratio ≥ this (per-slice)")
+    ap.add_argument("--save_as_png", action="store_true", help="Save figures as PNG.")
+    ap.add_argument("--save_as_pdf", action="store_true", help="Save figures as PDF.")
     args = ap.parse_args()
 
+    formats = [
+        f for f, on in (("png", args.save_as_png), ("pdf", args.save_as_pdf)) if on
+    ] or ["pdf"]
     out_dir = args.out_dir or os.path.join(DEFAULT_OUT, args.orientation)
     print(f"orientation : {args.orientation} (slice_dim={ORIENT_SLICE_DIM[args.orientation]})")
     print("building candidate pool from HF test configs (union of both summaries)...")
@@ -398,7 +404,7 @@ def main():
         if prep is None:
             continue
         seen.add(rec["mask_file"])
-        out = render_case(prep, args.orientation, out_dir)
+        out = render_case(prep, args.orientation, out_dir, formats)
         made += 1
         print(f"  [{made}/{args.n}] {prep['dataset']} Task{prep['task_id']} {prep['case']} "
               f"slice{prep['slice_idx']}  "

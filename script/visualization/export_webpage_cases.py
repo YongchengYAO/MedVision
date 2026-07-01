@@ -788,7 +788,7 @@ def _image_only(sample, out_path):
     plt.imshow(img.T, cmap="gray", origin="lower", aspect=psz[1] / psz[0])
     plt.axis("off")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    save_fig_capped(out_path, bbox_inches="tight")
+    save_fig_capped(out_path, bbox_inches="tight", transparent=True)
     plt.close(fig)
 
 

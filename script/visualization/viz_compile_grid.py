@@ -134,7 +134,28 @@ def _draw_model_labels_and_separators(fig, models, anchor_axes, show_model_label
             )
 
 
-def _compile_figure(models, samples, row_per_model, output, show_model_label=True):
+def _save_fig_formats(out_path, formats, **kwargs):
+    """Save the current figure once per requested format, swapping out_path's extension."""
+    p = Path(out_path)
+    for fmt in formats:
+        save_fig_capped(str(p.with_suffix(f".{fmt}")), **kwargs)
+
+
+def _save_img_formats(img, out_path, formats):
+    """Save a composited PIL image once per format. PDF can't hold an alpha channel,
+    so RGBA panels are flattened onto white (matching the pre-transparency behavior)."""
+    from PIL import Image
+
+    p = Path(out_path)
+    for fmt in formats:
+        out = img
+        if fmt != "png" and img.mode == "RGBA":
+            out = Image.new("RGB", img.size, "white")
+            out.paste(img, mask=img.split()[-1])
+        save_img_capped(out, str(p.with_suffix(f".{fmt}")))
+
+
+def _compile_figure(models, samples, row_per_model, output, show_model_label=True, formats=("png",)):
     n_cols_img = math.ceil(len(samples) / row_per_model)
     n_models = len(models)
     n_total_rows = n_models * row_per_model
@@ -193,7 +214,7 @@ def _compile_figure(models, samples, row_per_model, output, show_model_label=Tru
 
     out_path = Path(output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    save_fig_capped(str(out_path), fig=fig, bbox_inches="tight")
+    _save_fig_formats(out_path, formats, fig=fig, bbox_inches="tight", transparent=True)
     plt.close(fig)
     print(f"Saved: {out_path}")
 
@@ -268,7 +289,7 @@ def _make_dataset_as_col_panel(
 
 
 def _compile_figure_dataset_as_col(
-    models, samples, output, show_model_label=True, num_panel=1
+    models, samples, output, show_model_label=True, num_panel=1, formats=("png",)
 ):
     """Dataset-as-columns layout: each column = one dataset; rows = samples within that dataset.
 
@@ -301,7 +322,7 @@ def _compile_figure_dataset_as_col(
             panel_size,
             show_model_label,
         )
-        save_fig_capped(str(out_path), fig=fig, bbox_inches="tight")
+        _save_fig_formats(out_path, formats, fig=fig, bbox_inches="tight", transparent=True)
         plt.close(fig)
     else:
         import io
@@ -319,19 +340,19 @@ def _compile_figure_dataset_as_col(
                 show_model_label,
             )
             buf = io.BytesIO()
-            fig.savefig(buf, format="png", bbox_inches="tight", dpi=FIG_DPI)
+            fig.savefig(buf, format="png", bbox_inches="tight", dpi=FIG_DPI, transparent=True)
             plt.close(fig)
             buf.seek(0)
             panel_images.append(Image.open(buf).copy())
 
         max_w = max(img.width for img in panel_images)
         total_h = sum(img.height for img in panel_images)
-        result = Image.new("RGB", (max_w, total_h), "white")
+        result = Image.new("RGBA", (max_w, total_h), (0, 0, 0, 0))
         y = 0
         for img in panel_images:
-            result.paste(img, (0, y))
+            result.paste(img, (0, y), img)
             y += img.height
-        save_img_capped(result, str(out_path))
+        _save_img_formats(result, out_path, formats)
 
     print(f"Saved: {out_path}")
 
@@ -427,7 +448,7 @@ def _make_dataset_as_row_panel(
 
 
 def _compile_figure_dataset_as_row(
-    models, samples, output, show_model_label=True, num_panel=1, num_row_per_ds=1
+    models, samples, output, show_model_label=True, num_panel=1, num_row_per_ds=1, formats=("png",)
 ):
     """Dataset-as-rows layout: each row = one dataset; columns = samples within that dataset.
 
@@ -463,7 +484,7 @@ def _compile_figure_dataset_as_row(
             show_model_label,
             num_row_per_ds=num_row_per_ds,
         )
-        save_fig_capped(str(out_path), fig=fig, bbox_inches="tight")
+        _save_fig_formats(out_path, formats, fig=fig, bbox_inches="tight", transparent=True)
         plt.close(fig)
     else:
         import io
@@ -482,19 +503,19 @@ def _compile_figure_dataset_as_row(
                 num_row_per_ds=num_row_per_ds,
             )
             buf = io.BytesIO()
-            fig.savefig(buf, format="png", bbox_inches="tight", dpi=FIG_DPI)
+            fig.savefig(buf, format="png", bbox_inches="tight", dpi=FIG_DPI, transparent=True)
             plt.close(fig)
             buf.seek(0)
             panel_images.append(Image.open(buf).copy())
 
         total_w = sum(img.width for img in panel_images)
         max_h = max(img.height for img in panel_images)
-        result = Image.new("RGB", (total_w, max_h), "white")
+        result = Image.new("RGBA", (total_w, max_h), (0, 0, 0, 0))
         x = 0
         for img in panel_images:
-            result.paste(img, (x, 0))
+            result.paste(img, (x, 0), img)
             x += img.width
-        save_img_capped(result, str(out_path))
+        _save_img_formats(result, out_path, formats)
 
     print(f"Saved: {out_path}")
 
@@ -567,6 +588,12 @@ def main():
         help="Number of rows per dataset for --dataset_as_row (default: 1). "
         "When >1, samples within each dataset wrap across multiple rows.",
     )
+    parser.add_argument(
+        "--save_as_png", action="store_true", help="Save figures as PNG."
+    )
+    parser.add_argument(
+        "--save_as_pdf", action="store_true", help="Save figures as PDF."
+    )
     args = parser.parse_args()
 
     if args.dataset_as_col and args.dataset_as_row:
@@ -601,6 +628,10 @@ def main():
     rng = random.Random(seed)
     samples = _select_samples(models, args.limit_subfigures, rng)
 
+    formats = [
+        f for f, on in (("png", args.save_as_png), ("pdf", args.save_as_pdf)) if on
+    ] or ["png"]
+
     if args.dataset_as_col:
         _compile_figure_dataset_as_col(
             models,
@@ -608,6 +639,7 @@ def main():
             args.output,
             show_model_label=show_model_label,
             num_panel=args.dataset_as_col_num_panel,
+            formats=formats,
         )
     elif args.dataset_as_row:
         _compile_figure_dataset_as_row(
@@ -617,6 +649,7 @@ def main():
             show_model_label=show_model_label,
             num_panel=args.dataset_as_row_num_panel,
             num_row_per_ds=args.dataset_as_row_num_row_per_ds,
+            formats=formats,
         )
     else:
         _compile_figure(
@@ -625,6 +658,7 @@ def main():
             args.row_per_model,
             args.output,
             show_model_label=show_model_label,
+            formats=formats,
         )
 
 

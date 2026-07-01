@@ -531,7 +531,7 @@ def _make_filename(sample, dataset_name):
 # ── Main per-sample plot ───────────────────────────────────────────────────────
 
 
-def _plot_sample(sample, out_path, reshape_hw):
+def _plot_sample(sample, out_path, reshape_hw, formats):
     doc = sample["doc"]
     doc_id = sample["doc_id"]
 
@@ -697,9 +697,11 @@ def _plot_sample(sample, out_path, reshape_hw):
     )
     _draw_detection_overlay_on_ax(ax_ovl, doc, sample)
 
-    save_fig_capped(out_path, facecolor=C_FIG_BG)
+    stem = os.path.splitext(out_path)[0]
+    for fmt in formats:
+        save_fig_capped(f"{stem}.{fmt}", transparent=True)
     plt.close(fig)
-    return out_path
+    return f"{stem}.{formats[0]}"
 
 
 def main():
@@ -726,6 +728,12 @@ def main():
         help="Max figures per JSONL file (--model_dir mode only).",
     )
     parser.add_argument("--sample_ids", nargs="+", type=int, default=None)
+    parser.add_argument(
+        "--save_as_png", action="store_true", help="Save figures as PNG."
+    )
+    parser.add_argument(
+        "--save_as_pdf", action="store_true", help="Save figures as PDF."
+    )
     args = parser.parse_args()
 
     if args.jsonl and args.model_dir:
@@ -736,6 +744,9 @@ def main():
         parser.error("--limit_per_jsonl requires --model_dir.")
 
     reshape_hw = tuple(args.reshape_hw) if args.reshape_hw else None
+    formats = [
+        f for f, on in (("png", args.save_as_png), ("pdf", args.save_as_pdf)) if on
+    ] or ["pdf"]
     os.makedirs(args.output_dir, exist_ok=True)
 
     if args.model_dir:
@@ -783,7 +794,7 @@ def main():
                 doc_id = sample["doc_id"]
                 fname = _make_filename(sample, dataset_name)
                 out_path = os.path.join(per_file_out_dir, fname)
-                out = _plot_sample(sample, out_path, reshape_hw)
+                out = _plot_sample(sample, out_path, reshape_hw, formats)
                 if out:
                     print(f"  [{i+1}/{len(samples)}] doc_id={doc_id} → {out}")
 
@@ -801,7 +812,7 @@ def main():
         for i, sample in enumerate(samples):
             doc_id = sample["doc_id"]
             out_path = os.path.join(args.output_dir, f"doc_{doc_id:04d}.png")
-            out = _plot_sample(sample, out_path, reshape_hw)
+            out = _plot_sample(sample, out_path, reshape_hw, formats)
             if out:
                 print(f"  [{i+1}/{len(samples)}] doc_id={doc_id} → {out}")
 
