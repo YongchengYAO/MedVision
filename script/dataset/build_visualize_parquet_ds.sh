@@ -17,20 +17,25 @@ export MedVision_DATA_DIR="${dir_medvision}/Data"
 dir_parquet="${MedVision_DATA_DIR}/raw_parquet"
 dir_figure="${dir_medvision}/Figures"
 
-# Install medvision_bm (locked shared build)
+# Install medvision_bm: build the wheel on node-local disk (NOT the shared CephFS
+# tree). setuptools build_py caches created dirs in a process-global memo, and on
+# CephFS a build subdir can transiently vanish (async delete/recreate lag or an
+# unguarded concurrent writer), after which the cache refuses to recreate it and a
+# later file copy dies with: could not create '...': No such file or directory.
+# A private local build dir is immune; only the shared-env install needs the lock.
 set -euo pipefail
 lockfile="${dir_medvision}/.medvision_build.lock"
 wheelhouse="${dir_medvision}/.wheelhouse"
 mkdir -p "${wheelhouse}"
-flock "${lockfile}" bash -c '
-    set -euo pipefail
-    dir_medvision="'"${dir_medvision}"'"
-    wheelhouse="'"${wheelhouse}"'"
-    rm -rf "${dir_medvision}/build" "${dir_medvision}/src/medvision_bm.egg-info"
-    python -m pip wheel "${dir_medvision}" -w "${wheelhouse}" --no-deps
-    latest_wheel="$(ls -t "${wheelhouse}"/medvision_bm-*.whl | head -n1)"
-    python -m pip install --force-reinstall "${latest_wheel}"
-'
+build_tmp="$(mktemp -d "${TMPDIR:-/tmp}/medvision_build.XXXXXX")"
+trap 'rm -rf "${build_tmp}"' EXIT
+tar -cf - -C "${dir_medvision}" --exclude='*.egg-info' --exclude=__pycache__ \
+    pyproject.toml MANIFEST.in LICENSE src \
+  | tar -xf - -C "${build_tmp}"
+python -m pip wheel "${build_tmp}" -w "${build_tmp}/wh" --no-deps
+built_wheel="$(ls -t "${build_tmp}/wh"/medvision_bm-*.whl | head -n1)"
+cp -f "${built_wheel}" "${wheelhouse}/"
+flock "${lockfile}" python -m pip install --force-reinstall "${built_wheel}"
 
 # Install medvision_ds and vendored lmms_eval
 # NOTE: visualization requires medvision_ds and the vendored lmms_eval

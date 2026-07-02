@@ -46,17 +46,25 @@ train_sample_limit_task_Detection=110000
 val_sample_limit_task_Detection=105
 new_shape_hw=(512 512) # (height, width) passed to --new_shape_hw
 
-# Install medvision_bm (locked shared build); always rebuilds to pick up local source changes
+# Install medvision_bm: build the wheel on node-local disk (NOT the shared CephFS
+# tree) to avoid a CephFS metadata race in setuptools build_py (a build subdir can
+# transiently vanish and the mkpath cache refuses to recreate it); always rebuilds
+# to pick up local source changes. Only the shared-env install needs the lock.
 lockfile="${benchmark_dir}/.medvision_build.lock"
 wheelhouse="${benchmark_dir}/.wheelhouse"
 mkdir -p "${wheelhouse}"
-export benchmark_dir wheelhouse
-flock "${lockfile}" bash -c '
+export benchmark_dir wheelhouse lockfile
+bash -c '
     set -euo pipefail
-    rm -rf "${benchmark_dir}/build" "${benchmark_dir}/src/medvision_bm.egg-info"
-    python -m pip wheel "${benchmark_dir}" -w "${wheelhouse}" --no-deps
-    latest_wheel="$(ls -t "${wheelhouse}"/medvision_bm-*.whl | head -n1)"
-    python -m pip install --force-reinstall "${latest_wheel}"
+    build_tmp="$(mktemp -d "${TMPDIR:-/tmp}/medvision_build.XXXXXX")"
+    trap "rm -rf \"${build_tmp}\"" EXIT
+    tar -cf - -C "${benchmark_dir}" --exclude="*.egg-info" --exclude=__pycache__ \
+        pyproject.toml MANIFEST.in LICENSE src \
+      | tar -xf - -C "${build_tmp}"
+    python -m pip wheel "${build_tmp}" -w "${build_tmp}/wh" --no-deps
+    built_wheel="$(ls -t "${build_tmp}/wh"/medvision_bm-*.whl | head -n1)"
+    cp -f "${built_wheel}" "${wheelhouse}/"
+    flock "${lockfile}" python -m pip install --force-reinstall "${built_wheel}"
 '
 
 # Setup environment for SFT since we import SFT-related modules
