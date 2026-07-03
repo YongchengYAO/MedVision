@@ -1,4 +1,4 @@
-ENV_NAME="sft-qwen25vl"
+ENV_NAME="sft-gemma4"
 
 # Only create the env if it doesn't already exist
 source activate base
@@ -12,7 +12,8 @@ conda activate "${ENV_NAME}"
 conda install -c nvidia cuda-toolkit=12.4 -y
 
 # Sanitize HF_TOKEN: pod-injected secrets can carry a trailing newline that corrupts the
-# HTTP Authorization header (-> 401 on gated models/datasets). No-op if unset or clean.
+# HTTP Authorization header (-> 401 on gated models like google/gemma-4-31B-it). No-op if
+# unset or clean.
 [ -n "${HF_TOKEN:-}" ] && export HF_TOKEN="$(printf '%s' "${HF_TOKEN}" | tr -d '[:space:]')"
 
 # Use MedVision dataset v1.0.0
@@ -35,19 +36,51 @@ tasks_list_json_path_TL="${benchmark_dir}/tasks_list/tasks_MedVision-TL__train_S
 # ----------------------------------------------------------------------------------
 
 # Model configs
-model_family_name="qwen25vl" # NOTE: model_family_name must be in AVAILABLE_MODELS from lmms_eval.models
-base_model_hf="Qwen/Qwen2.5-VL-7B-Instruct"
-run_name="MedVision__fullSFT__Qwen2.5VL-7B__D110k-AD5k-TL5k__CoT__512x512"
+model_family_name="gemma4" # NOTE: model_family_name must be in AVAILABLE_MODELS from lmms_eval.models (gemma4 <- vllm_gemma4)
+base_model_hf="google/gemma-4-31B-it"
+run_name="MedVision__fullSFT__Gemma-4-31B-it__D110k-AD5k-TL5k__CoT__512x512"
 # NOTE: --lora_checkpoint_dir is remapped to checkpoint_dir internally for full finetuning
 lora_checkpoint_dir="${train_sft_dir}/${run_name}/checkpoints/${run_name}"
+
+# ==============================================================================
+# [!!! COMPATIBILITY WARNING — read before running !!!]
+# Gemma 4 requires transformers 5.x (the variable-resolution Gemma4ImageProcessor /
+# Gemma4 modeling do not exist in 4.5x). The default SFT stack (torch 2.6.0 +
+# flash-attn 2.7.3 + trl 0.19.1, installed by env_setup) was validated with
+# transformers 4.5x and is NOT guaranteed to work with transformers 5.x:
+#   - flash-attn 2.7.3 is built for torch 2.6; transformers 5.x generally expects a
+#     newer torch (the gemma4 EVAL env uses torch 2.10). FA2 is therefore disabled
+#     below (use_flash_attention_2=false, plus MEDVISION_SFT_ATTN=sdpa exported before
+#     the training launch -> SDPA), which is also the safest attention path for a
+#     brand-new architecture. NOTE: false WITHOUT the env knob falls back to eager.
+#   - You will very likely need to rebuild this env with a newer torch and matching
+#     flash-attn/trl/accelerate. Use the [Alternative] env_setup --requirement path
+#     below as a STARTING POINT, but note requirements_eval_gemma4.txt is a vLLM
+#     INFERENCE env (no trl/deepspeed); add the training deps and reconcile versions.
+# ==============================================================================
+
+# Dependency versions
+# ----------------------------------------------------------------------------------
+# NOTE: env_setup.py force-installs transformers==4.54.0 at the end; re-pin AFTER it to a
+#   Gemma4-capable 5.x release. Source of truth: requirements/requirements_eval_gemma4.txt
+#   (transformers==5.10.2; the eval driver eval__gemma4.py defaults to 5.5.0).
+transformers_version="5.5.0"
+# FSDP transformer layer class to wrap (passed to accelerate below). This MUST match the
+# decoder layer class name in the installed transformers for this checkpoint.
+#   - Gemma 4 text backbone: Gemma4TextDecoderLayer (verify; may be Gemma4DecoderLayer)
+# Verify once with:
+#   python -c "from transformers import AutoModelForImageTextToText as M; m=M.from_pretrained('${base_model_hf}'); print(sorted({type(x).__name__ for x in m.modules() if 'DecoderLayer' in type(x).__name__}))"
+fsdp_layer_cls="Gemma4TextDecoderLayer"
+# ----------------------------------------------------------------------------------
 
 # Training configs
 epoch=3
 save_steps=100
 eval_steps=100
 logging_steps=20
-save_total_limit=10 # Full FT checkpoints are large; keep fewer
-use_flash_attention_2=true
+save_total_limit=3 # Resumable full-FT ckpts are huge at 31B (~62GB bf16 weights + ~124GB optimizer state ≈ 190GB each); keep few
+# NOTE: FA2 disabled for Gemma 4 (new arch + transformers 5.x); SDPA/eager is used instead.
+use_flash_attention_2=false
 num_workers_concat_datasets=4
 num_workers_format_dataset=64
 dataloader_num_workers=4
@@ -67,25 +100,25 @@ train_sample_limit_task_TL=5500
 val_sample_limit_task_TL=50
 # ----------------------------------------------------------------------------------
 dataloader_pin_memory=true
-use_flash_attention_2=true
 
 # Resumed training configs
 resume_from_checkpoint=true # Enable resuming from the last checkpoint
 
 # Resource-constrained training configs
-# NOTE: Full FT requires much more VRAM than LoRA — use small batch + large grad accumulation
-gradient_checkpointing=true # Required for full FT at 7B scale
-per_device_train_batch_size=8
-per_device_eval_batch_size=8
-gradient_accumulation_steps=8 # effective_batch_size = per_device_train_batch_size * gradient_accumulation_steps * num_gpus
+# NOTE: Full FT of a 31B model requires much more VRAM than the 7B reference — use the
+#   smallest per-device batch + large grad accumulation, and FSDP FULL_SHARD across 4 GPUs.
+gradient_checkpointing=true # Required for full FT at 31B scale
+per_device_train_batch_size=1
+per_device_eval_batch_size=1
+gradient_accumulation_steps=64 # effective_batch_size = per_device_train_batch_size * gradient_accumulation_steps * num_gpus (= 1 * 64 * 4 = 256)
 
 # Set wandb configs for logging
 wandb_resume="allow" # Wandb resume mode (e.g., 'allow', 'must', 'never')
 wandb_dir="${train_sft_dir}/${run_name}"
-wandb_project="MedVision-SFT-CoT-Qwen2.5VL-multiTasks"
+wandb_project="MedVision-SFT-CoT-Gemma4-multiTasks"
 wandb_run_name=${run_name}
 # NOTE: For continuing an existing run, set the wandb_run_id to the ID of the existing run.
-wandb_run_id="Qwen25VL7B-fullSFT-D110k-AD5k-TL5k-512x512" # run ID must be unique in the wandb_project
+wandb_run_id="Gemma-4-31B-fullSFT-D110k-AD5k-TL5k-512x512" # run ID must be unique in the wandb_project
 
 # Install medvision_bm: build the wheel on node-local disk (NOT the shared CephFS
 # tree). setuptools build_py caches created dirs in a process-global memo, and on
@@ -108,13 +141,15 @@ cp -f "${built_wheel}" "${wheelhouse}/"
 flock "${lockfile}" python -m pip install --force-reinstall "${built_wheel}"
 
 # Setup training env
-python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --lmms_eval_opt_deps qwen2_5_vl
+python -m medvision_bm.sft.env_setup --data_dir ${data_dir}
+# Re-pin transformers to a Gemma4-capable 5.x version (env_setup forces 4.54.0; see NOTE above)
+python -m pip install "transformers==${transformers_version}"
 # Fix protobuf: env_setup leaves a protobuf incompatible with wandb>=0.21's generated stubs
 # (-> "cannot import name 'Imports' from wandb.proto..." which breaks the trl.SFTTrainer
 # import at train time). 6.33.0 matches the validated requirements_sft_*.txt pin.
 python -m pip install "protobuf==6.33.0"
-# # [Alternative] Setup training env: use a specific requirements file
-# python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --requirement "${benchmark_dir}/requirements/requirements_sft_qwen25vl.txt" --lmms_eval_opt_deps qwen2_5_vl
+# # [Alternative] Setup training env: use a specific requirements file (see COMPATIBILITY WARNING)
+# python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --requirement "${benchmark_dir}/requirements/requirements_eval_gemma4.txt"
 
 # # [Debugging] Disable WANDB online logging
 # export WANDB_MODE=offline
@@ -140,7 +175,7 @@ temperature_sampler_T=5
 # ------------------------------------------------------------------------------
 
 # Offload dataset processing from training to a separate run to avoid timeout issues
-python -m medvision_bm.sft.train__fullFT-CoT__qwen2_5_vl \
+python -m medvision_bm.sft.train__fullFT-CoT__gemma4 \
     --skip_process_dataset ${skip_process_dataset} \
     --process_dataset_only true \
     --save_processed_img_to_disk ${save_processed_img_to_disk} \
@@ -182,29 +217,70 @@ python -m medvision_bm.sft.train__fullFT-CoT__qwen2_5_vl \
     --dataloader_pin_memory ${dataloader_pin_memory} \
     --new_shape_hw 512 512
 
+# Self-heal deps: the dataset-prep step above reinstalls medvision_ds, whose exact pin
+# huggingface_hub==0.36.0 drags hub below transformers 5.x's floor (>=1.5.0) on EVERY prep
+# run -> ImportError at train start even though dataset prep succeeded. Probe the real
+# train-time import chain (trl.SFTTrainer also catches protobuf/wandb drift) and repair
+# SURGICALLY. Do NOT `pip install --force-reinstall transformers` here: re-resolving its
+# whole dep tree can pull an fsspec newer than datasets' cap, which the NEXT prep run then
+# downgrades on disk mid-process (observed crash: ModuleNotFoundError
+# fsspec.implementations.chained). The joint install below keeps transformers at its pin,
+# lifts hub only as far as that pin requires, re-asserts the protobuf pin, and leaves
+# everything else (fsspec, datasets) untouched. Aborts before the expensive launch on failure.
+if ! python -c "import transformers; from trl import SFTTrainer" >/dev/null 2>&1; then
+    echo "[WARN] train-time imports broken after dataset prep (dependency drift) — repairing"
+    python -m pip install --upgrade "transformers==${transformers_version}" huggingface_hub "protobuf==6.33.0"
+    python -c "import transformers; from trl import SFTTrainer"
+fi
+
 # Ensure CUDA_HOME is set (required by DeepSpeed compatibility check at import time)
 # even when DeepSpeed is not used as the training backend.
 export CUDA_HOME="${CUDA_HOME:-$(dirname $(dirname $(which nvcc 2>/dev/null || echo /usr/local/cuda/bin/nvcc)))}"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+# Attention implementation for training: SDPA — the GPU-smoke-validated config for Gemma 4.
+# (use_flash_attention_2=false by itself falls back to EAGER in prepare_trainer_fullFT,
+# which materializes O(seq^2) attention matrices; this env knob, read by sft_utils.py,
+# overrides it. See the COMPATIBILITY WARNING at the top of this script.)
+export MEDVISION_SFT_ATTN=sdpa
+# Optimizer for 4-GPU full FT — the GPU-smoke-VALIDATED configuration (2026-07-02): paged
+# 8-bit AdamW keeps optimizer state in CPU pinned pages (measured 58.5GB/GPU steady at
+# 31B/4 ranks). The default adamw_torch_fused needs ~137GB/GPU at 4 ranks (see the memory
+# NOTE above the launch) — it does not fit 4 GPUs at all. At 31B this config needs
+# H200-class (140GB) cards; 4×80GB is ~1GB short in the step-2 backward. CAVEAT: bnb's
+# quantized optimizer state cannot be gathered by FSDP FULL_STATE_DICT, so SAVE_ONLY_MODEL
+# is required — checkpoints store weights only, and resume_from_checkpoint continues from
+# the saved weights with a FRESH optimizer/LR state.
+export MEDVISION_SFT_OPTIM=paged_adamw_8bit
+export MEDVISION_SFT_SAVE_ONLY_MODEL=1
 
 # Skip dataset processing and directly load from disk for training
-# NOTE: FSDP (FULL_SHARD) is required for full FT of 7B on 80GB GPUs — standard DDP exceeds
-#   capacity: weights(14GB) + gradients(14GB) + AdamW-FP32(56GB) = ~84GB before activations.
-#   FSDP shards all three components across 4 GPUs, reducing per-GPU usage to ~31GB.
+# NOTE: FSDP (FULL_SHARD) is required for full FT of 31B. 4-rank per-GPU memory, anchored to
+#   MEMPROBE measurements (2026-07-02 GPU smoke @ 4 GPUs): fp32-master + bf16 param shards
+#   ~43.7GB post-wrap; the default adamw_torch_fused would add fp32 grad shards ~31GB + fp32
+#   optimizer states ~62GB => ~137GB/GPU steady (+ activations + ~17-20GB/GPU held OUTSIDE
+#   the rank's process: sibling CUDA contexts / NCCL / VMM) — adamw_torch_fused DOES NOT FIT
+#   4 GPUs, not even 4×H200 (140GB). The exports above therefore ship the smoke-validated
+#   paged_adamw_8bit config, measured 58.5GB/GPU steady — NOTE this needs H200-class cards at
+#   31B/4 ranks: on 4×80GB the step-2 backward transient missed the effective ceiling by
+#   <1GB (the smoke passed there with a 1-step run only). To get fully resumable checkpoints
+#   (adamw_torch_fused + optimizer state saved), move to >=8 GPUs and unset
+#   MEDVISION_SFT_OPTIM / MEDVISION_SFT_SAVE_ONLY_MODEL. If you still hit OOM here, add
+#   `--fsdp_offload_params true` below (needs ~300GB+ host RAM — check the container CGROUP
+#   limit, not `free`).
 CUDA_VISIBLE_DEVICES=0,1,2,3 \
     accelerate launch \
     --num_processes=4 \
-    --main_process_port=29502 \
+    --main_process_port=29505 \
     --mixed_precision=bf16 \
     --use_fsdp \
     --fsdp_sharding_strategy FULL_SHARD \
     --fsdp_auto_wrap_policy TRANSFORMER_BASED_WRAP \
-    --fsdp_transformer_layer_cls_to_wrap Qwen2_5_VLDecoderLayer \
+    --fsdp_transformer_layer_cls_to_wrap ${fsdp_layer_cls} \
     --fsdp_state_dict_type FULL_STATE_DICT \
     --fsdp_offload_params false \
     --fsdp_cpu_ram_efficient_loading true \
     --fsdp_sync_module_states true \
-    -m medvision_bm.sft.train__fullFT-CoT__qwen2_5_vl \
+    -m medvision_bm.sft.train__fullFT-CoT__gemma4 \
     --skip_process_dataset true \
     --process_dataset_only false \
     --run_name ${run_name} \

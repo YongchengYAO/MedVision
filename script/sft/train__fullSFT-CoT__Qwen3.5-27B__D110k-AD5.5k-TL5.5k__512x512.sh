@@ -1,10 +1,4 @@
-ENV_NAME="sft-qwen25vl"
-
-# TODO: debug
-# temp fix
-conda config --set solver classic
-# or try this
-# conda install conda=26.1.1
+ENV_NAME="sft-qwen3vl"
 
 # Only create the env if it doesn't already exist
 source activate base
@@ -41,35 +35,52 @@ tasks_list_json_path_TL="${benchmark_dir}/tasks_list/tasks_MedVision-TL__train_S
 # ----------------------------------------------------------------------------------
 
 # Model configs
-model_family_name="qwen25vl" # NOTE: model_family_name must be in AVAILABLE_MODELS from lmms_eval.models (the "vllm_" prefix may be omitted)
-base_model_hf="Qwen/Qwen2.5-VL-7B-Instruct"
-run_name="MedVision__SFT__Qwen2.5VL-7B__D110k-AD5k-TL5k__CoT"
-lora_checkpoint_dir="${train_sft_dir}/${run_name}/checkpoints/${run_name}" # Put a ${run_name} subfolder at the end for distinct HF repo names when pushing LoRA checkpoints
-merged_model_hf="MedVision__SFT__Qwen2.5VL-7B__D110k-AD5k-TL5k__CoT"
-merged_model_dir="${train_sft_dir}/${run_name}/merged_model"
+model_family_name="qwen3vl" # NOTE: model_family_name must be in AVAILABLE_MODELS from lmms_eval.models (qwen3vl <- vllm_qwen3vl)
+base_model_hf="Qwen/Qwen3.5-27B"
+run_name="MedVision__fullSFT__Qwen3.5-27B__D110k-AD5k-TL5k__CoT__512x512"
+# NOTE: --lora_checkpoint_dir is remapped to checkpoint_dir internally for full finetuning
+lora_checkpoint_dir="${train_sft_dir}/${run_name}/checkpoints/${run_name}"
+
+# Dependency versions
+# ----------------------------------------------------------------------------------
+# NOTE: env_setup.py force-installs transformers==4.54.0 at the end regardless of the
+#   --lmms_eval_opt_deps group. Qwen3.5/3.6 report model_type=qwen3_5, which transformers 4.57.0
+#   does NOT recognize (model fails to load: "architecture not recognized"). transformers 5.5.0
+#   loads them (verified 2026-06-30 via meta-device). We re-pin transformers AFTER env_setup.
+transformers_version="5.5.0"
+# FSDP transformer layer class to wrap (passed to accelerate below). This MUST match the
+# decoder layer class name in the installed transformers for this checkpoint.
+#   - Qwen3.5/3.6 (model_type qwen3_5) on transformers 5.5.0: Qwen3_5DecoderLayer (verified)
+# NOTE: qwen3_5 is a hybrid linear-attention arch; for its fast path install
+#   flash-linear-attention + causal-conv1d (optional; otherwise it falls back to torch).
+# Verify (config-only, no weight download):
+#   python -c "import torch; from transformers import AutoConfig, AutoModelForImageTextToText as M; c=AutoConfig.from_pretrained('${base_model_hf}', trust_remote_code=True); torch.set_default_device('meta'); m=M.from_config(c, trust_remote_code=True); print(sorted({type(x).__name__ for x in m.modules() if 'DecoderLayer' in type(x).__name__}))"
+fsdp_layer_cls="Qwen3_5DecoderLayer"
+# ----------------------------------------------------------------------------------
 
 # Training configs
-epoch=10
+epoch=3
 save_steps=100
 eval_steps=100
-logging_steps=50
-save_total_limit=10 # Maximum number of checkpoints to save
-use_flash_attention_2=true
+logging_steps=20
+save_total_limit=3 # Resumable full-FT ckpts are huge at 27B (~54GB bf16 weights + ~108GB optimizer state ≈ 160GB each); keep few
+# FA2 disabled for qwen3_5: the flash-attn 2.7.3 wheel env_setup installs targets the
+# transformers-4.5x era and is unvalidated against the qwen3_5 hybrid linear-attention
+# arch on transformers 5.5.0. The GPU-smoke-validated attention is SDPA — set via the
+# MEDVISION_SFT_ATTN export below (false alone would fall back to eager, which
+# materializes O(seq^2) attention matrices and wastes memory).
+use_flash_attention_2=false
 num_workers_concat_datasets=4
-num_workers_format_dataset=32
-dataloader_num_workers=8
+num_workers_format_dataset=64
+dataloader_num_workers=4
 # ----------------------------------------------------------------------------------
-# NOTE: Allow sampling with replacement if limit exceeds dataset size
+# NOTE: If the sample limit is larger than the dataset size, the full dataset will be used.
 # ----------------------------------------------------------------------------------
 # [Required] Sample limits in total
 train_sample_limit=121000
 val_sample_limit=200
 
-# # [Option 1] For approximately balanced sampling across 3 tasks
-# train_sample_limit_per_task=333333
-# val_sample_limit_per_task=166
-
-# # [Option 2] For task-specific sampling across 3 tasks
+# [Option 2] For task-specific sampling across 3 tasks
 train_sample_limit_task_AD=5500
 val_sample_limit_task_AD=45
 train_sample_limit_task_Detection=110000
@@ -78,30 +89,26 @@ train_sample_limit_task_TL=5500
 val_sample_limit_task_TL=50
 # ----------------------------------------------------------------------------------
 dataloader_pin_memory=true
-use_flash_attention_2=true
+use_flash_attention_2=false # duplicate of the setting above — keep both in sync
 
 # Resumed training configs
 resume_from_checkpoint=true # Enable resuming from the last checkpoint
 
 # Resource-constrained training configs
-gradient_checkpointing=true # Enable gradient checkpointing to save memory
-per_device_train_batch_size=4
-per_device_eval_batch_size=4
-gradient_accumulation_steps=8 # Control effective batch size: effective_batch_size = per_device_train_batch_size * gradient_accumulation_steps * num_gpus
-
-# Merge and push configs
-push_LoRA=false        # Push LoRA checkpoint to HF Hub after each save
-push_merged_model=true # Push merged model to HF Hub after training
-merge_only=false       # [No training] Merge the last checkpoint and push to HF Hub
-merge_model=true       # [With training] Merge after training and push to HF Hub
+# NOTE: Full FT of a 27B model requires much more VRAM than the 7B reference — use the
+#   smallest per-device batch + large grad accumulation, and FSDP FULL_SHARD across 4 GPUs.
+gradient_checkpointing=true # Required for full FT at 27B scale
+per_device_train_batch_size=1
+per_device_eval_batch_size=1
+gradient_accumulation_steps=64 # effective_batch_size = per_device_train_batch_size * gradient_accumulation_steps * num_gpus (= 1 * 64 * 4 = 256)
 
 # Set wandb configs for logging
 wandb_resume="allow" # Wandb resume mode (e.g., 'allow', 'must', 'never')
 wandb_dir="${train_sft_dir}/${run_name}"
-wandb_project="MedVision-SFT-CoT-Qwen2.5VL-multiTasks"
+wandb_project="MedVision-SFT-CoT-Qwen3VL-multiTasks"
 wandb_run_name=${run_name}
 # NOTE: For continuing an existing run, set the wandb_run_id to the ID of the existing run.
-wandb_run_id="Qwen25VL7B-D110k-AD5k-TL5k" # run ID must be unique in the wandb_project
+wandb_run_id="Qwen3.5-27B-fullSFT-D110k-AD5k-TL5k-512x512" # run ID must be unique in the wandb_project
 
 # Install medvision_bm: build the wheel on node-local disk (NOT the shared CephFS
 # tree). setuptools build_py caches created dirs in a process-global memo, and on
@@ -124,74 +131,41 @@ cp -f "${built_wheel}" "${wheelhouse}/"
 flock "${lockfile}" python -m pip install --force-reinstall "${built_wheel}"
 
 # Setup training env
-python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --lmms_eval_opt_deps qwen2_5_vl
+python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --lmms_eval_opt_deps qwen3_vl
+# Re-pin transformers to a Qwen3-VL-capable version (env_setup forces 4.54.0; see NOTE above)
+python -m pip install "transformers==${transformers_version}"
 # Fix protobuf: env_setup leaves a protobuf incompatible with wandb>=0.21's generated stubs
 # (-> "cannot import name 'Imports' from wandb.proto..." which breaks the trl.SFTTrainer
 # import at train time). 6.33.0 matches the validated requirements_sft_*.txt pin.
 python -m pip install "protobuf==6.33.0"
 # # [Alternative] Setup training env: use a specific requirements file
-# python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --requirement "${benchmark_dir}/requirements/requirements_sft_qwen25vl.txt" --lmms_eval_opt_deps qwen2_5_vl
+# python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --requirement "${benchmark_dir}/requirements/requirements_eval_qwen3vl.txt" --lmms_eval_opt_deps qwen3_vl
 
 # # [Debugging] Disable WANDB online logging
-# export WANDB_MODE=offline      # or HF_DISABLE_WANDB=1
+# export WANDB_MODE=offline
 # export WANDB_CORE_DEBUG=true
 # export WANDB_DEBUG=true
 
-# # Debugging
-# export NCCL_P2P_DISABLE=0 # allow GPU↔GPU direct communication (default, desired)
-# export NCCL_SHM_DISABLE=0 # allow shared-memory fallback (default)
-
 # ------------------------------------------------------------------------------
-# NOTE: Adjust args below
-# # [Option 1] For approximately balanced sampling across 3 tasks
-# --train_sample_limit_per_task ${train_sample_limit_per_task} \
-# --val_sample_limit_per_task ${val_sample_limit_per_task} \
-#
-# # [Option 2] For custom sampling ratios across 3 tasks <-- current setting
-# --train_sample_limit_task_AD ${train_sample_limit_task_AD} \
-# --val_sample_limit_task_AD ${val_sample_limit_task_AD} \
-# --train_sample_limit_task_Detection ${train_sample_limit_task_Detection} \
-# --val_sample_limit_task_Detection ${val_sample_limit_task_Detection} \
-# --train_sample_limit_task_TL ${train_sample_limit_task_TL} \
-# --val_sample_limit_task_TL ${val_sample_limit_task_TL} \
-#
-# # Add --prepared_ds_dir if needed
-# --prepared_ds_dir ${prepared_ds_dir} \
-# ------------------------------------------------------------------------------
-
-# ------------------------------------------------------------------------------
-# NOTE:
 # Dataset processing configs
 # ------------------------------------------------------------------------------
-# Config 1
-# - Set skip_process_dataset=true if the prepared dataset already exists on disk and you want to skip dataset processing.
-# - Set skip_process_dataset=false to process the dataset again (this will overwrite the existing prepared dataset on disk).
+# Config 1: skip dataset processing if prepared dataset already exists on disk
 skip_process_dataset=false
 
-# Config 2
-# - Set save_processed_img_to_disk=true to save processed images to PNG files on disk during dataset processing for faster subsequent loading (recommended)
-# - Set save_processed_img_to_disk=false to not save processed images to disk (default), images will be processed on-the-fly during training
+# Config 2: save processed images to disk for faster subsequent loading
 save_processed_img_to_disk=true
 
-# Config 3
-# - prepared_ds_dir is the path to the prepared dataset directory to load from disk; comment out to use default path
-# - default: os.path.join(data_dir, f"tmp_prepared_ds_AD{train_limit_AD}_D{train_limit_detect}_TL{train_limit_TL}_all{train_limit_total}")
+# Config 3: prepared_ds_dir — comment out to use default path
 # prepared_ds_dir=""
 
-# Config 4
-# NOTE: --enable_temperature_sampler and related CLI args are only effective for training. They do not affect dataset processing when --process_dataset_only is true
-# - Add CLI arg "enable_temperature_sampler=true" to enable temperature-based sampling during multi-task training with imbalanced datasets
-# - If you use it, you can set "temperature_sampler_T" below: default=3, T=1 means proportional to counts; larger T flattens task probabilities.
+# Config 4: temperature-based sampling for multi-task training
+# NOTE: only effective for training, not dataset processing
 enable_temperature_sampler=true
 temperature_sampler_T=5
-
-# Config 5
-# - Add CLI arg "--new_shape_hw <height> <width>" to resize all images to a new shape during dataset preparation
-#   Example: --new_shape_hw 1080 1920.
 # ------------------------------------------------------------------------------
 
 # Offload dataset processing from training to a separate run to avoid timeout issues
-python -m medvision_bm.sft.train__SFT-CoT__qwen2_5_vl \
+python -m medvision_bm.sft.train__fullFT-CoT__qwen3vl \
     --skip_process_dataset ${skip_process_dataset} \
     --process_dataset_only true \
     --save_processed_img_to_disk ${save_processed_img_to_disk} \
@@ -199,8 +173,6 @@ python -m medvision_bm.sft.train__SFT-CoT__qwen2_5_vl \
     --model_family_name ${model_family_name} \
     --base_model_hf ${base_model_hf} \
     --lora_checkpoint_dir ${lora_checkpoint_dir} \
-    --merged_model_hf ${merged_model_hf} \
-    --merged_model_dir ${merged_model_dir} \
     --wandb_resume ${wandb_resume} \
     --wandb_dir ${wandb_dir} \
     --wandb_project ${wandb_project} \
@@ -230,27 +202,77 @@ python -m medvision_bm.sft.train__SFT-CoT__qwen2_5_vl \
     --val_sample_limit_task_Detection ${val_sample_limit_task_Detection} \
     --train_sample_limit_task_TL ${train_sample_limit_task_TL} \
     --val_sample_limit_task_TL ${val_sample_limit_task_TL} \
-    --push_LoRA ${push_LoRA} \
-    --push_merged_model ${push_merged_model} \
-    --merge_model ${merge_model} \
-    --merge_only ${merge_only} \
     --resume_from_checkpoint ${resume_from_checkpoint} \
     --gradient_checkpointing ${gradient_checkpointing} \
     --dataloader_pin_memory ${dataloader_pin_memory} \
     --new_shape_hw 512 512
 
+# Self-heal deps: the dataset-prep step above reinstalls medvision_ds, whose exact pin
+# huggingface_hub==0.36.0 drags hub below transformers 5.x's floor (>=1.5.0) on EVERY prep
+# run -> ImportError at train start even though dataset prep succeeded. Probe the real
+# train-time import chain (trl.SFTTrainer also catches protobuf/wandb drift) and repair
+# SURGICALLY. Do NOT `pip install --force-reinstall transformers` here: re-resolving its
+# whole dep tree can pull an fsspec newer than datasets' cap, which the NEXT prep run then
+# downgrades on disk mid-process (observed crash: ModuleNotFoundError
+# fsspec.implementations.chained). The joint install below keeps transformers at its pin,
+# lifts hub only as far as that pin requires, re-asserts the protobuf pin, and leaves
+# everything else (fsspec, datasets) untouched. Aborts before the expensive launch on failure.
+if ! python -c "import transformers; from trl import SFTTrainer" >/dev/null 2>&1; then
+    echo "[WARN] train-time imports broken after dataset prep (dependency drift) — repairing"
+    python -m pip install --upgrade "transformers==${transformers_version}" huggingface_hub "protobuf==6.33.0"
+    python -c "import transformers; from trl import SFTTrainer"
+fi
+
+# Ensure CUDA_HOME is set (required by DeepSpeed compatibility check at import time)
+# even when DeepSpeed is not used as the training backend.
+export CUDA_HOME="${CUDA_HOME:-$(dirname $(dirname $(which nvcc 2>/dev/null || echo /usr/local/cuda/bin/nvcc)))}"
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+# Attention implementation for training: SDPA — the GPU-smoke-validated config for qwen3_5.
+# (use_flash_attention_2=false by itself falls back to EAGER in prepare_trainer_fullFT;
+# this env knob, read by sft_utils.py, overrides it.)
+export MEDVISION_SFT_ATTN=sdpa
+# Optimizer for 4-GPU full FT — the GPU-smoke-VALIDATED configuration (2026-07-02, 4×80GB,
+# train=PASS checkpoint=YES): paged 8-bit AdamW keeps optimizer state in CPU pinned pages
+# (~51GB/GPU after step 1 at 27B). The default adamw_torch_fused needs ~119GB/GPU at 4 ranks
+# (see the memory NOTE above the launch) — only viable at >=8 GPUs. CAVEAT: bnb's quantized
+# optimizer state cannot be gathered by FSDP FULL_STATE_DICT, so SAVE_ONLY_MODEL is required —
+# checkpoints store weights only, and resume_from_checkpoint continues from the saved weights
+# with a FRESH optimizer/LR state.
+export MEDVISION_SFT_OPTIM=paged_adamw_8bit
+export MEDVISION_SFT_SAVE_ONLY_MODEL=1
+
 # Skip dataset processing and directly load from disk for training
+# NOTE: FSDP (FULL_SHARD) is required for full FT of 27B. 4-rank per-GPU memory, anchored to
+#   MEMPROBE measurements (2026-07-02 GPU smoke @ 4 GPUs): fp32-master + bf16 param shards
+#   ~38GB post-wrap; the default adamw_torch_fused would add fp32 grad shards ~27GB + fp32
+#   optimizer states ~54GB => ~119GB/GPU steady (+ activations + ~17-20GB/GPU held OUTSIDE
+#   the rank's process: sibling CUDA contexts / NCCL / VMM) — impossible on 4×80GB, borderline
+#   even on 4×H200 (140GB). The exports above therefore ship the smoke-VALIDATED 4-GPU config:
+#   paged_adamw_8bit measured ~51GB/GPU after step 1 on 4×80GB. To get fully resumable
+#   checkpoints back (adamw_torch_fused + optimizer state saved), move to >=8 GPUs and unset
+#   MEDVISION_SFT_OPTIM / MEDVISION_SFT_SAVE_ONLY_MODEL. If you still hit OOM here, add
+#   `--fsdp_offload_params true` below (needs ~300GB+ host RAM — check the container CGROUP
+#   limit, not `free`).
 CUDA_VISIBLE_DEVICES=0,1,2,3 \
-    accelerate launch --num_processes=4 --main_process_port=29502 --mixed_precision=bf16 \
-    -m medvision_bm.sft.train__SFT-CoT__qwen2_5_vl \
+    accelerate launch \
+    --num_processes=4 \
+    --main_process_port=29503 \
+    --mixed_precision=bf16 \
+    --use_fsdp \
+    --fsdp_sharding_strategy FULL_SHARD \
+    --fsdp_auto_wrap_policy TRANSFORMER_BASED_WRAP \
+    --fsdp_transformer_layer_cls_to_wrap ${fsdp_layer_cls} \
+    --fsdp_state_dict_type FULL_STATE_DICT \
+    --fsdp_offload_params false \
+    --fsdp_cpu_ram_efficient_loading true \
+    --fsdp_sync_module_states true \
+    -m medvision_bm.sft.train__fullFT-CoT__qwen3vl \
     --skip_process_dataset true \
     --process_dataset_only false \
     --run_name ${run_name} \
     --model_family_name ${model_family_name} \
     --base_model_hf ${base_model_hf} \
     --lora_checkpoint_dir ${lora_checkpoint_dir} \
-    --merged_model_hf ${merged_model_hf} \
-    --merged_model_dir ${merged_model_dir} \
     --wandb_resume ${wandb_resume} \
     --wandb_dir ${wandb_dir} \
     --wandb_project ${wandb_project} \
@@ -280,15 +302,11 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 \
     --val_sample_limit_task_Detection ${val_sample_limit_task_Detection} \
     --train_sample_limit_task_TL ${train_sample_limit_task_TL} \
     --val_sample_limit_task_TL ${val_sample_limit_task_TL} \
-    --push_LoRA ${push_LoRA} \
-    --push_merged_model ${push_merged_model} \
-    --merge_model ${merge_model} \
-    --merge_only ${merge_only} \
     --resume_from_checkpoint ${resume_from_checkpoint} \
     --gradient_checkpointing ${gradient_checkpointing} \
     --dataloader_pin_memory ${dataloader_pin_memory} \
-    --temperature_sampler_T ${temperature_sampler_T} \
     --enable_temperature_sampler ${enable_temperature_sampler} \
+    --temperature_sampler_T ${temperature_sampler_T} \
     --new_shape_hw 512 512
 
 conda deactivate

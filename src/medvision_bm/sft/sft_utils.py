@@ -2445,20 +2445,18 @@ def prepare_trainer(
 
     # Set the device string for multi-gpu training using accelerate's PartialState
     # ref: https://github.com/huggingface/trl/blob/main/docs/source/sft_trainer.md#multi-gpu-training
-    if use_flash_attention_2:
-        model_kwargs = dict(
-            attn_implementation="flash_attention_2",
-            torch_dtype=torch.bfloat16,
-            device_map={"": PartialState().process_index},
-            trust_remote_code=True,
-        )
-    else:
-        model_kwargs = dict(
-            attn_implementation="eager",
-            torch_dtype=torch.bfloat16,
-            device_map={"": PartialState().process_index},
-            trust_remote_code=True,
-        )
+    # MEDVISION_SFT_ATTN overrides the attention implementation (e.g. "sdpa") for
+    # model families whose FA2 path is unvalidated on their transformers pin
+    # (qwen3_5, gemma4); unset -> original FA2/eager behavior.
+    attn_impl = os.environ.get("MEDVISION_SFT_ATTN") or (
+        "flash_attention_2" if use_flash_attention_2 else "eager"
+    )
+    model_kwargs = dict(
+        attn_implementation=attn_impl,
+        torch_dtype=torch.bfloat16,
+        device_map={"": PartialState().process_index},
+        trust_remote_code=True,
+    )
     model_kwargs["quantization_config"] = BitsAndBytesConfig(
         load_in_4bit=True,
         bnb_4bit_use_double_quant=True,
@@ -2469,6 +2467,14 @@ def prepare_trainer(
 
     # Load the model with the specified configuration
     model = AutoModelForImageTextToText.from_pretrained(base_model_hf, **model_kwargs)
+
+    # Training never generates, so disable the KV/recurrent cache outright. The Trainer only
+    # does this when gradient_checkpointing=True, but a live cache is harmful in training
+    # regardless: it wastes memory, and under any activation-checkpoint RECOMPUTE a stateful
+    # cache gets appended twice (observed on qwen3_5: exactly-2x K/V size mismatch in backward).
+    model.config.use_cache = False
+    if hasattr(model.config, "text_config"):
+        model.config.text_config.use_cache = False
 
     # Initialize processor
     processor = AutoProcessor.from_pretrained(base_model_hf)
@@ -2503,7 +2509,10 @@ def prepare_trainer(
         gradient_accumulation_steps=gradient_accumulation_steps,
         # Enable gradient checkpointing to reduce memory usage
         gradient_checkpointing=gradient_checkpointing,
-        optim="adamw_torch_fused",  # Use fused AdamW optimizer for better performance
+        # MEDVISION_SFT_OPTIM overrides the optimizer (e.g. "paged_adamw_8bit" for the
+        # Gemma-family 27-31B QLoRA runs, whose fp32-trained modules_to_save embeddings
+        # blow the fused-AdamW state past the GPU ceiling); unset -> fused AdamW.
+        optim=os.environ.get("MEDVISION_SFT_OPTIM", "adamw_torch_fused"),
         logging_steps=logging_steps,  # Number of steps between logs
         save_strategy="steps",
         save_steps=save_steps,
@@ -2602,16 +2611,35 @@ def prepare_trainer_fullFT(
 
     # Set the device string for multi-gpu training using accelerate's PartialState
     # ref: https://github.com/huggingface/trl/blob/main/docs/source/sft_trainer.md#multi-gpu-training
-    attn_impl = "flash_attention_2" if use_flash_attention_2 else "eager"
+    # MEDVISION_SFT_ATTN overrides the attention implementation (e.g. "sdpa") for
+    # memory-constrained smoke tests; unset -> original FA2/eager behavior.
+    attn_impl = os.environ.get("MEDVISION_SFT_ATTN") or (
+        "flash_attention_2" if use_flash_attention_2 else "eager"
+    )
     model_kwargs = dict(
         attn_implementation=attn_impl,
         torch_dtype=torch.bfloat16,
-        device_map={"": PartialState().process_index},
         trust_remote_code=True,
     )
+    # Under FSDP (accelerate launch --use_fsdp), do NOT load with device_map: dispatching the
+    # full model onto each GPU before the FSDP wrap leaves every rank holding UNSHARDED weights
+    # (observed: ~77GiB/GPU = full bf16 params + grad shard at 27-31B -> OOM in backward,
+    # regardless of attention impl or checkpointing). Without device_map, transformers'
+    # FSDP-aware loading (fsdp_cpu_ram_efficient_loading + sync_module_states) materializes
+    # rank0 on CPU / other ranks on meta, and FSDP shards onto GPUs at wrap time.
+    if os.environ.get("ACCELERATE_USE_FSDP", "").lower() != "true":
+        model_kwargs["device_map"] = {"": PartialState().process_index}
 
     # Load the model in BF16 without quantization — all parameters will be trained
     model = AutoModelForImageTextToText.from_pretrained(base_model_hf, **model_kwargs)
+
+    # Training never generates, so disable the KV/recurrent cache outright. The Trainer only
+    # does this when gradient_checkpointing=True, but a live cache is harmful in training
+    # regardless: it wastes memory, and under any activation-checkpoint RECOMPUTE a stateful
+    # cache gets appended twice (observed on qwen3_5: exactly-2x K/V size mismatch in backward).
+    model.config.use_cache = False
+    if hasattr(model.config, "text_config"):
+        model.config.text_config.use_cache = False
 
     # Initialize processor
     processor = AutoProcessor.from_pretrained(base_model_hf)
@@ -2630,11 +2658,21 @@ def prepare_trainer_fullFT(
         gradient_accumulation_steps=gradient_accumulation_steps,
         # Gradient checkpointing is on by default for full FT — required at 7B+ scale
         gradient_checkpointing=gradient_checkpointing,
-        optim="adamw_torch_fused",
+        # Optimizer is overridable via env for memory-constrained smoke tests (e.g.
+        # MEDVISION_SFT_OPTIM=adafactor to fit a 27-31B full-FT run on a 4xGPU / 400GB-RAM
+        # pod with CPU offload). Defaults to the full-FT setting used by the real runs.
+        optim=os.environ.get("MEDVISION_SFT_OPTIM", "adamw_torch_fused"),
         logging_steps=logging_steps,
         save_strategy="steps",
         save_steps=save_steps,
         save_total_limit=save_total_limit,
+        # MEDVISION_SFT_SAVE_ONLY_MODEL=1 -> save model weights only, skip optimizer/scheduler
+        # state. Needed with 8-bit optimizers under FSDP: FSDP's FULL_STATE_DICT optim_state_dict
+        # all-gathers state shaped like each flat param, but bnb 8-bit state is quantized
+        # (uint8 + per-block absmax) -> flat-numel mismatch RuntimeError in _convert_all_state_info.
+        # Default off so the deliverable runs (adamw_torch_fused, fp32 state gathers fine) keep
+        # resumable checkpoints.
+        save_only_model=os.environ.get("MEDVISION_SFT_SAVE_ONLY_MODEL", "0") == "1",
         eval_strategy="steps",
         eval_steps=eval_steps,
         learning_rate=2e-5,
@@ -2662,6 +2700,52 @@ def prepare_trainer_fullFT(
         processing_class=processor,
         data_collator=make_collate_fn(processor),
     )
+
+    # Optional GPU-memory probe (MEDVISION_SFT_MEMPROBE=1): prints per-rank allocated/reserved
+    # right after the FSDP wrap and after the first optimizer step. With FULL_SHARD working,
+    # post-wrap allocated should be ~params/world_size (e.g. ~13.5GiB at 27B/4 ranks) — a
+    # full-model figure (~54GiB) means sharding did not engage.
+    if os.environ.get("MEDVISION_SFT_MEMPROBE") == "1":
+        from transformers import TrainerCallback
+
+        class _MemProbe(TrainerCallback):
+            def _report(self, tag):
+                if torch.cuda.is_available():
+                    dev = torch.cuda.current_device()
+                    alloc = torch.cuda.memory_allocated(dev) / 2**30
+                    reserv = torch.cuda.memory_reserved(dev) / 2**30
+                    # Device-wide truth (cudaMemGetInfo): observed 2026-07-02 that ~17-21GiB of
+                    # device memory sits OUTSIDE this rank's torch allocator (sibling ranks'
+                    # contexts / NCCL / VMM reservations NVML under-attributes). device_used -
+                    # reserved quantifies that overhead; it is what shrinks the effective ceiling.
+                    free_b, total_b = torch.cuda.mem_get_info(dev)
+                    dev_used = (total_b - free_b) / 2**30
+                    print(
+                        f"[MEMPROBE] {tag}: device={dev} allocated={alloc:.1f}GiB reserved={reserv:.1f}GiB"
+                        f" device_used={dev_used:.1f}GiB device_total={total_b / 2**30:.1f}GiB",
+                        flush=True,
+                    )
+                    # Rank 0 also dumps per-process attribution to identify foreign users.
+                    if os.environ.get("LOCAL_RANK", "0") == "0":
+                        try:
+                            import subprocess
+
+                            out = subprocess.run(
+                                ["nvidia-smi", "--query-compute-apps=gpu_uuid,pid,used_memory", "--format=csv,noheader"],
+                                capture_output=True, text=True, timeout=10,
+                            ).stdout.strip()
+                            print(f"[MEMPROBE] {tag}: compute-apps:\n{out}", flush=True)
+                        except Exception as e:  # attribution is best-effort diagnostics only
+                            print(f"[MEMPROBE] {tag}: compute-apps unavailable ({e})", flush=True)
+
+            def on_train_begin(self, args, state, control, **kwargs):
+                self._report("train_begin(post-FSDP-wrap)")
+
+            def on_step_end(self, args, state, control, **kwargs):
+                if state.global_step == 1:
+                    self._report("after_step_1")
+
+        trainer_kwargs["callbacks"] = [_MemProbe()]
 
     # Temperature sampler path (optional): rebalance multi-task sampling by sampling tasks
     # according to p(task) ~ count(task)^(1/T) instead of raw dataset proportion.

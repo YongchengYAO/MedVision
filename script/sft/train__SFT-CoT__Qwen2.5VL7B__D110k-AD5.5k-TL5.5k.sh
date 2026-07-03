@@ -17,6 +17,10 @@ fi
 conda activate "${ENV_NAME}"
 conda install -c nvidia cuda-toolkit=12.4 -y
 
+# Sanitize HF_TOKEN: pod-injected secrets can carry a trailing newline that corrupts the
+# HTTP Authorization header (-> 401 on gated models/datasets). No-op if unset or clean.
+[ -n "${HF_TOKEN:-}" ] && export HF_TOKEN="$(printf '%s' "${HF_TOKEN}" | tr -d '[:space:]')"
+
 # Use MedVision dataset v1.0.0
 export MedVision_PLANNER_VERSION='1.0.0'
 export MedVision_ACK_RELEASE='1.1.1'
@@ -121,6 +125,10 @@ flock "${lockfile}" python -m pip install --force-reinstall "${built_wheel}"
 
 # Setup training env
 python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --lmms_eval_opt_deps qwen2_5_vl
+# Fix protobuf: env_setup leaves a protobuf incompatible with wandb>=0.21's generated stubs
+# (-> "cannot import name 'Imports' from wandb.proto..." which breaks the trl.SFTTrainer
+# import at train time). 6.33.0 matches the validated requirements_sft_*.txt pin.
+python -m pip install "protobuf==6.33.0"
 # # [Alternative] Setup training env: use a specific requirements file
 # python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --requirement "${benchmark_dir}/requirements/requirements_sft_qwen25vl.txt" --lmms_eval_opt_deps qwen2_5_vl
 
