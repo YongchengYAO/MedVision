@@ -33,7 +33,7 @@
 
 # 🏆 Benchmarked Models
 
-MedVision benchmarks ${\color{#A855F7}\textsf{\textbf{19 vision–language models}}}$ — open-weight general-purpose and medical VLMs plus proprietary API models — on detection, tumor/lesion size, and angle/distance measurement. The live ${\color{#A855F7}\textsf{\textbf{open leaderboard}}}$ (per-task score tables + a ${\color{#A855F7}\textsf{\textbf{frontier API-model pilot study}}}$) lives on the [**project page**](https://medvision-vlm.github.io).
+MedVision benchmarks **19 vision–language models** — open-weight general-purpose and medical VLMs plus proprietary API models — on detection, tumor/lesion size, and angle/distance measurement. The live **open leaderboard** (per-task score tables + a **frontier API-model pilot study**) lives on the [**project page**](https://medvision-vlm.github.io).
 
 #### Ours
 
@@ -65,27 +65,28 @@ MedVision benchmarks ${\color{#A855F7}\textsf{\textbf{19 vision–language model
 
 # 🔥 News
 
-- [Jun 29, 2026] 🚀 Released the ${\color{#A855F7}\textsf{\textbf{MedVision}}}$ dataset (`medvision_ds`) v1.1.1 — [release notes](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.1.md)
-  - ${\color{#A855F7}\textsf{\textbf{Highlight}}}$: corrected T/L ellipse fit — fixes a transposed in-plane voxel-spacing bug (wrong axis lengths and major/minor labelling on anisotropic slices, e.g. sagittal/coronal); ~22% fewer T/L samples on anisotropic data, isotropic data (e.g., axial slices) essentially unchanged
-  - ${\color{#A855F7}\textsf{\textbf{Backward compatibility}}}$: The codebase `medvision_ds` will be automatically updated to the latest (v1.1.1). `MedVision_PLANNER_VERSION='latest'` now resolves to `'1.1.1'`; pin `'1.1.0'` or `'1.0.0'` for earlier annotations.
-  - ⚠️ New env var `MedVision_ACK_RELEASE`: required ${\color{#A855F7}\textsf{\textbf{only}}}$ when you pin an older version (`MedVision_PLANNER_VERSION` below the latest) — ${\color{#A855F7}\textsf{\textbf{set it to the latest version (}}}$`1.1.1`${\color{#A855F7}\textsf{\textbf{) to acknowledge you have read this release note and unblock loading legacy data}}}$. 
+- [Jun 29, 2026] 🚀 Released the **MedVision** dataset (`medvision_ds`) v1.1.1 — [release notes](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.1.md)
+  - **Highlight**: corrected T/L ellipse fit — fixes a transposed in-plane voxel-spacing bug (wrong axis lengths and major/minor labelling on anisotropic slices, e.g. sagittal/coronal); ~22% fewer T/L samples on anisotropic data, isotropic data (e.g., axial slices) essentially unchanged
+  - **Backward compatibility**: The codebase `medvision_ds` will be automatically updated to the latest (v1.1.1). `MedVision_PLANNER_VERSION='latest'` now resolves to `'1.1.1'`; pin `'1.1.0'` or `'1.0.0'` for earlier annotations.
+  - ⚠️ New env var `MedVision_ACK_RELEASE`: required **only** when you pin an older version (`MedVision_PLANNER_VERSION` below the latest) — **set it to the latest version (`1.1.1`) to acknowledge you have read this release note and unblock loading legacy data**. 
   - Always set `MedVision_FORCE_INSTALL_CODE='True'` to receive notification of future releases. See [Environment Variables](https://huggingface.co/datasets/YongchengYAO/MedVision#environment-variables).
 - [Jun 9, 2026] Released [MedVision-V0](https://huggingface.co/collections/YongchengYAO/medvision-v0), [RFT code](https://github.com/YongchengYAO/verl/tree/medvision-rl), [preprint v2](https://arxiv.org/abs/2511.18676), [project page](https://medvision-vlm.github.io/) with interactive case viewer. 
 - [May 15, 2026] Released the benchmarking/fine-tuning codebase `medvision_bm` v1.1.0 — [release notes](https://github.com/YongchengYAO/MedVision/blob/master/docs/codebase-release/release-v1.1.0.md)
-- [May 14, 2026] Released the ${\color{#A855F7}\textsf{\textbf{MedVision}}}$ dataset (`medvision_ds`) v1.1.0 — [release notes](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.0.md)
-  - ${\color{#A855F7}\textsf{\textbf{Highlight}}}$: new T/L sample filtering (with ambiguous cases removed), more T/L samples with a single small target (cluster size > 20)
-  - ${\color{#A855F7}\textsf{\textbf{Backward compatibility}}}$: The codebase `medvision_ds` will be automatically updated to the latest (v1.1.0). `MedVision_PLANNER_VERSION` is required (v1.1.0+) to specify the annotation data version. Setting `MedVision_PLANNER_VERSION='1.0.0'` will fall back to ${\color{#A855F7}\textsf{\textbf{MedVision}}}$ dataset v1.0.0. Test backward compatibility with 
-  ```python
+- [May 14, 2026] Released the **MedVision** dataset (`medvision_ds`) v1.1.0 — [release notes](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.0.md)
+  - **Highlight**: new T/L sample filtering (with ambiguous cases removed), more T/L samples with a single small target (cluster size > 20)
+  - **Backward compatibility**: The codebase `medvision_ds` will be automatically updated to the latest (v1.1.0). `MedVision_PLANNER_VERSION` is required (v1.1.0+) to specify the annotation data version. Setting `MedVision_PLANNER_VERSION='1.0.0'` will fall back to **MedVision** dataset v1.0.0.
+  - 🧪 Test backward compatibility: 
+  ```bash
   python unit-test/medvision-ds-planner-version/test_planner_switch_medvision_ds_v1.1.0.py --data_dir <local-data-folder>
   ```
 - [Dec 10, 2025] Added preprint, training code, docker images, released models, new tasks/models guide
-- [Oct 8, 2025] Released ${\color{#A855F7}\textsf{\textbf{MedVision}}}$ dataset v1.0.0
+- [Oct 8, 2025] Released **MedVision** dataset v1.0.0
 
 <br/>
 
 # 🌟 Quick Start
 
-${\color{#A855F7}\textsf{\textbf{Option 1 — run the full pipeline (benchmarking, SFT/RFT).}}}$ Clone the repo and install from the local copy. Use this when you rely on the repo's folder structure (e.g. `script/`, `tasks_list/`, `Results/`), since the scripts and configs live there.
+**Option 1 — run the full pipeline (benchmarking, SFT/RFT).** Clone the repo and install from the local copy. Use this when you rely on the repo's folder structure (e.g. `script/`, `tasks_list/`, `Results/`), since the scripts and configs live there.
 
 ```bash
 git clone https://github.com/YongchengYAO/MedVision.git MedVision
@@ -94,7 +95,7 @@ pip install .
 pip show medvision_bm
 ```
 
-${\color{#A855F7}\textsf{\textbf{Option 2 — import the package in your own project.}}}$ Install `medvision_bm` directly from GitHub. Use this when you only want to `import` its modules/functions (e.g. `from medvision_bm.utils import parse_utils`) and do ${\color{#A855F7}\textsf{\textbf{not}}}$ need the repo's folder structure.
+**Option 2 — import the package in your own project.** Install `medvision_bm` directly from GitHub. Use this when you only want to `import` its modules/functions (e.g. `from medvision_bm.utils import parse_utils`) and do **not** need the repo's folder structure.
 
 ```bash
 pip install "git+https://github.com/YongchengYAO/MedVision.git"
@@ -150,20 +151,20 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
 
 # 💿 Data
 
-- ${\color{#A855F7}\textsf{\textbf{Dataset.}}}$ For the full description of the MedVision dataset (source datasets, modalities, anatomies, annotation types, and returned fields), see the [Hugging Face dataset repo](https://huggingface.co/datasets/YongchengYAO/MedVision).
+- **Dataset.** For the full description of the MedVision dataset (source datasets, modalities, anatomies, annotation types, and returned fields), see the [Hugging Face dataset repo](https://huggingface.co/datasets/YongchengYAO/MedVision).
 
-- ${\color{#A855F7}\textsf{\textbf{Benchmark subtasks ↔ dataset subsets.}}}$ Each subtask in this benchmark links to a subset of the MedVision dataset. The per-subtask sample sizes are listed for each dataset version:
+- **Benchmark subtasks ↔ dataset subsets.** Each subtask in this benchmark links to a subset of the MedVision dataset. The per-subtask sample sizes are listed for each dataset version:
   - [`all_tasks__ds_v1.0.0`](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list/all_tasks__ds_v1.0.0)
   - [`all_tasks__ds_v1.1.0`](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list/all_tasks__ds_v1.1.0)
   - [`all_tasks__ds_v1.1.1`](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list/all_tasks__ds_v1.1.1)
 
-- ${\color{#A855F7}\textsf{\textbf{Pixel size (physical spacing) distribution.}}}$ Because the quantitative tasks require pixel→mm arithmetic, the distribution of pixel sizes across subtasks is provided in [`pixel_sizes__ds_v1.0.0`](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list/pixel_sizes__ds_v1.0.0).
+- **Pixel size (physical spacing) distribution.** Because the quantitative tasks require pixel→mm arithmetic, the distribution of pixel sizes across subtasks is provided in [`pixel_sizes__ds_v1.0.0`](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list/pixel_sizes__ds_v1.0.0).
 
 <br/>
 
 # 📊 Benchmark
 
-${\color{#A855F7}\textsf{\textbf{Benchmark setting.}}}$ Proprietary/API models are evaluated in a ${\color{#A855F7}\textsf{\textbf{pilot study}}}$ that caps each subtask at ${\color{#A855F7}\textsf{\textbf{100 samples}}}$; all other (open-weight) models use a limit of ${\color{#A855F7}\textsf{\textbf{1000 samples}}}$ per subtask. The subtasks are defined in [`tasks_list/`](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list): A/D → [`tasks_MedVision-AD-CoT.json`](https://github.com/YongchengYAO/MedVision/blob/master/tasks_list/tasks_MedVision-AD-CoT.json), T/L → [`tasks_MedVision-TL-CoT.json`](https://github.com/YongchengYAO/MedVision/blob/master/tasks_list/tasks_MedVision-TL-CoT.json), and Detection → [`tasks_MedVision-detect-CoT.json`](https://github.com/YongchengYAO/MedVision/blob/master/tasks_list/tasks_MedVision-detect-CoT.json).
+**Benchmark setting.** Proprietary/API models are evaluated in a **pilot study** that caps each subtask at **100 samples**; all other (open-weight) models use a limit of **1000 samples** per subtask. The subtasks are defined in [`tasks_list/`](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list): A/D → [`tasks_MedVision-AD-CoT.json`](https://github.com/YongchengYAO/MedVision/blob/master/tasks_list/tasks_MedVision-AD-CoT.json), T/L → [`tasks_MedVision-TL-CoT.json`](https://github.com/YongchengYAO/MedVision/blob/master/tasks_list/tasks_MedVision-TL-CoT.json), and Detection → [`tasks_MedVision-detect-CoT.json`](https://github.com/YongchengYAO/MedVision/blob/master/tasks_list/tasks_MedVision-detect-CoT.json).
 
   1. The scripts in [`script/benchmark-*/`](https://github.com/YongchengYAO/MedVision/tree/master/script/) should be sufficient for dependency installation, data processing, and benchmarking
 
@@ -175,7 +176,7 @@ ${\color{#A855F7}\textsf{\textbf{Benchmark setting.}}}$ Proprietary/API models a
      > - resource-constrained configs, such as
      >   - `batch_size_per_gpu`
 
-     > ${\color{#A855F7}\textsf{\textbf{Crash-safe resume.}}}$ During evaluation each finished output is written immediately to `Results/MedVision-*/<model_name>/response_cache/<task>_rank<N>.jsonl`, so re-running an interrupted eval skips already-completed samples instead of regenerating them — only the in-flight sample is lost. The cache key includes a hash of the prompt, so editing a prompt/config automatically invalidates stale entries (no need to clear the folder). Set the environment variable `MEDVISION_RESP_CACHE=0` to disable this layer entirely and reproduce the original (no-cache) behavior.
+     > **Crash-safe resume.** During evaluation each finished output is written immediately to `Results/MedVision-*/<model_name>/response_cache/<task>_rank<N>.jsonl`, so re-running an interrupted eval skips already-completed samples instead of regenerating them — only the in-flight sample is lost. The cache key includes a hash of the prompt, so editing a prompt/config automatically invalidates stale entries (no need to clear the folder). Set the environment variable `MEDVISION_RESP_CACHE=0` to disable this layer entirely and reproduce the original (no-cache) behavior.
 
   2. After evaluating all models in step 1, parse model outputs and calculate metrics (e.g., MRE, MAE, nMAE, IoU, F1, Precision, Recall, Success Rate):
 
@@ -233,7 +234,7 @@ ${\color{#A855F7}\textsf{\textbf{Benchmark setting.}}}$ Proprietary/API models a
       
       ```
 
-- ${\color{#A855F7}\textsf{\textbf{[File structure]}}}$ after steps 1-3
+- **[File structure]** after steps 1-3
 
   ```text
   ├── MedVision
@@ -262,30 +263,30 @@ ${\color{#A855F7}\textsf{\textbf{Benchmark setting.}}}$ Proprietary/API models a
   ```
 
 
-- ${\color{#A855F7}\textsf{\textbf{[Analysis \& Visualization]}}}$ (optional) Scripts in [`script/visualization`](https://github.com/YongchengYAO/MedVision/tree/master/script/visualization):
-  - ${\color{#A855F7}\textsf{\textbf{Radar charts}}}$ (`viz_radar.sh`, `viz_radar_batch.sh`): cross-model comparison across metrics.
-  - ${\color{#A855F7}\textsf{\textbf{Detection label × box-size}}}$ (`viz_detection_sampleSize_per_label_x_boxSize.sh`): detection metrics and sample distribution per label × box-to-image ratio group.
-  - ${\color{#A855F7}\textsf{\textbf{A/D landmark overlays}}}$ (`viz_ad_landmarks.sh`): per-sample GT vs. predicted landmarks and lines.
-  - ${\color{#A855F7}\textsf{\textbf{A/D response panels}}}$ (`viz_ad_responses.sh`): per-sample prompt/response/GT panels.
-  - ${\color{#A855F7}\textsf{\textbf{T/L axis overlays}}}$ (`viz_tl_axes.sh`): per-sample predicted vs. GT axes with mask contour.
-  - ${\color{#A855F7}\textsf{\textbf{T/L response panels}}}$ (`viz_tl_responses.sh`): per-sample prompt/response/GT panels.
-  - ${\color{#A855F7}\textsf{\textbf{Detection box overlays}}}$ (`viz_detection_boxes.sh`): per-sample GT vs. predicted bounding boxes.
-  - ${\color{#A855F7}\textsf{\textbf{Detection response panels}}}$ (`viz_detection_responses.sh`): per-sample prompt/response/GT panels.
-  - ${\color{#A855F7}\textsf{\textbf{Comparison grids}}}$ (`viz_compile_grid_batch.sh`): tile per-sample overlays across models.
+- **[Analysis & Visualization]** (optional) Scripts in [`script/visualization`](https://github.com/YongchengYAO/MedVision/tree/master/script/visualization):
+  - **Radar charts** (`viz_radar.sh`, `viz_radar_batch.sh`): cross-model comparison across metrics.
+  - **Detection label × box-size** (`viz_detection_sampleSize_per_label_x_boxSize.sh`): detection metrics and sample distribution per label × box-to-image ratio group.
+  - **A/D landmark overlays** (`viz_ad_landmarks.sh`): per-sample GT vs. predicted landmarks and lines.
+  - **A/D response panels** (`viz_ad_responses.sh`): per-sample prompt/response/GT panels.
+  - **T/L axis overlays** (`viz_tl_axes.sh`): per-sample predicted vs. GT axes with mask contour.
+  - **T/L response panels** (`viz_tl_responses.sh`): per-sample prompt/response/GT panels.
+  - **Detection box overlays** (`viz_detection_boxes.sh`): per-sample GT vs. predicted bounding boxes.
+  - **Detection response panels** (`viz_detection_responses.sh`): per-sample prompt/response/GT panels.
+  - **Comparison grids** (`viz_compile_grid_batch.sh`): tile per-sample overlays across models.
 
-- ${\color{#A855F7}\textsf{\textbf{[Analysis]}}}$ (optional) Scripts in [`script/analyze`](https://github.com/YongchengYAO/MedVision/tree/master/script/analyze):
-  - ${\color{#A855F7}\textsf{\textbf{Process accuracy}}}$ (`process-accuracy/analyze_process_accuracy_TL.py`, `process-accuracy/analyze_process_accuracy_AD.py`): step-by-step CoT accuracy for T/L (4 steps: major/minor axis endpoint norm-L2 → axis length MRE) and A/D (3 steps: landmark coordinate norm-L2 → scalar MRE), evaluated against ground truth.
-  - ${\color{#A855F7}\textsf{\textbf{Equation accuracy}}}$ (`equation-accuracy/analyze_equation_accuracy_TL.py`, `equation-accuracy/analyze_equation_accuracy_AD.py`): arithmetic correctness independent of ground truth — extracts the equation the model wrote, evaluates it in Python, and computes MRE between that result and the model's own reported answer.
-  - ${\color{#A855F7}\textsf{\textbf{Detection × target size}}}$ (`detection--target-size/run_analysis.sh`): detection metrics (F1, IoU, etc.) stratified by box-to-image ratio, revealing performance trends across small, medium, and large targets.
+- **[Analysis]** (optional) Scripts in [`script/analyze`](https://github.com/YongchengYAO/MedVision/tree/master/script/analyze):
+  - **Process accuracy** (`process-accuracy/analyze_process_accuracy_TL.py`, `process-accuracy/analyze_process_accuracy_AD.py`): step-by-step CoT accuracy for T/L (4 steps: major/minor axis endpoint norm-L2 → axis length MRE) and A/D (3 steps: landmark coordinate norm-L2 → scalar MRE), evaluated against ground truth.
+  - **Equation accuracy** (`equation-accuracy/analyze_equation_accuracy_TL.py`, `equation-accuracy/analyze_equation_accuracy_AD.py`): arithmetic correctness independent of ground truth — extracts the equation the model wrote, evaluates it in Python, and computes MRE between that result and the model's own reported answer.
+  - **Detection × target size** (`detection--target-size/run_analysis.sh`): detection metrics (F1, IoU, etc.) stratified by box-to-image ratio, revealing performance trends across small, medium, and large targets.
 
-- ${\color{#A855F7}\textsf{\textbf{[Troubleshooting]}}}$ [here](https://github.com/YongchengYAO/MedVision/tree/master/docs/debug_env_setup.md)
+- **[Troubleshooting]** [here](https://github.com/YongchengYAO/MedVision/tree/master/docs/debug_env_setup.md)
 
 <br/>
 
 
 # 🎯 Training: SFT
 
-- ${\color{#A855F7}\textsf{\textbf{[Script]}}}$ [`script/sft/train*.sh`](https://github.com/YongchengYAO/MedVision/tree/master/script/sft) handles dependency installation, data processing, and training.
+- **[Script]** [`script/sft/train*.sh`](https://github.com/YongchengYAO/MedVision/tree/master/script/sft) handles dependency installation, data processing, and training.
 
   > Set these variables in the script:
   >
@@ -298,15 +299,15 @@ ${\color{#A855F7}\textsf{\textbf{Benchmark setting.}}}$ Proprietary/API models a
   >   - `gradient_accumulation_steps`
   >   - `CUDA_VISIBLE_DEVICES=0,1,2,3` and `--num_processes=4`
 
-- ${\color{#A855F7}\textsf{\textbf{[Blog]}}}$ [Supervised Fine-Tuning (SFT) for VLMs on Medical Image Data](https://huggingface.co/blog/YongchengYAO/medvision-sft-guide)
+- **[Blog]** [Supervised Fine-Tuning (SFT) for VLMs on Medical Image Data](https://huggingface.co/blog/YongchengYAO/medvision-sft-guide)
 
 <br/>
 
 # 🎯 Training: RFT
 
-RL fine-tuning uses the verl framework. MedVision provides ${\color{#A855F7}\textsf{\textbf{parquet dataset builders}}}$ that turn the MedVision tasks into verl-ready parquet datasets.
+RL fine-tuning uses the verl framework. MedVision provides **parquet dataset builders** that turn the MedVision tasks into verl-ready parquet datasets.
 
-- ${\color{#A855F7}\textsf{\textbf{[Data Processing]}}}$ Build the verl parquet dataset with the scripts in [`script/rft`](https://github.com/YongchengYAO/MedVision/tree/master/script/rft), which call:
+- **[Data Processing]** Build the verl parquet dataset with the scripts in [`script/rft`](https://github.com/YongchengYAO/MedVision/tree/master/script/rft), which call:
   - `medvision_bm.rft.verl.build_parquet_ds`: normal parquet dataset builder
   - `medvision_bm.rft.verl.build_parquet_ds__checkpointed`: checkpointed builder to avoid OOM, recommended for large datasets (e.g. ~1M detection samples)
 
@@ -317,9 +318,9 @@ RL fine-tuning uses the verl framework. MedVision provides ${\color{#A855F7}\tex
   - `build_parquet_ds__verl__D110k-AD5.5k-TL5.5k__512x512.sh`: all 3 tasks combined (121K train / 200 val)
   - `build_parquet_ds__verl__D1000k-AD0k-TL0k__512x512__checkpointed.sh`: Detection task only, large scale (1M train / 500 val); uses the checkpointed builder
 
-- ${\color{#A855F7}\textsf{\textbf{[RFT]}}}$ RL fine-tuning in [https://github.com/YongchengYAO/verl/tree/medvision-rl](https://github.com/YongchengYAO/verl/tree/medvision-rl)
+- **[RFT]** RL fine-tuning in [https://github.com/YongchengYAO/verl/tree/medvision-rl](https://github.com/YongchengYAO/verl/tree/medvision-rl)
 
-- ${\color{#A855F7}\textsf{\textbf{[Evaluation]}}}$ Evaluate the trained model with `eval__MedVision-V0-7B__detect.sh` (in `script/benchmark-*/`).
+- **[Evaluation]** Evaluate the trained model with `eval__MedVision-V0-7B__detect.sh` (in `script/benchmark-*/`).
 
 
 <br/>
@@ -727,22 +728,22 @@ In `MedVision.py`, the class `MedVision(GeneratorBasedBuilder)` defines the feat
 
 There are a few ways to control the dataset loading and building behavior:
 
-- ${\color{#A855F7}\textsf{\textbf{Rebuild Dataset (Arrow files)}}}$: Use the `download_mode` argument in `load_dataset()` ([docs](https://huggingface.co/docs/datasets/v3.6.0/en/package_reference/builder_classes#datasets.DownloadMode)).
-  - ${\color{#A855F7}\textsf{\textbf{[1]}}}$ Set `download_mode="force_redownload"` to ignore the cached Arrow files and trigger the data loading script `MedVision.py` to rebuild the dataset.
-- ${\color{#A855F7}\textsf{\textbf{Redownload Raw Data}}}$:
-  - ${\color{#A855F7}\textsf{\textbf{[2]}}}$ `MedVision_FORCE_DOWNLOAD_DATA`: Set this environment variable to `True` to force re-downloading raw images and annotations.
-  - ${\color{#A855F7}\textsf{\textbf{[3]}}}$ `.downloaded_datasets.json`: This tracker file records downloaded status. Removing a dataset's entry here will trigger a re-download of the raw data for that dataset.
+- **Rebuild Dataset (Arrow files)**: Use the `download_mode` argument in `load_dataset()` ([docs](https://huggingface.co/docs/datasets/v3.6.0/en/package_reference/builder_classes#datasets.DownloadMode)).
+  - **[1]** Set `download_mode="force_redownload"` to ignore the cached Arrow files and trigger the data loading script `MedVision.py` to rebuild the dataset.
+- **Redownload Raw Data**:
+  - **[2]** `MedVision_FORCE_DOWNLOAD_DATA`: Set this environment variable to `True` to force re-downloading raw images and annotations.
+  - **[3]** `.downloaded_datasets.json`: This tracker file records downloaded status. Removing a dataset's entry here will trigger a re-download of the raw data for that dataset.
   
 > ⚠️ 
-> ${\color{#A855F7}\textsf{\textbf{How to properly update/redownload raw data?}}}$
+> **How to properly update/redownload raw data?**
 >
-> If you need to update raw data (images, masks, landmarks) using [2] or [3], you ${\color{#A855F7}\textsf{\textbf{MUST ALSO}}}$ use [1] (`download_mode="force_redownload"`).
+> If you need to update raw data (images, masks, landmarks) using [2] or [3], you **MUST ALSO** use [1] (`download_mode="force_redownload"`).
 >
-> Why? Because if Hugging Face finds a valid cached dataset (Arrow files), it will load it directly and ${\color{#A855F7}\textsf{\textbf{skip running the script entirely}}}$. Without running the script, the environment variable [2] or tracker file [3] will never be checked.
+> Why? Because if Hugging Face finds a valid cached dataset (Arrow files), it will load it directly and **skip running the script entirely**. Without running the script, the environment variable [2] or tracker file [3] will never be checked.
 >
-> ${\color{#A855F7}\textsf{\textbf{Summary:}}}$
+> **Summary:**
 > - Update Arrow/Fields only: Use [1].
-> - Update Raw Data: Use [1] ${\color{#A855F7}\textsf{\textbf{AND}}}$ ([2] or [3]).
+> - Update Raw Data: Use [1] **AND** ([2] or [3]).
 >
 > 🔥 We will maintain a [change log](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/changelog.md) for essential updates.
 

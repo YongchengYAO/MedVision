@@ -17,7 +17,7 @@ sys.path.insert(0, _SRC)
 # -- Project information ------------------------------------------------------
 project = "MedVision"
 author = "Yongcheng Yao and the MedVision contributors"
-copyright = "2026, MedVision authors — code under CC-BY-NC 4.0"
+copyright = "2026, MedVision authors — code under CC-BY 4.0"
 
 try:
     from medvision_bm import __version__ as _version
@@ -100,10 +100,13 @@ napoleon_use_rtype = True
 # -- HTML output --------------------------------------------------------------
 html_theme = "sphinx_book_theme"
 html_title = "MedVision"
-html_logo = "_static/medvision-logo.png"
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_theme_options = {
+    "logo": {
+        "image_light": "_static/medvision-logo.svg",
+        "image_dark": "_static/medvision-logo-dark.svg",
+    },
     "repository_url": "https://github.com/YongchengYAO/MedVision",
     "repository_branch": "master",
     "path_to_docs": "docsite/source",

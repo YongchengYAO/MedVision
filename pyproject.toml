@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "medvision_bm, a codebase for the MedVision benchmark"
 requires-python = ">=3.9"
 authors = [{ name = "Yongcheng Yao", email = "yc.yao@ed.ac.uk" }]
-license = { text = "CC-BY-NC 4.0" }
+license = { text = "CC-BY 4.0" }
 dependencies = [
     "datasets==3.6.0",
     "huggingface_hub==0.36.0",
@@ -22,7 +22,7 @@ dependencies = [
 ]
 
 [project.urls]
-"License" = "https://creativecommons.org/licenses/by-nc/4.0/"
+"License" = "https://creativecommons.org/licenses/by/4.0/"
 "Homepage" = "https://medvision-vlm.github.io"
 "Paper" = "https://arxiv.org/abs/2511.18676"
 "Source" = "https://github.com/YongchengYAO/MedVision"

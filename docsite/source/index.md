@@ -4,10 +4,17 @@ sd_hide_title: true
 
 # MedVision
 
-```{image} _static/medvision-logo.png
+```{image} _static/medvision-logo.svg
 :alt: MedVision
 :width: 420px
 :align: center
+:class: only-light
+```
+```{image} _static/medvision-logo-dark.svg
+:alt: MedVision
+:width: 420px
+:align: center
+:class: only-dark
 ```
 
 <div align="center">

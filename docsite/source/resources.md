@@ -37,7 +37,7 @@ For a reproducible environment, pull the published Docker image rather than reso
 
 ## License
 
-The `medvision_bm` package is distributed under **Creative Commons Attribution-NonCommercial 4.0 (CC-BY-NC 4.0)** — see the license metadata in `pyproject.toml` and <https://creativecommons.org/licenses/by-nc/4.0/>. The MedVision annotations themselves are released under **CC-BY 4.0** (<https://creativecommons.org/licenses/by/4.0/>), which permits reuse and adaptation for academic and commercial work provided you give appropriate credit.
+The `medvision_bm` package is distributed under **Creative Commons Attribution 4.0 (CC-BY 4.0)** — see the license metadata in `pyproject.toml` and <https://creativecommons.org/licenses/by/4.0/>. The MedVision annotations themselves are released under the same **CC-BY 4.0** license, which permits reuse and adaptation for academic and commercial work provided you give appropriate credit.
 
 :::{warning}
 MedVision is a **meta-dataset**: it layers new annotations on top of many independently published source datasets. The CC-BY 4.0 grant covers only MedVision's own annotations — it does **not** relicense the underlying imaging data. Any use of a given case must also honour the original license and usage terms of the dataset that case was drawn from. Confirming compliance for every constituent source is the user's responsibility.
