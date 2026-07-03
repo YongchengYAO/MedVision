@@ -1,3 +1,16 @@
+"""Parse benchmark output JSONL files and compute per-sample metrics.
+
+This module post-processes the raw ``*.jsonl`` prediction files emitted by the
+benchmark harness. For each sample it extracts the model response, applies the
+answer-tag number extraction, and scores it with :func:`cal_metrics` according
+to the task type (``AD``, ``TL``, or ``Detection``). The augmented records are
+written to a ``parsed`` subdirectory alongside an updated ``*_results.json``
+summary.
+
+Run as a CLI (e.g. ``--task_type AD --model_dir ...``); see :func:`parse_args`
+for the accepted arguments.
+"""
+
 import argparse
 import ast
 import glob
@@ -394,6 +407,31 @@ def _process_model_directory(
 
 
 def main(**kwargs):
+    """Parse benchmark JSONL files for one or more model directories.
+
+    Dispatches on whether ``task_dir`` or ``model_dir`` is given. In
+    ``task_dir`` mode every model subdirectory is processed in turn; in
+    ``model_dir`` mode only that single directory is processed. Each JSONL file
+    is scored according to ``task_type`` and its parsed output plus an updated
+    results summary are written to the model's ``parsed`` subdirectory.
+
+    Args:
+        task_dir (str, optional): Directory holding one model subdirectory per
+            model. Mutually exclusive with ``model_dir``.
+        model_dir (str, optional): A single model results directory containing
+            ``*.jsonl`` files. Mutually exclusive with ``task_dir``.
+        task_type (str): Scoring mode, one of ``"AD"``, ``"TL"``, or
+            ``"Detection"``; selects which metrics are computed for each sample.
+        limit (int, optional): Maximum number of samples to process per JSONL
+            file. ``None`` processes all samples.
+        skip_existing (bool): Skip files that already have parsed outputs.
+        processes (int, optional): Number of worker processes for parsing.
+        rm_old (bool): Remove the existing ``parsed`` directory before
+            processing.
+
+    Raises:
+        ValueError: If neither ``task_dir`` nor ``model_dir`` is provided.
+    """
     task_dir = kwargs.get("task_dir")
     model_dir = kwargs.get("model_dir")
     task_type = kwargs.get("task_type")

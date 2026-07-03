@@ -1,3 +1,21 @@
+"""Dataset builders that turn MedVision tasks into verl-ready RFT datasets.
+
+This module bridges the MedVision benchmark data pipeline and the verl GRPO
+trainer. It provides per-task formatting functions that reshape a raw example
+into the record layout expected by verl's ``RLHFDataset`` (``prompt``,
+``ground_truth``, ``data_source``, ``ability``, ``reward_model``,
+``extra_info``, and an embedded ``images`` field), plus the two top-level
+entry points that load, split, format, and clean a full dataset ready to be
+written to Parquet for training.
+
+The formatters cover the three MedVision task families (TumorLesion,
+AngleDistance, and Detection), each in a CoT variant (using the full
+``<think>``/``<answer>`` reasoning ``SYSTEM_PROMPT`` and populating
+``extra_info`` with ground-truth landmark coordinates for process-level
+rewards) and a non-CoT "lite" variant (using ``SYSTEM_PROMPT_LITE`` with a
+minimal ``extra_info``).
+"""
+
 from medvision_bm.dataset.ds_utils import load_split_limit_dataset_tr_val_ts
 from medvision_bm.sft.sft_utils import (
     _doc_to_target_AngleDistanceTask,
@@ -592,6 +610,39 @@ def prepare_dataset_for_verl(
     new_shape_hw=None,
     download_mode="reuse_dataset_if_exists",
 ):
+    """Build a verl-ready RFT dataset (train/validation) from a task list.
+
+    Loads the datasets named in the task list, splits and limits them, maps
+    each example through a per-task formatting function to produce the record
+    fields verl expects, and drops all columns except the ones verl consumes.
+    The result is ready to be written to Parquet for GRPO training.
+
+    Args:
+        tasks_list_json_path: Path to the JSON task list describing which
+            MedVision datasets/tasks to load.
+        limit_train_sample: Maximum number of training samples to keep (total).
+        limit_val_sample: Maximum number of validation samples to keep (total).
+        mapping_func: Per-task formatting function (one of the
+            ``_format_data_*_verl`` functions in this module) applied to each
+            example to build the verl record fields.
+        model_family_name: Model family name, passed to the formatter as
+            ``model_name`` (used for model-specific image/prompt handling).
+        model_hf: Hugging Face model identifier, passed to the formatter as
+            ``model_hf``.
+        num_workers_concat_datasets: Worker count for concatenating the loaded
+            per-task datasets.
+        num_workers_format_dataset: Worker count for the formatting map step.
+        tag_ds: Optional dataset tag used during loading.
+        new_shape_hw: Optional target image shape ``(height, width)`` for
+            resizing during image processing.
+        download_mode: Hugging Face ``datasets`` download mode
+            (default reuses an existing local copy).
+
+    Returns:
+        A dataset containing only the verl-required columns (``prompt``,
+        ``ground_truth``, ``data_source``, ``ability``, ``reward_model``,
+        ``extra_info``) plus the embedded ``images`` column.
+    """
     # Load and split dataset
     dataset = load_split_limit_dataset(
         tasks_list_json_path=tasks_list_json_path,
@@ -666,6 +717,44 @@ def prepare_dataset_for_verl_with_testset(
     new_shape_hw=None,
     download_mode="reuse_dataset_if_exists",
 ):
+    """Build a verl-ready RFT dataset with an extra held-out test split.
+
+    Same as :func:`prepare_dataset_for_verl`, but uses the train/validation/test
+    splitter so a test split is produced as well. The test set is not consumed
+    by RFT via verl; it is prepared for debugging and future flexibility. Each
+    example is mapped through the given formatting function and the dataset is
+    cleaned down to only the verl-required columns.
+
+    Args:
+        tasks_list_json_path: Path to the JSON task list describing which
+            MedVision datasets/tasks to load.
+        limit_train_sample: Maximum number of training samples to keep (total).
+        limit_val_sample: Maximum number of validation samples to keep (total).
+        mapping_func: Per-task formatting function (one of the
+            ``_format_data_*_verl`` functions in this module) applied to each
+            example to build the verl record fields.
+        model_family_name: Model family name, passed to the formatter as
+            ``model_name`` (used for model-specific image/prompt handling).
+        model_hf: Hugging Face model identifier, passed to the formatter as
+            ``model_hf``.
+        limit_test_sample: Maximum number of test samples to keep (total).
+        limit_train_sample_per_subset: Optional per-subset cap on training
+            samples.
+        limit_test_sample_per_subset: Optional per-subset cap on test samples.
+        num_workers_concat_datasets: Worker count for concatenating the loaded
+            per-task datasets.
+        num_workers_format_dataset: Worker count for the formatting map step.
+        tag_ds: Optional dataset tag used during loading.
+        new_shape_hw: Optional target image shape ``(height, width)`` for
+            resizing during image processing.
+        download_mode: Hugging Face ``datasets`` download mode
+            (default reuses an existing local copy).
+
+    Returns:
+        A dataset containing only the verl-required columns (``prompt``,
+        ``ground_truth``, ``data_source``, ``ability``, ``reward_model``,
+        ``extra_info``) plus the embedded ``images`` column.
+    """
     # Load and split dataset
     dataset = load_split_limit_dataset_tr_val_ts(
         tasks_list_json_path=tasks_list_json_path,

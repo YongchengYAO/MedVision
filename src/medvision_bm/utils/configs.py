@@ -1,3 +1,27 @@
+"""Shared constants for the MedVision benchmark.
+
+This module centralizes the configuration values used across evaluation,
+summarization, and analysis scripts. It defines:
+
+- The global random ``SEED`` for reproducibility.
+- Summary output filenames for the tumor/lesion (TL), angle/distance (AD), and
+  detection tasks.
+- Thresholds and grouping parameters (e.g. near-zero ground-truth cutoff,
+  minimum group size, excluded and tumor/lesion group keys, random-box
+  simulation count).
+- Dataset mappings, notably ``DATASETS_NAME2PACKAGE`` (dataset name to importable
+  package name) and the list of tasks that force standard image normalization.
+- Anatomy label maps: ``label_map_regroup`` (fine-grained labels to coarse
+  anatomy groups) and ``label_map_rename`` (fine-grained labels to canonical
+  names).
+- CT windowing presets: ``HU_window_WL_map`` (window width/level presets) and
+  ``CT_HU_windows_WL`` (per anatomy group to a windowing preset).
+
+Note:
+    Do not rename the variables defined here; they are imported by name
+    elsewhere in the codebase.
+"""
+
 # NOTE: Do not change the variable names in this file, as they are imported elsewhere
 #
 

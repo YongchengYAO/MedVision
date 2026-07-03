@@ -1,3 +1,15 @@
+"""Summarize object-detection (bounding-box) benchmark results across models.
+
+Reads the parsed ``*.jsonl`` prediction files under each model's ``parsed``
+subdirectory, groups samples by anatomy/modality/slice, and aggregates MAE,
+IoU, F1, precision, recall, success rate, and threshold-based statistics.
+Regions are further grouped into anatomy vs. tumor/lesion categories. Per-model
+summaries are written as JSON and a formatted cross-model report is saved to a
+text file.
+
+Run as a CLI; see :func:`parse_args` for the accepted arguments.
+"""
+
 import argparse
 import glob
 import json
@@ -736,15 +748,23 @@ def _process_single_model_directory(model_dir, limit, processes=None):
 
 
 def main(**kwargs):
-    """
-    Main function to process model folders based on provided arguments.
+    """Process detection model folders based on the provided arguments.
+
+    Dispatches to task_dir mode (loop over all model directories and generate a
+    cross-model summary) or model_dir mode (process a single model directory).
 
     Args:
-        task_dir: Path to task directory (mutually exclusive with model_dir)
-        model_dir: Path to model directory (mutually exclusive with task_dir)
-        limit: Maximum number of samples to process per file
-        skip_model_wo_parsed_files: Whether to skip model directories without parsed folders
-        processes: Number of worker processes to use
+        task_dir (str, optional): Path to task directory (mutually exclusive
+            with model_dir).
+        model_dir (str, optional): Path to model directory (mutually exclusive
+            with task_dir).
+        limit (int, optional): Maximum number of samples to process per file.
+        skip_model_wo_parsed_files (bool): Whether to skip model directories
+            without parsed folders.
+        processes (int, optional): Number of worker processes to use.
+
+    Raises:
+        ValueError: If neither task_dir nor model_dir is provided.
     """
     task_dir = kwargs.get("task_dir")
     model_dir = kwargs.get("model_dir")

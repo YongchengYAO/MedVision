@@ -1,0 +1,53 @@
+# Benchmark pipeline overview
+
+## What the benchmark actually measures
+
+MedVision is not a visual question-answering benchmark in the usual sense. Every subtask asks a vision–language model to read a medical image and return a **number with physical meaning** — a bounding box in pixel coordinates, a tumour or lesion axis length in millimetres, or an anatomical angle in degrees. The score therefore reflects one thing: how close the model's reported quantity is to a ground-truth measurement derived from expert segmentations and landmarks.
+
+Three task families are graded, each with its own annotation type and its own notion of "correct":
+
+| Task | Annotation type | What the model outputs | Core metrics |
+| --- | --- | --- | --- |
+| Detection | `BoxCoordinate` / `BoxSize` | 4 box corner values | IoU, Precision, Recall, F1, SuccessRate |
+| Tumour/Lesion size (TL) | `TumorLesionSize` | major + minor axis (mm) | MAE, MRE, nMAE, SuccessRate |
+| Angle/Distance (AD) | `BiometricsFromLandmarks` | one scalar (degrees or mm) | MAE, MRE, SuccessRate |
+
+Because the answer is a physical quantity, a model can only score well if it (a) understands the image, (b) reasons about the geometry, and (c) converts pixels to physical units correctly. Metrics live in `medvision_bm.utils.parse_utils` (`cal_IoU`, `cal_F1`, `cal_Precision`, `cal_Recall`, `cal_metrics`, `cal_metrics_detection_task`); constants such as the AD near-zero filter live in `medvision_bm.utils.configs`.
+
+## The three stages
+
+Scoring a model is a fixed three-stage pipeline. Each stage is a `python -m` entry point, and later stages read the artefacts the earlier ones drop into `Results/<task_tag>/<model>/`.
+
+**1. Evaluate.** The launcher scripts under `script/benchmark-*/` (`eval__*.sh`) invoke `python -m medvision_bm.benchmark.eval__<model>`, which runs inference over the sampled subtasks and writes one raw JSONL of prompts and responses per subtask. You typically only edit a few variables in the shell script (working directory, the model's Hugging Face id, a folder-name label, and batch size), then run it — see [Running evaluations](running-evaluations.md).
+
+**2. Parse.** Raw model text is turned into structured predictions and per-sample metrics by `python -m medvision_bm.benchmark.parse_outputs --task_type {AD|TL|Detection} --task_dir <Results/...> -p <workers>`. This extracts the numeric answer, compares it to ground truth, and stores the result in a `parsed/` subfolder next to the raw outputs.
+
+**3. Summarize.** Per-model, per-subtask metrics are aggregated into leaderboard-style tables by the task-specific summarizer: `python -m medvision_bm.benchmark.summarize_AD_task`, `summarize_TL_task`, or `summarize_detection_task`, again with `--task_dir <Results/...> -p <workers>`. Add `--skip_model_wo_parsed_files` to ignore model folders that have not been through stage 2. Parsing and summarizing are covered in [Parsing and summarizing](parsing-and-summarizing.md).
+
+:::{tip}
+Stage 1 keeps a **crash-safe, per-sample resume cache**. As each sample finishes, its output is appended to `Results/<task_tag>/<model>/response_cache/<task>_rank<N>.jsonl`, so re-launching an interrupted run resumes where it stopped instead of recomputing finished samples — at most the single in-flight sample is redone. The cache key hashes the prompt, so changing a prompt or config auto-invalidates stale entries. Set `MEDVISION_RESP_CACHE=0` to switch the cache off and reproduce the plain no-cache behaviour.
+:::
+
+## Benchmark setting: sample caps
+
+The two model classes run at different scales. Open-weight models are evaluated on up to **1000 samples per subtask**. Proprietary API models run as a smaller **pilot study capped at 100 samples per subtask**, keeping API cost bounded while still spanning every task family. The subtasks themselves are fixed by the task-list JSONs under `tasks_list/`, so the same anatomy/modality mix is scored for every model within a class.
+
+## Metrics reference
+
+All per-sample metrics are computed at parse time; the summarizers then aggregate them. A prediction is a **success** only if its text parses into exactly the expected number of values for the task — 4 for Detection, 2 for TL, 1 for AD.
+
+**SuccessRate.** The fraction of samples whose prediction was parseable and had the right shape. This is the model's basic instruction-following / output-format score, independent of numeric accuracy, and every failed parse lowers it.
+
+**Detection — IoU, Precision, Recall, F1.** These overlap metrics compare the predicted box to the ground-truth box. A prediction that fails to parse into 4 numbers is **scored as 0**, not dropped: the denominator is always the full sample count, so a model cannot inflate its overlap scores by emitting unparseable answers on hard cases. (The detection `avgMAE` on raw corner values is also computed but is a secondary diagnostic; overlap is the primary signal.)
+
+**TL / AD — MAE and MRE.** For the measurement tasks the error is reported in physical units:
+
+- **MAE** (mean absolute error) is the average magnitude of `|prediction − ground truth|` — millimetres for TL axes and AD distances, degrees for AD angles.
+- **MRE** (mean relative error) normalizes that error by the ground-truth magnitude, giving a dimensionless, scale-free measure of accuracy.
+- TL additionally reports **nMAE**, a normalized MAE variant.
+
+Here the failure-handling convention differs from Detection: an unparseable prediction is recorded as **NaN** for `avgMAE` / `avgMRE`, so it is **excluded** from the averaged error rather than counted as a huge error. Failures are instead captured by SuccessRate (and by threshold-style success counts, which — like Detection overlap — treat a failure as 0 over the full sample count). In short, `avgMAE`/`avgMRE` answer "how accurate is the model *when it answers*", while SuccessRate answers "how often does it answer at all".
+
+:::{warning}
+For AD, samples whose ground-truth angle or distance is essentially zero are dropped before aggregation. A near-zero denominator would send MRE toward infinity and dominate the average. The cutoff is `AD_NEAR_ZERO_GT_THRESHOLD = 0.1` in `medvision_bm.utils.configs`; ground-truth values below it are filtered out of the AD metrics entirely.
+:::

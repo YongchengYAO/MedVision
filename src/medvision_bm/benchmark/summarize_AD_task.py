@@ -1,3 +1,14 @@
+"""Summarize Angle/Distance (AD) benchmark results across models.
+
+Reads the parsed ``*.jsonl`` prediction files under each model's ``parsed``
+subdirectory, groups samples by dataset/metric label, and aggregates MAE, MRE,
+nMAE, success rate, and threshold-based accuracies. Per-model summaries are
+written as JSON (raw values and metrics) and a formatted cross-model report is
+saved to a text file.
+
+Run as a CLI; see :func:`parse_args` for the accepted arguments.
+"""
+
 import argparse
 import ast
 import glob
@@ -20,28 +31,37 @@ from medvision_bm.utils.parse_utils import convert_numpy_to_python, get_subfolde
 
 
 def cal_metrics_AD_task(results):
-    """
-    Calculate metrics for Angle/Distance (AD) estimation task.
+    """Calculate metrics for a single Angle/Distance (AD) estimation sample.
 
-    This function evaluates a model's prediction against the ground truth by computing:
-    - Mean Absolute Error (MAE)
-    - Mean Relative Error (MRE)
-    - Success flag (whether parsing was successful)
+    Parses the model's predicted scalar from ``filtered_resps`` and compares it
+    with the ground-truth ``target`` to compute the mean absolute error (MAE),
+    mean relative error (MRE), and a success flag. When distance metadata is
+    available, a normalized MAE (nMAE) is either read from a precomputed value
+    or reconstructed by dividing the MAE by the physical image diagonal.
 
     Args:
-        results (dict): Dictionary containing:
-            - 'filtered_resps' (list): List with a single prediction string
-            - 'target' (str): Ground truth value as a string (to be evaluated)
+        results (dict): A single sample with keys:
+
+            - ``filtered_resps`` (list): One-element list holding the
+              prediction string.
+            - ``target`` (str): Ground-truth value, parsed with
+              ``ast.literal_eval``.
+            - ``doc_meta`` (dict, optional): Metadata used to derive nMAE,
+              including any precomputed ``nmae_precomputed`` entry and the
+              ``metric_type``/scale fields.
 
     Returns:
-        dict: Dictionary with three metric entries:
-            - 'avgMAE': {'MAE': float, 'success': bool}
-            - 'avgMRE': {'MRE': float, 'success': bool}
-            - 'SuccessRate': {'success': bool}
+        dict: Metric entries whose keys match the task YAML ``metric`` fields:
+
+            - ``avgMAE``: ``{"MAE": float, "success": bool}``
+            - ``avgMRE``: ``{"MRE": float, "success": bool}``
+            - ``SuccessRate``: ``{"success": bool}``
+            - ``nMAE``: ``{"NMAE": float, "success": bool}``
 
     Note:
-        - The metric key names must match the "metric" field in the task's YAML configuration
-        - Returns np.nan for MAE/MRE if parsing fails or validation errors occur
+        MAE/MRE are ``np.nan`` and ``success`` is ``False`` when the prediction
+        cannot be parsed or does not contain exactly one value. The metric key
+        names must match the ``metric`` field in the task's YAML configuration.
     """
     pred = results["filtered_resps"][0]
     target_metrics = np.array(ast.literal_eval(results["target"]))
@@ -380,22 +400,21 @@ def calculate_summary_metrics_per_anatomy_AD_task(all_data, processes=None):
 
 
 def find_and_group_jsonl_files(model_path):
-    """
-    Find and group JSONL files in a model directory by dataset and task.
+    """Find and group JSONL files in a model directory by dataset and task.
 
-    Different datasets have different grouping strategies:
-    - Ceph-Biometrics-400: Each file is kept separate (one file per group)
-    - FeTA24: All files for the same task are grouped together
+    Different datasets use different grouping strategies:
+
+    - Ceph-Biometrics-400: each file is kept separate (one file per group).
+    - FeTA24: all files for the same task are grouped together.
 
     Args:
-        model_path (str): Path to the directory containing JSONL files
+        model_path (str): Path to the directory containing JSONL files.
 
     Returns:
-        dict: Dictionary mapping group keys to lists of file paths
-            Example: {
-                'samples_Ceph-Biometrics-400_Task01.jsonl': ['path/to/file.jsonl'],
-                'FeTA24_BiometricsFromLandmarks_Task01_combined': ['path/to/file1.jsonl', 'path/to/file2.jsonl']
-            }
+        dict: Dictionary mapping group keys to lists of file paths. A
+            Ceph-Biometrics-400 file maps to a single-element list keyed by its
+            filename, while all FeTA24 files for a task map to the combined key
+            ``"FeTA24_BiometricsFromLandmarks_Task01_combined"``.
     """
     # Find all JSONL files in the model folder (exclude analysis output files)
     jsonl_files = [
@@ -547,25 +566,27 @@ def process_parsed_file_in_model_folder(
     limit=None,
     processes=None,
 ):
-    """
-    Process all JSONL files in a model folder and generate summary metrics.
+    """Process all parsed JSONL files in a model folder and write AD summaries.
 
-    This is the main processing function that:
-    1. Finds and groups JSONL files in the 'parsed' subdirectory
-    2. Extracts targets and model predictions from each file
-    3. Calculates comprehensive metrics per anatomy/metric type
-    4. Saves results to two JSON files in the parsed directory:
-       - summary_AD_values.json (raw data: targets and predictions)
-       - summary_AD_metrics.json (aggregated metrics per label)
+    Steps performed:
+
+    1. Find and group JSONL files in the ``parsed`` subdirectory.
+    2. Extract targets and model predictions from each file.
+    3. Calculate comprehensive metrics per anatomy/metric type.
+    4. Save two JSON files in the ``parsed`` directory: a values file with the
+       raw targets and predictions, and a metrics file with the aggregated
+       metrics per label.
+
+    If the ``parsed`` subdirectory does not exist, a message is printed and the
+    function returns without writing any output.
 
     Args:
-        model_dir (str): Path to the model folder (must contain a 'parsed' subdirectory)
+        model_dir (str): Path to the model folder (expected to contain a
+            ``parsed`` subdirectory).
         limit (int, optional): Maximum number of samples to process per file.
-                              None for all samples.
-        processes (int, optional): Number of processes to use for parallel calculation.
-
-    Raises:
-        AssertionError: If parsed directory doesn't exist
+            None for all samples.
+        processes (int, optional): Number of processes to use for parallel
+            calculation.
     """
     # Locate parsed files directory
     parsed_files_dir = os.path.join(model_dir, "parsed")
@@ -1081,25 +1102,28 @@ def _process_single_model_directory(model_dir, limit, processes=None):
 
 
 def main(**kwargs):
-    """
-    Main entry point for processing model folders based on provided arguments.
+    """Process AD model folders based on the provided arguments.
 
     Supports two modes:
-    1. **task_dir mode**: Process all model directories within a task directory
-       and generate cross-model summary
-    2. **model_dir mode**: Process a single model directory in isolation
+
+    1. **task_dir mode**: process all model directories within a task
+       directory and generate a cross-model summary.
+    2. **model_dir mode**: process a single model directory in isolation.
 
     Args:
-        task_dir (str, optional): Path to task directory (mutually exclusive with model_dir)
-        model_dir (str, optional): Path to model directory (mutually exclusive with task_dir)
+        task_dir (str, optional): Path to task directory (mutually exclusive
+            with model_dir).
+        model_dir (str, optional): Path to model directory (mutually exclusive
+            with task_dir).
         limit (int, optional): Maximum number of samples to process per file.
-                              None for all samples.
-        skip_model_wo_parsed_files (bool): Whether to skip model directories without
-                                          parsed folders (task_dir mode only)
-        processes (int, optional): Number of processes to use for parallel calculation.
+            None for all samples.
+        skip_model_wo_parsed_files (bool): Whether to skip model directories
+            without parsed folders (task_dir mode only).
+        processes (int, optional): Number of processes to use for parallel
+            calculation.
 
     Raises:
-        ValueError: If neither task_dir nor model_dir is provided
+        ValueError: If neither task_dir nor model_dir is provided.
     """
     task_dir = kwargs.get("task_dir")
     model_dir = kwargs.get("model_dir")

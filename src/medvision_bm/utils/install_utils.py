@@ -1,3 +1,13 @@
+"""Installation and environment-setup helpers for the MedVision benchmark.
+
+This module bundles the routines used to provision a runtime for the benchmark:
+installing the vendored ``lmms-eval`` package and the ``medvision_ds`` dataset
+codebase, and configuring the environment variables that point Hugging Face and
+the MedVision dataset loader at a chosen data directory. It also provides
+convenience installers for CUDA, PyTorch, Flash-Attention, and vLLM used when
+setting up per-model conda environments.
+"""
+
 import os
 import shlex
 import subprocess
@@ -118,8 +128,17 @@ def install_vendored_lmms_eval(
     editable_install=True,
     proj_dependency=None,
 ):
-    """
-    Install the vendored lmms-eval package that ships inside medvision_bm.
+    """Install the vendored ``lmms-eval`` package that ships inside ``medvision_bm``.
+
+    Locates the ``medvision_lmms_eval`` package shipped as package data and
+    installs it via the shared installer. Editable installation is used by
+    default because the task definition files are otherwise not discovered.
+
+    Args:
+        editable_install (bool): Install in editable (``pip install -e``) mode.
+            Defaults to ``True``.
+        proj_dependency (str, optional): Name of an optional-dependency extra to
+            install (rendered as ``.[extra]``). Defaults to ``None``.
     """
     # Locate the vendored lmms-eval package, check [tool.setuptools.package-data] in pyproject.toml
     lmms_eval_dir = str(files("medvision_bm").joinpath("medvision_lmms_eval"))
@@ -133,6 +152,15 @@ def install_vendored_lmms_eval(
 
 
 def setup_env_hf(data_dir):
+    """Point Hugging Face's cache and dataset cache at ``data_dir``.
+
+    Sets ``HF_HOME`` and ``HF_DATASETS_CACHE`` to subdirectories of ``data_dir``
+    so that models and datasets are cached under the benchmark's data directory.
+
+    Args:
+        data_dir (str): Data directory; a relative path is resolved to an
+            absolute path.
+    """
     # Safeguard data_dir: you can use relative path with this function
     data_dir = os.path.abspath(data_dir)
 
@@ -148,6 +176,23 @@ def setup_env_medvision_ds(
     force_install_code=True,
     force_download_data=False,
 ):
+    """Set the environment variables that configure the ``medvision_ds`` loader.
+
+    Sets ``MedVision_DATA_DIR`` to ``data_dir`` (creating the directory if
+    needed) and, when requested, the force-install and force-download flags read
+    by the dataset codebase. The flags are only set when their argument is
+    ``True``; they are left unchanged otherwise.
+
+    Args:
+        data_dir (str): Data directory; a relative path is resolved to an
+            absolute path.
+        force_install_code (bool): When ``True``, set
+            ``MedVision_FORCE_INSTALL_CODE=true`` to force reinstallation of the
+            dataset codebase. Defaults to ``True``.
+        force_download_data (bool): When ``True``, set
+            ``MedVision_FORCE_DOWNLOAD_DATA=true`` to force re-download of the
+            data. Defaults to ``False``.
+    """
     # Safeguard data_dir: you can use relative path with this function
     data_dir = os.path.abspath(data_dir)
 
@@ -169,6 +214,19 @@ def setup_env_hf_medvision_ds(
     force_install_code=True,
     force_download_data=False,
 ):
+    """Configure both the ``medvision_ds`` and Hugging Face environment variables.
+
+    Calls ``setup_env_medvision_ds`` followed by ``setup_env_hf`` for the same
+    data directory.
+
+    Args:
+        data_dir (str): Data directory; a relative path is resolved to an
+            absolute path.
+        force_install_code (bool): Forwarded to ``setup_env_medvision_ds``.
+            Defaults to ``True``.
+        force_download_data (bool): Forwarded to ``setup_env_medvision_ds``.
+            Defaults to ``False``.
+    """
     # Set environment variables for medvision_ds
     setup_env_medvision_ds(
         data_dir=data_dir,
@@ -184,6 +242,22 @@ def install_medvision_ds(
     data_dir,
     local_dir=None,
 ):
+    """Build and install the ``medvision_ds`` dataset codebase from source.
+
+    When ``local_dir`` is ``None``, downloads the dataset's ``src/`` directory
+    from the ``YongchengYAO/MedVision`` Hugging Face dataset repo into
+    ``data_dir``; otherwise uses ``src/`` under ``local_dir``. A wheel is built
+    from that source (guarded by a ``flock`` build lock, with a no-lock fallback)
+    and installed with ``--force-reinstall``. Finally, the Hugging Face and
+    ``medvision_ds`` environment variables are configured for ``data_dir``.
+
+    Args:
+        data_dir (str): Data directory used for the snapshot download and for
+            environment setup; a relative path is resolved to an absolute path.
+        local_dir (str, optional): Directory containing an existing ``src/`` tree
+            to install from. When provided, no download is performed. Defaults to
+            ``None``.
+    """
     if local_dir is None:
         # Safeguard data_dir: you can use relative path with this function
         data_dir = os.path.abspath(data_dir)

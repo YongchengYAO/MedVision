@@ -2,6 +2,23 @@ from datasets import load_dataset
 
 
 def tasks_to_configs(tasks, split):
+    """Convert task names into MedVision dataset config names for a split.
+
+    Appends ``"_Train"`` or ``"_Test"`` to each task name and rewrites the legacy
+    ``"BoxCoordinate"`` token to ``"BoxSize"`` to match the dataset's config
+    naming. Task names keep ``"BoxCoordinate"`` because ``"BoxSize"`` is reserved
+    there for mask-size estimation tasks.
+
+    Args:
+        tasks (list): Task names to convert.
+        split (str): Data split, ``"train"`` or ``"test"`` (case-insensitive).
+
+    Returns:
+        list: Dataset config names, one per input task.
+
+    Raises:
+        AssertionError: If ``split`` is not ``"train"`` or ``"test"``.
+    """
     assert split.lower() in ["train", "test"], "Split must be 'train' or 'test'"
     if split.lower() == "train":
         split = "Train"
@@ -24,12 +41,20 @@ def tasks_to_configs(tasks, split):
 
 
 def download_datasets_from_configs(configs, split="test"):
-    """
-    # NOTE: Raw data from both the train and test splits are downloaded here, regardless of the specified split and data configuration.
-    #       Therefore, using any split and data config will result in downloading the entire dataset.
-    #       This is due to the design of the MedVision data loading script: https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/MedVision.py
-    #
-    # List of configs: https://huggingface.co/datasets/YongchengYAO/MedVision/tree/main/info
+    """Download MedVision dataset splits for the given config names.
+
+    Args:
+        configs (list): Dataset config names to download.
+        split (str): Split requested from ``datasets.load_dataset``. Defaults to
+            ``"test"``.
+
+    Note:
+        The MedVision data-loading script downloads the raw data for both the
+        train and test splits regardless of the requested ``split`` or config, so
+        any split/config downloads the entire dataset. See the loading script at
+        https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/MedVision.py
+        and the config list at
+        https://huggingface.co/datasets/YongchengYAO/MedVision/tree/main/info.
     """
     for config in configs:
         print(f"Downloading dataset for config: {config}, split: {split}")
@@ -44,5 +69,15 @@ def download_datasets_from_configs(configs, split="test"):
 
 
 def download_datasets_from_tasks(tasks, split="test"):
+    """Download MedVision datasets for the given task names and split.
+
+    Convenience wrapper that converts ``tasks`` to config names via
+    ``tasks_to_configs`` and then calls ``download_datasets_from_configs``.
+
+    Args:
+        tasks (list): Task names to download data for.
+        split (str): Data split, ``"train"`` or ``"test"``. Defaults to
+            ``"test"``.
+    """
     configs = tasks_to_configs(tasks, split)
     download_datasets_from_configs(configs, split)

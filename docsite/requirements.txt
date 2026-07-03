@@ -1,0 +1,12 @@
+# Documentation build dependencies for the MedVision Read the Docs site.
+# The medvision_bm package itself is NOT installed here: conf.py adds ../../src to
+# sys.path and mocks the heavy ML deps (see autodoc_mock_imports). Only the light
+# scientific packages that autodoc'd modules import at module scope are installed.
+sphinx>=7,<10
+myst-parser>=2
+sphinx-book-theme>=1.1
+sphinx-copybutton>=0.5
+sphinx-design>=0.5
+linkify-it-py>=2
+numpy
+nibabel

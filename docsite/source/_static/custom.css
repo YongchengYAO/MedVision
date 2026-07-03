@@ -1,0 +1,27 @@
+/* MedVision docs — light touch-ups on top of sphinx-book-theme. */
+
+:root {
+  --mv-accent: #A855F7; /* MedVision purple (matches the README bold-text hack) */
+}
+
+/* Tighten the logo in the sidebar. */
+.sidebar-logo-container img.sidebar-logo {
+  max-height: 3.2rem;
+}
+
+/* Make inline literals (module/function names) a touch more prominent. */
+code.literal,
+.rst-content code.literal {
+  color: var(--mv-accent);
+}
+
+/* Accent the "current" item in the left navigation. */
+nav.bd-links li > a.current {
+  color: var(--mv-accent);
+  font-weight: 600;
+}
+
+/* Give sd-design cards a subtle lift. */
+.sd-card {
+  border-radius: 0.5rem;
+}

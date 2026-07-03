@@ -1,3 +1,15 @@
+"""Summarize Tumor/Lesion (TL) size-estimation benchmark results across models.
+
+Reads the parsed ``*.jsonl`` prediction files under each model's ``parsed``
+subdirectory, groups samples by anatomy/modality/slice, and aggregates MAE,
+MRE, nMAE, success rate, and threshold-based accuracies. Per-model summaries
+are written as JSON (raw values and metrics) and a formatted cross-model report
+is saved to a text file. Samples listed in per-dataset removed-samples files can
+optionally be excluded.
+
+Run as a CLI; see :func:`parse_args` for the accepted arguments.
+"""
+
 import argparse
 import ast
 import glob
@@ -30,14 +42,35 @@ from medvision_bm.utils.parse_utils import (
 
 
 def cal_metrics_TL_task(results):
-    """
-    Calculate metrics for Tumor/Lesion (TL) size estimation task.
+    """Calculate metrics for a single Tumor/Lesion (TL) size-estimation sample.
+
+    Parses the two predicted size values from ``filtered_resps`` and compares
+    them with the ground-truth ``target`` to compute the mean absolute error
+    (MAE), mean relative error (MRE), and a success flag. When metadata is
+    available, a normalized MAE (nMAE) is read from a precomputed value or
+    reconstructed by dividing the MAE by the physical image diagonal.
 
     Args:
-        results: Dictionary containing filtered_resps and target
+        results (dict): A single sample with keys:
+
+            - ``filtered_resps`` (list): One-element list holding the
+              prediction string (expected to contain two comma-separated
+              values).
+            - ``target`` (str): Ground-truth values, parsed with
+              ``ast.literal_eval``.
+            - ``doc_meta`` (dict, optional): Metadata used to derive nMAE.
 
     Returns:
-        Dictionary with avgMAE, avgMRE, and SuccessRate metrics
+        dict: Metric entries whose keys match the task YAML ``metric`` fields:
+
+            - ``avgMAE``: ``{"MAE": float, "success": bool}``
+            - ``avgMRE``: ``{"MRE": float, "success": bool}``
+            - ``SuccessRate``: ``{"success": bool}``
+            - ``nMAE``: ``{"NMAE": float, "success": bool}``
+
+    Note:
+        MAE/MRE are ``np.nan`` and ``success`` is ``False`` when the prediction
+        cannot be parsed or does not contain exactly two values.
     """
     pred = results["filtered_resps"][0]
     target_metrics = np.array(ast.literal_eval(results["target"]))
@@ -871,17 +904,28 @@ def _process_single_model_directory(
 
 
 def main(**kwargs):
-    """
-    Main function to process model folders based on provided arguments.
+    """Process TL model folders based on the provided arguments.
+
+    Dispatches to task_dir mode (loop over all model directories and generate a
+    cross-model summary) or model_dir mode (process a single model directory).
 
     Args:
-        task_dir: Path to task directory (mutually exclusive with model_dir)
-        model_dir: Path to model directory (mutually exclusive with task_dir)
-        limit: Maximum number of samples to process per file
-        skip_model_wo_parsed_files: Whether to skip model directories without parsed folders
-        processes: Number of processes to use for parallel calculation
-        removed_samples_dir: Root directory with per-dataset removed_samples JSON files
-        removed_samples_filename: Filename within each dataset subdirectory
+        task_dir (str, optional): Path to task directory (mutually exclusive
+            with model_dir).
+        model_dir (str, optional): Path to model directory (mutually exclusive
+            with task_dir).
+        limit (int, optional): Maximum number of samples to process per file.
+        skip_model_wo_parsed_files (bool): Whether to skip model directories
+            without parsed folders.
+        processes (int, optional): Number of processes to use for parallel
+            calculation.
+        removed_samples_dir (str, optional): Root directory with per-dataset
+            removed_samples JSON files.
+        removed_samples_filename (str, optional): Filename within each dataset
+            subdirectory.
+
+    Raises:
+        ValueError: If neither task_dir nor model_dir is provided.
     """
     task_dir = kwargs.get("task_dir")
     model_dir = kwargs.get("model_dir")

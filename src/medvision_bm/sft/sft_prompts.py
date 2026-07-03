@@ -7,6 +7,20 @@
 # Some prompts (e.g., FORMAT_PROMPT_TL_REASONING and FORMAT_PROMPT_TUMOR_LESION_SIZE) are similar but used in different vanues.
 # Do not remove any prompt just because it looks similar to another one.
 
+"""Prompt templates and helpers for MedVision SFT and benchmark evaluation.
+
+This module collects the task prompts, format requirements, and Chain-of-Thought
+(CoT) reasoning templates shared by supervised finetuning (SFT) data formatting
+and MedVision benchmark evaluation. Because these strings are consumed by both
+pipelines, editing a prompt here changes both training targets and evaluation
+behaviour, so modify with care.
+
+Two prompt families are provided: plain format prompts used in non-CoT
+benchmarking, and CoT instruction/template pairs (for tumor-lesion size,
+distance, angle, and detection tasks) whose placeholder tokens are filled in by
+:func:`fill_in_template`.
+"""
+
 # ======================================================================================================
 # Prompts used in non-CoT benchmarking
 # ======================================================================================================
@@ -281,6 +295,21 @@ COT_TEMPLATE_DETECTION = (
 
 
 def fill_in_template(template, values_dict):
+    """Substitute placeholder tokens in a CoT template with concrete values.
+
+    Iterates over ``values_dict`` and replaces every occurrence of each key in
+    ``template`` with ``str(value)``. Used to fill the ``<...>`` placeholders in
+    the CoT templates (e.g. :data:`COT_TEMPLATE_TL_NORM`,
+    :data:`COT_TEMPLATE_ANGLE`) with per-sample coordinates and measurements.
+
+    Args:
+        template (str): The template string containing placeholder tokens.
+        values_dict (dict): Mapping of placeholder token to replacement value;
+            each value is stringified before substitution.
+
+    Returns:
+        str: The template with all placeholders replaced.
+    """
     filled_template = template
     for key, value in values_dict.items():
         filled_template = filled_template.replace(key, str(value))

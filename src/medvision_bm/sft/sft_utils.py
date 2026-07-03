@@ -149,22 +149,25 @@ def _load_resize_nifti_2d(nii_path, slice_dim, slice_idx, new_shape_hw=None):
 
 # NOTE: This function only works for MedVision dataset
 def get_image_info_for_medvision_dataset(doc):
-    """
-    Get image modality and label name from the document.
+    """Get the image modality and label name for a MedVision sample.
 
-    :param
-    doc: data sample of MedVision dataset
+    The sample's ``taskType`` (defined in ``MedVision.py`` on the dataset repo)
+    selects the dataset-specific preprocessing module, from which the image
+    modality and the human-readable label name are looked up.
 
-    - taskType is defined in MedVision.py (https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/MedVision.py)
-    - Validate taskType:
-        valid_task_types = [
-            "Mask-Size",
-            "Box-Size",
-            "Tumor-Lesion-Size",
-            "Biometrics-From-Landmarks",
-            "Biometrics-From-Landmarks-Distance",
-            "Biometrics-From-Landmarks-Angle",
-        ]
+    Args:
+        doc: A data sample from the MedVision dataset. Must contain
+            ``taskType``, ``dataset_name`` and ``taskID``; ``label`` is present
+            for all task types except the Biometrics-From-Landmarks (angle /
+            distance) tasks.
+
+    Returns:
+        tuple: ``(image_modality, label_name)``, where ``label_name`` is
+        ``None`` for tasks that have no ``label`` (the angle / distance tasks).
+
+    Raises:
+        ValueError: If ``taskType`` is not one of the valid task types, or the
+            dataset is not registered in ``DATASETS_NAME2PACKAGE``.
     """
     # Validate taskType
     valid_task_types = [
@@ -1996,6 +1999,39 @@ def load_split_limit_dataset(
     tag_ds=None,
     download_mode="reuse_dataset_if_exists",
 ):
+    """Load MedVision tasks, concatenate them, and split into train/validation.
+
+    Reads the task list from ``tasks_list_json_path`` and loads each task's
+    ``_Train`` split in parallel (falling back to single-threaded loading when
+    any dataset was just downloaded, to avoid cache conflicts). The per-task
+    datasets are concatenated in the deterministic JSON order (not arrival
+    order) so the seeded shuffle and split downstream stay reproducible, then
+    split into train and validation sets grouped by ``image_file`` (to prevent
+    3D-volume leakage) and stratified by ``dataset_name``.
+
+    Args:
+        tasks_list_json_path (str): Path to the JSON file whose keys are the
+            task names to load.
+        limit_train_sample (int): Cap on training samples after concatenation.
+            Use a value < 0 for no limit or > 0 for a fixed cap; 0 is rejected.
+        limit_val_sample (int): Target size of the validation split; must be > 0.
+        num_workers_concat_datasets (int): Requested worker processes for
+            parallel loading; clamped to the CPU count and task count. Defaults
+            to 4.
+        tag_ds (str): Tag embedded in task names (``<dataset_name>_<tag_ds>``),
+            used to recover the dataset name from each task. Required.
+        download_mode (str): Passed through to the dataset loader. Defaults to
+            ``"reuse_dataset_if_exists"``.
+
+    Returns:
+        DatasetDict: A dict with ``"train"`` and ``"validation"`` splits.
+
+    Raises:
+        AssertionError: If ``limit_val_sample`` is not > 0,
+            ``limit_train_sample`` is 0, ``tag_ds`` is None, or
+            ``MedVision_DATA_DIR`` is unset.
+        RuntimeError: If any task fails to load.
+    """
     # NOTE:
     # - limit_val_sample must be greater than 0 to ensure validation set is not empty.
     # - limit_train_sample can be <0 (no limit) or >0 (limited training set).
@@ -2154,6 +2190,25 @@ def format_dataset(
     num_workers_format_dataset,
     writer_batch_size=1000,
 ):
+    """Apply a formatting map function to a dataset with bounded parallelism.
+
+    Runs ``dataset.map(mapping_func, ...)`` to convert raw MedVision rows into
+    the chat ``messages`` format expected by the SFT trainer. The number of
+    worker processes is capped at the cgroup-limited CPU count.
+
+    Args:
+        dataset: A HuggingFace ``Dataset`` or ``DatasetDict`` to format.
+        mapping_func: The per-example formatting function passed to ``.map()``.
+        mapping_func_args (dict): Keyword arguments forwarded to ``mapping_func``
+            via ``fn_kwargs``.
+        num_workers_format_dataset (int): Requested number of worker processes;
+            clamped to the available CPU count.
+        writer_batch_size (int): Number of rows buffered before writing to the
+            Arrow cache. Defaults to 1000.
+
+    Returns:
+        The formatted dataset with the mapping function applied.
+    """
     # Format the dataset with parallelism
     # Use conservative parallelism for formatting to avoid OOM
     available_cpus = get_cgroup_limited_cpus()
@@ -2172,6 +2227,20 @@ def format_dataset(
 
 
 def clean_dataset(dataset, keys_to_keep):
+    """Drop all columns from a dataset except a whitelist of keys.
+
+    Maps over the dataset and deletes every key not present in ``keys_to_keep``,
+    keeping the cached rows small before training.
+
+    Args:
+        dataset: A HuggingFace ``Dataset`` or ``DatasetDict`` to prune.
+        keys_to_keep (list[str]): Column names to retain; all other columns are
+            removed.
+
+    Returns:
+        The dataset containing only the whitelisted columns.
+    """
+
     def _clean_dataset_map(example, keys_to_keep):
         for key in list(example.keys()):
             if key not in keys_to_keep:
@@ -2203,6 +2272,43 @@ def prepare_dataset(
     new_shape_hw=None,
     download_mode="reuse_dataset_if_exists",
 ):
+    """Load, format, and prune a MedVision dataset for SFT in one call.
+
+    Combines :func:`load_split_limit_dataset`, :func:`format_dataset`, and
+    :func:`clean_dataset`: it loads and splits the tasks, maps each example into
+    the chat ``messages`` format via ``mapping_func``, then keeps only the
+    columns needed for training.
+
+    Args:
+        tasks_list_json_path (str): Path to the JSON file listing the tasks.
+        limit_train_sample (int): Training-sample cap (< 0 = no limit,
+            > 0 = cap).
+        limit_val_sample (int): Target validation-split size; must be > 0.
+        mapping_func: Per-example formatting function applied during mapping.
+        model_family_name (str): Model family name passed to ``mapping_func`` as
+            ``model_name`` (used for image-resize logic).
+        base_model_hf (str): HuggingFace model id passed to ``mapping_func`` as
+            ``model_hf``.
+        num_workers_concat_datasets (int): Worker processes for loading.
+            Defaults to 4.
+        num_workers_format_dataset (int): Worker processes for formatting.
+            Defaults to 32.
+        tag_ds (str): Tag embedded in task names; required by the loader.
+        process_img (bool): If True, embed processed PNG images in the dataset
+            (``processed_images`` column). Not recommended (large cache).
+        save_processed_img_to_disk (bool): If True, write processed PNGs to disk
+            and store their paths in ``image_file_png``.
+        new_shape_hw (tuple[int, int] | None): Optional explicit (height, width)
+            to resize slices to before formatting.
+        download_mode (str): Passed through to the loader. Defaults to
+            ``"reuse_dataset_if_exists"``.
+
+    Returns:
+        DatasetDict: Train/validation splits containing only the retained
+        columns (``messages``, ``labels``, ``image_file``, ``slice_dim``,
+        ``slice_idx``, plus ``processed_images`` and/or ``image_file_png`` when
+        enabled).
+    """
     # Load and split dataset
     dataset = load_split_limit_dataset(
         tasks_list_json_path=tasks_list_json_path,
@@ -2299,6 +2405,14 @@ def _make_temperature_sampler_trainer(SFTTrainer):
     Defined as a factory so the import of SFTTrainer (from trl) stays lazy and
     local to the caller, while the class itself is shared between prepare_trainer()
     and prepare_trainer_fullFT().
+
+    Args:
+        SFTTrainer: The base ``trl.SFTTrainer`` class to subclass.
+
+    Returns:
+        type: A ``TemperatureSamplerSFTTrainer`` subclass that overrides
+        ``_get_train_sampler`` to draw examples with a
+        :class:`~torch.utils.data.WeightedRandomSampler`.
     """
 
     # NOTE: We override only the train sampler behavior while keeping SFTTrainer unchanged.
@@ -2336,7 +2450,30 @@ def _build_temperature_sampler_trainer(
     """Compute temperature-weighted sample probabilities and return a trainer.
 
     Shared by prepare_trainer() (LoRA) and prepare_trainer_fullFT() (full FT).
-    Returns a plain SFTTrainer when only one task is present.
+    Task-level sampling probability is set to ``p(task) ~ count(task)^(1/T)`` and
+    each example is weighted by ``p(task) / count(task)`` so a
+    :class:`~torch.utils.data.WeightedRandomSampler` reproduces those task
+    proportions. Returns a plain SFTTrainer when only one task is present.
+
+    Args:
+        SFTTrainer: The base ``trl.SFTTrainer`` class to instantiate.
+        trainer_kwargs (dict): Keyword arguments forwarded to the trainer
+            constructor.
+        data: DatasetDict with a ``"train"`` split.
+        temperature_sampler_T (float): Sampling temperature; must be > 0. Larger
+            values flatten the task distribution.
+        temperature_sampler_task_column (str): Column of the train split holding
+            each example's task label.
+        temperature_sampler_num_samples (int | None): Number of draws per epoch;
+            None or a value <= 0 keeps the training-set length.
+
+    Returns:
+        SFTTrainer: A temperature-sampling trainer, or a plain ``SFTTrainer``
+        when only one task is present.
+
+    Raises:
+        ValueError: If ``temperature_sampler_T`` is not > 0, or the task column
+            is missing from the train split.
     """
     if temperature_sampler_T <= 0:
         raise ValueError("temperature_sampler_T must be > 0.")
@@ -2429,6 +2566,56 @@ def prepare_trainer(
     temperature_sampler_task_column="__task_name",
     temperature_sampler_num_samples=-1,
 ):
+    """Build a QLoRA :class:`~trl.SFTTrainer` for MedVision SFT.
+
+    Loads ``base_model_hf`` in 4-bit NF4 quantization, attaches a LoRA adapter
+    (all-linear target modules, with ``lm_head`` and ``embed_tokens`` also
+    trained), and wraps it in an ``SFTTrainer`` configured for BF16 training and
+    Weights & Biases logging. When ``enable_temperature_sampler`` is set, a
+    temperature-weighted multi-task sampler is used instead of uniform sampling.
+
+    Args:
+        run_name (str): Run name for logging / W&B.
+        base_model_hf (str): HuggingFace id of the base image-text-to-text
+            model.
+        lora_checkpoint_dir (str): Output directory for adapter checkpoints.
+        data: DatasetDict with ``"train"`` and ``"validation"`` splits.
+        make_collate_fn: Factory called as ``make_collate_fn(processor)`` to
+            build the data collator.
+        per_device_train_batch_size (int): Per-device train batch size. Defaults
+            to 14.
+        per_device_eval_batch_size (int): Per-device eval batch size. Defaults
+            to 14.
+        gradient_accumulation_steps (int): Gradient accumulation steps. Defaults
+            to 6.
+        use_flash_attention_2 (bool): Use FlashAttention-2 when True, else eager
+            attention. Defaults to True.
+        num_train_epochs (int): Number of training epochs. Defaults to 1.
+        save_steps (int): Steps between checkpoint saves. Defaults to 100.
+        eval_steps (int): Steps between evaluations. Defaults to 50.
+        logging_steps (int): Steps between log entries. Defaults to 50.
+        save_total_limit (int): Max checkpoints to retain. Defaults to 10.
+        dataloader_num_workers (int): DataLoader worker processes. Defaults to 8.
+        gradient_checkpointing (bool): Enable gradient checkpointing. Defaults
+            to False.
+        dataloader_pin_memory (bool): Pin DataLoader memory. Defaults to True.
+        push_LoRA (bool): Push the adapter to the Hub (private) when True.
+            Defaults to False.
+        enable_temperature_sampler (bool): Enable temperature-based multi-task
+            sampling. Defaults to False.
+        temperature_sampler_T (float): Sampling temperature. Defaults to 3.0.
+        temperature_sampler_task_column (str): Column holding task labels.
+            Defaults to ``"__task_name"``.
+        temperature_sampler_num_samples (int): Draws per epoch; <= 0 keeps the
+            training-set length. Defaults to -1.
+
+    Returns:
+        SFTTrainer: The configured trainer (a temperature-sampling subclass when
+        enabled with more than one task).
+
+    Raises:
+        ValueError: If the GPU does not support bfloat16.
+    """
     from peft import LoraConfig
     from transformers import (
         AutoModelForImageTextToText,
@@ -2599,6 +2786,50 @@ def prepare_trainer_fullFT(
 
     Loads the model in BF16 without any PEFT adapter. All parameters are trained.
     Use a lower learning rate and cosine scheduler compared to the LoRA variant.
+    When ``enable_temperature_sampler`` is set, a temperature-weighted multi-task
+    sampler is used instead of uniform sampling.
+
+    Args:
+        run_name (str): Run name for logging / W&B.
+        base_model_hf (str): HuggingFace id of the base image-text-to-text
+            model.
+        checkpoint_dir (str): Output directory for checkpoints.
+        data: DatasetDict with ``"train"`` and ``"validation"`` splits.
+        make_collate_fn: Factory called as ``make_collate_fn(processor)`` to
+            build the data collator.
+        per_device_train_batch_size (int): Per-device train batch size. Defaults
+            to 1.
+        per_device_eval_batch_size (int): Per-device eval batch size. Defaults
+            to 1.
+        gradient_accumulation_steps (int): Gradient accumulation steps. Defaults
+            to 16.
+        use_flash_attention_2 (bool): Use FlashAttention-2 when True, else eager
+            attention. Defaults to True.
+        num_train_epochs (int): Number of training epochs. Defaults to 1.
+        save_steps (int): Steps between checkpoint saves. Defaults to 100.
+        eval_steps (int): Steps between evaluations. Defaults to 50.
+        logging_steps (int): Steps between log entries. Defaults to 50.
+        save_total_limit (int): Max checkpoints to retain. Defaults to 5.
+        dataloader_num_workers (int): DataLoader worker processes. Defaults to 4.
+        gradient_checkpointing (bool): Enable gradient checkpointing (on by
+            default; required at 7B+ scale). Defaults to True.
+        dataloader_pin_memory (bool): Pin DataLoader memory. Defaults to True.
+        push_model (bool): Push the trained model to the Hub (private) when True.
+            Defaults to False.
+        enable_temperature_sampler (bool): Enable temperature-based multi-task
+            sampling. Defaults to False.
+        temperature_sampler_T (float): Sampling temperature. Defaults to 3.0.
+        temperature_sampler_task_column (str): Column holding task labels.
+            Defaults to ``"__task_name"``.
+        temperature_sampler_num_samples (int): Draws per epoch; <= 0 keeps the
+            training-set length. Defaults to -1.
+
+    Returns:
+        SFTTrainer: The configured trainer (a temperature-sampling subclass when
+        enabled with more than one task).
+
+    Raises:
+        ValueError: If the GPU does not support bfloat16.
     """
     from transformers import AutoModelForImageTextToText, AutoProcessor
     from trl import SFTConfig, SFTTrainer
@@ -2769,9 +3000,26 @@ def merge_models(
     merged_model_dir,
     push_to_hub,
 ):
-    """
-    Merge LoRA adapter with base model and optionally save locally and/or push to Hugging Face Hub.
+    """Merge a LoRA adapter into its base model and optionally save/push it.
+
+    Loads the base model on CPU in fp32 (so the sub-BF16 LoRA delta is
+    representable), merges the adapter with ``safe_merge=True``, then optionally
+    saves the merged model locally and/or pushes it to the Hugging Face Hub.
     This function is intended to be called **only on the main process**.
+
+    Args:
+        base_model_hf (str): HuggingFace id of the base model.
+        lora_checkpoint_dir (str): Directory of the trained LoRA adapter (also
+            the source of the processor).
+        merged_model_hf (str): Target Hub repo id for the merged model. Required
+            only when ``push_to_hub`` is True.
+        merged_model_dir (str | None): Local directory to save the merged model
+            to; skipped when None.
+        push_to_hub (bool): If True, push the merged model and processor to the
+            Hub as a private repo.
+
+    Raises:
+        ValueError: If ``push_to_hub`` is True but ``merged_model_hf`` is None.
     """
     from peft import PeftModel
     from transformers import AutoModelForImageTextToText, AutoProcessor
@@ -3386,7 +3634,7 @@ def parse_sample_limits(**kwargs):
 
 
 def mask_non_assistant_turns(input_ids, labels, tokenizer):
-    """Mask everything except assistant response content + its closing <|im_end|>.
+    """Mask everything except assistant response content + its closing ``<|im_end|>``.
 
     Completion-only masking: for every assistant turn the header
     ``<|im_start|>assistant\\n`` is masked (it is chat-template scaffolding the

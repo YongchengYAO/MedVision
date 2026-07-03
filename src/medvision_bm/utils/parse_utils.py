@@ -1,3 +1,17 @@
+"""Parsing and metric utilities for the MedVision benchmark.
+
+This module collects helpers used when parsing model outputs and scoring them
+against ground truth, including:
+
+- Bounding-box overlap metrics (IoU, F1/Dice, Precision, Recall).
+- Extraction of the last ``k`` numbers from free-form text, optionally scoped to
+  an ``<answer>`` block.
+- Loading a 2D slice (and its in-plane pixel spacing) from a 3D NIfTI volume.
+- Converting NumPy values to native Python types for JSON serialization.
+- Grouping parsed results by anatomy/label, imaging modality, slice orientation,
+  or box-to-image area ratio for stratified reporting.
+"""
+
 import ast
 import importlib
 import os
@@ -14,6 +28,14 @@ _NUM_RE = re.compile(r"[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:[eE][-+]?\d+)
 
 
 def get_subfolders(task_dir):
+    """Return the paths of all immediate subdirectories of a directory.
+
+    Args:
+        task_dir: Directory to scan for subfolders.
+
+    Returns:
+        list[str]: Path of each immediate subdirectory (typically one per model).
+    """
     model_dirs = []
     for entry in os.scandir(task_dir):
         if entry.is_dir():
@@ -22,7 +44,21 @@ def get_subfolders(task_dir):
 
 
 def load_nifti_2d(img_path, slice_dim, slice_idx):
-    """Map function to load 2D slice from a 3D NIFTI images."""
+    """Load a single 2D slice and its in-plane pixel spacing from a 3D NIfTI image.
+
+    Args:
+        img_path: Path to the NIfTI (``.nii`` / ``.nii.gz``) file.
+        slice_dim: Axis to slice along; must be ``0``, ``1`` or ``2``.
+        slice_idx: Index of the slice to extract along ``slice_dim``.
+
+    Returns:
+        tuple: ``(pixel_size, image_2d)`` where ``pixel_size`` is the in-plane
+        voxel spacing (the two voxel dimensions not sliced along) and ``image_2d``
+        is the extracted 2D slice as a ``float32`` array.
+
+    Raises:
+        ValueError: If ``slice_dim`` is not ``0``, ``1`` or ``2``.
+    """
     img_nib = nib.load(img_path)
     voxel_size = img_nib.header.get_zooms()
     image_3d = img_nib.get_fdata().astype("float32")
@@ -41,6 +77,21 @@ def load_nifti_2d(img_path, slice_dim, slice_idx):
 
 
 def extract_last_k_nums(text, k):
+    """Extract the last ``k`` numbers found in a text string.
+
+    Numbers are matched with an internal regex that accepts an optional sign,
+    optional thousands separators, a decimal part and an exponent. Thousands
+    separators are stripped so the comma-joined result splits back into the same
+    numbers downstream.
+
+    Args:
+        text: Text to search for numbers.
+        k: Number of trailing numbers to return.
+
+    Returns:
+        str: A comma-separated string of the last ``k`` numbers, or an empty
+        string if fewer than ``k`` numbers are present.
+    """
     # Find all numbers in the text (strip thousands separators so the
     # comma-joined result splits back into the same numbers downstream)
     numbers = [m.replace(",", "") for m in _NUM_RE.findall(text)]
@@ -52,6 +103,22 @@ def extract_last_k_nums(text, k):
 
 
 def extract_last_k_nums_within_answer_tag(text, k):
+    """Extract the last ``k`` numbers found inside an ``<answer>...</answer>`` block.
+
+    The content between the first ``<answer>`` and ``</answer>`` tags is searched
+    for numbers (matching an optional sign, thousands separators, a decimal part and
+    an exponent). Thousands separators are stripped so the comma-joined result splits
+    back into the same numbers downstream.
+
+    Args:
+        text: Text expected to contain an ``<answer>`` block.
+        k: Number of trailing numbers to return.
+
+    Returns:
+        str: A comma-separated string of the last ``k`` numbers within the answer
+        block, or an empty string if no answer tag is found or it contains fewer
+        than ``k`` numbers.
+    """
     # Extract content within <answer> </answer> tags
     match = re.search(r"<answer>(.*?)</answer>", text, re.DOTALL)
     if not match:
@@ -69,6 +136,17 @@ def extract_last_k_nums_within_answer_tag(text, k):
 
 # Convert NumPy values to native Python types for JSON serialization
 def convert_numpy_to_python(obj):
+    """Recursively convert NumPy values to native Python types for JSON serialization.
+
+    Args:
+        obj: Value to convert. May be a scalar, array, or a nested ``dict``,
+            ``list`` or ``tuple`` containing such values.
+
+    Returns:
+        The input with ``np.float32`` scalars converted to ``float``, ``np.ndarray``
+        converted to lists, and containers converted recursively. Values of other
+        types are returned unchanged.
+    """
     if isinstance(obj, np.float32):
         return float(obj)
     elif isinstance(obj, np.ndarray):
@@ -81,6 +159,21 @@ def convert_numpy_to_python(obj):
 
 
 def cal_IoU(pred, target):
+    """Compute the Intersection over Union (IoU) of two axis-aligned boxes.
+
+    Each box is normalized so its corners are ordered, tolerating inputs given as
+    ``[xmax, xmin, ymax, ymin]`` (they are sorted into ``[xmin, xmax, ymin, ymax]``).
+
+    Args:
+        pred: Predicted box as 4 numbers ``[x1, y1, x2, y2]``.
+        target: Ground-truth box as 4 numbers ``[x1, y1, x2, y2]``.
+
+    Returns:
+        float: IoU in ``[0.0, 1.0]``; ``0.0`` when the boxes do not overlap.
+
+    Raises:
+        ValueError: If either input does not contain exactly 4 numbers.
+    """
     # Ensure inputs are 1D numpy arrays with 4 numbers
     pred = np.asarray(pred, dtype=np.float64).flatten()
     target = np.asarray(target, dtype=np.float64).flatten()
@@ -127,6 +220,22 @@ def cal_IoU(pred, target):
 
 
 def cal_F1(pred, target):
+    """Compute the F1 score (Dice similarity coefficient) of two axis-aligned boxes.
+
+    F1 is ``2 * intersection / (pred_area + target_area)``. Each box is normalized so
+    its corners are ordered before computing areas.
+
+    Args:
+        pred: Predicted box as 4 numbers ``[x1, y1, x2, y2]``.
+        target: Ground-truth box as 4 numbers ``[x1, y1, x2, y2]``.
+
+    Returns:
+        float: F1 score clamped to ``[0.0, 1.0]``; ``0.0`` when the boxes do not
+        overlap, or ``nan`` if both boxes have zero area.
+
+    Raises:
+        ValueError: If either input does not contain exactly 4 numbers.
+    """
     # Ensure inputs are 1D numpy arrays with 4 numbers
     pred = np.asarray(pred, dtype=np.float64).flatten()
     target = np.asarray(target, dtype=np.float64).flatten()
@@ -175,6 +284,21 @@ def cal_F1(pred, target):
 
 
 def cal_Precision(pred, target):
+    """Compute precision (intersection over predicted area) of two axis-aligned boxes.
+
+    Each box is normalized so its corners are ordered before computing areas.
+
+    Args:
+        pred: Predicted box as 4 numbers ``[x1, y1, x2, y2]``.
+        target: Ground-truth box as 4 numbers ``[x1, y1, x2, y2]``.
+
+    Returns:
+        float: Precision clamped to ``[0.0, 1.0]``; ``0.0`` when the boxes do not
+        overlap, or ``nan`` if the predicted box has zero area.
+
+    Raises:
+        ValueError: If either input does not contain exactly 4 numbers.
+    """
     # Ensure inputs are 1D numpy arrays with 4 numbers
     pred = np.asarray(pred).flatten()
     target = np.asarray(target).flatten()
@@ -493,6 +617,26 @@ def get_targetLabel_imgModality_from_biometry_benchmark_plan(dataset_name, task_
 
 
 def group_by_anatomy_modality_slice(data):
+    """Group parsed results by parent anatomy class, modality and slice orientation.
+
+    Each label is mapped to its parent anatomy class via ``label_map_regroup``, the
+    imaging modality is normalized to a short code (e.g. ``MRI`` to ``MR``,
+    ``ultrasound`` to ``US``, ``X-ray`` to ``XR``), and the slice dimension is mapped
+    to an orientation code (``0`` to ``S``, ``1`` to ``C``, ``2`` to ``A``). Results
+    are keyed as ``"<parent> @ <modality> (<orientation>)"``.
+
+    Args:
+        data: Iterable of tuples
+            ``(imgModality, label_name, target, filtered_resps, _, slice_dim)``.
+
+    Returns:
+        dict: Mapping of each group key to a dict with ``"targets"`` (list of targets)
+        and ``"responses"`` (flattened list of responses).
+
+    Raises:
+        ValueError: If a label is missing from ``label_map_regroup`` or ``slice_dim``
+            is not ``0``, ``1`` or ``2``.
+    """
     from medvision_bm.utils.configs import label_map_regroup
 
     result = defaultdict(lambda: {"targets": [], "responses": []})
@@ -537,6 +681,26 @@ def group_by_anatomy_modality_slice(data):
 
 
 def group_by_label_modality_slice(data):
+    """Group parsed results by renamed label, modality and slice orientation.
+
+    Each label is renamed via ``label_map_rename``, the imaging modality is normalized
+    to a short code (e.g. ``MRI`` to ``MR``, ``ultrasound`` to ``US``, ``X-ray`` to
+    ``XR``), and the slice dimension is mapped to an orientation code (``0`` to ``S``,
+    ``1`` to ``C``, ``2`` to ``A``). Results are keyed as
+    ``"<label> @ <modality> (<orientation>)"``.
+
+    Args:
+        data: Iterable of tuples
+            ``(imgModality, label_name, target, filtered_resps, _, slice_dim)``.
+
+    Returns:
+        dict: Mapping of each group key to a dict with ``"targets"`` (list of targets)
+        and ``"responses"`` (flattened list of responses).
+
+    Raises:
+        ValueError: If a label is missing from ``label_map_rename`` or ``slice_dim``
+            is not ``0``, ``1`` or ``2``.
+    """
     from medvision_bm.utils.configs import label_map_rename
 
     result = defaultdict(lambda: {"targets": [], "responses": []})
@@ -583,6 +747,20 @@ def group_by_label_modality_slice(data):
 
 
 def group_by_boxImgRatio(data):
+    """Group parsed results into bins by box-to-image area ratio.
+
+    Each item is placed into a 5%-wide bin based on its box-to-image ratio, ranging
+    from ``"Box/Image < 5%"`` up to ``"90% <= Box/Image"``.
+
+    Args:
+        data: Iterable of tuples
+            ``(_, target, filtered_resps, _, box_img_ratio, image_size_2d)``.
+
+    Returns:
+        dict: Mapping of each bin label to a dict with ``"targets"`` (list of targets),
+        ``"responses"`` (flattened list of responses) and ``"image_size_2d"`` (list of
+        image sizes).
+    """
     result = defaultdict(lambda: {"targets": [], "responses": [], "image_size_2d": []})
 
     # Define thresholds and their corresponding labels

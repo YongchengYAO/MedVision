@@ -6,13 +6,21 @@ import torch
 
 
 def atomic_write_json(json_path, data, indent=4):
-    """
-    Write ``data`` as JSON to ``json_path`` atomically.
+    """Write ``data`` as JSON to ``json_path`` atomically.
 
     Writes to a temp file in the same directory, fsyncs it, then ``os.replace``-es
     it over the target. If the write fails (e.g. ENOSPC on a full disk), the
     original file is left untouched instead of being truncated to 0 bytes, which
-    is what opening the target directly with mode "w" would do.
+    is what opening the target directly with mode ``"w"`` would do.
+
+    Args:
+        json_path (str): Destination path for the JSON file.
+        data: Any JSON-serializable object to write.
+        indent (int): Indentation passed to ``json.dump``. Defaults to ``4``.
+
+    Raises:
+        BaseException: Re-raises any error raised while writing or replacing the
+            file, after removing the partial temp file.
     """
     dir_name = os.path.dirname(json_path) or "."
     os.makedirs(dir_name, exist_ok=True)
@@ -33,6 +41,19 @@ def atomic_write_json(json_path, data, indent=4):
 
 
 def str2bool(v):
+    """Coerce a string (or bool) to a boolean, for use as an ``argparse`` type.
+
+    Args:
+        v: A boolean, or a string such as ``"yes"``, ``"true"``, ``"1"``,
+            ``"no"``, ``"false"``, or ``"0"`` (case-insensitive).
+
+    Returns:
+        bool: ``True`` for truthy tokens and ``False`` for falsy tokens. A value
+        that is already a ``bool`` is returned unchanged.
+
+    Raises:
+        argparse.ArgumentTypeError: If ``v`` is not a recognized boolean token.
+    """
     import argparse
 
     if isinstance(v, bool):
@@ -46,6 +67,15 @@ def str2bool(v):
 
 
 def set_cuda_num_processes():
+    """Determine the number of GPU processes to launch from the CUDA environment.
+
+    Reads ``CUDA_VISIBLE_DEVICES``. When it is unset, all GPUs reported by
+    ``torch.cuda.device_count()`` are used; otherwise the number of device ids
+    listed in the variable is used (at least 1).
+
+    Returns:
+        int: The number of processes to run, one per visible GPU.
+    """
     cuda_visible = os.getenv("CUDA_VISIBLE_DEVICES", None)
     if cuda_visible is None:
         num_processes = torch.cuda.device_count()
@@ -62,16 +92,19 @@ def set_cuda_num_processes():
 
 
 def update_task_status(json_path, model_name, task_name):
-    """
-    Update a JSON tracking file.
+    """Mark a (model, task) pair as completed in a JSON tracking file.
+
+    Loads the existing status file (creating the parent directory and treating a
+    missing file as empty), sets ``data[model_name][task_name]`` to ``True``, and
+    writes the file back atomically.
 
     Args:
-        json_path (str): Path to the JSON file
-        model_name (str): Model name to update
-        task_name (str): Task that has been completed
+        json_path (str): Path to the JSON tracking file.
+        model_name (str): Model whose status is updated.
+        task_name (str): Task to mark as completed.
 
     Returns:
-        bool: True if update succeeded, False otherwise
+        bool: Always ``False``; the return value is unused by callers.
     """
     # Create the folder if it doesn't exist
     os.makedirs(os.path.dirname(json_path), exist_ok=True)
@@ -91,6 +124,15 @@ def update_task_status(json_path, model_name, task_name):
 
 
 def load_tasks(json_file_path):
+    """Load task names from a JSON file mapping task names to their definitions.
+
+    Args:
+        json_file_path (str): Path to a JSON file whose top-level keys are task
+            names.
+
+    Returns:
+        list: The task names (the top-level keys), in file order.
+    """
     with open(json_file_path, "r") as f:
         tasks_dict = json.load(f)
     tasks = list(tasks_dict.keys())
@@ -99,6 +141,20 @@ def load_tasks(json_file_path):
 
 
 def load_tasks_status(tasks_status_file, model_name):
+    """Return the completion-status mapping for a single model.
+
+    Args:
+        tasks_status_file (str): Path to the JSON status file. A missing file is
+            treated as empty.
+        model_name (str): Model whose status entry is returned.
+
+    Returns:
+        dict: Mapping of task name to completion flag for ``model_name``, or an
+        empty dict if the file or the model entry is absent.
+
+    Raises:
+        ValueError: If the status file exists but cannot be read or parsed.
+    """
     if os.path.exists(tasks_status_file):
         try:
             with open(tasks_status_file, "r") as f:

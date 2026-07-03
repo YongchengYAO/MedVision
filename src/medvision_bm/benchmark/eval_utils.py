@@ -1,9 +1,25 @@
 def parse_sample_indices(s: str) -> list:
-    """Parse --sample_indices string into a list of integer indices.
+    """Parse a ``--sample_indices`` string into a list of integer indices.
 
-    Accepted formats:
-      [idx1:idx2]          -> list(range(idx1, idx2))
-      [idx1,idx2,interval] -> list(range(idx1, idx2, interval))
+    Two formats are accepted:
+
+    - ``[start:stop]`` -> ``list(range(start, stop))``
+    - ``[start,stop]`` or ``[start,stop,step]`` ->
+      ``list(range(start, stop[, step]))``
+
+    Surrounding square brackets are optional and stripped before parsing.
+
+    Args:
+        s (str): The raw ``--sample_indices`` argument, e.g. ``"[0:10]"`` or
+            ``"0,10,2"``.
+
+    Returns:
+        list: The list of integer indices described by ``s``.
+
+    Raises:
+        ValueError: If the string matches neither accepted format (a colon form
+            without exactly two parts, or a comma form without two or three
+            parts).
     """
     s = s.strip()
     if s.startswith("[") and s.endswith("]"):
