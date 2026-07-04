@@ -25,3 +25,9 @@ nav.bd-links li > a.current {
 .sd-card {
   border-radius: 0.5rem;
 }
+
+/* Inline highlight for a phrase worth calling out ([text]{.mv-accent}). */
+.mv-accent {
+  color: var(--mv-accent);
+  font-weight: 600;
+}

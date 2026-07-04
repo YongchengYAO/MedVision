@@ -6,7 +6,7 @@
 
   # MedVision: Dataset and Benchmark for Quantitative Medical Image Analysis
 
-  | 🌏 [**Project**](https://medvision-vlm.github.io) | 🧑🏻‍💻 [**Code**](https://github.com/YongchengYAO/MedVision) | 📚 [**Docs**](https://medvision.readthedocs.io/en/latest/index.html) | 🩻 [**Dataset**](https://huggingface.co/datasets/YongchengYAO/MedVision) | 🐳 [**Docker**](https://hub.docker.com/r/vincentycyao/medvision/tags) | 🤗 [**Models**](https://huggingface.co/collections/YongchengYAO/medvision-v0) | 🚀 [**Demo**](https://huggingface.co/spaces/YongchengYAO/MedVision-V0-demo) | 📖 [**arXiv**](https://arxiv.org/abs/2511.18676) |
+  | 🌏 [**Project**](https://medvision-vlm.github.io) | 🧑🏻‍💻 [**GitHub**](https://github.com/YongchengYAO/MedVision) | 📦 [**PyPI**](https://pypi.org/project/medvision-bm/) | 📚 [**Docs**](https://medvision.readthedocs.io/en/latest/index.html) | 🩻 [**Dataset**](https://huggingface.co/datasets/YongchengYAO/MedVision) | 🐳 [**Docker**](https://hub.docker.com/r/vincentycyao/medvision/tags) | 🤗 [**Models**](https://huggingface.co/collections/YongchengYAO/medvision-v0) | 🚀 [**Demo**](https://huggingface.co/spaces/YongchengYAO/MedVision-V0-demo) | 📖 [**arXiv**](https://arxiv.org/abs/2511.18676) |
 
   🔎 Benchmarking VLMs for detection, tumor/lesion size estimation, and angle/distance measurement from medical images 📏
 
@@ -65,13 +65,19 @@ MedVision benchmarks **19 vision–language models** — open-weight general-pur
 
 # 🔥 News
 
+- [Jul 4, 2026] Released the benchmarking/fine-tuning codebase `medvision_bm` v1.1.1 — [release notes](https://github.com/YongchengYAO/MedVision/blob/master/docs/codebase-release/release-v1.1.1.md)
+  - 📚 New [documentation site](https://medvision.readthedocs.io/en/latest/index.html) on Read the Docs: installation, dataset, benchmarking, and fine-tuning guides plus the full CLI and Python API reference.
 - [Jun 29, 2026] 🚀 Released the **MedVision** dataset (`medvision_ds`) v1.1.1 — [release notes](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.1.md)
   - **Highlight**: corrected T/L ellipse fit — fixes a transposed in-plane voxel-spacing bug (wrong axis lengths and major/minor labelling on anisotropic slices, e.g. sagittal/coronal); ~22% fewer T/L samples on anisotropic data, isotropic data (e.g., axial slices) essentially unchanged
   - **Backward compatibility**: The codebase `medvision_ds` will be automatically updated to the latest (v1.1.1). `MedVision_PLANNER_VERSION='latest'` now resolves to `'1.1.1'`; pin `'1.1.0'` or `'1.0.0'` for earlier annotations.
   - ⚠️ New env var `MedVision_ACK_RELEASE`: required **only** when you pin an older version (`MedVision_PLANNER_VERSION` below the latest) — **set it to the latest version (`1.1.1`) to acknowledge you have read this release note and unblock loading legacy data**. 
   - Always set `MedVision_FORCE_INSTALL_CODE='True'` to receive notification of future releases. See [Environment Variables](https://huggingface.co/datasets/YongchengYAO/MedVision#environment-variables).
 - [Jun 9, 2026] Released [MedVision-V0](https://huggingface.co/collections/YongchengYAO/medvision-v0), [RFT code](https://github.com/YongchengYAO/verl/tree/medvision-rl), [preprint v2](https://arxiv.org/abs/2511.18676), [project page](https://medvision-vlm.github.io/) with interactive case viewer. 
+
+<details>
+<summary>Older news (Click to expand)</summary>
 - [May 15, 2026] Released the benchmarking/fine-tuning codebase `medvision_bm` v1.1.0 — [release notes](https://github.com/YongchengYAO/MedVision/blob/master/docs/codebase-release/release-v1.1.0.md)
+
 - [May 14, 2026] Released the **MedVision** dataset (`medvision_ds`) v1.1.0 — [release notes](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.0.md)
   - **Highlight**: new T/L sample filtering (with ambiguous cases removed), more T/L samples with a single small target (cluster size > 20)
   - **Backward compatibility**: The codebase `medvision_ds` will be automatically updated to the latest (v1.1.0). `MedVision_PLANNER_VERSION` is required (v1.1.0+) to specify the annotation data version. Setting `MedVision_PLANNER_VERSION='1.0.0'` will fall back to **MedVision** dataset v1.0.0.
@@ -81,6 +87,8 @@ MedVision benchmarks **19 vision–language models** — open-weight general-pur
   ```
 - [Dec 10, 2025] Added preprint, training code, docker images, released models, new tasks/models guide
 - [Oct 8, 2025] Released **MedVision** dataset v1.0.0
+
+</details>
 
 <br/>
 
@@ -95,10 +103,15 @@ pip install .
 pip show medvision_bm
 ```
 
-**Option 2 — import the package in your own project.** Install `medvision_bm` directly from GitHub. Use this when you only want to `import` its modules/functions (e.g. `from medvision_bm.utils import parse_utils`) and do **not** need the repo's folder structure.
+**Option 2 — import the package in your own project.** Install `medvision_bm` from PyPI. Use this when you only want to `import` its modules/functions (e.g. `from medvision_bm.utils import parse_utils`) and do **not** need the repo's folder structure.
 
 ```bash
+# stable release (PyPI):
+pip install medvision-bm
+
+# or the nightly build (latest commit on GitHub master):
 pip install "git+https://github.com/YongchengYAO/MedVision.git"
+
 pip show medvision_bm
 ```
 

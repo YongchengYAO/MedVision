@@ -1,35 +1,6 @@
 # Resources
 
-Citation, canonical links, licensing, and credits for the MedVision benchmark and the `medvision_bm` codebase.
-
-## Citation
-
-If MedVision, the `medvision_bm` code, or the MedVision-V0 models are useful in your research, please cite the preprint:
-
-```bibtex
-@misc{yao2026medvisionbenchmarkingquantitativemedical,
-      title={MedVision: Benchmarking Quantitative Medical Image Analysis},
-      author={Yongcheng Yao and Yongshuo Zong and Raman Dutt and Yongxin Yang and Sotirios A Tsaftaris and Timothy Hospedales},
-      year={2026},
-      eprint={2511.18676},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/2511.18676},
-}
-```
-
-## Links
-
-Everything the project publishes lives at one of these entry points:
-
-- **Paper (arXiv)** — <https://arxiv.org/abs/2511.18676>
-- **Project page & open leaderboard** — <https://medvision-vlm.github.io> (per-task score tables, an interactive case viewer, and a frontier API-model pilot study)
-- **Dataset (Hugging Face)** — <https://huggingface.co/datasets/YongchengYAO/MedVision>
-- **MedVision-V0 model collection** — <https://huggingface.co/collections/YongchengYAO/medvision-v0>
-- **Interactive demo (HF Space)** — <https://huggingface.co/spaces/YongchengYAO/MedVision-V0-demo>
-- **Source code (GitHub)** — <https://github.com/YongchengYAO/MedVision>
-- **Docker images** — <https://hub.docker.com/r/vincentycyao/medvision/tags>
-- **verl fork for RFT** — <https://github.com/YongchengYAO/verl/tree/medvision-rl>
+Licensing and credits for the MedVision benchmark and the `medvision_bm` codebase. See the [front page](index.md) for the citation and the canonical project links.
 
 :::{tip}
 For a reproducible environment, pull the published Docker image rather than resolving pinned dependencies by hand. See [Installation](getting-started/installation.md) for the setup path.

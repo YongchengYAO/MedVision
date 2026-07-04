@@ -43,9 +43,7 @@ Requesting any single config pulls the raw imaging data for that source dataset 
 | Value | Resolves to |
 |-------|-------------|
 | `latest` | the newest release (currently `1.1.1`) |
-| `1.1.1` | pinned latest |
-| `1.1.0` | earlier annotations |
-| `1.0.0` | original v1.0.0 annotations |
+| a pinned version — `1.1.1`, `1.1.0`, or `1.0.0` | that exact annotation release |
 
 Different planner versions can change the exact set and framing of samples, so keep this value fixed across a benchmark to stay reproducible.
 
@@ -70,7 +68,7 @@ python -m medvision_bm.benchmark.download_datasets \
 
 # ...or from a configs CSV (config names in the first column):
 python -m medvision_bm.benchmark.download_datasets \
-  --configs_csv <configs.csv> \
+  --configs_csv docs/dataset-configs/ConfigurationsList_Test.csv \
   --data_dir <data-folder>
 ```
 
@@ -78,7 +76,7 @@ Arguments:
 
 - `--data_dir` — **required**; the folder that becomes `MedVision_DATA_DIR` (datasets and the fetched dataset source code land here).
 - `--tasks_json` — path to a task-list JSON; its top-level keys are read as task names (the same format used under `tasks_list/`).
-- `--configs_csv` — path to a CSV whose first column lists config names.
+- `--configs_csv` — path to a CSV whose first column lists config names. Ready-made lists ship in [`docs/dataset-configs/`](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-configs): `ConfigurationsList_All.csv`, `ConfigurationsList_Test.csv`, and `ConfigurationsList_Train.csv`.
 - `--split` — `test` (default) or `train`; controls which split of each task/config is requested.
 - `--force_download_data` — store-true flag that forces re-download of the raw imaging data.
 
@@ -125,7 +123,8 @@ Note that the CLI's `--force_download_data` maps to `MedVision_FORCE_DOWNLOAD_DA
 
 A few source datasets are access-restricted and need credentials before they will download. Set the relevant tokens in your environment first:
 
-- **FeTA24** and **ToothFairy2** — Hugging Face gated repos; provide `HF_TOKEN` (and, for ToothFairy2, `MedVision_ToothFairy2_HF_ID`).
-- **SKM-TEA** — provide `SYNAPSE_TOKEN` and `MedVision_SKMTEA_HF_ID`.
+- **FeTA24** — hosted on Synapse behind a data-use agreement; provide `SYNAPSE_TOKEN`.
+- **SKM-TEA** — Stanford AIMI knee-MRI released under a data-use agreement, so MedVision serves it from a *gated* Hugging Face mirror rather than fetching it freely; provide `MedVision_SKMTEA_HF_ID` (a mirror repo you have been granted access to) together with `HF_TOKEN`.
+- **ToothFairy2** — a gated Hugging Face repo; provide `MedVision_ToothFairy2_HF_ID` and `HF_TOKEN`.
 
 Without these, requesting a config from a gated dataset will fail at download time. See the dataset card for the exact per-dataset access steps.

@@ -25,7 +25,7 @@ try:
     version = _version
     release = _version
 except Exception:  # pragma: no cover - version is best-effort
-    version = release = "1.1.1-dev"
+    version = release = "1.1.1"
 
 # -- General configuration ----------------------------------------------------
 extensions = [
@@ -109,10 +109,8 @@ html_theme_options = {
     },
     "repository_url": "https://github.com/YongchengYAO/MedVision",
     "repository_branch": "master",
-    "path_to_docs": "docsite/source",
     "use_repository_button": True,
     "use_issues_button": True,
-    "use_edit_page_button": True,
     "home_page_in_toc": True,
     "show_navbar_depth": 1,
     "show_toc_level": 2,

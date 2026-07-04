@@ -20,7 +20,11 @@ This page assumes the package and data are already in place. See [Installation](
 
 The LoRA scripts train adapters on a frozen backbone and launch with plain DistributedDataParallel. The full-parameter script updates every weight; at 7B that does not fit in DDP on 80 GB GPUs (weights + gradients + FP32 AdamW state ≈ 84 GB/GPU before activations), so it shards optimizer state, gradients, and parameters across GPUs with FSDP.
 
-The `__512x512` variants add `--new_shape_hw 512 512`, which resizes each slice during dataset preparation and re-derives the physical pixel size for that resolution. Because measurement tasks depend on knowing the real millimetre-per-pixel scale, the prompt's pixel size always matches the resolution the model actually perceives — the 512×512 LoRA recipe is the one behind the released MedVision-V0 checkpoints.
+The `__512x512` variants add `--new_shape_hw 512 512`, which resizes each slice during dataset preparation and re-derives the physical pixel size for that resolution. Because measurement tasks depend on knowing the real millimetre-per-pixel scale, the prompt's pixel size always matches the resolution the model actually perceives — the 512×512 full SFT recipe is the one behind the released MedVision-V0 checkpoints.
+
+:::{note}
+MedVision-V0 is produced by **two-stage post-training**: this full-parameter 512×512 SFT, followed by reinforcement fine-tuning (GRPO). See [Reinforcement fine-tuning](rft.md).
+:::
 
 To run one, set the paths and identifiers at the top of the script (`benchmark_dir`, `data_dir`, `base_model_hf`, `run_name`, W&B fields, and the batch/GPU settings) and execute it from the repo root:
 
@@ -111,7 +115,7 @@ Global caps `--train_sample_limit` and `--val_sample_limit` are always required.
 - **Balanced** — `--train_sample_limit_per_task` / `--val_sample_limit_per_task` spread the budget roughly evenly across the three tasks.
 - **Per-task** (the shipped setting) — `--train_sample_limit_task_AD`, `--train_sample_limit_task_Detection`, `--train_sample_limit_task_TL` (and their `--val_...` counterparts) set exact counts, e.g. 5.5K / 110K / 5.5K.
 
-If a limit exceeds the available samples, the pool is drawn with replacement rather than truncated.
+If a limit exceeds the available samples for a task, it is a no-op: the pool is capped at what is available and never oversampled or repeated. (The only with-replacement oversampling is the optional temperature sampler, enabled with `--enable_temperature_sampler`, which rebalances the multi-task mix by task frequency and is independent of these limits.)
 
 ## Key hyperparameters
 

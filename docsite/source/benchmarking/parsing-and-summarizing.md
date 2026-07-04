@@ -42,18 +42,19 @@ python -m medvision_bm.benchmark.parse_outputs \
     -p 32
 ```
 
-Point `--task_dir` at a task tag and every model subfolder under it is processed in turn. (You can
+Point `--task_dir` at a task folder and every model subfolder under it is processed in turn. (You can
 instead target one model with `--model_dir <path>`; exactly one of the two is required.)
 
-For each raw `*.jsonl` the parser sorts samples by `doc_id`, extracts the last numeric values from the
-model's response (1 value for A/D, 2 for T/L, 4 box coordinates for Detection), scores each sample,
+For each raw `*.jsonl` the parser sorts samples by `doc_id`, extracts the last numeric values from
+within the `<answer></answer>` tags of the model's response (1 value for A/D, 2 for T/L, 4 box
+coordinates for Detection), scores each sample,
 and writes the annotated copy to `<model>/parsed/`. It also refreshes that model's `<task_id>_results.json`
 with the aggregate `avgMAE`, `avgMRE`, `avgIoU`, `SuccessRate`, and the binned `MRE<0.1 … MRE<1.0` fractions.
 
 | Flag | Meaning |
 | --- | --- |
 | `--task_type {AD,TL,Detection}` | Required. Selects the scoring logic and the expected number of predicted values. |
-| `--task_dir <dir>` | Task-tag folder; loops over every model subfolder inside it. |
+| `--task_dir <dir>` | Task folder; loops over every model subfolder inside it. |
 | `--model_dir <dir>` | Alternative to `--task_dir`: parse a single model folder. |
 | `-p`, `--processes <N>` | Worker processes (one JSONL file per worker). Omit for single-process. |
 | `--limit <N>` | Score only the first `N` samples per file — handy for a quick smoke test. |
@@ -109,7 +110,7 @@ Shared flags across all three:
 
 ### T/L only: excluding multi-cluster samples
 
-The published T/L benchmark is scored against v1.0.0 annotations, but dataset release v1.1.0 removed a
+The published T/L benchmark is scored against v1.0.0 annotations, but dataset release v1.1.0 identified a
 set of samples whose target spanned multiple disconnected clusters. To reproduce the reported numbers
 you must drop those samples at summarize time:
 
@@ -124,17 +125,5 @@ unfiltered run. This flag exists only on `summarize_TL_task`.
 
 :::{warning}
 Omitting `--removed_samples_dir` for T/L silently includes the multi-cluster samples and yields numbers
-that do not line up with the paper.
+that do not line up with the [paper](https://arxiv.org/abs/2511.18676).
 :::
-
-## Orchestration scripts
-
-You rarely call these modules by hand. The repo ships thin driver scripts at its root that set up the
-conda environment, (re)install `medvision_bm`, then run the parse and summarize commands for a task tag:
-
-- `parse_AD-jobs.sh`
-- `parse_TL-jobs.sh` (already wired with `--removed_samples_dir Data/Datasets`)
-- `parse_detection-jobs.sh`
-
-`parse_all.sh` chains them together for a full pass. Each script keeps the alternative task tags
-(scaledPS, plane/task OOD splits, limited runs) commented out — uncomment the block you need.

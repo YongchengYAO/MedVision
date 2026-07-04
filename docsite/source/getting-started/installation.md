@@ -2,8 +2,6 @@
 
 This page walks through getting `medvision_bm` onto your machine, pulling in the dataset codebase, and setting the environment variables that the loader and benchmark drivers read at runtime.
 
-There is no user-facing Python API to speak of: the top-level package exposes only `__version__`, and everything you actually run is a `python -m medvision_bm.<...>` command backed by `argparse`. Pick the install path that matches how you intend to use the project.
-
 ## Two ways to install the package
 
 ### Full clone (benchmarking, SFT, RFT)
@@ -21,15 +19,17 @@ Treat the cloned `MedVision/` directory as your working directory from here on. 
 
 ### Import-only (use the modules in your own code)
 
-Choose this if you only want to import from the package — for example pulling in a parsing helper — and do not need the repo's scripts or folder layout. Install straight from GitHub:
+Choose this if you only want to import from the package — for example pulling in a parsing helper — and do not need the repo's scripts or folder layout. Install from PyPI:
 
 ```bash
+pip install medvision-bm
+# or the latest development version from GitHub:
 pip install "git+https://github.com/YongchengYAO/MedVision.git"
 pip show medvision_bm
 ```
 
 :::{note}
-The GitHub install gives you the importable package only. If you later decide to benchmark or fine-tune, switch to the full clone so the `script/` and `tasks_list/` directories are present.
+The PyPI (or GitHub) install gives you the importable package only. If you later decide to benchmark or fine-tune, switch to the full clone so the `script/` and `tasks_list/` directories are present.
 :::
 
 ## Docker
@@ -101,9 +101,10 @@ The dataset loader and the benchmark drivers read their configuration from the e
 | `MedVision_ACK_RELEASE` | Only when pinning below latest | Acknowledges you have read the release note before loading legacy annotations. | `1.1.1` |
 | `MedVision_FORCE_INSTALL_CODE` | No | Reinstall `medvision_ds` to the latest on load (keeps you notified of new releases). | `True` (default) / `False` |
 | `MedVision_FORCE_DOWNLOAD_DATA` | No | Force re-download of raw images and annotations. | `False` (default) / `True` |
+| `MEDVISION_RESP_CACHE` | No | Per-sample response cache that makes an interrupted evaluation resumable; set to `0` to disable and reproduce the plain no-cache behaviour. | enabled by default / `0` = off |
 | `HF_TOKEN` | Restricted data only | Hugging Face access token for gated source datasets. | Token string |
-| `SYNAPSE_TOKEN` | Restricted data only | Synapse access token for source datasets hosted there. | Token string |
-| `MedVision_SKMTEA_HF_ID` | Restricted data only | Hugging Face repo ID granting SKM-TEA access. | `<user>/<repo>` |
+| `SYNAPSE_TOKEN` | Restricted data only | Synapse authentication token for Synapse-hosted source datasets (e.g. FeTA24). | Token string |
+| `MedVision_SKMTEA_HF_ID` | Restricted data only | Hugging Face repo ID of the gated SKM-TEA mirror you have access to. | `<user>/<repo>` |
 | `MedVision_ToothFairy2_HF_ID` | Restricted data only | Hugging Face repo ID granting ToothFairy2 access. | `<user>/<repo>` |
 
 :::{warning}

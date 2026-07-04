@@ -69,7 +69,7 @@ those packages are not installed on the docs builder.
 `rft.verl.verl_utils` + `rft.verl.rft_prompts` — parquet builders and system prompts.
 :::
 
-:::{grid-item-card} Benchmark pipeline
+:::{grid-item-card} `benchmark` pipeline
 :link: benchmark
 :link-type: doc
 

@@ -74,7 +74,7 @@ A built dataset is tied to the `model_family_name` it was made for: the image re
 Every sample's system message tells the model to separate its reasoning from its final answer. Two variants live in [`rft_prompts.py`](../reference/api/rft_prompts.md):
 
 - **`SYSTEM_PROMPT`** (the CoT builders) asks for reasoning inside `<think>...</think>` and the result inside `<answer>...</answer>`, and additionally requires each intermediate step to be wrapped as `<step-k-reasoning>` / `<step-k-answer>` pairs. That per-step structure is what makes a process reward possible — the grader can read off each intermediate landmark.
-- **`SYSTEM_PROMPT_LITE`** (the `--without_cot_instruction` path) keeps only the outer `<think>` / `<answer>` split, with no per-step tags.
+- **`SYSTEM_PROMPT_LITE`** *(deprecated)* — the `--without_cot_instruction` path; keeps only the outer `<think>` / `<answer>` split, with no per-step tags.
 
 So a CoT rollout looks like:
 
@@ -92,8 +92,8 @@ So a CoT rollout looks like:
 The reward lives entirely on the verl fork; here it is enough to know its shape and what data feeds it. Conceptually it sums three parts:
 
 1. **Format reward** — did the rollout produce a well-formed `<think>`/`<answer>` (and, for CoT, `<step-k-*>`) structure that can be parsed at all.
-2. **Process reward** — how close each intermediate step is to ground truth. The CoT builders populate `extra_info` with the true intermediate coordinates so this can be scored: landmark pairs (`landmark_P1_wh`…`landmark_P4_wh`) for T/L, the two points or two lines for A/D, and the box corners for detection. The lite builders leave `extra_info` effectively empty, so a lite dataset earns no process reward.
-3. **Answer reward** — the final metric against `ground_truth`. Detection's answer reward is built on **complete IoU (CIoU)** between the predicted and ground-truth boxes rather than raw coordinate error, so it rewards overlap and penalises drift in a scale-aware way.
+2. **Process reward** — how close each intermediate step is to ground truth. The CoT builders populate `extra_info` with the true intermediate coordinates so this can be scored: landmark pairs (`landmark_P1_wh`…`landmark_P4_wh`) for T/L, the two points or two lines for A/D, and the box corners for detection.
+3. **Answer reward** — the final metric against `ground_truth`.
 
 Each row also stamps a `data_source` / `ability` that routes it to the right reward function: `medvision-tl` for tumour/lesion size, `medvision-ad` (further split into `medvision-angle` / `medvision-distance` by metric type) for angle-distance, and `medvision-detection` for detection.
 
@@ -101,4 +101,4 @@ For the exact field contracts and the formatter functions that emit them, see th
 
 ## After training
 
-Point the standard benchmark pipeline at the fine-tuned checkpoint the same way you would any other model — see [Running evaluations](../benchmarking/running-evaluations.md). The `script/benchmark-*/` drivers include an `eval__MedVision-V0-7B__detect.sh` example for scoring an RFT'd detection model.
+Point the standard benchmark pipeline at the fine-tuned checkpoint, exactly as you would for any other model — see [Running evaluations](../benchmarking/running-evaluations.md). The `script/benchmark-*/` drivers include an `eval__MedVision-V0-7B__detect.sh` example for scoring an RFT'd detection model.
