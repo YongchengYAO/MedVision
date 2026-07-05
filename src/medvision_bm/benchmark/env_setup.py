@@ -45,6 +45,16 @@ def parse_args() -> argparse.Namespace:
         default="0.10.0",
         help="vLLM version to install (default: 0.10.0).",
     )
+    parser.add_argument(
+        "--skip_cuda_toolkit",
+        action="store_true",
+        help="Skip installing the CUDA toolkit (for API-only models with no local GPU inference).",
+    )
+    parser.add_argument(
+        "--skip_vllm",
+        action="store_true",
+        help="Skip installing vLLM (for models that don't use it).",
+    )
     return parser.parse_args()
 
 
@@ -67,11 +77,13 @@ def main() -> None:
     install_medvision_ds(args.data_dir)
 
     # Install CUDA
-    install_cuda_toolkit(version=args.cuda_version)
+    if not args.skip_cuda_toolkit:
+        install_cuda_toolkit(version=args.cuda_version)
 
     # Install vLLM
     # Some model evaluation may not need vLLM, but we install it here for completeness
-    install_vllm(data_dir=args.data_dir, version=args.vllm_version)
+    if not args.skip_vllm:
+        install_vllm(data_dir=args.data_dir, version=args.vllm_version)
 
     # Install packages from the specified requirements file
     print(f"\n[Info] Installing packages from: {args.requirement}")

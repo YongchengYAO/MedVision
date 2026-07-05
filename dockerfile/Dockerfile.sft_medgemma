@@ -5,15 +5,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"]
 
 #=================================================================
-# Llava-Med environment setup
-ENV ENV_NAME="eval-llavamed"
-
-# Configure conda to use only conda-forge channel
-RUN set -eux; \
-    /opt/miniconda/bin/conda config --system --remove-key default_channels || true; \
-    /opt/miniconda/bin/conda config --system --remove-key channels || true; \
-    /opt/miniconda/bin/conda config --system --add channels conda-forge; \
-    /opt/miniconda/bin/conda config --system --set channel_priority strict
+# MedGemma environment setup
+ENV ENV_NAME="sft-medgemma"
 
 # Create conda environment using conda-forge channel
 RUN set -eux; \
@@ -22,9 +15,9 @@ RUN set -eux; \
     if [ -d "/opt/miniconda/envs/${ENV_NAME}" ]; then \
         echo "Conda env '${ENV_NAME}' already exists. Skipping creation."; \
     else \
-        conda create -n "${ENV_NAME}" python=3.10 pip -y; \
+        conda create --override-channels -n ${ENV_NAME} python=3.11 pip -y -c conda-forge; \
     fi
-    
+
 # Install CUDA toolkit
 RUN set -eux; \
     CONDA_BIN="/opt/miniconda/bin/conda"; \
@@ -41,29 +34,16 @@ RUN set -eux; \
     CONDA_BIN="/opt/miniconda/bin/conda"; \
     ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --no-cache-dir "/root/Documents/MedVision"
 
-# Setup evaluation environment
+# Setup SFT environment
 RUN set -eux; \
     CONDA_BIN="/opt/miniconda/bin/conda"; \
     rm -rf /root/Documents/MedVision; \
     git clone https://github.com/YongchengYAO/MedVision /root/Documents/MedVision; \
-    \
-    # Set paths and configs
-    benchmark_dir="/root/Documents/MedVision"; \
-    data_dir="${benchmark_dir}/Data"; \
-    \
-    # Install medvision_bm
-    rm -rf "${benchmark_dir}/build" "${benchmark_dir}/src/medvision_bm.egg-info"; \
-    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --no-cache-dir "${benchmark_dir}"; \
-    \
-    # Install pinned requirements (Method 1). The lockfile's file:// entry for
-    # llava_med resolves to third_party/LLaVA-Med, which ships vendored in the
-    # MedVision repo itself (via the clone above), so no separate clone is needed.
-    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output \
-    python -m medvision_bm.benchmark.install_medvision_ds --data_dir "${data_dir}"; \
-    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output \
-    python -m medvision_bm.benchmark.install_vendored_lmms_eval --lmms_eval_opt_deps llava_med; \
-    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output \
-    pip install --no-cache-dir -r "${benchmark_dir}/requirements/requirements_eval_llavamed.txt" --no-deps
+    cd /root/Documents/MedVision; \
+    DATA_DIR="/root/Documents/MedVision/Data"; \
+    mkdir -p "${DATA_DIR}"; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output python -m medvision_bm.sft.env_setup --data_dir ${DATA_DIR} --requirement "/root/Documents/MedVision/requirements/requirements_sft_medgemma.txt"
+
 #=================================================================
 ENV HOME="/root"
 WORKDIR /root/Documents

@@ -15,23 +15,24 @@ RUN set -eux; \
     if [ -d "/opt/miniconda/envs/${ENV_NAME}" ]; then \
         echo "Conda env '${ENV_NAME}' already exists. Skipping creation."; \
     else \
-        conda create --override-channels -n ${ENV_NAME} python=3.11 -y -c conda-forge; \
+        conda create --override-channels -n ${ENV_NAME} python=3.11 pip -y -c conda-forge; \
     fi
     
 # Install CUDA toolkit
 RUN set -eux; \
     CONDA_BIN="/opt/miniconda/bin/conda"; \
-    ${CONDA_BIN} install -n "${ENV_NAME}" --override-channels -c nvidia -c conda-forge cuda-toolkit=12.4 -y
+    ${CONDA_BIN} install -n "${ENV_NAME}" --override-channels -c nvidia -c conda-forge cuda-toolkit=12.4 -y; \
+    ${CONDA_BIN} clean -afy
 
 # Upgrade pip
 RUN set -eux; \
     CONDA_BIN="/opt/miniconda/bin/conda"; \
-    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --upgrade pip setuptools wheel
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # Install MedVision package
 RUN set -eux; \
     CONDA_BIN="/opt/miniconda/bin/conda"; \
-    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install "/root/Documents/MedVision"
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --no-cache-dir "/root/Documents/MedVision"
 
 # Setup SFT environment
 RUN set -eux; \
@@ -41,7 +42,7 @@ RUN set -eux; \
     cd /root/Documents/MedVision; \
     DATA_DIR="/root/Documents/MedVision/Data"; \
     mkdir -p "${DATA_DIR}"; \
-    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output python -m medvision_bm.sft.env_setup --data_dir ${DATA_DIR}
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output python -m medvision_bm.sft.env_setup --data_dir ${DATA_DIR} --requirement "/root/Documents/MedVision/requirements/requirements_sft_qwen25vl.txt" --lmms_eval_opt_deps qwen2_5_vl
 
 #=================================================================
 ENV HOME="/root"

@@ -24,6 +24,8 @@ RUN mkdir -p /opt && \
     bash /tmp/miniconda.sh -b -u -p /opt/miniconda && \
     rm -f /tmp/miniconda.sh && \
     /opt/miniconda/bin/conda config --system --set auto_update_conda false && \
+    /opt/miniconda/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main && \
+    /opt/miniconda/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r && \
     /opt/miniconda/bin/conda clean -afy
 
 #=================================================================

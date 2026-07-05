@@ -1,0 +1,126 @@
+FROM vincentycyao/medvision:base
+
+# Avoid interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-c"]
+
+#=================================================================
+# MiniMax-M3-INT4 environment setup
+ENV ENV_NAME="eval-minimax-m3-int4"
+ENV BENCHMARK_DIR="/root/Documents/MedVision"
+ENV DATA_DIR="${BENCHMARK_DIR}/Data"
+ENV VLLM_FORK_DIR="${DATA_DIR}/.vllm-minimax-m3-int4-fork"
+
+# Create conda environment using conda-forge channel
+# Python 3.12 to match the patched vLLM fork's precompiled wheels.
+RUN set -eux; \
+    source /opt/miniconda/etc/profile.d/conda.sh && \
+    eval "$(conda shell.bash hook)" && \
+    if [ -d "/opt/miniconda/envs/${ENV_NAME}" ]; then \
+        echo "Conda env '${ENV_NAME}' already exists. Skipping creation."; \
+    else \
+        conda create --override-channels -n ${ENV_NAME} python=3.12 pip -y -c conda-forge; \
+    fi
+
+# Install CUDA toolkit
+RUN set -eux; \
+    CONDA_BIN="/opt/miniconda/bin/conda"; \
+    ${CONDA_BIN} install -n "${ENV_NAME}" --override-channels -c nvidia -c conda-forge cuda-toolkit=12.4 -y; \
+    ${CONDA_BIN} clean -afy
+
+# Upgrade pip
+RUN set -eux; \
+    CONDA_BIN="/opt/miniconda/bin/conda"; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --no-cache-dir --upgrade pip setuptools wheel
+
+# Install MedVision package
+RUN set -eux; \
+    CONDA_BIN="/opt/miniconda/bin/conda"; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --no-cache-dir "/root/Documents/MedVision"
+
+# Step 1: standard env setup (installs torch, lmms_eval, medvision_ds, transformers,
+# and a throwaway pip vLLM that the next layer replaces with the patched fork).
+RUN set -eux; \
+    CONDA_BIN="/opt/miniconda/bin/conda"; \
+    rm -rf "${BENCHMARK_DIR}"; \
+    git clone https://github.com/YongchengYAO/MedVision "${BENCHMARK_DIR}"; \
+    cd "${BENCHMARK_DIR}"; \
+    mkdir -p "${DATA_DIR}"; \
+    model_hf_id="cyankiwi/MiniMax-M3-AWQ-INT4"; \
+    model_name="MiniMax-M3-INT4"; \
+    batch_size_per_gpu=1; \
+    gpu_memory_utilization=0.90; \
+    cpu_offload_gb=0; \
+    vllm_version="0.23.0"; \
+    max_new_tokens=16384; \
+    temperature=1.0; \
+    top_p=0.95; \
+    top_k=40; \
+    stop_string='</answer>'; \
+    task_tag="MedVision-TL-CoT"; \
+    result_dir="${BENCHMARK_DIR}/Results/${task_tag}"; \
+    tasks_list_json_path="${BENCHMARK_DIR}/tasks_list/tasks_MedVision-TL-CoT.json"; \
+    task_status_json_path="${BENCHMARK_DIR}/completed_tasks/completed_tasks_${task_tag}.json"; \
+    sample_limit=1000; \
+    rm -rf "${BENCHMARK_DIR}/build" "${BENCHMARK_DIR}/src/medvision_bm.egg-info"; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --no-cache-dir "${BENCHMARK_DIR}"; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output \
+    python -m medvision_bm.benchmark.eval__minimax_m3 \
+    --env_setup_only \
+    --lmmseval_module vllm_minimax_m3 \
+    --model_hf_id "$model_hf_id" \
+    --model_name "$model_name" \
+    --vllm_version "$vllm_version" \
+    --results_dir "$result_dir" \
+    --data_dir "$DATA_DIR" \
+    --tasks_list_json_path "$tasks_list_json_path" \
+    --task_status_json_path "$task_status_json_path" \
+    --batch_size_per_gpu "$batch_size_per_gpu" \
+    --gpu_memory_utilization "$gpu_memory_utilization" \
+    --cpu_offload_gb "$cpu_offload_gb" \
+    --sample_limit "$sample_limit" \
+    --max_new_tokens "$max_new_tokens" \
+    --temperature "$temperature" \
+    --top_p "$top_p" \
+    --top_k "$top_k" \
+    --stop_strings "$stop_string"
+
+# Step 2: swap the throwaway pip vLLM for the patched fork (minimax_m3_vl
+# compressed-tensors support -- not yet merged upstream; see toncao/vllm).
+RUN set -eux; \
+    CONDA_BIN="/opt/miniconda/bin/conda"; \
+    vllm_fork_base_commit="a7fdfeef72323eb3db6f0620e4ea200290d0ca5a"; \
+    if [ ! -d "${VLLM_FORK_DIR}" ]; then \
+        git clone https://github.com/toncao/vllm.git "${VLLM_FORK_DIR}"; \
+        git -C "${VLLM_FORK_DIR}" remote add upstream https://github.com/vllm-project/vllm.git; \
+        git -C "${VLLM_FORK_DIR}" fetch upstream "${vllm_fork_base_commit}"; \
+        git -C "${VLLM_FORK_DIR}" checkout minimax-m3-compressed-tensors; \
+    fi; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip uninstall -y vllm || true; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output env VLLM_USE_PRECOMPILED=1 pip install --no-cache-dir -e "${VLLM_FORK_DIR}"
+
+# Resolve the torch/NCCL stack conflict left behind by step 1's cu12 torch vs.
+# the fork's cu13 torch (avoids an "undefined symbol: ncclCommWindowDeregister").
+RUN set -eux; \
+    CONDA_BIN="/opt/miniconda/bin/conda"; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip uninstall -y nvidia-nccl-cu12 nvidia-nccl-cu13 || true; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --no-cache-dir --no-deps --force-reinstall nvidia-nccl-cu13
+
+# Align the CUDA compiler toolchain (nvcc/nvvm/crt) to cudart's pinned 13.0 so
+# flashinfer's JIT-compiled sampling kernels build at engine startup.
+RUN set -eux; \
+    CONDA_BIN="/opt/miniconda/bin/conda"; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --no-cache-dir --no-deps "nvidia-cuda-nvcc==13.0.88" "nvidia-nvvm==13.0.88" "nvidia-cuda-crt==13.0.88"
+
+#=================================================================
+# NOTE: the CUDA-13 forward-compatibility shim, PYTORCH_CUDA_ALLOC_CONF, and
+# CUDA_HOME/LIBRARY_PATH derivation in eval__MiniMax-M3-INT4__TL.sh are
+# runtime-only (they read the host's live NVIDIA driver, unavailable during
+# `docker build`) and are deliberately NOT baked in here -- they run every
+# time the .sh script is invoked inside a container on the real GPU host.
+
+ENV HOME="/root"
+WORKDIR /root/Documents
+# Replace default bash with a command that initializes conda and activates the env,
+# then drops into an interactive shell.
+CMD ["bash", "-lc", "source /opt/miniconda/etc/profile.d/conda.sh && conda activate ${ENV_NAME} && exec bash"]

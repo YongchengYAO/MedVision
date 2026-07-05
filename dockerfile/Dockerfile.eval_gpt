@@ -5,8 +5,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"]
 
 #=================================================================
-# Gemma3 environment setup
-ENV ENV_NAME="eval-gemma3"
+# GPT (OpenAI API / OpenRouter) environment setup
+ENV ENV_NAME="eval-openai"
 
 # Create conda environment using conda-forge channel
 RUN set -eux; \
@@ -17,12 +17,6 @@ RUN set -eux; \
     else \
         conda create --override-channels -n ${ENV_NAME} python=3.11 pip -y -c conda-forge; \
     fi
-    
-# Install CUDA toolkit
-RUN set -eux; \
-    CONDA_BIN="/opt/miniconda/bin/conda"; \
-    ${CONDA_BIN} install -n "${ENV_NAME}" --override-channels -c nvidia -c conda-forge cuda-toolkit=12.4 -y; \
-    ${CONDA_BIN} clean -afy
 
 # Upgrade pip
 RUN set -eux; \
@@ -32,7 +26,8 @@ RUN set -eux; \
 # Install MedVision package
 RUN set -eux; \
     CONDA_BIN="/opt/miniconda/bin/conda"; \
-    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --no-cache-dir "/root/Documents/MedVision"
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --no-cache-dir --no-deps "/root/Documents/MedVision"; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --no-cache-dir datasets==3.6.0 huggingface_hub==0.36.0 accelerate==1.9.0 psutil==7.2.2 scipy nibabel matplotlib
 
 # Setup evaluation environment
 RUN set -eux; \
@@ -42,7 +37,9 @@ RUN set -eux; \
     cd /root/Documents/MedVision; \
     DATA_DIR="/root/Documents/MedVision/Data"; \
     mkdir -p "${DATA_DIR}"; \
-    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output python -m medvision_bm.benchmark.env_setup -r requirements/requirements_eval_gemma3.txt --data_dir "${DATA_DIR}"
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output python -m medvision_bm.benchmark.env_setup -r requirements/requirements_eval_gpt.txt --lmms_eval_opt_deps openai --skip_cuda_toolkit --skip_vllm --data_dir "${DATA_DIR}"; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip uninstall -y torch torchvision triton nvidia-cublas-cu12 nvidia-cuda-cupti-cu12 nvidia-cuda-nvrtc-cu12 nvidia-cuda-runtime-cu12 nvidia-cudnn-cu12 nvidia-cufft-cu12 nvidia-cufile-cu12 nvidia-curand-cu12 nvidia-cusolver-cu12 nvidia-cusparse-cu12 nvidia-cusparselt-cu12 nvidia-nccl-cu12 nvidia-nvjitlink-cu12 nvidia-nvtx-cu12 || true; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --no-cache-dir torch==2.6.0+cpu --index-url https://download.pytorch.org/whl/cpu
 
 #=================================================================
 ENV HOME="/root"

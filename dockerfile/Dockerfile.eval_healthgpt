@@ -22,23 +22,24 @@ RUN set -eux; \
     if [ -d "/opt/miniconda/envs/${ENV_NAME}" ]; then \
         echo "Conda env '${ENV_NAME}' already exists. Skipping creation."; \
     else \
-        conda create -n "${ENV_NAME}" python=3.11 -y; \
+        conda create -n "${ENV_NAME}" python=3.11 pip -y; \
     fi
     
 # Install CUDA toolkit
 RUN set -eux; \
     CONDA_BIN="/opt/miniconda/bin/conda"; \
-    ${CONDA_BIN} install -n "${ENV_NAME}" --override-channels -c nvidia -c conda-forge cuda-toolkit=12.4 -y
+    ${CONDA_BIN} install -n "${ENV_NAME}" --override-channels -c nvidia -c conda-forge cuda-toolkit=12.4 -y; \
+    ${CONDA_BIN} clean -afy
 
 # Upgrade pip
 RUN set -eux; \
     CONDA_BIN="/opt/miniconda/bin/conda"; \
-    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --upgrade pip setuptools wheel
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # Install MedVision package
 RUN set -eux; \
     CONDA_BIN="/opt/miniconda/bin/conda"; \
-    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install "/root/Documents/MedVision"
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --no-cache-dir "/root/Documents/MedVision"
 
 # Setup evaluation environment
 RUN set -eux; \
@@ -49,33 +50,18 @@ RUN set -eux; \
     # Set paths and configs
     benchmark_dir="/root/Documents/MedVision"; \
     data_dir="${benchmark_dir}/Data"; \
-    dir_third_party="${benchmark_dir}/third_party"; \
-    model_name="HealthGPT-L14"; \
-    batch_size_per_gpu=20; \
-    \
-    # Other configs (safe to leave as is)
-    task_tag="MedVision-AD"; \
-    result_dir="${benchmark_dir}/Results/${task_tag}"; \
-    tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-AD.json"; \
-    task_status_json_path="${benchmark_dir}/completed_tasks/completed_tasks_${task_tag}.json"; \
-    sample_limit=1000; \
     \
     # Install medvision_bm
     rm -rf "${benchmark_dir}/build" "${benchmark_dir}/src/medvision_bm.egg-info"; \
-    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install "${benchmark_dir}"; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --no-cache-dir "${benchmark_dir}"; \
     \
-    # Run evaluation
+    # Install pinned requirements (Method 1)
     ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output \
-    python -m medvision_bm.benchmark.eval__healthgpt \
-    --env_setup_only \
-    --model_name $model_name \
-    --results_dir $result_dir \
-    --dir_third_party $dir_third_party \
-    --data_dir $data_dir \
-    --tasks_list_json_path $tasks_list_json_path \
-    --task_status_json_path $task_status_json_path \
-    --batch_size_per_gpu $batch_size_per_gpu \
-    --sample_limit $sample_limit
+    python -m medvision_bm.benchmark.install_medvision_ds --data_dir "${data_dir}"; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output \
+    python -m medvision_bm.benchmark.install_vendored_lmms_eval; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output \
+    pip install --no-cache-dir -r "${benchmark_dir}/requirements/requirements_eval_healthgpt.txt" --no-deps
 
 #=================================================================
 ENV HOME="/root"

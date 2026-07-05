@@ -1,4 +1,4 @@
---index-url https://download.pytorch.org/whl/cu124
+--extra-index-url https://download.pytorch.org/whl/cu124
 torch==2.6.0
 torchaudio==2.6.0
 torchvision==0.21.0
@@ -95,8 +95,6 @@ latex2sympy2==1.9.1
 lazy_loader==0.4
 linkify-it-py==2.0.3
 llava_med @ file:///root/Documents/MedVision/third_party/LLaVA-Med
-# Editable install with no version control (lmms_eval==0.3.0)
--e /home/vincent/Documents/Tools/miniconda3/envs/llavamed/lib/python3.10/site-packages/medvision_bm/medvision_lmms-eval
 loguru==0.7.3
 lxml==6.0.2
 markdown-it-py==2.2.0
