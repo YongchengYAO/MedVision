@@ -4,15 +4,15 @@
     <img src="fig/medvision-logo.svg" alt="MedVision Logo" />
   </picture><br>
 
-  # MedVision: Dataset and Benchmark for Quantitative Medical Image Analysis
+  # Dataset and Benchmark for *Quantitative* Medical Image Analysis
 
   | 🌏 [**Project**](https://medvision-vlm.github.io) | 🧑🏻‍💻 [**GitHub**](https://github.com/YongchengYAO/MedVision) | 📦 [**PyPI**](https://pypi.org/project/medvision-bm/) | 📚 [**Docs**](https://medvision.readthedocs.io/en/latest/index.html) | 🩻 [**Dataset**](https://huggingface.co/datasets/YongchengYAO/MedVision) | 🐳 [**Docker**](https://hub.docker.com/r/vincentycyao/medvision/tags) | 🤗 [**Models**](https://huggingface.co/collections/YongchengYAO/medvision-v0) | 🚀 [**Demo**](https://huggingface.co/spaces/YongchengYAO/MedVision-V0-demo) | 📖 [**arXiv**](https://arxiv.org/abs/2511.18676) |
 
-  🔎 Benchmarking VLMs for detection, tumor/lesion size estimation, and angle/distance measurement from medical images 📏
+  🔎 Benchmarking VLMs for medical vision tasks: detection and measurement 📏
 
   💿 30.8M annotated samples | multi-modality | multi-anatomy | 3D/2D medical image 💿
 
-  🎯 Post-training: SFT, RFT (RL), CoT, LoRA | Framework: [TRL](https://github.com/huggingface/trl), [verl](https://github.com/volcengine/verl) 🎯
+  🎯 Post-training: SFT, RFT (RL), CoT, LoRA | Framework: TRL, verl 🎯
 
 </div>
 
@@ -177,9 +177,15 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
 
 # 📊 Benchmark
 
-**Benchmark setting.** Proprietary/API models are evaluated in a **pilot study** that caps each subtask at **100 samples**; all other (open-weight) models use a limit of **1000 samples** per subtask. The subtasks are defined in [`tasks_list/`](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list): A/D → [`tasks_MedVision-AD-CoT.json`](https://github.com/YongchengYAO/MedVision/blob/master/tasks_list/tasks_MedVision-AD-CoT.json), T/L → [`tasks_MedVision-TL-CoT.json`](https://github.com/YongchengYAO/MedVision/blob/master/tasks_list/tasks_MedVision-TL-CoT.json), and Detection → [`tasks_MedVision-detect-CoT.json`](https://github.com/YongchengYAO/MedVision/blob/master/tasks_list/tasks_MedVision-detect-CoT.json).
+### Benchmark Setting
+- Proprietary/API models are evaluated in a **pilot study** that caps each subtask at **100 samples**; all other (open-weight) models use a limit of **1000 samples** per subtask. 
+- The subtasks are defined in [`tasks_list/`](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list): 
+  - A/D → [`tasks_MedVision-AD-CoT.json`](https://github.com/YongchengYAO/MedVision/blob/master/tasks_list/tasks_MedVision-AD-CoT.json)
+  - T/L → [`tasks_MedVision-TL-CoT.json`](https://github.com/YongchengYAO/MedVision/blob/master/tasks_list/tasks_MedVision-TL-CoT.json)
+  - Detection → [`tasks_MedVision-detect-CoT.json`](https://github.com/YongchengYAO/MedVision/blob/master/tasks_list/tasks_MedVision-detect-CoT.json).
 
-  1. The scripts in [`script/benchmark-*/`](https://github.com/YongchengYAO/MedVision/tree/master/script/) should be sufficient for dependency installation, data processing, and benchmarking
+### Steps
+1. The scripts in [`script/benchmark-*/`](https://github.com/YongchengYAO/MedVision/tree/master/script/) should be sufficient for dependency installation, data processing, and benchmarking
 
      > Set these variables:
      >
@@ -191,7 +197,7 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
 
      > **Crash-safe resume.** During evaluation each finished output is written immediately to `Results/MedVision-*/<model_name>/response_cache/<task>_rank<N>.jsonl`, so re-running an interrupted eval skips already-completed samples instead of regenerating them — only the in-flight sample is lost. The cache key includes a hash of the prompt, so editing a prompt/config automatically invalidates stale entries (no need to clear the folder). Set the environment variable `MEDVISION_RESP_CACHE=0` to disable this layer entirely and reproduce the original (no-cache) behavior.
 
-  2. After evaluating all models in step 1, parse model outputs and calculate metrics (e.g., MRE, MAE, nMAE, IoU, F1, Precision, Recall, Success Rate):
+2. After evaluating all models in step 1, parse model outputs and calculate metrics (e.g., MRE, MAE, nMAE, IoU, F1, Precision, Recall, Success Rate):
 
      ```bash
      # CLI command: 
@@ -216,7 +222,7 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
      python -m medvision_bm.benchmark.parse_outputs --task_type Detection --model_dir Results/MedVision-detect/Qwen2.5-VL-32B-Instruct --skip_existing -p 32
      ```
 
-  3. Summarize model performance for each task
+3. Summarize model performance for each task
   
       > If `medvision_ds` is missing, install with:
       > 
@@ -727,16 +733,7 @@ In `MedVision.py`, the class `MedVision(GeneratorBasedBuilder)` defines the feat
 
 ### Workflow
 
-<details>
-<summary> MedVision Dataset Building Workflow (Black) </summary>
-<img src="fig/medvision-dataset-flow-b.png" alt="MedVision Dataset Building Workflow (Black)" /><br>
-</details>
-
-<details>
-<summary> MedVision Dataset Building Workflow (White) </summary>
-<img src="fig/medvision-dataset-flow-w.png" alt="MedVision Dataset Building Workflow (White)" /><br>
-</details>
-
+<img src="fig/medvision-dataset-flow.svg" alt="MedVision Dataset Building Workflow" /><br>
 </br>
 
 There are a few ways to control the dataset loading and building behavior:

@@ -2,7 +2,12 @@
 
 MedVision runs its benchmark on a vendored fork of `lmms-eval` that ships inside the package at `src/medvision_bm/medvision_lmms_eval/`. Wiring in a new vision-language model means teaching that fork two things: how to construct and call the model, and how to report the resolution the model *actually perceives* so the measurement prompts stay physically consistent.
 
-This page is an orientation. The exhaustive, code-level walkthrough lives in the repository at `docs/New-Models-Guide.md`, with the per-model image-processing recipes in `docs/Model-Image-Processing.md`.
+This page is an orientation — the exhaustive, code-level guides live in the repository:
+
+:::{seealso}
+- [`docs/New-Models-Guide.md`](https://github.com/YongchengYAO/MedVision/blob/master/docs/New-Models-Guide.md) — the exhaustive, code-level walkthrough.
+- [`docs/Model-Image-Processing.md`](https://github.com/YongchengYAO/MedVision/blob/master/docs/Model-Image-Processing.md) — the per-model image-processing recipes.
+:::
 
 Five things change when you add a model. Each is covered below at a high level, followed by a checklist.
 
@@ -47,7 +52,7 @@ def generate_until(self, requests) -> List[str]:
 
 It receives a batch of request objects — each carrying the assembled prompt, the visual inputs, and the generation kwargs — and returns one decoded string per request, in order. That is the entire inference surface the harness relies on. However you load the model (vLLM, `transformers`, or an HTTP client), `generate_until()`'s only job is to turn requests into text completions.
 
-## 3. Perceived image size (the subtle part)
+## 3. Perceived image size (the essential part)
 
 The two quantitative tasks — Tumour/Lesion size and Angle/Distance — write the image size and pixel spacing *into the prompt* and ask the model to convert pixels to millimetres itself. Those numbers must describe the image **after the model's own internal resize**, not the raw slice. Detection is exempt: it asks for relative `[0, 1]` coordinates and never touches this logic.
 
@@ -61,11 +66,11 @@ get_resized_img_shape(model_name, img_2d_raw, extra_kwargs)
 It dispatches on `model_name` and returns **two** shapes:
 
 - `perceived_canvas_hw` — the (possibly padded) canvas the encoder sees, used for the *image size* stated in the prompt.
-- `content_hw` — the resize-only shape, used for the *pixel size* (padding adds no physical extent, so the model never measures across black borders).
+- `content_hw` — the resized content shape, used to calculate the adjusted *pixel size* (padding does not change the physical extent).
 
-For models that stretch or smart-resize without padding the two shapes are identical; for models that pad (letterbox, pad-to-square) they differ, and returning them separately keeps both prompt numbers correct. Add a branch for your new key. Unknown keys **raise on purpose** — a model must never run against a scale nobody verified.
+For models that stretch or smart-resize without padding the two shapes are identical; for models that pad (letterbox, pad-to-square) they differ, and returning them separately keeps both prompt numbers correct. Add a branch for your new key. Unknown keys **raise Error** — a model must never run against a scale nobody verified.
 
-This is where the physical-units invariant from [Dataset concepts](../dataset/concepts.md) is enforced: physical extent (size × spacing) is conserved independently per axis, so a wrong perceived size silently corrupts every measurement. Your branch either returns a constant (fixed-square processors), probes the real processor via `AutoImageProcessor.from_pretrained(extra_kwargs["model_hf"], ...)`, or computes the geometry in closed form. `docs/Model-Image-Processing.md` documents the exact recipe used for every current model.
+This is where the physical-units invariant from [Dataset concepts](../dataset/concepts.md) is enforced: physical extent (size × spacing) is conserved independently per axis, so a wrong perceived size silently corrupts every measurement. Your branch either returns a constant (fixed-square processors), probes the real processor via `AutoImageProcessor.from_pretrained(extra_kwargs["model_hf"], ...)`, or computes the geometry in closed form. [`docs/Model-Image-Processing.md`](https://github.com/YongchengYAO/MedVision/blob/master/docs/Model-Image-Processing.md) documents the exact recipe used for every current model.
 
 ## 4. Runtime injection of `model_name` / `model_hf`
 
@@ -91,7 +96,7 @@ Client-hosted models — `claude`, `gemini`, `openai`, `kimi` — use the same r
 The rules differ by provider. Claude, OpenAI's patch family, and Kimi pre-resize client-side to a *fixed point* of the server pipeline — flooring each side to a 28- or 32-pixel grid so the server's downscale *and* its pad step both become no-ops. Gemini is pass-through: it never enlarges the canvas below its 3072-px cap, so the sent image already equals what the model perceives. Unknown model codes raise everywhere, forcing whoever adds one to confirm its caps against the provider's vision docs first.
 
 :::{warning}
-Providers that **pad** the canvas (Claude, Kimi, OpenAI patch models) skew every relative coordinate if the sent and perceived sizes diverge. The fixed-point pre-resize is what prevents this. Do not add an API model without reading the provider's vision documentation and the caveats in `docs/Model-Image-Processing.md`.
+Providers that **pad** the canvas (Claude, Kimi, OpenAI patch models) skew every relative coordinate if the sent and perceived sizes diverge. The fixed-point pre-resize is what prevents this. Do not add an API model without reading the provider's vision documentation and the caveats in [`docs/Model-Image-Processing.md`](https://github.com/YongchengYAO/MedVision/blob/master/docs/Model-Image-Processing.md).
 :::
 
 ## 6. Driver script and dependencies
@@ -113,4 +118,4 @@ Two more pieces make the model runnable end to end:
 [ ] requirements/requirements_eval_<model>.txt + pyproject extras    pinned deps
 ```
 
-Once wired, run the model exactly like any built-in one — see [Running evaluations](../benchmarking/running-evaluations.md). For the full, code-level procedure — including the image-processing strategy tables and the unit tests that guard each resize rule — read `docs/New-Models-Guide.md` and `docs/Model-Image-Processing.md` in the repository.
+Once wired, run the model exactly like any built-in one — see [Running evaluations](../benchmarking/running-evaluations.md). For the full, code-level procedure — including the image-processing strategy tables and the unit tests that guard each resize rule — read [`docs/New-Models-Guide.md`](https://github.com/YongchengYAO/MedVision/blob/master/docs/New-Models-Guide.md) and [`docs/Model-Image-Processing.md`](https://github.com/YongchengYAO/MedVision/blob/master/docs/Model-Image-Processing.md) in the repository.

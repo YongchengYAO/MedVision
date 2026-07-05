@@ -1,11 +1,15 @@
 # Adding a new task
 
-A "task" in MedVision is one evaluation configuration: a dataset split, the prompt
-that gets shown to the model, and the metrics computed on its answer. Tasks are
+A "task" in MedVision is one evaluation configuration: [a dataset split, the prompt
+that gets shown to the model, and the metrics computed on its answer]{.mv-accent}. Tasks are
 defined declaratively as YAML files (the benchmark harness is a vendored fork of
 `lmms-eval`) that point at Python hook functions. Adding a task therefore means
 writing a couple of YAML files and, when the behaviour is genuinely new, a few
 hook functions.
+
+:::{seealso}
+Full code-level guide in the repository: [`docs/New-Tasks-Guide.md`](https://github.com/YongchengYAO/MedVision/blob/master/docs/New-Tasks-Guide.md).
+:::
 
 Before starting, it helps to understand what a sample actually contains — see
 [Dataset concepts](../dataset/concepts.md). If you are wiring up a new *model*
@@ -49,25 +53,19 @@ Each base YAML binds four hooks (plus the metric aggregators). All live in
 `medvision_utils.py`:
 
 - **`doc_to_visual`** — loads the requested NIfTI slice for a sample and returns
-  it as a PIL image (the visual input). Overlay variants exist, e.g.
-  `doc_to_visual_wBox`, `doc_to_visual_wMask`, and visual-prompt versions for the
-  size and biometrics tasks.
+  it as a PIL image (the visual input).
 - **`doc_to_text`** — builds the text prompt. These are produced by *factory*
   functions named `create_doc_to_text_<TaskType>(...)` that take the dataset's
   preprocessing module and return the actual closure. Each task type has a family
-  of factories, for example: `create_doc_to_text_BoxCoordinate` and its `_CoT`
-  variant for detection; `create_doc_to_text_TumorLesionSize` with `_CoT` and
-  `_CoT_scaledPS` for size; `create_doc_to_text_BiometricsFromLandmarks` with
-  `_CoT` and `_CoT_scaledPS` for biometrics. The `_CoT` suffix requests
-  chain-of-thought phrasing; `_scaledPS` prompts the model in scaled-pixel-size
-  units.
+  of factories, for example: `create_doc_to_text_BoxCoordinate_CoT` 
+  for detection; `create_doc_to_text_TumorLesionSize_CoT` 
+  for size.
 - **`doc_to_target`** — returns the ground-truth string for the sample
   (`doc_to_target_BoxCoordinate`, `doc_to_target_TumorLesionSize`,
   `doc_to_target_BiometricsFromLandmarks`, `doc_to_target_MaskSize`).
 - **`process_results`** — parses the model's raw generation and computes the
   per-sample metrics (`process_results_BoxCoordinate`,
-  `process_results_TumorLesionSize`, `process_results_BiometricsFromLandmarks`,
-  `process_results_MaskSize`, plus `_scaledPS` variants).
+  `process_results_TumorLesionSize`, `process_results_BiometricsFromLandmarks`).
 
 The `metric_list` then names aggregators that reduce the per-sample values across
 the split, e.g. `aggregate_results_MAE`, `aggregate_results_MRE`,
@@ -107,8 +105,3 @@ for all datasets), then import them from the new dataset's `utils.py`. Reuse an
 existing hook whenever the semantics match — most new tasks are a new dataset
 folder plus a handful of YAML files and no new Python at all.
 
-:::{tip}
-The reference above covers the common path. For the full walkthrough — including
-complete example YAMLs and guidance for standing up a brand-new dataset on the
-Hugging Face side — read `docs/New-Tasks-Guide.md` in the repository.
-:::
