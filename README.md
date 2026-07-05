@@ -12,6 +12,8 @@
 
   💿 30.8M annotated samples | multi-modality | multi-anatomy | 3D/2D medical image 💿
 
+  📏 Annotation: segmentation mask | landmark coordinate | bounding box | tumor/lesion size | distance | angle 📏
+
   🎯 Post-training: SFT, RFT (RL), CoT, LoRA | Framework: TRL, verl 🎯
 
 </div>
@@ -94,6 +96,8 @@ MedVision benchmarks **19 vision–language models** — open-weight general-pur
 
 # 🌟 Quick Start
 
+> 📚 **Read the Docs:** [Installation](https://medvision.readthedocs.io/en/latest/getting-started/installation.html) · [Quickstart walkthrough](https://medvision.readthedocs.io/en/latest/getting-started/quickstart.html)
+
 **Option 1 — run the full pipeline (benchmarking, SFT/RFT).** Clone the repo and install from the local copy. Use this when you rely on the repo's folder structure (e.g. `script/`, `tasks_list/`, `Results/`), since the scripts and configs live there.
 
 ```bash
@@ -105,19 +109,25 @@ pip show medvision_bm
 
 **Option 2 — import the package in your own project.** Install `medvision_bm` from PyPI. Use this when you only want to `import` its modules/functions (e.g. `from medvision_bm.utils import parse_utils`) and do **not** need the repo's folder structure.
 
+Stable release (PyPI):
+
 ```bash
-# stable release (PyPI):
 pip install medvision-bm
+pip show medvision_bm
+```
 
-# or the nightly build (latest commit on GitHub master):
+Or the nightly build (latest commit on GitHub master):
+
+```bash
 pip install "git+https://github.com/YongchengYAO/MedVision.git"
-
 pip show medvision_bm
 ```
 
 <br/>
 
 # 🐳 Use Docker
+
+> 📚 **Read the Docs:** [Installation → Docker](https://medvision.readthedocs.io/en/latest/getting-started/installation.html#docker)
 
 Docker images are built from these [dockerfiles](https://github.com/YongchengYAO/MedVision/tree/master/dockerfile)
 
@@ -164,6 +174,8 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
 
 # 💿 Data
 
+> 📚 **Read the Docs:** [Dataset concepts](https://medvision.readthedocs.io/en/latest/dataset/concepts.html) · [Loading data](https://medvision.readthedocs.io/en/latest/dataset/loading.html)
+
 - **Dataset.** For the full description of the MedVision dataset (source datasets, modalities, anatomies, annotation types, and returned fields), see the [Hugging Face dataset repo](https://huggingface.co/datasets/YongchengYAO/MedVision).
 
 - **Benchmark subtasks ↔ dataset subsets.** Each subtask in this benchmark links to a subset of the MedVision dataset. The per-subtask sample sizes are listed for each dataset version:
@@ -177,6 +189,8 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
 
 # 📊 Benchmark
 
+> 📚 **Read the Docs:** [Pipeline overview](https://medvision.readthedocs.io/en/latest/benchmarking/overview.html) · [Running evaluations](https://medvision.readthedocs.io/en/latest/benchmarking/running-evaluations.html) · [Parsing & summarizing](https://medvision.readthedocs.io/en/latest/benchmarking/parsing-and-summarizing.html) · [CLI reference](https://medvision.readthedocs.io/en/latest/reference/cli.html)
+
 ### Benchmark Setting
 - Proprietary/API models are evaluated in a **pilot study** that caps each subtask at **100 samples**; all other (open-weight) models use a limit of **1000 samples** per subtask. 
 - The subtasks are defined in [`tasks_list/`](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list): 
@@ -188,69 +202,100 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
 1. The scripts in [`script/benchmark-*/`](https://github.com/YongchengYAO/MedVision/tree/master/script/) should be sufficient for dependency installation, data processing, and benchmarking
 
      > Set these variables:
-     >
      > - `benchmark_dir`: the working directory
      > - `model_hf_id`: Hugging Face ID (`<user>/<model>`) of the tested model
      > - `model_name`: user-defined identifier for the tested model, used as folder name in `Results/MedVision-*/`
-     > - resource-constrained configs, such as
-     >   - `batch_size_per_gpu`
+     > - resource-constrained configs, such as `batch_size_per_gpu`
 
-     > **Crash-safe resume.** During evaluation each finished output is written immediately to `Results/MedVision-*/<model_name>/response_cache/<task>_rank<N>.jsonl`, so re-running an interrupted eval skips already-completed samples instead of regenerating them — only the in-flight sample is lost. The cache key includes a hash of the prompt, so editing a prompt/config automatically invalidates stale entries (no need to clear the folder). Set the environment variable `MEDVISION_RESP_CACHE=0` to disable this layer entirely and reproduce the original (no-cache) behavior.
+     > **Crash-safe resume.** 
+     > 
+     > During evaluation each finished output is written immediately to `Results/MedVision-*/<model_name>/response_cache/<task>_rank<N>.jsonl`, so re-running an interrupted eval skips already-completed samples instead of regenerating them — only the in-flight sample is lost. The cache key includes a hash of the prompt, so editing a prompt/config automatically invalidates stale entries (no need to clear the folder). Set the environment variable `MEDVISION_RESP_CACHE=0` to disable this layer entirely and reproduce the original (no-cache) behavior.
 
-2. After evaluating all models in step 1, parse model outputs and calculate metrics (e.g., MRE, MAE, nMAE, IoU, F1, Precision, Recall, Success Rate):
+2. After evaluating all models in step 1, parse model outputs and calculate metrics (e.g., MRE, MAE, nMAE, IoU, F1, Precision, Recall, Success Rate). Base command:
+
+     > Command:
+     > python -m medvision_bm.benchmark.parse_outputs
+     > 
+     > Arguments:
+     > - `--task_type`: one of `["AD", "TL", "Detection"]`
+     > - `--task_dir`: task folder
+     > - `--model_dir`: model folder
+     > - `--limit`: limit sample size in the parsed files
+     > - `--skip_existing`: (store_true) skip parsed files
+     > - `--processes`, `-p`: number of processes
+     > - `--rm_old`: remove existing `parsed` folder for each model
+
+     Example 1 — parse all models for the T/L task:
 
      ```bash
-     # CLI command: 
-     # python -m medvision_bm.benchmark.parse_outputs
-     #
-     # args:
-     # --task_type: ["AD", "TL", "Detection"]
-     # --task_dir: task folder
-     # --model_dir: model folder
-     # --limit: limit sample size in the parsed files
-     # --skip_existing: (store_true arg) skip parsed files
-     # --processes, -p: number of processes
-     # --rm_old: remove existing "parsed" folder for each model
-     
-     # example 1: parse all models for the T/L task 
-     python -m medvision_bm.benchmark.parse_outputs --task_type TL --task_dir Results/MedVision-TL -p 32
+     python -m medvision_bm.benchmark.parse_outputs \
+     --task_type TL \
+     --task_dir Results/MedVision-TL \
+     -p 32
+     ```
 
-     # example 2: parse all models for the A/D task (remove existing `parsed` folder)
-     python -m medvision_bm.benchmark.parse_outputs --task_type AD --task_dir Results/MedVision-AD -p 32 --rm_old
-     
-     # example 3: parse one model for the detection task and skip existing parsed files
-     python -m medvision_bm.benchmark.parse_outputs --task_type Detection --model_dir Results/MedVision-detect/Qwen2.5-VL-32B-Instruct --skip_existing -p 32
+     Example 2 — parse all models for the A/D task (remove existing `parsed` folder):
+
+     ```bash
+     python -m medvision_bm.benchmark.parse_outputs \
+     --task_type AD \
+     --task_dir Results/MedVision-AD \
+     -p 32 \
+     --rm_old
+     ```
+
+     Example 3 — parse one model for the detection task and skip existing parsed files:
+
+     ```bash
+     python -m medvision_bm.benchmark.parse_outputs \
+     --task_type Detection \
+     --model_dir Results/MedVision-detect/Qwen2.5-VL-32B-Instruct \
+     --skip_existing \
+     -p 32
      ```
 
 3. Summarize model performance for each task
   
       > If `medvision_ds` is missing, install with:
+      >
+      > python -m medvision_bm.benchmark.install_medvision_ds --data_dir <local-data-folder>
+
+      > Command:
+      >
+      > python -m medvision_bm.benchmark.summarize_{AD,TL,detection}_task
       > 
-      > `python -m medvision_bm.benchmark.install_medvision_ds --data_dir <local-data-folder>`
+      > Arguments:
+      > - `--task_dir`: task folder
+      > - `--model_dir`: model folder
+      > - `--limit`: limit sample size in the parsed files
+      > - `--skip_model_wo_parsed_files`: skip model directories that don't have a `parsed` folder
+      > - `--processes`, `-p`: number of processes
+      > - `--removed_samples_dir`: (TL task only) root directory with per-dataset removed_samples JSON files, used to filter ambiguous cases
+
+      Example 1 — summarize all models for the A/D task:
 
       ```bash
-      # CLI command: 
-      # python -m medvision_bm.benchmark.summarize_AD_task 
-      # python -m medvision_bm.benchmark.summarize_detection_task
-      # python -m medvision_bm.benchmark.summarize_TL_task
-      #
-      # args:
-      # --task_dir: task folder
-      # --model_dir: model folder
-      # --limit: limit sample size in the parsed files
-      # --skip_model_wo_parsed_files: skip model directories that don't have a 'parsed' folder
-      # --processes, -p: number of processes
-      # --removed_samples_dir: (TL task only) root directory with per-dataset removed_samples JSON files, which are used to filter ambiguous cases
-      
-      # example 1: summarize all models for the A/D task
-      python -m medvision_bm.benchmark.summarize_AD_task --task_dir Results/MedVision-AD -p 32
+      python -m medvision_bm.benchmark.summarize_AD_task \
+      --task_dir Results/MedVision-AD \
+      -p 32
+      ```
 
-      # example 2: summarize all models for the T/L task
-      python -m medvision_bm.benchmark.summarize_TL_task --task_dir Results/MedVision-TL -p 32 --removed_samples_dir <local-data-folder>/Datasets
-      
-      # example 3: summarize one model for the detection task
-      python -m medvision_bm.benchmark.summarize_detection_task --model_dir Results/MedVision-detect/Qwen2.5-VL-32B-Instruct -p 32
-      
+      Example 2 — summarize all models for the T/L task:
+
+      ```bash
+      python -m medvision_bm.benchmark.summarize_TL_task \
+      --task_dir Results/MedVision-TL \
+      --removed_samples_dir <local-data-folder>/Datasets \
+      -p 32
+
+      ```
+
+      Example 3 — summarize one model for the detection task:
+
+      ```bash
+      python -m medvision_bm.benchmark.summarize_detection_task \
+      --model_dir Results/MedVision-detect/Qwen2.5-VL-32B-Instruct \
+      -p 32
       ```
 
 - **[File structure]** after steps 1-3
@@ -305,6 +350,8 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
 
 # 🎯 Training: SFT
 
+> 📚 **Read the Docs:** [Supervised fine-tuning (SFT)](https://medvision.readthedocs.io/en/latest/fine-tuning/sft.html)
+
 - **[Script]** [`script/sft/train*.sh`](https://github.com/YongchengYAO/MedVision/tree/master/script/sft) handles dependency installation, data processing, and training.
 
   > Set these variables in the script:
@@ -323,6 +370,8 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
 <br/>
 
 # 🎯 Training: RFT
+
+> 📚 **Read the Docs:** [Reinforcement fine-tuning (RFT)](https://medvision.readthedocs.io/en/latest/fine-tuning/rft.html)
 
 RL fine-tuning uses the verl framework. MedVision provides **parquet dataset builders** that turn the MedVision tasks into verl-ready parquet datasets.
 
@@ -346,6 +395,8 @@ RL fine-tuning uses the verl framework. MedVision provides **parquet dataset bui
 
 # 📚 New Tasks/Models Guide
 
+> 📚 **Read the Docs:** [Adding a new model](https://medvision.readthedocs.io/en/latest/extending/add-a-model.html) · [Adding a new task](https://medvision.readthedocs.io/en/latest/extending/add-a-task.html)
+
 [New tasks guide](https://github.com/YongchengYAO/MedVision/blob/master/docs/New-Tasks-Guide.md) | [New models guide](https://github.com/YongchengYAO/MedVision/blob/master/docs/New-Models-Guide.md) 
 
 ## 🖼️ Model Image Processing
@@ -355,6 +406,8 @@ For the quantitative tasks (TL/AD), the image size and pixel size stated in each
 <br/>
 
 # 📖 Essential Dataset Concept
+
+> 📚 **Read the Docs:** [Dataset concepts](https://medvision.readthedocs.io/en/latest/dataset/concepts.html)
 
 We cover some essential concepts that help you use the MedVision dataset with ease.
 
@@ -901,31 +954,39 @@ ds = load_dataset(
 
 # 💿 Data Downloading (Optional)
 
-Since data downloading and processing take time, you can download datasets from the tasks list (example [here](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list)) or configs list (example [here](https://huggingface.co/datasets/YongchengYAO/MedVision/tree/main/info)) in advance.
+> 📚 **Read the Docs:** [Loading data → batch download](https://medvision.readthedocs.io/en/latest/dataset/loading.html) · [CLI reference](https://medvision.readthedocs.io/en/latest/reference/cli.html)
+
+Since data downloading and processing take time, you can download datasets from the [tasks list](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list) or [configs list](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-configs) in advance.
+
 
 > [!NOTE]
 > ⚠️ You need to set an API token for these datasets (see [detailed instructions](https://huggingface.co/datasets/YongchengYAO/MedVision#datasets)): FeTA24, SKM-TEA, and ToothFairy2
 
-```bash
-# CLI command:
-# python -m medvision_bm.benchmark.download_datasets
-#
-# arg:
-# --data_dir: (required) data folder
-# --tasks_json: task json file
-# --configs_csv: config json file
-# --force_download_data: (store_true arg) force redownload raw imaging data
-# ⚠️ `--force_download_data` is for debugging only; it will repeatedly download data for tasks/configs of the same dataset
+> Command: 
+> 
+> `python -m medvision_bm.benchmark.download_datasets`
+> 
+> Arguments:
+> - `--data_dir`: (required) data folder
+> - `--tasks_json`: task json file
+> - `--configs_csv`: config csv file
+> - `--force_download_data`: (store_true) force redownload raw imaging data
+> - ⚠️ for debugging only; it will repeatedly download data for tasks/configs of the same dataset
 
-# NOTE: replace <task-list-json>, <data-folder>
-python -m medvision_bm.benchmark.download_datasets --tasks_json <task-list-json> --data_dir <data-folder>
+Download from a task-list JSON (replace `<task-list-json>`, `<data-folder>`):
+
+```bash
+python -m medvision_bm.benchmark.download_datasets \
+--tasks_json <task-list-json> \
+--data_dir <data-folder>
 ```
 
-or
+Or from a configs CSV (replace `<config-list-csv>`, `<data-folder>`):
 
 ```bash
-# NOTE: replace <config-list-csv>, <data-folder>
-python -m medvision_bm.benchmark.download_datasets --configs_csv <config-list-csv> --data_dir <data-folder>
+python -m medvision_bm.benchmark.download_datasets \
+--configs_csv <config-list-csv> \
+--data_dir <data-folder>
 ```
 
 <br/>

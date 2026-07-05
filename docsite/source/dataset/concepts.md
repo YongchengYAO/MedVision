@@ -2,7 +2,7 @@
 
 MedVision is a benchmark built for *quantitative* medical image analysis: instead of asking a model to name a finding, it asks the model to measure one, and it scores that measurement against a physically grounded ground truth. This page explains the ideas you need before you load a single sample — where the data comes from, how subsets are named, what the annotations mean, and why every target is expressed in real-world units.
 
-![How MedVision turns 3D volumes and headers into 2D slices with physical-unit annotations](../_static/medvision-dataset-flow-w.png)
+![How MedVision turns 3D volumes and headers into 2D slices with physical-unit annotations](../_static/medvision-dataset-flow.svg)
 
 ## What MedVision holds
 
