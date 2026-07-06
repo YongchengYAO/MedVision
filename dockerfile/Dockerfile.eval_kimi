@@ -37,6 +37,7 @@ RUN set -eux; \
     cd /root/Documents/MedVision; \
     DATA_DIR="/root/Documents/MedVision/Data"; \
     mkdir -p "${DATA_DIR}"; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --no-cache-dir --no-deps --force-reinstall .; \
     ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output python -m medvision_bm.benchmark.env_setup -r requirements/requirements_eval_kimi.txt --lmms_eval_opt_deps kimi --skip_cuda_toolkit --skip_vllm --data_dir "${DATA_DIR}"; \
     ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip uninstall -y torch torchvision triton nvidia-cublas-cu12 nvidia-cuda-cupti-cu12 nvidia-cuda-nvrtc-cu12 nvidia-cuda-runtime-cu12 nvidia-cudnn-cu12 nvidia-cufft-cu12 nvidia-cufile-cu12 nvidia-curand-cu12 nvidia-cusolver-cu12 nvidia-cusparse-cu12 nvidia-cusparselt-cu12 nvidia-nccl-cu12 nvidia-nvjitlink-cu12 nvidia-nvtx-cu12 || true; \
     ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --no-cache-dir torch==2.6.0+cpu --index-url https://download.pytorch.org/whl/cpu

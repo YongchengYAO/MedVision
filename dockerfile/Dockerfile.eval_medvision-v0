@@ -42,6 +42,7 @@ RUN set -eux; \
     cd /root/Documents/MedVision; \
     DATA_DIR="/root/Documents/MedVision/Data"; \
     mkdir -p "${DATA_DIR}"; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --no-cache-dir --no-deps --force-reinstall .; \
     ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output python -m medvision_bm.benchmark.env_setup -r requirements/requirements_eval_medvision-v0.txt --lmms_eval_opt_deps medvision_v0 --data_dir "${DATA_DIR}"
 
 #=================================================================

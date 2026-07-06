@@ -53,7 +53,7 @@ RUN set -eux; \
     \
     # Install medvision_bm
     rm -rf "${benchmark_dir}/build" "${benchmark_dir}/src/medvision_bm.egg-info"; \
-    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --no-cache-dir "${benchmark_dir}"; \
+    ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output pip install --no-cache-dir --no-deps --force-reinstall "${benchmark_dir}"; \
     \
     # Install pinned requirements (Method 1: matches script/benchmark-TL/eval__MedDr__TL.sh)
     ${CONDA_BIN} run -n "${ENV_NAME}" --no-capture-output \
