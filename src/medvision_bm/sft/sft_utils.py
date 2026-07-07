@@ -2906,8 +2906,19 @@ def prepare_trainer_fullFT(
         save_only_model=os.environ.get("MEDVISION_SFT_SAVE_ONLY_MODEL", "0") == "1",
         eval_strategy="steps",
         eval_steps=eval_steps,
-        learning_rate=2e-5,
-        bf16=True,
+        # MEDVISION_SFT_LR overrides the default full-FT learning rate (e.g. pure-bf16 runs
+        # raise it to keep AdamW updates above the bf16 rounding floor). Default 2e-5 keeps
+        # every existing pipeline bit-identical.
+        learning_rate=float(os.environ.get("MEDVISION_SFT_LR", "2e-5")),
+        # MEDVISION_SFT_PURE_BF16=1 disables accelerate mixed precision (bf16=False): the
+        # model is already loaded in bf16 above, so params/grads/compute stay bf16-native
+        # with NO fp32 master upcast and NO persistent bf16 _mp_shard. Needed for 27B full
+        # FT on 4x80GB — the fp32-master recipe costs 27 (masters) + 13.5 (_mp_shard) +
+        # 13.5 (fp32 grad shards) + 13.5 (8-bit optim) = 67.5GiB/GPU fixed, which cannot
+        # fit; pure bf16 costs ~40.5GiB fixed. Also the only way to get bf16 grad shards:
+        # keep_low_precision_grads + fp32 masters hard-fails (torch .grad setter requires
+        # matching dtypes; see MEDVISION_SFT_BF16_GRADS note below). Default off.
+        bf16=os.environ.get("MEDVISION_SFT_PURE_BF16", "0") != "1",
         max_grad_norm=1.0,
         warmup_ratio=0.03,
         lr_scheduler_type="cosine",
@@ -2915,6 +2926,13 @@ def prepare_trainer_fullFT(
         hub_private_repo=True,
         report_to="wandb",
         gradient_checkpointing_kwargs={"use_reentrant": False},
+        # MEDVISION_SFT_USE_LIGER=1 patches the model with Liger kernels, most importantly the
+        # fused linear cross-entropy: lm-head logits (seq x vocab; 262k vocab at Gemma3) are
+        # never materialized, capping the seq-length-linear fp32 spike at the loss. Verified
+        # applied on tf 4.54 + liger 0.8.0 (2026-07-03); note the 4x80GB 27B OOM's binding
+        # term was the fp32 grad shards, not this spike — see MEDVISION_SFT_BF16_GRADS below.
+        # Requires `pip install liger-kernel`; default off so validated pipelines are untouched.
+        use_liger_kernel=os.environ.get("MEDVISION_SFT_USE_LIGER", "0") == "1",
         dataset_kwargs={"skip_prepare_dataset": True},
         remove_unused_columns=False,
         label_names=["labels"],
@@ -2971,17 +2989,59 @@ def prepare_trainer_fullFT(
 
             def on_train_begin(self, args, state, control, **kwargs):
                 self._report("train_begin(post-FSDP-wrap)")
+                # Config-effectiveness probe (added 2026-07-03 after 3 OOM runs whose memory
+                # profile was insensitive to liger/bf16-grad knobs): print what is ACTUALLY
+                # live inside the training loop, not what we asked for.
+                try:
+                    m = kwargs.get("model")
+                    if m is not None:
+                        fwd = getattr(m.forward, "__func__", m.forward)
+                        print(
+                            f"[MEMPROBE] forward_module={getattr(fwd, '__module__', '?')} "
+                            f"grad_ckpt={getattr(m, 'is_gradient_checkpointing', '?')}",
+                            flush=True,
+                        )
+                        from torch.distributed.fsdp import FullyShardedDataParallel as _FSDP
+
+                        for sub in m.modules():
+                            if isinstance(sub, _FSDP):
+                                print(f"[MEMPROBE] fsdp.mixed_precision={sub.mixed_precision}", flush=True)
+                                break
+                        else:
+                            print("[MEMPROBE] no FSDP submodule found in callback model", flush=True)
+                except Exception as e:
+                    print(f"[MEMPROBE] introspection failed: {e!r}", flush=True)
 
             def on_step_end(self, args, state, control, **kwargs):
                 if state.global_step == 1:
                     self._report("after_step_1")
+                    # Optimizer-identity probe: accelerate has historically rebuilt bnb
+                    # 8-bit optimizers as silent fp32 AdamW during FSDP prepare
+                    # (huggingface/accelerate#1902) — +40GB/rank at 27B. Print the live
+                    # class + first-param state dtypes; bnb 8-bit should show uint8 state.
+                    try:
+                        opt = kwargs.get("optimizer")
+                        inner = getattr(opt, "optimizer", opt)
+                        state_dtypes = {}
+                        for param_state in inner.state.values():
+                            for k, v in param_state.items():
+                                if torch.is_tensor(v):
+                                    state_dtypes[k] = str(v.dtype)
+                            break
+                        print(
+                            f"[MEMPROBE] optimizer={type(inner).__name__} "
+                            f"first-param state dtypes: {state_dtypes}",
+                            flush=True,
+                        )
+                    except Exception as e:
+                        print(f"[MEMPROBE] optimizer introspection failed: {e!r}", flush=True)
 
         trainer_kwargs["callbacks"] = [_MemProbe()]
 
     # Temperature sampler path (optional): rebalance multi-task sampling by sampling tasks
     # according to p(task) ~ count(task)^(1/T) instead of raw dataset proportion.
     if enable_temperature_sampler:
-        return _build_temperature_sampler_trainer(
+        trainer = _build_temperature_sampler_trainer(
             SFTTrainer=SFTTrainer,
             trainer_kwargs=trainer_kwargs,
             data=data,
@@ -2990,7 +3050,80 @@ def prepare_trainer_fullFT(
             temperature_sampler_num_samples=temperature_sampler_num_samples,
         )
     else:
-        return SFTTrainer(**trainer_kwargs)
+        trainer = SFTTrainer(**trainer_kwargs)
+
+    # MEDVISION_SFT_BF16_GRADS=1: store FSDP gradient shards in bf16 instead of fp32.
+    # WARNING — PROVEN INCOMPATIBLE with accelerate mixed precision (2026-07-03 run):
+    # accelerate's bf16 MP upcasts params to fp32 masters, and torch's .grad setter
+    # requires grad dtype == param dtype, so FSDP's post-backward
+    # `_use_sharded_grad_views` raises "attempting to assign a gradient with dtype
+    # 'c10::BFloat16' to a tensor with dtype 'float'". bf16 grads require bf16 params —
+    # use MEDVISION_SFT_PURE_BF16=1 (see SFTConfig above) instead, under which grads are
+    # bf16-native and this knob is unnecessary. Kept only for non-upcast setups. Default off.
+    if os.environ.get("MEDVISION_SFT_BF16_GRADS", "0") == "1":
+        from torch.distributed.fsdp import MixedPrecision
+
+        fsdp_plugin = getattr(trainer.accelerator.state, "fsdp_plugin", None)
+        if fsdp_plugin is not None:
+            fsdp_plugin.mixed_precision_policy = MixedPrecision(
+                param_dtype=torch.bfloat16,
+                reduce_dtype=torch.bfloat16,
+                buffer_dtype=torch.bfloat16,
+                keep_low_precision_grads=True,
+            )
+            safe_print("[Info] FSDP grad shards kept in bf16 (keep_low_precision_grads=True).")
+        else:
+            safe_print("[Warning] MEDVISION_SFT_BF16_GRADS=1 set but no FSDP plugin found; ignored.")
+
+    # MEDVISION_SFT_SYNC_EACH_BATCH=1: disable Trainer's no_sync() during gradient
+    # accumulation. ROOT CAUSE of the 4x identical 2026-07-03 step-0 OOMs (proven by the
+    # rank2 CUDA allocator snapshot): HF Trainer wraps all non-final micro-steps in
+    # accelerator.no_sync(), and FSDP's no_sync semantics accumulate FULL UNSHARDED
+    # gradients on every rank — at 27B that is one 788MiB bf16 flat-grad per decoder layer,
+    # ~48GB/rank on top of ~38GB of shards => OOM ~54 layers into the FIRST backward
+    # (snapshot timeline: forward gathers freed cleanly 0<->1; backward net +1 per layer,
+    # 55 live at OOM). Forcing sync each micro-batch reduce-scatters immediately, so grads
+    # accumulate SHARDED (~13.5GB fp32 per rank at 27B/4). Cost: one reduce-scatter per
+    # micro-batch instead of one per optimizer step (NVLink, negligible vs compute).
+    # transformers 4.54 hardcodes the no_sync wrap (sync_each_batch is not consulted), so
+    # neutralizing accelerator.no_sync is the surgical lever. Default off.
+    if os.environ.get("MEDVISION_SFT_SYNC_EACH_BATCH", "0") == "1":
+        import contextlib
+
+        def _no_sync_disabled(model=None, **_kwargs):
+            return contextlib.nullcontext()
+
+        trainer.accelerator.no_sync = _no_sync_disabled
+        safe_print(
+            "[Info] Gradient sync forced every micro-batch (accelerator.no_sync disabled): "
+            "FSDP grads accumulate sharded."
+        )
+
+    # MEDVISION_SFT_MEMSNAPSHOT=1: record the CUDA allocator history and, if training dies
+    # with OOM, dump a per-rank snapshot (every live allocation + python stacks) next to the
+    # checkpoints. Analyze offline with torch.cuda._memory_viz or by unpickling. This is the
+    # ground-truth tool for peaks that resist config-level reasoning (see 2026-07-03 runs).
+    if os.environ.get("MEDVISION_SFT_MEMSNAPSHOT") == "1":
+        _orig_train = trainer.train
+
+        def _train_with_oom_snapshot(*t_args, **t_kwargs):
+            torch.cuda.memory._record_memory_history(max_entries=200_000)
+            try:
+                return _orig_train(*t_args, **t_kwargs)
+            except torch.OutOfMemoryError:
+                rank = os.environ.get("RANK", "0")
+                snap_path = os.path.join(checkpoint_dir, f"oom_memsnap_rank{rank}.pickle")
+                try:
+                    os.makedirs(checkpoint_dir, exist_ok=True)
+                    torch.cuda.memory._dump_snapshot(snap_path)
+                    print(f"[MEMSNAP] OOM snapshot dumped to {snap_path}", flush=True)
+                except Exception as e:
+                    print(f"[MEMSNAP] snapshot dump failed: {e!r}", flush=True)
+                raise
+
+        trainer.train = _train_with_oom_snapshot
+
+    return trainer
 
 
 def merge_models(
