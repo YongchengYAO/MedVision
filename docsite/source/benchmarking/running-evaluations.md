@@ -142,7 +142,7 @@ Do this for any API key you export by hand.
 **Anthropic.** `eval__claude` follows the same pattern with two differences: pass `--api_provider anthropic` and name the model with `--anthropic_model_code` (for example `claude-fable-5`); it reads `ANTHROPIC_API_KEY`. It also accepts `--thinking` / `--no-thinking` to toggle adaptive thinking.
 
 :::{note}
-**Image reshaping is not uniform across the API models.** The Claude, Gemini and Kimi launchers pin `--reshape_image_hw 512x512` on all three tasks, so the stated pixel size matches a fixed perceived resolution. The GPT launchers are the exception: they reshape to `512x512` only for the TL task and run at native resolution for AD and Detection. Open-weight launchers use native resolution (no reshape); only the released MedVision-V0 — trained at 512×512 — pins `--reshape_image_hw 512x512`.
+**Image reshaping is not uniform across launchers.** The Claude, Gemini, Kimi and GPT launchers pin `--reshape_image_hw 512x512` on all three tasks. Open-weight launchers use native resolution (no reshape); only the released MedVision-V0 — trained at 512×512 — pins `--reshape_image_hw 512x512`.
 :::
 
 ## Model-to-entry-point map
@@ -374,7 +374,7 @@ python -m medvision_bm.benchmark.eval__claude \
 :::
 
 :::{dropdown} OpenAI / GPT — `eval__openai`
-Unique: `--openai_model_code`, `--reasoning_effort`. `--api_provider` is `openai` (reads `OPENAI_API_KEY`) or `openrouter` (reads `OPENROUTER_API_KEY`). GPT reshapes to 512×512 only for TL; AD/Detection run at native resolution.
+Unique: `--openai_model_code`, `--reasoning_effort`. `--api_provider` is `openai` (reads `OPENAI_API_KEY`) or `openrouter` (reads `OPENROUTER_API_KEY`).
 
 ```bash
 export OPENROUTER_API_KEY=...
@@ -383,7 +383,8 @@ python -m medvision_bm.benchmark.eval__openai \
     --openai_model_code openai/gpt-5.5 \
     --model_name GPT-5.5 \
     --reasoning_effort low --max_tokens 4096 \
-    --batch_size 1 --sample_limit 100
+    --batch_size 1 --sample_limit 100 \
+    --reshape_image_hw 512x512
 ```
 :::
 

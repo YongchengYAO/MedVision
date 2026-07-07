@@ -4,6 +4,8 @@ set -euo pipefail
 # Regenerate the standard eval task-list JSONs from the config CSV.
 # Counts are computed by streaming each config from the HF MedVision dataset.
 
+bash /mnt/vincent-pvc-rwm/Github/MedVision/setup-env-test.sh
+
 export MedVision_PLANNER_VERSION='1.1.1'
 
 # Resolve the repo root from this script's location (<repo>/script/misc/<this>.sh).
@@ -12,7 +14,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # Paths are overridable via the environment; defaults assume the standard layout.
 DATA_DIR="${DATA_DIR:-${REPO_ROOT}/Data}"
 CSV="${CSV:-${REPO_ROOT}/docs/dataset-configs/ConfigurationsList_All.csv}"
-OUT_DIR="${OUT_DIR:-${REPO_ROOT}/tasks_list/all_tasks__ds_v{MedVision_PLANNER_VERSION}}"
+OUT_DIR="${OUT_DIR:-${REPO_ROOT}/tasks_list/all_tasks__ds_v${MedVision_PLANNER_VERSION}}"
 
 run() { python -m medvision_bm.utils.configs_to_tasks --data_dir "${DATA_DIR}" --configs_csv "${CSV}" "$@"; }
 

@@ -49,6 +49,7 @@ result_dir="${benchmark_dir}/Results/${task_tag}"
 tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-detect-CoT.json"
 task_status_json_path="${benchmark_dir}/completed_tasks/completed_tasks_${task_tag}.json"
 sample_limit=100
+reshape_image_hw="512x512"
 
 # Install medvision_bm: build the wheel on node-local disk (NOT the shared CephFS
 # tree). setuptools build_py caches created dirs in a process-global memo, and on
@@ -92,7 +93,8 @@ python -m medvision_bm.benchmark.eval__openai \
     --tasks_list_json_path $tasks_list_json_path \
     --task_status_json_path $task_status_json_path \
     --batch_size $batch_size \
-    --sample_limit $sample_limit
+    --sample_limit $sample_limit \
+    --reshape_image_hw $reshape_image_hw
 # ---
 
 # # (Method 2) Automatically install requirements in the eval script (simpler, but may incur package version conflicts or bugs introduced by new versions of packages)
@@ -112,6 +114,7 @@ python -m medvision_bm.benchmark.eval__openai \
 # --task_status_json_path $task_status_json_path \
 # --batch_size $batch_size \
 # --sample_limit $sample_limit \
+# --reshape_image_hw $reshape_image_hw \
 
 conda deactivate
 # conda remove -n $ENV_NAME --all -y

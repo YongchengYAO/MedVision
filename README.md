@@ -131,6 +131,19 @@ pip show medvision_bm
 
 Docker images are built from these [dockerfiles](https://github.com/YongchengYAO/MedVision/tree/master/dockerfile)
 
+- Base docker: `docker pull vincentycyao/medvision:base`
+- You can choose model-specific docker and skip env setup in scripts, such as `docker pull vincentycyao/medvision:eval_medvision-v0`, then in `eval_*.sh`:   
+  ```bash
+  python -m medvision_bm.benchmark.install_medvision_ds --data_dir "${data_dir}" # always keep
+  python -m medvision_bm.benchmark.install_vendored_lmms_eval --lmms_eval_opt_deps medvision_v0 # always keep
+  #pip install -r "${benchmark_dir}/requirements/requirements_eval_medvision-v0.txt" --no-deps # can skip if using model-specific docker
+
+  python -m medvision_bm.benchmark.eval__medvision-model-rft \
+    --skip_env_setup \
+    ...
+ 
+  ```
+
 1. Choose the docker image for a specific model: https://hub.docker.com/r/vincentycyao/medvision/tags
 
    ```bash
@@ -334,6 +347,7 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
   - **A/D response panels** (`viz_ad_responses.sh`): per-sample prompt/response/GT panels.
   - **T/L axis overlays** (`viz_tl_axes.sh`): per-sample predicted vs. GT axes with mask contour.
   - **T/L response panels** (`viz_tl_responses.sh`): per-sample prompt/response/GT panels.
+  - **T/L ellipse fit: image vs. real space** (`viz_ellipse_fit_comparison.py`): overlay the T/L ellipse axes fit in image (pixel) space vs. real (physical) space on one coronal/sagittal slice, illustrating how anisotropic pixel spacing makes the two fits diverge (rendered with and without the physical aspect-ratio correction).
   - **Detection box overlays** (`viz_detection_boxes.sh`): per-sample GT vs. predicted bounding boxes.
   - **Detection response panels** (`viz_detection_responses.sh`): per-sample prompt/response/GT panels.
   - **Comparison grids** (`viz_compile_grid_batch.sh`): tile per-sample overlays across models.
