@@ -242,36 +242,77 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 # which materializes O(seq^2) attention matrices; this env knob, read by sft_utils.py,
 # overrides it. See the COMPATIBILITY WARNING at the top of this script.)
 export MEDVISION_SFT_ATTN=sdpa
-# Optimizer for 4-GPU full FT — the GPU-smoke-VALIDATED configuration (2026-07-02): paged
-# 8-bit AdamW keeps optimizer state in CPU pinned pages (measured 58.5GB/GPU steady at
-# 31B/4 ranks). The default adamw_torch_fused needs ~137GB/GPU at 4 ranks (see the memory
-# NOTE above the launch) — it does not fit 4 GPUs at all. At 31B this config needs
-# H200-class (140GB) cards; 4×80GB is ~1GB short in the step-2 backward. CAVEAT: bnb's
+# Optimizer for 4-GPU GPU-resident full FT: NON-paged 8-bit AdamW. paged_adamw_8bit was
+# measured on the MedGemma-27B twin run (2026-07-03 15:42, MEMPROBE after_step_1) leaving
+# its 8-bit state as CUDA unified-memory pages RESIDENT ON DEVICE but OUTSIDE the torch
+# allocator (device_used - allocated = 13-27GB) — torch's cudaMalloc cannot evict UVM
+# pages, so the next micro-batch's loss buffers OOM'd. adamw_bnb_8bit keeps the same state
+# (~15.5GB/rank at 31B) inside the torch pool where the allocator manages it. CAVEAT: bnb's
 # quantized optimizer state cannot be gathered by FSDP FULL_STATE_DICT, so SAVE_ONLY_MODEL
 # is required — checkpoints store weights only, and resume_from_checkpoint continues from
 # the saved weights with a FRESH optimizer/LR state.
-export MEDVISION_SFT_OPTIM=paged_adamw_8bit
+export MEDVISION_SFT_OPTIM=adamw_bnb_8bit
 export MEDVISION_SFT_SAVE_ONLY_MODEL=1
+# Disable no_sync during gradient accumulation — THE root cause of the step-0 first-backward
+# OOMs on the 27B twin runs (MedGemma 4x 2026-07-03, proven by the CUDA allocator snapshot;
+# Qwen3.6 2026-07-07): HF Trainer wraps non-final micro-steps in accelerator.no_sync(),
+# under which FSDP accumulates FULL UNSHARDED grads (~62GB/rank at 31B) and OOMs partway
+# into the FIRST backward. With sync-each-micro-batch, grads reduce-scatter immediately and
+# accumulate SHARDED (~15.5GB bf16 per rank at 31B/4).
+export MEDVISION_SFT_SYNC_EACH_BATCH=1
+# PURE BF16 (recipe validated on the MedGemma-27B twin run): no accelerate mixed precision,
+# no fp32 master weights. The fp32-master recipe has a fixed cost of ~77.5GB/GPU at 31B/4
+# ranks (31 fp32 masters + 15.5 FSDP bf16 _mp_shard + 15.5 fp32 grad shards + 15.5 8-bit
+# optim) — it can NEVER fit 80GB, and its bf16-grads escape hatch (MEDVISION_SFT_BF16_GRADS)
+# hard-fails (torch .grad setter dtype mismatch). Pure bf16 costs ~46.5GB fixed (15.5 params
+# + 15.5 grads + 15.5 optim); see the CAUTION in the NOTE below for the 31B margin. Requires
+# BOTH this export (SFTConfig bf16=False) AND no --mixed_precision flag on the accelerate
+# launch below — verified in transformers 5.5.0 training_args.py: bf16=False cannot override
+# the ACCELERATE_MIXED_PRECISION env var that the launch flag injects.
+export MEDVISION_SFT_PURE_BF16=1
+# LR 2e-5 -> 4e-5: with bf16 weights (no fp32 master), AdamW updates below bf16's ~0.4%
+# relative resolution round away ("stale weights"); a moderately higher LR keeps updates
+# above the rounding floor. Same engineering judgment as the MedGemma-27B run — watch the
+# early wandb loss curve and revert to 2e-5 if it misbehaves.
+export MEDVISION_SFT_LR=4e-5
+# MEDVISION_SFT_USE_LIGER is deliberately NOT set here (unlike MedGemma): Gemma 4 shares
+# the 262k vocab (the fused linear-CE would help) but liger support for the brand-new
+# Gemma4 arch is UNVERIFIED — with liger installed but the arch unsupported, transformers
+# warns and runs the stock (unfused) loss. If MEMPROBE shows the loss spike binding,
+# validate liger-on-gemma4 first, add `pip install --no-deps "liger-kernel>=0.5.4"` to the
+# env-setup section above, and export MEDVISION_SFT_USE_LIGER=1 here.
+# Print per-rank memory after FSDP wrap and after step 1 (2 lines, no overhead) so the
+# actual peak margin is visible in the log. Also prints whether gradient checkpointing
+# engaged, the FSDP mixed-precision policy (must be None here), and the live optimizer
+# class/state dtype (uint8 = bnb 8-bit engaged).
+export MEDVISION_SFT_MEMPROBE=1
+# On OOM, dump a per-rank CUDA allocator snapshot (every allocation + stacks) into the
+# checkpoint dir for offline analysis. Remove once training is past step 1 reliably
+# (small steady-state recording overhead).
+export MEDVISION_SFT_MEMSNAPSHOT=1
 
 # Skip dataset processing and directly load from disk for training
-# NOTE: FSDP (FULL_SHARD) is required for full FT of 31B. 4-rank per-GPU memory, anchored to
-#   MEMPROBE measurements (2026-07-02 GPU smoke @ 4 GPUs): fp32-master + bf16 param shards
-#   ~43.7GB post-wrap; the default adamw_torch_fused would add fp32 grad shards ~31GB + fp32
-#   optimizer states ~62GB => ~137GB/GPU steady (+ activations + ~17-20GB/GPU held OUTSIDE
-#   the rank's process: sibling CUDA contexts / NCCL / VMM) — adamw_torch_fused DOES NOT FIT
-#   4 GPUs, not even 4×H200 (140GB). The exports above therefore ship the smoke-validated
-#   paged_adamw_8bit config, measured 58.5GB/GPU steady — NOTE this needs H200-class cards at
-#   31B/4 ranks: on 4×80GB the step-2 backward transient missed the effective ceiling by
-#   <1GB (the smoke passed there with a 1-step run only). To get fully resumable checkpoints
-#   (adamw_torch_fused + optimizer state saved), move to >=8 GPUs and unset
-#   MEDVISION_SFT_OPTIM / MEDVISION_SFT_SAVE_ONLY_MODEL. If you still hit OOM here, add
-#   `--fsdp_offload_params true` below (needs ~300GB+ host RAM — check the container CGROUP
-#   limit, not `free`).
+# NOTE: FSDP (FULL_SHARD) is required for full FT of 31B, in PURE BF16
+#   (see MEDVISION_SFT_PURE_BF16 above for the memory math; --mixed_precision is
+#   deliberately NOT passed — the env var it sets would re-enable the fp32-master upcast).
+#   Expected per-GPU budget: 15.5 bf16 param shards + 15.5 bf16 grad shards (sync-each-
+#   batch keeps them SHARDED during accumulation) + 15.5 8-bit optim state + ~10-12
+#   activations/loss => ~58-62GB peak. CAUTION — 4×80GB is BORDERLINE at 31B: the ~17-20GB
+#   held OUTSIDE the rank's process (sibling CUDA contexts / NCCL / VMM) leaves an
+#   effective ceiling of ~59-62GB, and this pure-bf16 recipe is validated only at 27B
+#   (MedGemma); prefer 4×H200 (140GB), or watch MEMPROBE closely on the first steps.
+#   Verify in the log: the accelerate "Upcasted low precision parameters" warning must be
+#   GONE, MEMPROBE post-wrap allocated ~16-18GB (43.7 would mean the upcast is back), and
+#   the after_step_1 optimizer probe must show uint8 state. Do NOT enable
+#   fsdp_offload_params on a 400GB-cgroup pod: it needs ~700GB host RAM at 31B (check the
+#   container CGROUP limit, not `free`). To restore the fp32-master recipe + fully
+#   resumable checkpoints, move to >=8 GPUs: re-add --mixed_precision=bf16 and unset
+#   MEDVISION_SFT_PURE_BF16 / MEDVISION_SFT_LR / MEDVISION_SFT_OPTIM /
+#   MEDVISION_SFT_SAVE_ONLY_MODEL.
 CUDA_VISIBLE_DEVICES=0,1,2,3 \
     accelerate launch \
     --num_processes=4 \
     --main_process_port=29505 \
-    --mixed_precision=bf16 \
     --use_fsdp \
     --fsdp_sharding_strategy FULL_SHARD \
     --fsdp_auto_wrap_policy TRANSFORMER_BASED_WRAP \

@@ -1,4 +1,4 @@
-ENV_NAME="sft-qwen3vl"
+ENV_NAME="sft-medgemma"
 
 # Only create the env if it doesn't already exist
 source activate base
@@ -12,11 +12,13 @@ conda activate "${ENV_NAME}"
 conda install -c nvidia cuda-toolkit=12.4 -y
 
 # Sanitize HF_TOKEN: pod-injected secrets can carry a trailing newline that corrupts the
-# HTTP Authorization header (-> 401 on gated models/datasets). No-op if unset or clean.
+# HTTP Authorization header (-> 401 on gated models like google/medgemma-27b-it). No-op if
+# unset or clean.
 [ -n "${HF_TOKEN:-}" ] && export HF_TOKEN="$(printf '%s' "${HF_TOKEN}" | tr -d '[:space:]')"
 
 # Use MedVision dataset v1.0.0
 export MedVision_PLANNER_VERSION='1.0.0'
+export MEDVISION_SFT_COMPLETION_ONLY=1  # opt-in: Gemma completion-only assistant-turn loss masking
 export MedVision_ACK_RELEASE='1.1.1'
 
 # Set paths
@@ -35,27 +37,25 @@ tasks_list_json_path_TL="${benchmark_dir}/tasks_list/tasks_MedVision-TL__train_S
 # ----------------------------------------------------------------------------------
 
 # Model configs
-model_family_name="qwen3vl" # NOTE: model_family_name must be in AVAILABLE_MODELS from lmms_eval.models (qwen3vl <- vllm_qwen3vl)
-base_model_hf="Qwen/Qwen3.5-27B"
-run_name="MedVision__fullSFT__Qwen3.5-27B__D110k-AD5k-TL5k__CoT__512x512"
+model_family_name="medgemma" # NOTE: model_family_name must be in AVAILABLE_MODELS from lmms_eval.models
+base_model_hf="google/medgemma-27b-it"
+run_name="MedVision__fullSFT__MedGemma-27B-it__D110k-AD5k-TL5k__CoT__512x512__4xGPU-140G-fp32master__cmplLoss"
 # NOTE: --lora_checkpoint_dir is remapped to checkpoint_dir internally for full finetuning
 lora_checkpoint_dir="${train_sft_dir}/${run_name}/checkpoints/${run_name}"
 
 # Dependency versions
 # ----------------------------------------------------------------------------------
-# NOTE: env_setup.py force-installs transformers==4.54.0 at the end regardless of the
-#   --lmms_eval_opt_deps group. Qwen3.5/3.6 report model_type=qwen3_5, which transformers 4.57.0
-#   does NOT recognize (model fails to load: "architecture not recognized"). transformers 5.5.0
-#   loads them (verified 2026-06-30 via meta-device). We re-pin transformers AFTER env_setup.
-transformers_version="5.5.0"
+# NOTE: MedGemma-27B is Gemma 3 architecture, which is supported by transformers 4.54.0 —
+#   the version env_setup installs by default. The re-pin below is therefore a no-op kept
+#   for parallelism with the other base-model scripts; bump it if you need a newer release.
+#   Source of truth: requirements/requirements_sft_medgemma.txt (transformers==4.54.0).
+transformers_version="4.54.0"
 # FSDP transformer layer class to wrap (passed to accelerate below). This MUST match the
 # decoder layer class name in the installed transformers for this checkpoint.
-#   - Qwen3.5/3.6 (model_type qwen3_5) on transformers 5.5.0: Qwen3_5DecoderLayer (verified)
-# NOTE: qwen3_5 is a hybrid linear-attention arch; for its fast path install
-#   flash-linear-attention + causal-conv1d (optional; otherwise it falls back to torch).
-# Verify (config-only, no weight download):
-#   python -c "import torch; from transformers import AutoConfig, AutoModelForImageTextToText as M; c=AutoConfig.from_pretrained('${base_model_hf}', trust_remote_code=True); torch.set_default_device('meta'); m=M.from_config(c, trust_remote_code=True); print(sorted({type(x).__name__ for x in m.modules() if 'DecoderLayer' in type(x).__name__}))"
-fsdp_layer_cls="Qwen3_5DecoderLayer"
+#   - MedGemma-27B (Gemma 3 text backbone): Gemma3DecoderLayer
+# Verify once with:
+#   python -c "from transformers import AutoModelForImageTextToText as M; m=M.from_pretrained('${base_model_hf}'); print(sorted({type(x).__name__ for x in m.modules() if 'DecoderLayer' in type(x).__name__}))"
+fsdp_layer_cls="Gemma3DecoderLayer"
 # ----------------------------------------------------------------------------------
 
 # Training configs
@@ -64,12 +64,7 @@ save_steps=100
 eval_steps=100
 logging_steps=20
 save_total_limit=3 # Resumable full-FT ckpts are huge at 27B (~54GB bf16 weights + ~108GB optimizer state ≈ 160GB each); keep few
-# FA2 disabled for qwen3_5: the flash-attn 2.7.3 wheel env_setup installs targets the
-# transformers-4.5x era and is unvalidated against the qwen3_5 hybrid linear-attention
-# arch on transformers 5.5.0. The GPU-smoke-validated attention is SDPA — set via the
-# MEDVISION_SFT_ATTN export below (false alone would fall back to eager, which
-# materializes O(seq^2) attention matrices and wastes memory).
-use_flash_attention_2=false
+use_flash_attention_2=true
 num_workers_concat_datasets=4
 num_workers_format_dataset=64
 dataloader_num_workers=4
@@ -89,7 +84,7 @@ train_sample_limit_task_TL=5500
 val_sample_limit_task_TL=50
 # ----------------------------------------------------------------------------------
 dataloader_pin_memory=true
-use_flash_attention_2=false # duplicate of the setting above — keep both in sync
+use_flash_attention_2=true
 
 # Resumed training configs
 resume_from_checkpoint=true # Enable resuming from the last checkpoint
@@ -105,10 +100,10 @@ gradient_accumulation_steps=64 # effective_batch_size = per_device_train_batch_s
 # Set wandb configs for logging
 wandb_resume="allow" # Wandb resume mode (e.g., 'allow', 'must', 'never')
 wandb_dir="${train_sft_dir}/${run_name}"
-wandb_project="MedVision-SFT-CoT-Qwen3VL-multiTasks"
+wandb_project="MedVision-SFT-CoT-MedGemma-multiTasks"
 wandb_run_name=${run_name}
 # NOTE: For continuing an existing run, set the wandb_run_id to the ID of the existing run.
-wandb_run_id="Qwen3.5-27B-fullSFT-D110k-AD5k-TL5k-512x512" # run ID must be unique in the wandb_project
+wandb_run_id="MedGemma-27B-fullSFT-D110k-AD5k-TL5k-512x512-4xGPU-140G-fp32master-cmplLoss" # run ID must be unique in the wandb_project
 
 # Install medvision_bm: build the wheel on node-local disk (NOT the shared CephFS
 # tree). setuptools build_py caches created dirs in a process-global memo, and on
@@ -130,16 +125,16 @@ built_wheel="$(ls -t "${build_tmp}/wh"/medvision_bm-*.whl | head -n1)"
 cp -f "${built_wheel}" "${wheelhouse}/"
 flock "${lockfile}" python -m pip install --force-reinstall "${built_wheel}"
 
-# Setup training env
-python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --lmms_eval_opt_deps qwen3_vl
-# Re-pin transformers to a Qwen3-VL-capable version (env_setup forces 4.54.0; see NOTE above)
+# Setup training env (default stack: transformers 4.54.0 supports Gemma 3 / MedGemma)
+python -m medvision_bm.sft.env_setup --data_dir ${data_dir}
+# Re-pin transformers (no-op at 4.54.0; see NOTE above). Bump if a newer release is needed.
 python -m pip install "transformers==${transformers_version}"
 # Fix protobuf: env_setup leaves a protobuf incompatible with wandb>=0.21's generated stubs
 # (-> "cannot import name 'Imports' from wandb.proto..." which breaks the trl.SFTTrainer
 # import at train time). 6.33.0 matches the validated requirements_sft_*.txt pin.
 python -m pip install "protobuf==6.33.0"
 # # [Alternative] Setup training env: use a specific requirements file
-# python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --requirement "${benchmark_dir}/requirements/requirements_eval_qwen3vl.txt" --lmms_eval_opt_deps qwen3_vl
+# python -m medvision_bm.sft.env_setup --data_dir ${data_dir} --requirement "${benchmark_dir}/requirements/requirements_sft_medgemma.txt"
 
 # # [Debugging] Disable WANDB online logging
 # export WANDB_MODE=offline
@@ -165,7 +160,7 @@ temperature_sampler_T=5
 # ------------------------------------------------------------------------------
 
 # Offload dataset processing from training to a separate run to avoid timeout issues
-python -m medvision_bm.sft.train__fullFT-CoT__qwen3vl \
+python -m medvision_bm.sft.train__fullFT-CoT__medgemma \
     --skip_process_dataset ${skip_process_dataset} \
     --process_dataset_only true \
     --save_processed_img_to_disk ${save_processed_img_to_disk} \
@@ -207,95 +202,45 @@ python -m medvision_bm.sft.train__fullFT-CoT__qwen3vl \
     --dataloader_pin_memory ${dataloader_pin_memory} \
     --new_shape_hw 512 512
 
-# Self-heal deps: the dataset-prep step above reinstalls medvision_ds, whose exact pin
-# huggingface_hub==0.36.0 drags hub below transformers 5.x's floor (>=1.5.0) on EVERY prep
-# run -> ImportError at train start even though dataset prep succeeded. Probe the real
-# train-time import chain (trl.SFTTrainer also catches protobuf/wandb drift) and repair
-# SURGICALLY. Do NOT `pip install --force-reinstall transformers` here: re-resolving its
-# whole dep tree can pull an fsspec newer than datasets' cap, which the NEXT prep run then
-# downgrades on disk mid-process (observed crash: ModuleNotFoundError
-# fsspec.implementations.chained). The joint install below keeps transformers at its pin,
-# lifts hub only as far as that pin requires, re-asserts the protobuf pin, and leaves
-# everything else (fsspec, datasets) untouched. Aborts before the expensive launch on failure.
-if ! python -c "import transformers; from trl import SFTTrainer" >/dev/null 2>&1; then
-    echo "[WARN] train-time imports broken after dataset prep (dependency drift) — repairing"
-    python -m pip install --upgrade "transformers==${transformers_version}" huggingface_hub "protobuf==6.33.0"
-    python -c "import transformers; from trl import SFTTrainer"
-fi
-
 # Ensure CUDA_HOME is set (required by DeepSpeed compatibility check at import time)
 # even when DeepSpeed is not used as the training backend.
 export CUDA_HOME="${CUDA_HOME:-$(dirname $(dirname $(which nvcc 2>/dev/null || echo /usr/local/cuda/bin/nvcc)))}"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-# Attention implementation for training: SDPA — the GPU-smoke-validated config for qwen3_5.
-# (use_flash_attention_2=false by itself falls back to EAGER in prepare_trainer_fullFT;
-# this env knob, read by sft_utils.py, overrides it.)
-export MEDVISION_SFT_ATTN=sdpa
-# Optimizer for 4-GPU GPU-resident full FT: NON-paged 8-bit AdamW. paged_adamw_8bit was
-# measured on the MedGemma-27B twin run (2026-07-03 15:42, MEMPROBE after_step_1) leaving
-# its ~13.5GB/rank state as CUDA unified-memory pages RESIDENT ON DEVICE but OUTSIDE the
-# torch allocator (device_used - allocated = 13-27GB) — torch's cudaMalloc cannot evict UVM
-# pages, so the next micro-batch's loss buffers OOM'd. adamw_bnb_8bit keeps the same
-# 13.5GB/rank state inside the torch pool where the allocator manages it. CAVEAT: bnb's
-# quantized optimizer state cannot be gathered by FSDP FULL_STATE_DICT, so SAVE_ONLY_MODEL
-# is required — checkpoints store weights only, and resume_from_checkpoint continues from
-# the saved weights with a FRESH optimizer/LR state.
-export MEDVISION_SFT_OPTIM=adamw_bnb_8bit
-export MEDVISION_SFT_SAVE_ONLY_MODEL=1
-# Disable no_sync during gradient accumulation — THE root cause of the step-0 OOM of the
-# Qwen3.6-27B twin run (2026-07-07, identical launcher config; same ~75GiB-allocated
-# signature as the 4x 2026-07-03 MedGemma-27B OOMs, proven there by the CUDA allocator
-# snapshot): HF Trainer wraps non-final micro-steps in accelerator.no_sync(), under which
-# FSDP accumulates FULL UNSHARDED grads (~48GB/rank at 27B) and OOMs partway into the FIRST
-# backward. With sync-each-micro-batch, grads reduce-scatter immediately and accumulate
-# SHARDED (~13.5GB bf16 per rank at 27B/4).
+# NON-anti-OOM (fp32-master) variant: default fused fp32 AdamW (adamw_torch_fused) with
+# fully RESUMABLE checkpoints — deliberately NO MEDVISION_SFT_OPTIM / SAVE_ONLY_MODEL /
+# PURE_BF16 / LR / USE_LIGER overrides (the 4-GPU anti-OOM recipe lives in the sibling
+# script without the __4xGPU-140G-fp32master suffix; without liger the 262k-vocab logits spike
+# at the loss returns, but the 140GB fp32-master budget absorbs it). CKPT CAVEAT: each
+# resumable checkpoint is ~160GB at 27B (bf16 weights + optimizer state) and the
+# FULL_STATE_DICT save all-gathers the fp32 optimizer state to rank0 host RAM — never
+# smoke-validated at 27B+ scale (the smokes used weights-only saves); run a
+# 1-save+1-resume probe (save_steps=1) before a multi-day run.
+# Disable no_sync during gradient accumulation — KEPT even in this non-anti-OOM variant:
+# under no_sync, FSDP accumulates FULL UNSHARDED grads (~48-54GB bf16 at 27B) that do NOT
+# shrink with world size, OOMing the FIRST backward even on 8xH200 (proven root cause of
+# the 2026-07-03 step-0 OOMs on the 4-GPU twin). Sync-each-micro-batch reduce-scatters
+# every micro-batch so grads accumulate fp32 SHARDED — numerics-neutral, negligible cost
+# on NVLink.
 export MEDVISION_SFT_SYNC_EACH_BATCH=1
-# PURE BF16 (recipe validated on the MedGemma-27B twin run): no accelerate mixed precision,
-# no fp32 master weights. The fp32-master recipe has a fixed cost of 67.5GB/GPU at 27B/4
-# ranks (27 fp32 masters + 13.5 FSDP bf16 _mp_shard + 13.5 fp32 grad shards + 13.5 8-bit
-# optim) — it can NEVER fit 80GB, and its bf16-grads escape hatch (MEDVISION_SFT_BF16_GRADS)
-# hard-fails (torch .grad setter dtype mismatch). Pure bf16 costs ~40.5GB fixed (13.5 params
-# + 13.5 grads + 13.5 optim) => peak ~52-55GB, ~25GB margin. Requires BOTH this export
-# (SFTConfig bf16=False) AND no --mixed_precision flag on the accelerate launch below —
-# verified in transformers 5.5.0 training_args.py: bf16=False cannot override the
-# ACCELERATE_MIXED_PRECISION env var that the launch flag injects.
-export MEDVISION_SFT_PURE_BF16=1
-# LR 2e-5 -> 4e-5: with bf16 weights (no fp32 master), AdamW updates below bf16's ~0.4%
-# relative resolution round away ("stale weights"); a moderately higher LR keeps updates
-# above the rounding floor. Same engineering judgment as the MedGemma-27B run — watch the
-# early wandb loss curve and revert to 2e-5 if it misbehaves.
-export MEDVISION_SFT_LR=4e-5
-# MEDVISION_SFT_USE_LIGER is deliberately NOT set here (unlike MedGemma): liger has no
-# kernels for the brand-new qwen3_5 hybrid arch (and would need liger-kernel installed),
-# and Qwen3.5's ~152k-vocab logits spike (vs Gemma3's 262k) fits inside the pure-bf16 margin.
 # Print per-rank memory after FSDP wrap and after step 1 (2 lines, no overhead) so the
-# actual peak margin is visible in the log. Also prints whether gradient checkpointing
-# engaged, the FSDP mixed-precision policy (must be None here), and the live optimizer
-# class/state dtype (uint8 = bnb 8-bit engaged).
+# actual peak margin is visible in the log.
 export MEDVISION_SFT_MEMPROBE=1
-# On OOM, dump a per-rank CUDA allocator snapshot (every allocation + stacks) into the
-# checkpoint dir for offline analysis. Remove once training is past step 1 reliably
-# (small steady-state recording overhead).
-export MEDVISION_SFT_MEMSNAPSHOT=1
 
 # Skip dataset processing and directly load from disk for training
-# NOTE: FSDP (FULL_SHARD) is required for full FT of 27B, in PURE BF16 on a 4x80GB pod
-#   (see MEDVISION_SFT_PURE_BF16 above for the memory math; --mixed_precision is
-#   deliberately NOT passed — the env var it sets would re-enable the fp32-master upcast).
-#   Expected per-GPU budget: 13.5 bf16 param shards + 13.5 bf16 grad shards (sync-each-
-#   batch keeps them SHARDED during accumulation) + 13.5 8-bit optim state + ~10-12
-#   activations/loss => ~52-55GB peak vs 79.19 usable. Verify in the log: the accelerate
-#   "Upcasted low precision parameters" warning must be GONE, MEMPROBE post-wrap allocated
-#   ~14-16GB (38+ would mean the upcast is back), and the after_step_1 optimizer probe must
-#   show uint8 state. Do NOT enable fsdp_offload_params on a 400GB-cgroup pod: it needs
-#   ~600GB host RAM (check the container CGROUP limit, not `free`). To restore the
-#   fp32-master recipe + fully resumable checkpoints, move to >=8 GPUs: re-add
-#   --mixed_precision=bf16 and unset MEDVISION_SFT_PURE_BF16 / MEDVISION_SFT_LR /
-#   MEDVISION_SFT_OPTIM / MEDVISION_SFT_SAVE_ONLY_MODEL.
+# NOTE: 4-GPU 140GB-class fp32-master recipe (--mixed_precision=bf16 => fp32 master
+#   weights + bf16 compute under FSDP). Per-GPU fixed memory at 27B/4 ranks: ~27 fp32
+#   masters + ~13.5 bf16 _mp_shard + ~27 fp32 grad shards + ~54 fused-AdamW fp32 states
+#   ≈ 121.5GB worst case, plus activations (incl. the un-liger'd 262k-vocab loss spike)
+#   — does NOT fit 80GB cards. The 27B/4-rank budget is VALIDATED on 4x 140GB GPUs
+#   (Qwen3.6-27B twin, 2026-07-09: post-wrap 38.2GiB/rank), but Gemma's 262k-vocab loss
+#   spike is larger than Qwen's 152k — UNVALIDATED for this model; watch the after_step_1
+#   MEMPROBE on the first run. Verify: post-wrap allocated ~38GB (a full-model figure
+#   means sharding didn't engage).
 CUDA_VISIBLE_DEVICES=0,1,2,3 \
     accelerate launch \
     --num_processes=4 \
-    --main_process_port=29503 \
+    --main_process_port=29514 \
+    --mixed_precision=bf16 \
     --use_fsdp \
     --fsdp_sharding_strategy FULL_SHARD \
     --fsdp_auto_wrap_policy TRANSFORMER_BASED_WRAP \
@@ -304,7 +249,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 \
     --fsdp_offload_params false \
     --fsdp_cpu_ram_efficient_loading true \
     --fsdp_sync_module_states true \
-    -m medvision_bm.sft.train__fullFT-CoT__qwen3vl \
+    -m medvision_bm.sft.train__fullFT-CoT__medgemma \
     --skip_process_dataset true \
     --process_dataset_only false \
     --run_name ${run_name} \

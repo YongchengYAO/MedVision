@@ -144,6 +144,31 @@ The LoRA scripts train adapters on top of the frozen base model and run with pla
 The full-parameter script (`train__fullSFT-CoT__...`) updates all weights, which does not fit in DDP on 80GB GPUs: weights (14GB) + gradients (14GB) + AdamW FP32 states (56GB) ≈ 84GB per GPU before activations. It therefore launches with **FSDP** (`--use_fsdp --fsdp_sharding_strategy FULL_SHARD`), sharding all three components across GPUs (~31GB per GPU on 4 GPUs).
 
 
+### Loss Masking (completion-only)
+
+By default the loss objective differs by model family. The **Qwen** collates
+(`make_collate_fn_Qwen25VL`, used by the Qwen2.5-VL and Qwen3-VL scripts) apply **completion-only
+masking**: only the assistant response and its closing turn marker contribute to the loss; the
+image, padding, and the entire user prompt are set to the `-100` ignore index. The **Gemma-4 /
+MedGemma** collates mask only padding + image tokens by default, so the user prompt *is* in the loss.
+
+To train Gemma-4 / MedGemma completion-only as well, set `MEDVISION_SFT_COMPLETION_ONLY=1` (default
+`0`/off). The `script/sft/train__..._cmplLoss.sh` variant scripts export this flag and use a distinct
+`run_name` / `wandb_run_id` so they train alongside — not on top of — the baseline runs. The flag is
+Gemma-only (the Qwen collates already mask and ignore it).
+
+*   **`train/loss` is not comparable across this flag.** With masking on, the loss is averaged over
+    only the response tokens (~15% of the sequence — all of them the hard answer tokens) instead of
+    being diluted by ~63% near-identical prompt boilerplate, so the reported number jumps **up**. That
+    is the flag working, not a regression.
+*   Expected downstream-accuracy effect is roughly neutral for MedVision's long-completion CoT data
+    (see `docs/literature-review__loss-masking-in-SFT.md`); the motivation is loss-objective
+    consistency with the Qwen family, not an accuracy gain.
+*   **Hazard:** because it is an exported env var, if `MEDVISION_SFT_COMPLETION_ONLY=1` leaks into a
+    shell that then launches a *baseline* script, that baseline silently trains completion-only.
+    Launch the `_cmplLoss` variants in a fresh shell (or `unset` the var before a baseline run);
+    a sudden `train/loss` jump is the tell.
+
 ## 5. 📊 WandB and Hugging Face Logging
 
 To use **Weights & Biases (WandB)** and the **Hugging Face Hub**, you must first log in:

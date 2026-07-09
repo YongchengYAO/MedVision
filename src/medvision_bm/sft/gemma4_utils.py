@@ -1,20 +1,26 @@
-from medvision_bm.sft.sft_utils import _doc_to_visual
+import os
+
+from medvision_bm.sft.sft_utils import _doc_to_visual, mask_non_assistant_turns_gemma
 
 
 # NOTE: This is model-specific collate function.
 # Build a collate_fn bound to a specific processor (avoids relying on a global in multi-process contexts).
 #
-# Gemma 4 is Gemma-lineage (like Gemma 3 / MedGemma), so the loss masking mirrors
+# Gemma 4 is Gemma-lineage (like Gemma 3 / MedGemma), so the base loss masking mirrors
 # make_collate_fn_MedGemma: mask the padding token and the image-placeholder tokens
 # (begin-of-image / end-of-image / image soft token) so the vision tokens do not
-# contribute to the language-modeling loss. We do NOT apply completion-only
-# (assistant-turn) masking here, matching the existing Gemma-family (MedGemma) collate.
+# contribute to the language-modeling loss. On top of that, when MEDVISION_SFT_COMPLETION_ONLY=1
+# is set, completion-only (assistant-turn) masking is applied via mask_non_assistant_turns_gemma
+# so only the model turn's response contributes to the loss -- matching make_collate_fn_Qwen25VL.
+# The flag defaults OFF, keeping the legacy full-sequence objective bit-identical.
 #
 # Gemma 4 uses variable-resolution vision ("soft tokens"); its image tokens are still
 # exposed via the tokenizer's special_tokens_map (boi/eoi/image), but to stay robust to
 # any naming differences in the checkpoint we look each key up with .get() and only mask
 # the ones that actually resolve to a valid id (no KeyError if a key is absent).
 def make_collate_fn_Gemma4(proc):
+    completion_only = os.environ.get("MEDVISION_SFT_COMPLETION_ONLY", "0") == "1"
+
     def _collate_fn_local(examples):
         texts = []
         images = []
@@ -86,6 +92,17 @@ def make_collate_fn_Gemma4(proc):
             token_id = tokenizer.convert_tokens_to_ids(token_str)
             if token_id is not None and token_id >= 0:
                 labels[labels == token_id] = -100
+
+        # Opt-in completion-only masking (MEDVISION_SFT_COMPLETION_ONLY=1): mask all non-model
+        # turns so only the assistant answer contributes to the loss. Default OFF keeps the
+        # legacy full-sequence objective bit-identical. Safe after the pad mask because
+        # pad_token_id (0) != end-of-turn (106), so the closing marker the scan keeps in the
+        # loss cannot have been clobbered.
+        if completion_only:
+            for i in range(labels.shape[0]):
+                labels[i] = mask_non_assistant_turns_gemma(
+                    batch["input_ids"][i], labels[i], tokenizer
+                )
 
         batch["labels"] = labels
         return batch

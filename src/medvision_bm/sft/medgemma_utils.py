@@ -1,9 +1,16 @@
-from medvision_bm.sft.sft_utils import _doc_to_visual
+import os
+
+from medvision_bm.sft.sft_utils import _doc_to_visual, mask_non_assistant_turns_gemma
 
 
 # NOTE: This is model-specific collate function.
 # Build a collate_fn bound to a specific processor (avoids relying on a global in multi-process contexts).
+# When MEDVISION_SFT_COMPLETION_ONLY=1 is set, completion-only (assistant-turn) masking is applied
+# via mask_non_assistant_turns_gemma on top of the pad/image masking, so only the model turn's
+# response contributes to the loss. The flag defaults OFF, keeping the legacy objective bit-identical.
 def make_collate_fn_MedGemma(proc):
+    completion_only = os.environ.get("MEDVISION_SFT_COMPLETION_ONLY", "0") == "1"
+
     def _collate_fn_local(examples):
         texts = []
         images = []
@@ -76,6 +83,16 @@ def make_collate_fn_MedGemma(proc):
         labels[labels == begin_of_image_token_id] = -100
         labels[labels == image_token_id] = -100
         labels[labels == end_of_image_token_id] = -100
+
+        # Opt-in completion-only masking (MEDVISION_SFT_COMPLETION_ONLY=1): mask all non-model
+        # turns so only the assistant answer contributes to the loss. Default OFF keeps the
+        # legacy full-sequence objective bit-identical. Kept OUTSIDE the per-example try/except
+        # so mask_non_assistant_turns_gemma's ValueError/RuntimeError are not swallowed.
+        if completion_only:
+            for i in range(labels.shape[0]):
+                labels[i] = mask_non_assistant_turns_gemma(
+                    batch["input_ids"][i], labels[i], proc.tokenizer
+                )
 
         batch["labels"] = labels
         return batch

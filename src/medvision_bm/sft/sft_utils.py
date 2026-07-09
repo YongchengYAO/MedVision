@@ -2761,6 +2761,7 @@ def prepare_trainer_fullFT(
     *,
     run_name,
     base_model_hf,
+    model_weights_from=None,
     checkpoint_dir,
     data,
     make_collate_fn,
@@ -2792,7 +2793,11 @@ def prepare_trainer_fullFT(
     Args:
         run_name (str): Run name for logging / W&B.
         base_model_hf (str): HuggingFace id of the base image-text-to-text
-            model.
+            model. Also the source of the processor.
+        model_weights_from (str, optional): Local checkpoint directory to load
+            the model weights from instead of ``base_model_hf`` (resume path).
+            Pass the same directory to ``train_resume_from_checkpoint`` with
+            ``weights_preloaded=True`` so the Trainer does not re-load it.
         checkpoint_dir (str): Output directory for checkpoints.
         data: DatasetDict with ``"train"`` and ``"validation"`` splits.
         make_collate_fn: Factory called as ``make_collate_fn(processor)`` to
@@ -2861,8 +2866,18 @@ def prepare_trainer_fullFT(
     if os.environ.get("ACCELERATE_USE_FSDP", "").lower() != "true":
         model_kwargs["device_map"] = {"": PartialState().process_index}
 
-    # Load the model in BF16 without quantization — all parameters will be trained
-    model = AutoModelForImageTextToText.from_pretrained(base_model_hf, **model_kwargs)
+    # Load the model in BF16 without quantization — all parameters will be trained.
+    # On resume, model_weights_from points at the last checkpoint so the weights come in
+    # through this same FSDP-aware path (rank0 on CPU, other ranks on meta, shard at wrap).
+    # Trainer._load_from_checkpoint must then be skipped (train_resume_from_checkpoint
+    # weights_preloaded=True): for a SHARDED weights-only checkpoint under FSDP it falls
+    # into transformers' load_sharded_checkpoint, whose model.state_dict() all-gathers the
+    # full unsharded model on EVERY rank (observed 76GiB/GPU at 31B -> OOM, 2026-07-08).
+    if model_weights_from is not None:
+        safe_print(f"[Resume] Loading model weights from checkpoint: {model_weights_from}")
+    model = AutoModelForImageTextToText.from_pretrained(
+        model_weights_from or base_model_hf, **model_kwargs
+    )
 
     # Training never generates, so disable the KV/recurrent cache outright. The Trainer only
     # does this when gradient_checkpointing=True, but a live cache is harmful in training
@@ -3213,7 +3228,7 @@ def merge_models(
     print("[Info] Model merge completed.")
 
 
-def train_resume_from_checkpoint(trainer, last_checkpoint):
+def train_resume_from_checkpoint(trainer, last_checkpoint, weights_preloaded=False):
     safe_print("[Resume] Requested resume_from_checkpoint=True")
 
     assert last_checkpoint is not None, f"No checkpoint found in {last_checkpoint}"
@@ -3282,6 +3297,21 @@ def train_resume_from_checkpoint(trainer, last_checkpoint):
         print(
             f"[Resume] Marked is_finished={trainer.state.is_finished} on all processes."
         )
+
+    if weights_preloaded:
+        # Weights were already loaded from last_checkpoint at model construction
+        # (prepare_trainer_fullFT model_weights_from). Trainer._load_from_checkpoint would
+        # re-load them via transformers' load_sharded_checkpoint, which under FSDP
+        # all-gathers the full unsharded model on every rank and OOMs at 27B+ — skip it.
+        # trainer_state.json restore, batch skipping, and the (fresh, save_only_model)
+        # optimizer/scheduler handling in trainer.train() are unaffected.
+        def _skip_load_from_checkpoint(resume_from_checkpoint, model=None):
+            safe_print(
+                "[Resume] Skipping Trainer._load_from_checkpoint: weights already "
+                f"loaded from {resume_from_checkpoint} at model construction."
+            )
+
+        trainer._load_from_checkpoint = _skip_load_from_checkpoint
 
     safe_print("Resuming training...")
     trainer.train(resume_from_checkpoint=last_checkpoint)
@@ -3766,6 +3796,46 @@ def parse_sample_limits(**kwargs):
     )
 
 
+def _mask_turns(input_ids, labels, start_id, end_id, role_id, newline_id):
+    """Turn-scan shared by the ChatML and Gemma completion-only maskers.
+
+    For every assistant/model turn the header (``start_id`` immediately followed by
+    ``role_id``) is masked, along with the role newline and every non-assistant turn;
+    loss is kept on the response content up to and including the closing ``end_id``.
+    Only ever writes -100, so -100s the caller already wrote (pad, image) survive inside
+    the response.
+    """
+    seq_len = input_ids.shape[0]
+    i = 0
+    while i < seq_len:
+        is_assistant_header = (
+            input_ids[i].item() == start_id
+            and i + 1 < seq_len
+            and input_ids[i + 1].item() == role_id
+        )
+        if is_assistant_header:
+            labels[i] = -100  # start-of-turn marker
+            labels[i + 1] = -100  # role token
+            j = i + 2
+            if (
+                newline_id is not None
+                and j < seq_len
+                and input_ids[j].item() == newline_id
+            ):
+                labels[j] = -100  # role-header newline
+                j += 1
+            # Train response content up to and including the closing end-of-turn.
+            while j < seq_len and input_ids[j].item() != end_id:
+                j += 1
+            if j < seq_len:  # the closing end-of-turn stays in the loss
+                j += 1
+            i = j
+        else:
+            labels[i] = -100
+            i += 1
+    return labels
+
+
 def mask_non_assistant_turns(input_ids, labels, tokenizer):
     """Mask everything except assistant response content + its closing ``<|im_end|>``.
 
@@ -3775,41 +3845,80 @@ def mask_non_assistant_turns(input_ids, labels, tokenizer):
     is computed only on the response tokens and the ``<|im_end|>`` that
     terminates the assistant turn. The trailing newline after ``<|im_end|>`` is
     also masked.
+
+    ChatML only (Qwen). Gemma checkpoints must use ``mask_non_assistant_turns_gemma``.
     """
-    im_start_id = tokenizer.convert_tokens_to_ids("<|im_start|>")
-    im_end_id = tokenizer.convert_tokens_to_ids("<|im_end|>")
-    assistant_id = tokenizer.convert_tokens_to_ids("assistant")
+    newline_enc = tokenizer.encode("\n", add_special_tokens=False)
+    return _mask_turns(
+        input_ids,
+        labels,
+        tokenizer.convert_tokens_to_ids("<|im_start|>"),
+        tokenizer.convert_tokens_to_ids("<|im_end|>"),
+        tokenizer.convert_tokens_to_ids("assistant"),
+        newline_enc[0] if len(newline_enc) == 1 else None,
+    )
+
+
+# (start-of-turn, end-of-turn) marker pairs for the Gemma family. Gemma 3 / MedGemma use
+# <start_of_turn>...<end_of_turn>; Gemma 4 renamed them to <|turn>...<turn|>. Each family's
+# markers are absent from the other's vocabulary, so the pairs are mutually exclusive and the
+# probe order is irrelevant.
+_GEMMA_TURN_MARKERS = (
+    ("<start_of_turn>", "<end_of_turn>"),  # Gemma 3 / MedGemma
+    ("<|turn>", "<turn|>"),  # Gemma 4
+)
+
+
+def _resolve_special_token_id(tokenizer, token_str):
+    """Vocab id of ``token_str``, or None if the tokenizer does not have it.
+
+    ``convert_tokens_to_ids`` returns ``unk_token_id`` (3 on Gemma) -- not None -- for
+    out-of-vocabulary tokens, which is exactly how another Gemma generation's markers would
+    sneak through as a valid-looking id. Tokenizers with no unk token return None instead.
+    """
+    token_id = tokenizer.convert_tokens_to_ids(token_str)
+    if token_id is None or token_id < 0 or token_id == tokenizer.unk_token_id:
+        return None
+    return token_id
+
+
+def mask_non_assistant_turns_gemma(input_ids, labels, tokenizer):
+    """Gemma-family counterpart of :func:`mask_non_assistant_turns`.
+
+    Same completion-only policy, but the turn markers come from the Gemma vocabulary.
+    Gemma 3 / MedGemma render ``<start_of_turn>model\\n ... <end_of_turn>``; Gemma 4 renders
+    ``<|turn>model\\n ... <turn|>``. Both use the single token "model" as the assistant role.
+
+    The families must not share a masker: on a Gemma tokenizer ``<|im_start|>`` resolves to
+    ``unk_token_id``, no assistant header is ever matched, every label becomes -100 and the loss
+    silently becomes NaN. Hence the probe below refuses rather than guesses.
+    """
+    for start_token, end_token in _GEMMA_TURN_MARKERS:
+        start_id = _resolve_special_token_id(tokenizer, start_token)
+        end_id = _resolve_special_token_id(tokenizer, end_token)
+        if start_id is not None and end_id is not None:
+            break
+    else:
+        raise ValueError(
+            f"No Gemma turn markers in this tokenizer's vocabulary (tried {_GEMMA_TURN_MARKERS}). "
+            "Refusing to mask: unrecognised markers would silently mask every token."
+        )
+
+    role_id = _resolve_special_token_id(tokenizer, "model")
+    if role_id is None:
+        raise ValueError(
+            'Gemma assistant role token "model" is not in this tokenizer\'s vocabulary.'
+        )
+
     newline_enc = tokenizer.encode("\n", add_special_tokens=False)
     newline_id = newline_enc[0] if len(newline_enc) == 1 else None
 
-    seq_len = input_ids.shape[0]
-    i = 0
-    while i < seq_len:
-        is_assistant_header = (
-            input_ids[i].item() == im_start_id
-            and i + 1 < seq_len
-            and input_ids[i + 1].item() == assistant_id
+    labels = _mask_turns(input_ids, labels, start_id, end_id, role_id, newline_id)
+    if not (labels != -100).any():
+        raise RuntimeError(
+            f"Completion-only masking left no tokens in the loss: no '{start_token}model' header "
+            "was found. The chat template and _GEMMA_TURN_MARKERS have gone out of sync."
         )
-        if is_assistant_header:
-            labels[i] = -100  # <|im_start|>
-            labels[i + 1] = -100  # "assistant"
-            j = i + 2
-            if (
-                newline_id is not None
-                and j < seq_len
-                and input_ids[j].item() == newline_id
-            ):
-                labels[j] = -100  # role-header newline
-                j += 1
-            # Train response content up to and including the closing <|im_end|>.
-            while j < seq_len and input_ids[j].item() != im_end_id:
-                j += 1
-            if j < seq_len:  # the closing <|im_end|> stays in the loss
-                j += 1
-            i = j
-        else:
-            labels[i] = -100
-            i += 1
     return labels
 
 

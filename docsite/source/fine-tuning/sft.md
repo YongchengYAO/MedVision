@@ -26,6 +26,8 @@ The `__512x512` variants add `--new_shape_hw 512 512`, which resizes each slice 
 MedVision-V0 is produced by **two-stage post-training**: this full-parameter 512×512 SFT, followed by reinforcement fine-tuning (GRPO). See [Reinforcement fine-tuning](rft.md).
 :::
 
+Beyond these 7B reference recipes, `script/sft/` carries the same layout for larger families — MedGemma-27B, Gemma-4-31B, Qwen3.5/Qwen3.6-27B — whose memory-recipe variants are covered in *Scaling full-parameter SFT to 27B and beyond* below.
+
 To run one, set the paths and identifiers at the top of the script (`benchmark_dir`, `data_dir`, `base_model_hf`, `run_name`, W&B fields, and the batch/GPU settings) and execute it from the repo root:
 
 ```bash
@@ -146,6 +148,64 @@ With 110K detection samples against 5.5K each for A/D and T/L, uniform sampling 
 
 Internally this swaps the trainer for a `TemperatureSamplerSFTTrainer` subclass whose train sampler is a `WeightedRandomSampler` (with replacement, seeded from the project `SEED`). Per-task probability is `count^(1/T)`, normalised, and each sample's weight is that task probability divided by the task's count. `T = 1` reproduces count-proportional sampling; larger `T` flattens the distribution so the minority tasks are oversampled — the scripts use `T = 5`. It only reshapes training batches and has no effect during phase-1 preparation. With a single task present, it transparently falls back to the standard sampler.
 
+## Loss masking (completion-only)
+
+Which tokens count toward the training loss is decided per model family in the collate functions:
+
+- **Qwen collates** (shared by the Qwen2.5-VL and Qwen3-VL drivers) are **completion-only by default**: only each assistant response and its closing turn marker stay in the loss; padding, image tokens, and the entire user prompt are set to the `-100` ignore index.
+- **Gemma-family collates** (MedGemma, Gemma 4) mask only padding and image tokens by default, so the user prompt *is* part of the language-modeling loss — the same objective as Google's [official MedGemma fine-tuning notebook](https://github.com/google-health/medgemma/blob/main/notebooks/fine_tune_with_hugging_face.ipynb), whose collator masks exactly those tokens.
+
+Setting `MEDVISION_SFT_COMPLETION_ONLY=1` switches the Gemma-family collates to the same completion-only objective (the Qwen collates already mask, and ignore the flag). It applies to LoRA and full-parameter training alike, and raises at the first batch — rather than silently mis-masking — if a checkpoint's chat template lacks the expected Gemma turn markers.
+
+:::{warning}
+`train/loss` is **not comparable across this flag**: with masking on, the loss averages over only the response tokens (roughly 15 % of the sequence — all of them the hard answer tokens) instead of being diluted by near-identical prompt boilerplate, so the reported value jumps up. That is the flag working, not a regression.
+
+And because it is an environment variable, a `MEDVISION_SFT_COMPLETION_ONLY=1` left exported in the shell silently turns the next *baseline* Gemma run into a completion-only run. Launch the `__cmplLoss` script variants (which export this flag) in a fresh shell, or `unset` the variable before a baseline run; a sudden `train/loss` jump is the tell.
+:::
+
+For MedVision's long-CoT targets the expected downstream-accuracy effect is roughly neutral; the motivation is objective consistency with the Qwen family rather than an accuracy gain. The evidence review lives in the repository at `docs/literature-review__loss-masking-in-SFT.md`.
+
+## Scaling full-parameter SFT to 27B and beyond
+
+`script/sft/` ships full-parameter CoT recipes for MedGemma-27B, Gemma-4-31B, and Qwen3.5/Qwen3.6-27B in two memory recipes per family:
+
+| Script variant | Recipe | Checkpoints | Hardware |
+|---|---|---|---|
+| `train__fullSFT-CoT__<Model>__...__512x512.sh` | anti-OOM: pure bf16 + 8-bit AdamW | weights-only (~54 GB at 27B) | 4× 80 GB |
+| `...__4xGPU-140G-fp32master.sh` | fp32 master weights + fused fp32 AdamW | fully resumable (~160 GB at 27B) | 4× 140 GB-class |
+
+`__cmplLoss` variants of either recipe additionally export the loss-masking flag above.
+
+The standard AMP setup (bf16 compute, fp32 master weights, fused fp32 AdamW) carries ~121.5 GB of fixed per-GPU state at 27B across 4 ranks — far beyond 80 GB cards. The **anti-OOM recipe** trains bf16-native instead: `MEDVISION_SFT_PURE_BF16=1` removes the fp32 masters (the launch also omits `--mixed_precision=bf16`), `MEDVISION_SFT_OPTIM=adamw_bnb_8bit` shrinks optimizer state 8×, and the fixed cost drops to ~40.5 GB. The learning rate is raised to `4e-5` so AdamW updates clear bf16's ~0.4 % rounding resolution.
+
+:::{warning}
+The anti-OOM recipe is **not fully resumable**. Its 8-bit optimizer state cannot be gathered by FSDP's `FULL_STATE_DICT`, so checkpoints are weights-only (`MEDVISION_SFT_SAVE_ONLY_MODEL=1`): any restart — preemption, pod loss, a deliberate stop — discards the optimizer moments and LR-schedule position and warm-restarts from the last saved weights.
+:::
+
+**Prefer the fp32-master recipe whenever 140 GB-class GPUs are available**; reserve the anti-OOM recipe for 80 GB pods. It keeps standard AMP numerics and fully resumable checkpoints, and fits 4 ranks — validated at 27B (Qwen3.6: post-FSDP-wrap ≈ 38 GiB/rank). At 31B its worst-case fixed cost (~139.5 GB/rank) sits at the edge of the budget: treat Gemma-4-31B on 4 GPUs as unvalidated and watch the memory probes on the first run.
+
+The knobs are environment variables exported by the launcher scripts (not argparse flags). Every knob defaults to the legacy behavior, so the 7B pipelines are untouched:
+
+| Env var | Default | Effect when set |
+|---|---|---|
+| `MEDVISION_SFT_PURE_BF16=1` | off | disable AMP (`bf16=False`): no fp32 masters, no bf16 `_mp_shard`; the launch must also omit `--mixed_precision=bf16` |
+| `MEDVISION_SFT_OPTIM` | `adamw_torch_fused` | any `SFTConfig.optim` value; the anti-OOM recipe uses `adamw_bnb_8bit`, whose state lives inside the torch allocator (unlike `paged_adamw_8bit`, whose UVM pages the allocator cannot evict) |
+| `MEDVISION_SFT_SAVE_ONLY_MODEL=1` | off | weights-only checkpoints; required with 8-bit optimizers under FSDP `FULL_STATE_DICT` |
+| `MEDVISION_SFT_LR` | `2e-5` | full-FT learning-rate override |
+| `MEDVISION_SFT_SYNC_EACH_BATCH=1` | off | neutralise `no_sync` during gradient accumulation so gradients reduce-scatter every micro-batch and accumulate *sharded*; without it FSDP accumulates full unsharded gradients and OOMs in the first backward at 27B+ |
+| `MEDVISION_SFT_ATTN` | follows `--use_flash_attention_2` | attention-implementation override (e.g. `sdpa` for families whose FlashAttention wheel is unvalidated) |
+| `MEDVISION_SFT_USE_LIGER=1` | off | Liger kernels; the fused cross-entropy removes the vocab-sized logits spike (requires `pip install liger-kernel`) |
+| `MEDVISION_SFT_MEMPROBE=1` | off | log per-rank memory after FSDP wrap and after step 1 |
+| `MEDVISION_SFT_MEMSNAPSHOT=1` | off | on OOM, dump a per-rank CUDA allocator snapshot into the checkpoint dir |
+
+Resuming a full-parameter run is FSDP-aware: the entry points detect the last checkpoint before building the trainer and load its weights through the same sharded `from_pretrained` path as a fresh start, skipping the Trainer's own checkpoint loader (which would all-gather the full unsharded model on every rank — an OOM at 27B+). This happens automatically with `--resume_from_checkpoint true`, and a checkpoint moves freely between pods with different GPU memory as long as the effective batch (world size × accumulation × per-device batch) stays the same.
+
+:::{tip}
+`MEDVISION_SFT_MEMPROBE=1` costs two log lines. On any new model-size/GPU combination, check the post-wrap figure first: expect roughly `params × 2 bytes / world_size` for pure bf16, or that plus the fp32 masters under AMP — a full-model-sized figure means FSDP sharding did not engage.
+:::
+
+Background for these choices is collected in the repository at `docs/literature-review__anti-OOM-fullFT-techniques.md`.
+
 ## Merging and pushing (LoRA only)
 
 The LoRA drivers can merge the trained adapter back into the base model and push either artifact to the Hub:
@@ -166,12 +226,16 @@ Merging a LoRA adapter into the base weights can slightly degrade measurement ac
 
 ## Entry points and other model families
 
-Two CoT drivers ship today, both targeting Qwen2.5-VL:
+CoT drivers ship for four families, each with a LoRA and a full-parameter module under `medvision_bm.sft`:
 
-- `medvision_bm.sft.train__SFT-CoT__qwen2_5_vl` — LoRA
-- `medvision_bm.sft.train__fullFT-CoT__qwen2_5_vl` — full-parameter
+| Family (`--model_family_name`) | LoRA driver | Full-parameter driver |
+|---|---|---|
+| `qwen25vl` | `train__SFT-CoT__qwen2_5_vl` | `train__fullFT-CoT__qwen2_5_vl` |
+| `qwen3vl` (Qwen3-VL / Qwen3.5 / Qwen3.6) | `train__SFT-CoT__qwen3vl` | `train__fullFT-CoT__qwen3vl` |
+| `gemma4` | `train__SFT-CoT__gemma4` | `train__fullFT-CoT__gemma4` |
+| `medgemma` | `train__SFT-CoT__medgemma` | `train__fullFT-CoT__medgemma` |
 
-They share the preparation, sampler, and trainer plumbing in `medvision_bm.sft.sft_utils` (`prepare_dataset`, `prepare_trainer`, `prepare_trainer_fullFT`). Extending the same recipe to another supported family — for example `gemma4`, `medgemma`, or `qwen3vl` — follows the identical two-recipe pattern: a `train__SFT-CoT__<family>` / `train__fullFT-CoT__<family>` module reusing these helpers, the matching `--model_family_name`, the family's decoder-layer class in `--fsdp_transformer_layer_cls_to_wrap`, and the right `--lmms_eval_opt_deps` for `env_setup`. See [Add a model](../extending/add-a-model.md) for that walkthrough.
+They share the preparation, sampler, and trainer plumbing in `medvision_bm.sft.sft_utils` (`prepare_dataset`, `prepare_trainer`, `prepare_trainer_fullFT`) and differ mainly in their collate function and chat template. Extending the same recipe to a new family follows the identical two-recipe pattern: a `train__SFT-CoT__<family>` / `train__fullFT-CoT__<family>` module reusing these helpers, the matching `--model_family_name`, the family's decoder-layer class in `--fsdp_transformer_layer_cls_to_wrap`, and the right `--lmms_eval_opt_deps` for `env_setup`. See [Add a model](../extending/add-a-model.md) for that walkthrough.
 
 ## See also
 

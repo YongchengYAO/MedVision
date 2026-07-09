@@ -234,9 +234,19 @@ def main(
 
     dataset = load_from_disk(prepared_ds_dir)
 
+    # Detect an existing checkpoint BEFORE building the trainer: its weights must load
+    # through the FSDP-aware from_pretrained path (model_weights_from), not
+    # Trainer._load_from_checkpoint, which OOMs on sharded checkpoints under FSDP
+    # (see prepare_trainer_fullFT / train_resume_from_checkpoint in sft_utils).
+    last_checkpoint = None
+    if kwargs.get("resume_from_checkpoint"):
+        os.makedirs(checkpoint_dir, exist_ok=True)
+        last_checkpoint = get_last_checkpoint(checkpoint_dir)
+
     trainer = prepare_trainer_fullFT(
         run_name=run_name,
         base_model_hf=base_model_hf,
+        model_weights_from=last_checkpoint,
         checkpoint_dir=checkpoint_dir,
         data=dataset,
         make_collate_fn=make_collate_fn_MedGemma,
@@ -260,11 +270,11 @@ def main(
     )
 
     if kwargs.get("resume_from_checkpoint"):
-        os.makedirs(checkpoint_dir, exist_ok=True)
-        last_checkpoint = get_last_checkpoint(checkpoint_dir)
         if last_checkpoint is not None:
             train_resume_from_checkpoint(
-                trainer=trainer, last_checkpoint=last_checkpoint
+                trainer=trainer,
+                last_checkpoint=last_checkpoint,
+                weights_preloaded=True,
             )
         else:
             if is_main_process():
