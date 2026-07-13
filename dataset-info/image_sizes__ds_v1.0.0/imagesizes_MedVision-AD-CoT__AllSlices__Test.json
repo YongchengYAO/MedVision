@@ -1,0 +1,21 @@
+{
+    "Ceph-Biometrics-400_BiometricsFromLandmarks_Distance_Task01_Sagittal-CoT": {
+        "1935x2400": 1320
+    },
+    "Ceph-Biometrics-400_BiometricsFromLandmarks_Angle_Task01_Sagittal-CoT": {
+        "1935x2400": 960
+    },
+    "FeTA24_BiometricsFromLandmarks_Task01_Sagittal-CoT": {
+        "256x256": 40
+    },
+    "FeTA24_BiometricsFromLandmarks_Task01_Coronal-CoT": {
+        "256x256": 20
+    },
+    "FeTA24_BiometricsFromLandmarks_Task01_Axial-CoT": {
+        "256x256": 40
+    },
+    "__all_tasks__": {
+        "1935x2400": 2280,
+        "256x256": 100
+    }
+}

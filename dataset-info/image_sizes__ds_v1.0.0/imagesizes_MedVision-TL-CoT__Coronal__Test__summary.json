@@ -1,0 +1,422 @@
+{
+    "autoPET-III_TumorLesionSize_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 79,
+        "n_distinct_sizes": 7,
+        "height": {
+            "min": 168,
+            "max": 400,
+            "median": 400
+        },
+        "width": {
+            "min": 195,
+            "max": 368,
+            "median": 326
+        }
+    },
+    "BraTS24_TumorLesionSize_Task01_Coronal-CoT": {
+        "square": 3,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        },
+        "width": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        }
+    },
+    "BraTS24_TumorLesionSize_Task02_Coronal-CoT": {
+        "square": 155,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        },
+        "width": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        }
+    },
+    "BraTS24_TumorLesionSize_Task03_Coronal-CoT": {
+        "square": 54,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        },
+        "width": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        }
+    },
+    "BraTS24_TumorLesionSize_Task04_Coronal-CoT": {
+        "square": 294,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        },
+        "width": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        }
+    },
+    "BraTS24_TumorLesionSize_Task05_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 253,
+        "n_distinct_sizes": 27,
+        "height": {
+            "min": 160,
+            "max": 800,
+            "median": 256
+        },
+        "width": {
+            "min": 102,
+            "max": 271,
+            "median": 162
+        }
+    },
+    "BraTS24_TumorLesionSize_Task06_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 15,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "BraTS24_TumorLesionSize_Task07_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 138,
+        "n_distinct_sizes": 11,
+        "height": {
+            "min": 240,
+            "max": 512,
+            "median": 240
+        },
+        "width": {
+            "min": 58,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "BraTS24_TumorLesionSize_Task08_Coronal-CoT": {
+        "square": 1,
+        "nonsquare": 159,
+        "n_distinct_sizes": 9,
+        "height": {
+            "min": 240,
+            "max": 512,
+            "median": 240
+        },
+        "width": {
+            "min": 100,
+            "max": 512,
+            "median": 155
+        }
+    },
+    "BraTS24_TumorLesionSize_Task09_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 12,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "BraTS24_TumorLesionSize_Task10_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 82,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "BraTS24_TumorLesionSize_Task11_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 4,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "BraTS24_TumorLesionSize_Task12_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 6,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "HNTSMRG24_TumorLesionSize_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 7,
+        "n_distinct_sizes": 2,
+        "height": {
+            "min": 512,
+            "max": 528,
+            "median": 512
+        },
+        "width": {
+            "min": 57,
+            "max": 141,
+            "median": 57
+        }
+    },
+    "HNTSMRG24_TumorLesionSize_Task02_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 35,
+        "n_distinct_sizes": 8,
+        "height": {
+            "min": 512,
+            "max": 768,
+            "median": 512
+        },
+        "width": {
+            "min": 66,
+            "max": 129,
+            "median": 81
+        }
+    },
+    "HNTSMRG24_TumorLesionSize_Task03_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 11,
+        "n_distinct_sizes": 4,
+        "height": {
+            "min": 512,
+            "max": 528,
+            "median": 512
+        },
+        "width": {
+            "min": 74,
+            "max": 123,
+            "median": 80
+        }
+    },
+    "HNTSMRG24_TumorLesionSize_Task04_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 77,
+        "n_distinct_sizes": 9,
+        "height": {
+            "min": 512,
+            "max": 640,
+            "median": 512
+        },
+        "width": {
+            "min": 65,
+            "max": 87,
+            "median": 72
+        }
+    },
+    "KiPA22_TumorLesionSize_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 361,
+        "n_distinct_sizes": 19,
+        "height": {
+            "min": 130,
+            "max": 176,
+            "median": 151
+        },
+        "width": {
+            "min": 175,
+            "max": 231,
+            "median": 187
+        }
+    },
+    "KiTS23_TumorLesionSize_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 1053,
+        "n_distinct_sizes": 50,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 35,
+            "max": 653,
+            "median": 177
+        }
+    },
+    "MSD_TumorLesionSize_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 61,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "MSD_TumorLesionSize_Task02_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 28,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "MSD_TumorLesionSize_Task03_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 136,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "MSD_TumorLesionSize_Task04_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 13,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 306,
+            "max": 306,
+            "median": 306
+        }
+    },
+    "MSD_TumorLesionSize_Task05_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 302,
+        "n_distinct_sizes": 20,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 33,
+            "max": 174,
+            "median": 104
+        }
+    },
+    "MSD_TumorLesionSize_Task06_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 201,
+        "n_distinct_sizes": 14,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 122,
+            "max": 826,
+            "median": 338
+        }
+    },
+    "MSD_TumorLesionSize_Task07_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 3,
+        "n_distinct_sizes": 3,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 155,
+            "max": 227,
+            "median": 226
+        }
+    },
+    "MSD_TumorLesionSize_Task08_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 26,
+        "n_distinct_sizes": 5,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 93,
+            "max": 169,
+            "median": 169
+        }
+    },
+    "__all_tasks__": {
+        "square": 507,
+        "nonsquare": 3062,
+        "n_distinct_sizes": 166,
+        "height": {
+            "min": 130,
+            "max": 800,
+            "median": 512
+        },
+        "width": {
+            "min": 33,
+            "max": 826,
+            "median": 170
+        }
+    }
+}

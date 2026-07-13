@@ -1,0 +1,157 @@
+{
+    "autoPET-III_TumorLesionSize_Task01_Axial-CoT": {
+        "400x400": 87
+    },
+    "BraTS24_TumorLesionSize_Task01_Axial-CoT": {
+        "182x218": 2
+    },
+    "BraTS24_TumorLesionSize_Task02_Axial-CoT": {
+        "182x218": 94
+    },
+    "BraTS24_TumorLesionSize_Task03_Axial-CoT": {
+        "182x218": 99
+    },
+    "BraTS24_TumorLesionSize_Task04_Axial-CoT": {
+        "182x218": 182
+    },
+    "BraTS24_TumorLesionSize_Task05_Axial-CoT": {
+        "256x256": 145,
+        "512x512": 31,
+        "672x672": 19,
+        "288x288": 3,
+        "224x256": 2,
+        "320x320": 2,
+        "704x704": 2,
+        "160x256": 1
+    },
+    "BraTS24_TumorLesionSize_Task06_Axial-CoT": {
+        "240x240": 9,
+        "512x212": 2
+    },
+    "BraTS24_TumorLesionSize_Task07_Axial-CoT": {
+        "240x240": 65,
+        "256x256": 12,
+        "320x320": 1,
+        "336x336": 1,
+        "512x221": 1,
+        "512x512": 1
+    },
+    "BraTS24_TumorLesionSize_Task08_Axial-CoT": {
+        "240x240": 63,
+        "256x256": 20,
+        "512x512": 4,
+        "320x320": 1,
+        "400x400": 1,
+        "512x212": 1
+    },
+    "BraTS24_TumorLesionSize_Task09_Axial-CoT": {
+        "240x240": 12
+    },
+    "BraTS24_TumorLesionSize_Task10_Axial-CoT": {
+        "240x240": 207
+    },
+    "BraTS24_TumorLesionSize_Task11_Axial-CoT": {
+        "240x240": 2
+    },
+    "BraTS24_TumorLesionSize_Task12_Axial-CoT": {
+        "240x240": 4
+    },
+    "HNTSMRG24_TumorLesionSize_Task01_Axial-CoT": {
+        "512x512": 4
+    },
+    "HNTSMRG24_TumorLesionSize_Task02_Axial-CoT": {
+        "512x512": 69,
+        "768x768": 19,
+        "528x528": 7
+    },
+    "HNTSMRG24_TumorLesionSize_Task03_Axial-CoT": {
+        "512x512": 31,
+        "528x528": 7,
+        "640x640": 2
+    },
+    "HNTSMRG24_TumorLesionSize_Task04_Axial-CoT": {
+        "512x512": 55,
+        "640x640": 10,
+        "528x528": 8
+    },
+    "KiPA22_TumorLesionSize_Task01_Axial-CoT": {
+        "173x173": 64,
+        "150x150": 58,
+        "151x151": 40,
+        "176x176": 36,
+        "130x130": 26,
+        "138x138": 24,
+        "158x158": 23,
+        "142x142": 20,
+        "132x132": 17,
+        "136x136": 15,
+        "140x140": 15,
+        "152x152": 15,
+        "153x153": 14,
+        "167x167": 13,
+        "139x139": 7,
+        "169x169": 4
+    },
+    "KiTS23_TumorLesionSize_Task01_Axial-CoT": {
+        "512x512": 673
+    },
+    "MSD_TumorLesionSize_Task01_Axial-CoT": {
+        "240x240": 67
+    },
+    "MSD_TumorLesionSize_Task02_Axial-CoT": {
+        "240x240": 38
+    },
+    "MSD_TumorLesionSize_Task03_Axial-CoT": {
+        "240x240": 194
+    },
+    "MSD_TumorLesionSize_Task04_Axial-CoT": {
+        "512x512": 25
+    },
+    "MSD_TumorLesionSize_Task05_Axial-CoT": {
+        "512x512": 231
+    },
+    "MSD_TumorLesionSize_Task06_Axial-CoT": {
+        "512x512": 176
+    },
+    "MSD_TumorLesionSize_Task07_Axial-CoT": {
+        "512x512": 19
+    },
+    "MSD_TumorLesionSize_Task08_Axial-CoT": {
+        "512x512": 72
+    },
+    "__all_tasks__": {
+        "512x512": 1391,
+        "240x240": 661,
+        "182x218": 377,
+        "256x256": 177,
+        "400x400": 88,
+        "173x173": 64,
+        "150x150": 58,
+        "151x151": 40,
+        "176x176": 36,
+        "130x130": 26,
+        "138x138": 24,
+        "158x158": 23,
+        "528x528": 22,
+        "142x142": 20,
+        "672x672": 19,
+        "768x768": 19,
+        "132x132": 17,
+        "136x136": 15,
+        "140x140": 15,
+        "152x152": 15,
+        "153x153": 14,
+        "167x167": 13,
+        "640x640": 12,
+        "139x139": 7,
+        "169x169": 4,
+        "320x320": 4,
+        "288x288": 3,
+        "512x212": 3,
+        "224x256": 2,
+        "704x704": 2,
+        "160x256": 1,
+        "336x336": 1,
+        "512x221": 1
+    }
+}

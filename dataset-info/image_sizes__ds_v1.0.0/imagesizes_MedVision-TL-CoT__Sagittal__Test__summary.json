@@ -1,0 +1,414 @@
+{
+    "autoPET-III_TumorLesionSize_Task01_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 64,
+        "n_distinct_sizes": 4,
+        "height": {
+            "min": 400,
+            "max": 400,
+            "median": 400
+        },
+        "width": {
+            "min": 284,
+            "max": 535,
+            "median": 292
+        }
+    },
+    "BraTS24_TumorLesionSize_Task01_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 20,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 218,
+            "max": 218,
+            "median": 218
+        },
+        "width": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        }
+    },
+    "BraTS24_TumorLesionSize_Task02_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 111,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 218,
+            "max": 218,
+            "median": 218
+        },
+        "width": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        }
+    },
+    "BraTS24_TumorLesionSize_Task03_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 54,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 218,
+            "max": 218,
+            "median": 218
+        },
+        "width": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        }
+    },
+    "BraTS24_TumorLesionSize_Task04_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 154,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 218,
+            "max": 218,
+            "median": 218
+        },
+        "width": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        }
+    },
+    "BraTS24_TumorLesionSize_Task05_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 191,
+        "n_distinct_sizes": 21,
+        "height": {
+            "min": 256,
+            "max": 768,
+            "median": 256
+        },
+        "width": {
+            "min": 82,
+            "max": 288,
+            "median": 170
+        }
+    },
+    "BraTS24_TumorLesionSize_Task06_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 18,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "BraTS24_TumorLesionSize_Task07_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 150,
+        "n_distinct_sizes": 14,
+        "height": {
+            "min": 240,
+            "max": 512,
+            "median": 240
+        },
+        "width": {
+            "min": 90,
+            "max": 206,
+            "median": 155
+        }
+    },
+    "BraTS24_TumorLesionSize_Task08_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 119,
+        "n_distinct_sizes": 10,
+        "height": {
+            "min": 240,
+            "max": 512,
+            "median": 240
+        },
+        "width": {
+            "min": 90,
+            "max": 206,
+            "median": 155
+        }
+    },
+    "BraTS24_TumorLesionSize_Task09_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 6,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "BraTS24_TumorLesionSize_Task10_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 140,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "BraTS24_TumorLesionSize_Task11_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 0,
+        "n_distinct_sizes": 0,
+        "height": {},
+        "width": {}
+    },
+    "BraTS24_TumorLesionSize_Task12_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 13,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "HNTSMRG24_TumorLesionSize_Task01_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 5,
+        "n_distinct_sizes": 2,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 57,
+            "max": 72,
+            "median": 57
+        }
+    },
+    "HNTSMRG24_TumorLesionSize_Task02_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 8,
+        "n_distinct_sizes": 3,
+        "height": {
+            "min": 512,
+            "max": 528,
+            "median": 512
+        },
+        "width": {
+            "min": 57,
+            "max": 129,
+            "median": 84
+        }
+    },
+    "HNTSMRG24_TumorLesionSize_Task03_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 26,
+        "n_distinct_sizes": 10,
+        "height": {
+            "min": 512,
+            "max": 640,
+            "median": 512
+        },
+        "width": {
+            "min": 65,
+            "max": 162,
+            "median": 78
+        }
+    },
+    "HNTSMRG24_TumorLesionSize_Task04_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 54,
+        "n_distinct_sizes": 12,
+        "height": {
+            "min": 512,
+            "max": 640,
+            "median": 512
+        },
+        "width": {
+            "min": 66,
+            "max": 124,
+            "median": 76
+        }
+    },
+    "KiPA22_TumorLesionSize_Task01_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 278,
+        "n_distinct_sizes": 17,
+        "height": {
+            "min": 130,
+            "max": 176,
+            "median": 152
+        },
+        "width": {
+            "min": 172,
+            "max": 231,
+            "median": 201
+        }
+    },
+    "KiTS23_TumorLesionSize_Task01_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 838,
+        "n_distinct_sizes": 48,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 35,
+            "max": 525,
+            "median": 184
+        }
+    },
+    "MSD_TumorLesionSize_Task01_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 60,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "MSD_TumorLesionSize_Task02_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 16,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "MSD_TumorLesionSize_Task03_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 111,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "MSD_TumorLesionSize_Task04_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 12,
+        "n_distinct_sizes": 2,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 173,
+            "max": 306,
+            "median": 306
+        }
+    },
+    "MSD_TumorLesionSize_Task05_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 270,
+        "n_distinct_sizes": 16,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 33,
+            "max": 178,
+            "median": 134
+        }
+    },
+    "MSD_TumorLesionSize_Task06_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 128,
+        "n_distinct_sizes": 13,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 122,
+            "max": 756,
+            "median": 541
+        }
+    },
+    "MSD_TumorLesionSize_Task07_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 1,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 242,
+            "max": 242,
+            "median": 242
+        }
+    },
+    "MSD_TumorLesionSize_Task08_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 25,
+        "n_distinct_sizes": 4,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 73,
+            "max": 169,
+            "median": 93
+        }
+    },
+    "__all_tasks__": {
+        "square": 0,
+        "nonsquare": 2872,
+        "n_distinct_sizes": 151,
+        "height": {
+            "min": 130,
+            "max": 768,
+            "median": 400
+        },
+        "width": {
+            "min": 33,
+            "max": 756,
+            "median": 161
+        }
+    }
+}

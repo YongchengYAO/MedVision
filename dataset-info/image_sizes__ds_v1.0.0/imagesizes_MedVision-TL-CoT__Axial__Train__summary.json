@@ -1,0 +1,422 @@
+{
+    "autoPET-III_TumorLesionSize_Task01_Axial": {
+        "square": 182,
+        "nonsquare": 0,
+        "n_distinct_sizes": 3,
+        "height": {
+            "min": 168,
+            "max": 400,
+            "median": 400
+        },
+        "width": {
+            "min": 168,
+            "max": 400,
+            "median": 400
+        }
+    },
+    "BraTS24_TumorLesionSize_Task01_Axial": {
+        "square": 0,
+        "nonsquare": 14,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        },
+        "width": {
+            "min": 218,
+            "max": 218,
+            "median": 218
+        }
+    },
+    "BraTS24_TumorLesionSize_Task02_Axial": {
+        "square": 0,
+        "nonsquare": 298,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        },
+        "width": {
+            "min": 218,
+            "max": 218,
+            "median": 218
+        }
+    },
+    "BraTS24_TumorLesionSize_Task03_Axial": {
+        "square": 0,
+        "nonsquare": 241,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        },
+        "width": {
+            "min": 218,
+            "max": 218,
+            "median": 218
+        }
+    },
+    "BraTS24_TumorLesionSize_Task04_Axial": {
+        "square": 0,
+        "nonsquare": 347,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        },
+        "width": {
+            "min": 218,
+            "max": 218,
+            "median": 218
+        }
+    },
+    "BraTS24_TumorLesionSize_Task05_Axial": {
+        "square": 548,
+        "nonsquare": 8,
+        "n_distinct_sizes": 9,
+        "height": {
+            "min": 208,
+            "max": 768,
+            "median": 256
+        },
+        "width": {
+            "min": 256,
+            "max": 768,
+            "median": 256
+        }
+    },
+    "BraTS24_TumorLesionSize_Task06_Axial": {
+        "square": 62,
+        "nonsquare": 0,
+        "n_distinct_sizes": 3,
+        "height": {
+            "min": 240,
+            "max": 320,
+            "median": 240
+        },
+        "width": {
+            "min": 240,
+            "max": 320,
+            "median": 240
+        }
+    },
+    "BraTS24_TumorLesionSize_Task07_Axial": {
+        "square": 214,
+        "nonsquare": 0,
+        "n_distinct_sizes": 5,
+        "height": {
+            "min": 240,
+            "max": 512,
+            "median": 240
+        },
+        "width": {
+            "min": 240,
+            "max": 512,
+            "median": 240
+        }
+    },
+    "BraTS24_TumorLesionSize_Task08_Axial": {
+        "square": 252,
+        "nonsquare": 2,
+        "n_distinct_sizes": 7,
+        "height": {
+            "min": 240,
+            "max": 512,
+            "median": 240
+        },
+        "width": {
+            "min": 136,
+            "max": 512,
+            "median": 240
+        }
+    },
+    "BraTS24_TumorLesionSize_Task09_Axial": {
+        "square": 51,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        }
+    },
+    "BraTS24_TumorLesionSize_Task10_Axial": {
+        "square": 399,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        }
+    },
+    "BraTS24_TumorLesionSize_Task11_Axial": {
+        "square": 3,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        }
+    },
+    "BraTS24_TumorLesionSize_Task12_Axial": {
+        "square": 6,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        }
+    },
+    "HNTSMRG24_TumorLesionSize_Task01_Axial": {
+        "square": 31,
+        "nonsquare": 0,
+        "n_distinct_sizes": 2,
+        "height": {
+            "min": 512,
+            "max": 528,
+            "median": 512
+        },
+        "width": {
+            "min": 512,
+            "max": 528,
+            "median": 512
+        }
+    },
+    "HNTSMRG24_TumorLesionSize_Task02_Axial": {
+        "square": 129,
+        "nonsquare": 19,
+        "n_distinct_sizes": 6,
+        "height": {
+            "min": 480,
+            "max": 640,
+            "median": 512
+        },
+        "width": {
+            "min": 480,
+            "max": 640,
+            "median": 512
+        }
+    },
+    "HNTSMRG24_TumorLesionSize_Task03_Axial": {
+        "square": 71,
+        "nonsquare": 5,
+        "n_distinct_sizes": 4,
+        "height": {
+            "min": 512,
+            "max": 640,
+            "median": 512
+        },
+        "width": {
+            "min": 480,
+            "max": 640,
+            "median": 512
+        }
+    },
+    "HNTSMRG24_TumorLesionSize_Task04_Axial": {
+        "square": 212,
+        "nonsquare": 2,
+        "n_distinct_sizes": 4,
+        "height": {
+            "min": 512,
+            "max": 640,
+            "median": 512
+        },
+        "width": {
+            "min": 480,
+            "max": 640,
+            "median": 512
+        }
+    },
+    "KiPA22_TumorLesionSize_Task01_Axial": {
+        "square": 866,
+        "nonsquare": 0,
+        "n_distinct_sizes": 35,
+        "height": {
+            "min": 116,
+            "max": 189,
+            "median": 156
+        },
+        "width": {
+            "min": 116,
+            "max": 189,
+            "median": 156
+        }
+    },
+    "KiTS23_TumorLesionSize_Task01_Axial": {
+        "square": 1844,
+        "nonsquare": 15,
+        "n_distinct_sizes": 3,
+        "height": {
+            "min": 512,
+            "max": 796,
+            "median": 512
+        },
+        "width": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        }
+    },
+    "MSD_TumorLesionSize_Task01_Axial": {
+        "square": 209,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        }
+    },
+    "MSD_TumorLesionSize_Task02_Axial": {
+        "square": 71,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        }
+    },
+    "MSD_TumorLesionSize_Task03_Axial": {
+        "square": 223,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        }
+    },
+    "MSD_TumorLesionSize_Task04_Axial": {
+        "square": 42,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        }
+    },
+    "MSD_TumorLesionSize_Task05_Axial": {
+        "square": 543,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        }
+    },
+    "MSD_TumorLesionSize_Task06_Axial": {
+        "square": 428,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        }
+    },
+    "MSD_TumorLesionSize_Task07_Axial": {
+        "square": 74,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        }
+    },
+    "MSD_TumorLesionSize_Task08_Axial": {
+        "square": 167,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        }
+    },
+    "__all_tasks__": {
+        "square": 6627,
+        "nonsquare": 951,
+        "n_distinct_sizes": 57,
+        "height": {
+            "min": 116,
+            "max": 796,
+            "median": 400
+        },
+        "width": {
+            "min": 116,
+            "max": 768,
+            "median": 400
+        }
+    }
+}

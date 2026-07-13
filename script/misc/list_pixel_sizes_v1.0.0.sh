@@ -12,8 +12,8 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # Paths are overridable via the environment; defaults assume the standard layout.
 DATA_DIR="${DATA_DIR:-${REPO_ROOT}/Data}"
-CSV="${CSV:-${REPO_ROOT}/docs/dataset-configs/ConfigurationsList_All.csv}"
-OUT_DIR="${OUT_DIR:-${REPO_ROOT}/tasks_list/pixel_sizes__ds_v1.0.0}"
+CSV="${CSV:-${REPO_ROOT}/dataset-info/dataset-configs/ConfigurationsList_All.csv}"
+OUT_DIR="${OUT_DIR:-${REPO_ROOT}/dataset-info/pixel_sizes__ds_v1.0.0}"
 mkdir -p "${OUT_DIR}"
 
 run() { python -m medvision_bm.utils.configs_to_pixel_sizes --data_dir "${DATA_DIR}" --configs_csv "${CSV}" "$@"; }

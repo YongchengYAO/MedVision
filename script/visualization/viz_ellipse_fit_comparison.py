@@ -16,7 +16,7 @@ the 2D plane.
 
 Coverage: the candidate pool is the UNION of anisotropic (dataset, taskID) tasks
 across the ds_v1.0.0 Coronal + Sagittal pixel-size summaries in
-``tasks_list/pixel_sizes__ds_v1.0.0/`` (the authoritative anisotropy oracle).
+``dataset-info/pixel_sizes__ds_v1.0.0/`` (the authoritative anisotropy oracle).
 Per-case test-split records (mask_file, label, slice_dim, slice_idx, pixel_size)
 come from the HF MedVision per-task configs, loaded offline from local data.
 This reaches all 14 anisotropic tasks — including subsets the axial test parquet
@@ -59,7 +59,7 @@ from datasets import load_dataset  # noqa: E402
 from medvision_bm.utils.configs import SEED  # noqa: E402
 from medvision_bm.utils.plot_utils import _get_appropriate_scale, save_fig_capped  # noqa: E402
 
-PIXSIZE_DIR = os.path.join(REPO, "tasks_list/pixel_sizes__ds_v1.0.0")
+PIXSIZE_DIR = os.path.join(REPO, "dataset-info/pixel_sizes__ds_v1.0.0")
 DEFAULT_OUT = os.path.join(REPO, "Figures/ellipse_fit")
 HF_REPO = "YongchengYAO/MedVision"
 

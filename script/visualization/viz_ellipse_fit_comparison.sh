@@ -4,7 +4,7 @@
 # aspect). See viz_ellipse_fit_comparison.py and doc/ellipse-fitting-image-vs-real-space.md.
 #
 # Candidate pool = UNION of anisotropic (dataset, taskID) tasks across the
-# ds_v1.0.0 Coronal + Sagittal pixel-size summaries in tasks_list/pixel_sizes__ds_v1.0.0/.
+# ds_v1.0.0 Coronal + Sagittal pixel-size summaries in dataset-info/pixel_sizes__ds_v1.0.0/.
 # Per-case test-split records come from the HF MedVision per-task configs, loaded
 # OFFLINE from local data (reaches all 14 anisotropic tasks, incl. BraTS24-MET,
 # HNTSMRG24-preRT, MSD-Colon/Lung/Pancreas — not just the axial-parquet subsets).

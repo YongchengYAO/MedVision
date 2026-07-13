@@ -189,14 +189,201 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
 
 > 📚 **Read the Docs:** [Dataset concepts](https://medvision.readthedocs.io/en/latest/dataset/concepts.html) · [Loading data](https://medvision.readthedocs.io/en/latest/dataset/loading.html)
 
+> [!IMPORTANT]
+> **Leaderboard results use annotation v1.0.0.** All leaderboard numbers are computed on the **v1.0.0** annotations. We removed ambiguous cases (multi-instance targets) in metric calculation. For new studies we recommend the **latest** annotation version (currently **v1.1.1**).
+
 - **Dataset.** For the full description of the MedVision dataset (source datasets, modalities, anatomies, annotation types, and returned fields), see the [Hugging Face dataset repo](https://huggingface.co/datasets/YongchengYAO/MedVision).
 
 - **Benchmark subtasks ↔ dataset subsets.** Each subtask in this benchmark links to a subset of the MedVision dataset. The per-subtask sample sizes are listed for each dataset version:
-  - [`all_tasks__ds_v1.0.0`](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list/all_tasks__ds_v1.0.0)
-  - [`all_tasks__ds_v1.1.0`](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list/all_tasks__ds_v1.1.0)
-  - [`all_tasks__ds_v1.1.1`](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list/all_tasks__ds_v1.1.1)
+  - [`all_tasks__ds_v1.0.0`](https://github.com/YongchengYAO/MedVision/tree/master/dataset-info/all_tasks__ds_v1.0.0)
+  - [`all_tasks__ds_v1.1.0`](https://github.com/YongchengYAO/MedVision/tree/master/dataset-info/all_tasks__ds_v1.1.0)
+  - [`all_tasks__ds_v1.1.1`](https://github.com/YongchengYAO/MedVision/tree/master/dataset-info/all_tasks__ds_v1.1.1)
 
-- **Pixel size (physical spacing) distribution.** Because the quantitative tasks require pixel→mm arithmetic, the distribution of pixel sizes across subtasks is provided in [`pixel_sizes__ds_v1.0.0`](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list/pixel_sizes__ds_v1.0.0).
+- **Pixel size (physical spacing) distribution.** Because the quantitative tasks require pixel→mm arithmetic, the distribution of pixel sizes across subtasks is provided in [`pixel_sizes__ds_v1.0.0`](https://github.com/YongchengYAO/MedVision/tree/master/dataset-info/pixel_sizes__ds_v1.0.0).
+
+- **Two annotation-instance counts.** Each benchmark sample is a *(2D slice, target)* pair, counted **per target, never per box** — several boxes of the same target on one slice still count as one annotation. The two tables differ only in whether the dataset **v1.0.0 loader filters** (`MedVision.py`) are applied:
+  - **Multi-instance** (unfiltered) — every target carrying ≥ 1 annotation is kept, however many instances (boxes / clusters) it has on the slice and whatever their size.
+  - **Single-instance** (filtered) — a target is kept only when it is a single, large-enough instance. Per benchmark task, a sample is dropped when:
+
+| Benchmark task | Single-instance drops the sample when… |
+|---|---|
+| **Box** — detection | the slice has **more than one** box for the target (`len(boxes) > 1`), **or** a box is **< 10 px** on any side |
+| **T/L** — tumor / lesion size | the target has **more than one** cluster on the slice (`n_clusters > 1`; `len(biometric_profile) > 1` on the v1.0.0 fallback) |
+| **A/D** — biometrics (angle / distance) | *never dropped* — every angle and distance sample is kept (the loader only splits them by `metric_type`) |
+
+Every single-instance target therefore also counts as multi-instance: **single-instance ⊆ multi-instance**. (A separate *Mask-Size* segmentation task — masks dropped below 200 px — is **not** part of these benchmark-annotation counts.)
+
+> [!WARNING]
+> **Multi-instance annotations are not for leaderboard comparison.** To load the unfiltered (multi-instance) samples, set the environment variable `MedVision_DISABLE_SAMPLE_FILTERING=true` (default off) — it bypasses the per-sample quality/size filters (Mask-Size, Box-Size, Tumor-Lesion-Size) and returns every planner sample. **Do not use multi-instance annotations to compare models on the leaderboard**: the current MedVision-V0 SFT/RFT training is not optimized for multi-instance detection and measurement tasks.
+
+- **Per-dataset statistics.** Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`](https://github.com/YongchengYAO/MedVision/tree/master/script/misc/summarize_datasets.sh). The modality / image / slice / segmentation stats are the **same for every dataset version**; only the benchmark-annotation counts (Box / T/L / A/D) depend on it — and among those, only **T/L** changes (Box and A/D are identical across versions).
+
+<details>
+<summary>📊 Per-dataset stats — modality, images, slices, segmentation (version-invariant)</summary>
+
+<br/>
+
+| Dataset | Modality | 3D Images | 3D Masks | 2D Slices | Seg. annotations |
+|---|---|--:|--:|--:|--:|
+| ACDC | MRI | 300 | 300 | 43,962 | 94,160 |
+| AMOS22 | CT, MRI | 360 | 360 | 251,637 | 1,215,776 |
+| AbdomenAtlas1.0Mini | CT | 5,195 | 5,195 | 3,778,805 | 13,770,398 |
+| AbdomenCT-1K | CT | 1,000 | 1,000 | 711,155 | 1,549,325 |
+| BCV15 | CT | 60 | 60 | 34,472 | 125,870 |
+| BraTS24 | MRI | 10,632 | 3,033 | 2,019,118 | 3,767,594 |
+| CAMUS | ultrasound | 1,000 | 1,000 | 670,964 | 1,341,433 |
+| Ceph-Biometrics-400 | X Ray | 400 | 0 | 7,600 | 0 |
+| CrossMoDA | MRI | 105 | 105 | 14,115 | 16,623 |
+| FLARE22 | CT | 50 | 50 | 34,235 | 152,954 |
+| FeTA24 | MRI | 80 | 80 | 35,776 | 153,599 |
+| HNTSMRG24 | MRI | 300 | 300 | 56,078 | 62,424 |
+| ISLES24 | MRI | 298 | 149 | 97,228 | 97,228 |
+| KiPA22 | CT | 70 | 70 | 29,494 | 74,690 |
+| KiTS23 | CT | 489 | 489 | 190,642 | 291,550 |
+| MSD | CT, MRI | 3,225 | 1,741 | 791,706 | 1,438,472 |
+| OAIZIB-CM | MRI | 507 | 507 | 358,728 | 922,989 |
+| SKM-TEA | MRI | 310 | 155 | 173,690 | 475,828 |
+| ToothFairy2 | CT | 480 | 480 | 397,531 | 2,131,223 |
+| TopCoW24 | CT, MRI | 250 | 250 | 87,953 | 251,901 |
+| TotalSegmentator | CT, MRI | 1,844 | 1,844 | 1,091,563 | 16,979,575 |
+| autoPET-III | CT, PET | 2,076 | 1,038 | 360,638 | 360,638 |
+| **Total (22)** | — | **29,031** | **18,206** | **11,237,090** | **45,274,250** |
+
+</details>
+
+**Benchmark annotations by dataset version.** Single-instance (filtered) vs multi-instance (unfiltered) VQA-sample counts for the three quantitative tasks — **Box** (detection) + **T/L** (tumor/lesion size) + **A/D** (biometrics). Only **T/L** differs across versions:
+
+<details>
+<summary>📊 MedVision v1.1.1 (default) — donut + annotation counts</summary>
+
+<br/>
+
+<table>
+  <tr>
+    <td align="center" width="50%"><b>Single-instance</b></td>
+    <td align="center" width="50%"><b>Multi-instance</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="dataset-info/datasets_summary_v1.1.1/dataset_summary_rings_filtered_2x1.svg" width="100%" alt="v1.1.1 single-instance donut"></td>
+    <td align="center"><img src="dataset-info/datasets_summary_v1.1.1/dataset_summary_rings_raw_2x1.svg" width="100%" alt="v1.1.1 multi-instance donut"></td>
+  </tr>
+</table>
+
+| Dataset | Single-instance (Box / T/L / A/D) | Multi-instance (Box / T/L / A/D) |
+|---|--|--|
+| ACDC | 14,271 (Box 14,271) | 94,160 (Box 94,160) |
+| AMOS22 | 666,532 (Box 666,532) | 1,215,776 (Box 1,215,776) |
+| AbdomenAtlas1.0Mini | 9,748,290 (Box 9,748,290) | 13,770,398 (Box 13,770,398) |
+| AbdomenCT-1K | 1,041,588 (Box 1,041,588) | 1,549,325 (Box 1,549,325) |
+| BCV15 | 68,543 (Box 68,543) | 125,870 (Box 125,870) |
+| BraTS24 | 1,131,404 (Box 1,115,524 · T/L 15,880) | 3,793,777 (Box 3,767,594 · T/L 26,183) |
+| CAMUS | 951,370 (Box 951,370) | 1,341,433 (Box 1,341,433) |
+| Ceph-Biometrics-400 | 7,600 (A/D 7,600) | 7,600 (A/D 7,600) |
+| CrossMoDA | 4,076 (Box 4,076) | 16,623 (Box 16,623) |
+| FLARE22 | 104,211 (Box 104,211) | 152,954 (Box 152,954) |
+| FeTA24 | 49,412 (Box 49,087 · A/D 325) | 153,924 (Box 153,599 · A/D 325) |
+| HNTSMRG24 | 34,301 (Box 32,029 · T/L 2,272) | 65,612 (Box 62,424 · T/L 3,188) |
+| ISLES24 | 9,774 (Box 9,774) | 97,228 (Box 97,228) |
+| KiPA22 | 40,724 (Box 37,647 · T/L 3,077) | 77,832 (Box 74,690 · T/L 3,142) |
+| KiTS23 | 121,539 (Box 114,491 · T/L 7,048) | 299,584 (Box 291,550 · T/L 8,034) |
+| MSD | 283,577 (Box 277,451 · T/L 6,126) | 1,451,386 (Box 1,438,472 · T/L 12,914) |
+| OAIZIB-CM | 648,048 (Box 648,048) | 922,989 (Box 922,989) |
+| SKM-TEA | 262,338 (Box 262,338) | 475,828 (Box 475,828) |
+| ToothFairy2 | 1,413,979 (Box 1,413,979) | 2,131,223 (Box 2,131,223) |
+| TopCoW24 | 41,829 (Box 41,829) | 251,901 (Box 251,901) |
+| TotalSegmentator | 7,603,455 (Box 7,603,455) | 16,979,575 (Box 16,979,575) |
+| autoPET-III | 32,673 (Box 31,794 · T/L 879) | 363,756 (Box 360,638 · T/L 3,118) |
+| **Total (22)** | **24,279,534** | **45,338,754** |
+
+</details>
+
+<details>
+<summary>📊 MedVision v1.1.0 — donut + annotation counts</summary>
+
+<br/>
+
+<table>
+  <tr>
+    <td align="center" width="50%"><b>Single-instance</b></td>
+    <td align="center" width="50%"><b>Multi-instance</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="dataset-info/datasets_summary_v1.1.0/dataset_summary_rings_filtered_2x1.svg" width="100%" alt="v1.1.0 single-instance donut"></td>
+    <td align="center"><img src="dataset-info/datasets_summary_v1.1.0/dataset_summary_rings_raw_2x1.svg" width="100%" alt="v1.1.0 multi-instance donut"></td>
+  </tr>
+</table>
+
+| Dataset | Single-instance (Box / T/L / A/D) | Multi-instance (Box / T/L / A/D) |
+|---|--|--|
+| ACDC | 14,271 (Box 14,271) | 94,160 (Box 94,160) |
+| AMOS22 | 666,532 (Box 666,532) | 1,215,776 (Box 1,215,776) |
+| AbdomenAtlas1.0Mini | 9,748,290 (Box 9,748,290) | 13,770,398 (Box 13,770,398) |
+| AbdomenCT-1K | 1,041,588 (Box 1,041,588) | 1,549,325 (Box 1,549,325) |
+| BCV15 | 68,543 (Box 68,543) | 125,870 (Box 125,870) |
+| BraTS24 | 1,134,663 (Box 1,115,524 · T/L 19,139) | 3,797,951 (Box 3,767,594 · T/L 30,357) |
+| CAMUS | 951,370 (Box 951,370) | 1,341,433 (Box 1,341,433) |
+| Ceph-Biometrics-400 | 7,600 (A/D 7,600) | 7,600 (A/D 7,600) |
+| CrossMoDA | 4,076 (Box 4,076) | 16,623 (Box 16,623) |
+| FLARE22 | 104,211 (Box 104,211) | 152,954 (Box 152,954) |
+| FeTA24 | 49,412 (Box 49,087 · A/D 325) | 153,924 (Box 153,599 · A/D 325) |
+| HNTSMRG24 | 35,158 (Box 32,029 · T/L 3,129) | 66,899 (Box 62,424 · T/L 4,475) |
+| ISLES24 | 9,774 (Box 9,774) | 97,228 (Box 97,228) |
+| KiPA22 | 40,724 (Box 37,647 · T/L 3,077) | 77,832 (Box 74,690 · T/L 3,142) |
+| KiTS23 | 126,962 (Box 114,491 · T/L 12,471) | 305,698 (Box 291,550 · T/L 14,148) |
+| MSD | 286,603 (Box 277,451 · T/L 9,152) | 1,455,092 (Box 1,438,472 · T/L 16,620) |
+| OAIZIB-CM | 648,048 (Box 648,048) | 922,989 (Box 922,989) |
+| SKM-TEA | 262,338 (Box 262,338) | 475,828 (Box 475,828) |
+| ToothFairy2 | 1,413,979 (Box 1,413,979) | 2,131,223 (Box 2,131,223) |
+| TopCoW24 | 41,829 (Box 41,829) | 251,901 (Box 251,901) |
+| TotalSegmentator | 7,603,455 (Box 7,603,455) | 16,979,575 (Box 16,979,575) |
+| autoPET-III | 33,040 (Box 31,794 · T/L 1,246) | 364,507 (Box 360,638 · T/L 3,869) |
+| **Total (22)** | **24,292,466** | **45,354,786** |
+
+</details>
+
+<details>
+<summary>📊 MedVision v1.0.0 — donut + annotation counts</summary>
+
+<br/>
+
+<table>
+  <tr>
+    <td align="center" width="50%"><b>Single-instance</b></td>
+    <td align="center" width="50%"><b>Multi-instance</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="dataset-info/datasets_summary_v1.0.0/dataset_summary_rings_filtered_2x1.svg" width="100%" alt="v1.0.0 single-instance donut"></td>
+    <td align="center"><img src="dataset-info/datasets_summary_v1.0.0/dataset_summary_rings_raw_2x1.svg" width="100%" alt="v1.0.0 multi-instance donut"></td>
+  </tr>
+</table>
+
+| Dataset | Single-instance (Box / T/L / A/D) | Multi-instance (Box / T/L / A/D) |
+|---|--|--|
+| ACDC | 14,271 (Box 14,271) | 94,160 (Box 94,160) |
+| AMOS22 | 666,532 (Box 666,532) | 1,215,776 (Box 1,215,776) |
+| AbdomenAtlas1.0Mini | 9,748,290 (Box 9,748,290) | 13,770,398 (Box 13,770,398) |
+| AbdomenCT-1K | 1,041,588 (Box 1,041,588) | 1,549,325 (Box 1,549,325) |
+| BCV15 | 68,543 (Box 68,543) | 125,870 (Box 125,870) |
+| BraTS24 | 1,126,595 (Box 1,115,524 · T/L 11,071) | 3,778,687 (Box 3,767,594 · T/L 11,093) |
+| CAMUS | 951,370 (Box 951,370) | 1,341,433 (Box 1,341,433) |
+| Ceph-Biometrics-400 | 7,600 (A/D 7,600) | 7,600 (A/D 7,600) |
+| CrossMoDA | 4,076 (Box 4,076) | 16,623 (Box 16,623) |
+| FLARE22 | 104,211 (Box 104,211) | 152,954 (Box 152,954) |
+| FeTA24 | 49,412 (Box 49,087 · A/D 325) | 153,924 (Box 153,599 · A/D 325) |
+| HNTSMRG24 | 33,421 (Box 32,029 · T/L 1,392) | 63,840 (Box 62,424 · T/L 1,416) |
+| ISLES24 | 9,774 (Box 9,774) | 97,228 (Box 97,228) |
+| KiPA22 | 40,742 (Box 37,647 · T/L 3,095) | 77,785 (Box 74,690 · T/L 3,095) |
+| KiTS23 | 122,975 (Box 114,491 · T/L 8,484) | 300,090 (Box 291,550 · T/L 8,540) |
+| MSD | 284,923 (Box 277,451 · T/L 7,472) | 1,446,146 (Box 1,438,472 · T/L 7,674) |
+| OAIZIB-CM | 648,048 (Box 648,048) | 922,989 (Box 922,989) |
+| SKM-TEA | 262,338 (Box 262,338) | 475,828 (Box 475,828) |
+| ToothFairy2 | 1,413,979 (Box 1,413,979) | 2,131,223 (Box 2,131,223) |
+| TopCoW24 | 41,829 (Box 41,829) | 251,901 (Box 251,901) |
+| TotalSegmentator | 7,603,455 (Box 7,603,455) | 16,979,575 (Box 16,979,575) |
+| autoPET-III | 32,529 (Box 31,794 · T/L 735) | 361,387 (Box 360,638 · T/L 749) |
+| **Total (22)** | **24,276,501** | **45,314,742** |
+
+</details>
 
 <br/>
 
@@ -970,7 +1157,7 @@ ds = load_dataset(
 
 > 📚 **Read the Docs:** [Loading data → batch download](https://medvision.readthedocs.io/en/latest/dataset/loading.html) · [CLI reference](https://medvision.readthedocs.io/en/latest/reference/cli.html)
 
-Since data downloading and processing take time, you can download datasets from the [tasks list](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list) or [configs list](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-configs) in advance.
+Since data downloading and processing take time, you can download datasets from the [tasks list](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list) or [configs list](https://github.com/YongchengYAO/MedVision/tree/master/dataset-info/dataset-configs) in advance.
 
 
 > [!NOTE]

@@ -1,0 +1,92 @@
+{
+    "Ceph-Biometrics-400_BiometricsFromLandmarks_Distance_Task01_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 1320,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 1935,
+            "max": 1935,
+            "median": 1935
+        },
+        "width": {
+            "min": 2400,
+            "max": 2400,
+            "median": 2400
+        }
+    },
+    "Ceph-Biometrics-400_BiometricsFromLandmarks_Angle_Task01_Sagittal-CoT": {
+        "square": 0,
+        "nonsquare": 960,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 1935,
+            "max": 1935,
+            "median": 1935
+        },
+        "width": {
+            "min": 2400,
+            "max": 2400,
+            "median": 2400
+        }
+    },
+    "FeTA24_BiometricsFromLandmarks_Task01_Sagittal-CoT": {
+        "square": 40,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 256,
+            "max": 256,
+            "median": 256
+        },
+        "width": {
+            "min": 256,
+            "max": 256,
+            "median": 256
+        }
+    },
+    "FeTA24_BiometricsFromLandmarks_Task01_Coronal-CoT": {
+        "square": 20,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 256,
+            "max": 256,
+            "median": 256
+        },
+        "width": {
+            "min": 256,
+            "max": 256,
+            "median": 256
+        }
+    },
+    "FeTA24_BiometricsFromLandmarks_Task01_Axial-CoT": {
+        "square": 40,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 256,
+            "max": 256,
+            "median": 256
+        },
+        "width": {
+            "min": 256,
+            "max": 256,
+            "median": 256
+        }
+    },
+    "__all_tasks__": {
+        "square": 100,
+        "nonsquare": 2280,
+        "n_distinct_sizes": 2,
+        "height": {
+            "min": 256,
+            "max": 1935,
+            "median": 1935
+        },
+        "width": {
+            "min": 256,
+            "max": 2400,
+            "median": 2400
+        }
+    }
+}

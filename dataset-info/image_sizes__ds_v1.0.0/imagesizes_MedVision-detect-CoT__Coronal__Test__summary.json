@@ -1,0 +1,827 @@
+{
+    "AbdomenAtlas1.0Mini_BoxCoordinate_Task01_Coronal-CoT": {
+        "square": 1770,
+        "nonsquare": 964820,
+        "n_distinct_sizes": 1290,
+        "height": {
+            "min": 189,
+            "max": 762,
+            "median": 503
+        },
+        "width": {
+            "min": 24,
+            "max": 2451,
+            "median": 177
+        }
+    },
+    "AbdomenCT-1K_BoxCoordinate_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 101303,
+        "n_distinct_sizes": 167,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 31,
+            "max": 987,
+            "median": 105
+        }
+    },
+    "ACDC_BoxCoordinate_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 1254,
+        "n_distinct_sizes": 23,
+        "height": {
+            "min": 154,
+            "max": 256,
+            "median": 208
+        },
+        "width": {
+            "min": 10,
+            "max": 21,
+            "median": 15
+        }
+    },
+    "AMOS22_BoxCoordinate_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 61427,
+        "n_distinct_sizes": 73,
+        "height": {
+            "min": 512,
+            "max": 768,
+            "median": 512
+        },
+        "width": {
+            "min": 68,
+            "max": 333,
+            "median": 122
+        }
+    },
+    "AMOS22_BoxCoordinate_Task02_Coronal-CoT": {
+        "square": 839,
+        "nonsquare": 5958,
+        "n_distinct_sizes": 7,
+        "height": {
+            "min": 260,
+            "max": 576,
+            "median": 320
+        },
+        "width": {
+            "min": 64,
+            "max": 512,
+            "median": 72
+        }
+    },
+    "autoPET-III_BoxCoordinate_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 805,
+        "n_distinct_sizes": 21,
+        "height": {
+            "min": 168,
+            "max": 400,
+            "median": 400
+        },
+        "width": {
+            "min": 165,
+            "max": 628,
+            "median": 326
+        }
+    },
+    "autoPET-III_BoxCoordinate_Task02_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 973,
+        "n_distinct_sizes": 24,
+        "height": {
+            "min": 168,
+            "max": 400,
+            "median": 400
+        },
+        "width": {
+            "min": 165,
+            "max": 653,
+            "median": 326
+        }
+    },
+    "BCV15_BoxCoordinate_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 5714,
+        "n_distinct_sizes": 9,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 89,
+            "max": 198,
+            "median": 100
+        }
+    },
+    "BCV15_BoxCoordinate_Task02_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 1317,
+        "n_distinct_sizes": 7,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 157,
+            "max": 191,
+            "median": 176
+        }
+    },
+    "BraTS24_BoxCoordinate_Task01_Coronal-CoT": {
+        "square": 23468,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        },
+        "width": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        }
+    },
+    "BraTS24_BoxCoordinate_Task02_Coronal-CoT": {
+        "square": 23299,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        },
+        "width": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        }
+    },
+    "BraTS24_BoxCoordinate_Task03_Coronal-CoT": {
+        "square": 22800,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        },
+        "width": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        }
+    },
+    "BraTS24_BoxCoordinate_Task04_Coronal-CoT": {
+        "square": 22186,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        },
+        "width": {
+            "min": 182,
+            "max": 182,
+            "median": 182
+        }
+    },
+    "BraTS24_BoxCoordinate_Task05_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 4154,
+        "n_distinct_sizes": 74,
+        "height": {
+            "min": 160,
+            "max": 800,
+            "median": 256
+        },
+        "width": {
+            "min": 75,
+            "max": 329,
+            "median": 168
+        }
+    },
+    "BraTS24_BoxCoordinate_Task06_Coronal-CoT": {
+        "square": 130,
+        "nonsquare": 5654,
+        "n_distinct_sizes": 25,
+        "height": {
+            "min": 240,
+            "max": 512,
+            "median": 240
+        },
+        "width": {
+            "min": 58,
+            "max": 512,
+            "median": 155
+        }
+    },
+    "BraTS24_BoxCoordinate_Task07_Coronal-CoT": {
+        "square": 79,
+        "nonsquare": 5395,
+        "n_distinct_sizes": 25,
+        "height": {
+            "min": 240,
+            "max": 512,
+            "median": 240
+        },
+        "width": {
+            "min": 90,
+            "max": 512,
+            "median": 155
+        }
+    },
+    "BraTS24_BoxCoordinate_Task08_Coronal-CoT": {
+        "square": 55,
+        "nonsquare": 5161,
+        "n_distinct_sizes": 28,
+        "height": {
+            "min": 240,
+            "max": 512,
+            "median": 240
+        },
+        "width": {
+            "min": 50,
+            "max": 512,
+            "median": 155
+        }
+    },
+    "BraTS24_BoxCoordinate_Task09_Coronal-CoT": {
+        "square": 75,
+        "nonsquare": 5472,
+        "n_distinct_sizes": 24,
+        "height": {
+            "min": 240,
+            "max": 512,
+            "median": 240
+        },
+        "width": {
+            "min": 90,
+            "max": 512,
+            "median": 155
+        }
+    },
+    "BraTS24_BoxCoordinate_Task10_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 2236,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "BraTS24_BoxCoordinate_Task11_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 2339,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "BraTS24_BoxCoordinate_Task12_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 2090,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "BraTS24_BoxCoordinate_Task13_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 2308,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "CAMUS_BoxCoordinate_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 128704,
+        "n_distinct_sizes": 164,
+        "height": {
+            "min": 354,
+            "max": 1181,
+            "median": 630
+        },
+        "width": {
+            "min": 10,
+            "max": 35,
+            "median": 19
+        }
+    },
+    "CrossMoDA_BoxCoordinate_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 368,
+        "n_distinct_sizes": 2,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 120,
+            "max": 160,
+            "median": 120
+        }
+    },
+    "FeTA24_BoxCoordinate_Task01_Coronal-CoT": {
+        "square": 3788,
+        "nonsquare": 0,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 256,
+            "max": 256,
+            "median": 256
+        },
+        "width": {
+            "min": 256,
+            "max": 256,
+            "median": 256
+        }
+    },
+    "FLARE22_BoxCoordinate_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 12018,
+        "n_distinct_sizes": 11,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 71,
+            "max": 113,
+            "median": 93
+        }
+    },
+    "HNTSMRG24_BoxCoordinate_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 1267,
+        "n_distinct_sizes": 30,
+        "height": {
+            "min": 512,
+            "max": 768,
+            "median": 512
+        },
+        "width": {
+            "min": 57,
+            "max": 150,
+            "median": 73
+        }
+    },
+    "HNTSMRG24_BoxCoordinate_Task02_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 2040,
+        "n_distinct_sizes": 28,
+        "height": {
+            "min": 512,
+            "max": 768,
+            "median": 512
+        },
+        "width": {
+            "min": 57,
+            "max": 162,
+            "median": 75
+        }
+    },
+    "ISLES24_BoxCoordinate_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 742,
+        "n_distinct_sizes": 15,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 38,
+            "max": 177,
+            "median": 74
+        }
+    },
+    "ISLES24_BoxCoordinate_Task02_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 693,
+        "n_distinct_sizes": 17,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 38,
+            "max": 86,
+            "median": 69
+        }
+    },
+    "KiPA22_BoxCoordinate_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 3332,
+        "n_distinct_sizes": 21,
+        "height": {
+            "min": 130,
+            "max": 176,
+            "median": 150
+        },
+        "width": {
+            "min": 172,
+            "max": 231,
+            "median": 193
+        }
+    },
+    "KiTS23_BoxCoordinate_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 8039,
+        "n_distinct_sizes": 107,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 35,
+            "max": 787,
+            "median": 153
+        }
+    },
+    "MSD_BoxCoordinate_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 3815,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "MSD_BoxCoordinate_Task02_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 3815,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "MSD_BoxCoordinate_Task03_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 3815,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "MSD_BoxCoordinate_Task04_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 3815,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 240,
+            "max": 240,
+            "median": 240
+        },
+        "width": {
+            "min": 155,
+            "max": 155,
+            "median": 155
+        }
+    },
+    "MSD_BoxCoordinate_Task05_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 391,
+        "n_distinct_sizes": 14,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 41,
+            "max": 306,
+            "median": 100
+        }
+    },
+    "MSD_BoxCoordinate_Task06_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 294,
+        "n_distinct_sizes": 4,
+        "height": {
+            "min": 320,
+            "max": 320,
+            "median": 320
+        },
+        "width": {
+            "min": 100,
+            "max": 130,
+            "median": 110
+        }
+    },
+    "MSD_BoxCoordinate_Task07_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 2164,
+        "n_distinct_sizes": 36,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 32,
+            "max": 178,
+            "median": 52
+        }
+    },
+    "MSD_BoxCoordinate_Task08_Coronal-CoT": {
+        "square": 76,
+        "nonsquare": 924,
+        "n_distinct_sizes": 60,
+        "height": {
+            "min": 32,
+            "max": 42,
+            "median": 36
+        },
+        "width": {
+            "min": 26,
+            "max": 44,
+            "median": 36
+        }
+    },
+    "MSD_BoxCoordinate_Task09_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 7416,
+        "n_distinct_sizes": 38,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 94,
+            "max": 987,
+            "median": 547
+        }
+    },
+    "MSD_BoxCoordinate_Task10_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 281,
+        "n_distinct_sizes": 16,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 155,
+            "max": 636,
+            "median": 251
+        }
+    },
+    "MSD_BoxCoordinate_Task11_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 2416,
+        "n_distinct_sizes": 47,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 40,
+            "max": 192,
+            "median": 93
+        }
+    },
+    "MSD_BoxCoordinate_Task12_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 358,
+        "n_distinct_sizes": 4,
+        "height": {
+            "min": 320,
+            "max": 320,
+            "median": 320
+        },
+        "width": {
+            "min": 15,
+            "max": 24,
+            "median": 20
+        }
+    },
+    "MSD_BoxCoordinate_Task13_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 358,
+        "n_distinct_sizes": 4,
+        "height": {
+            "min": 320,
+            "max": 320,
+            "median": 320
+        },
+        "width": {
+            "min": 15,
+            "max": 24,
+            "median": 20
+        }
+    },
+    "MSD_BoxCoordinate_Task14_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 1156,
+        "n_distinct_sizes": 11,
+        "height": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        },
+        "width": {
+            "min": 51,
+            "max": 168,
+            "median": 77
+        }
+    },
+    "OAIZIB-CM_BoxCoordinate_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 75960,
+        "n_distinct_sizes": 1,
+        "height": {
+            "min": 160,
+            "max": 160,
+            "median": 160
+        },
+        "width": {
+            "min": 384,
+            "max": 384,
+            "median": 384
+        }
+    },
+    "SKM-TEA_BoxCoordinate_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 23419,
+        "n_distinct_sizes": 2,
+        "height": {
+            "min": 144,
+            "max": 160,
+            "median": 160
+        },
+        "width": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        }
+    },
+    "SKM-TEA_BoxCoordinate_Task02_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 23419,
+        "n_distinct_sizes": 2,
+        "height": {
+            "min": 144,
+            "max": 160,
+            "median": 160
+        },
+        "width": {
+            "min": 512,
+            "max": 512,
+            "median": 512
+        }
+    },
+    "ToothFairy2_BoxCoordinate_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 116397,
+        "n_distinct_sizes": 46,
+        "height": {
+            "min": 325,
+            "max": 512,
+            "median": 371
+        },
+        "width": {
+            "min": 166,
+            "max": 298,
+            "median": 169
+        }
+    },
+    "TopCoW24_BoxCoordinate_Task01_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 2827,
+        "n_distinct_sizes": 37,
+        "height": {
+            "min": 392,
+            "max": 560,
+            "median": 490
+        },
+        "width": {
+            "min": 139,
+            "max": 232,
+            "median": 191
+        }
+    },
+    "TopCoW24_BoxCoordinate_Task02_Coronal-CoT": {
+        "square": 0,
+        "nonsquare": 859,
+        "n_distinct_sizes": 37,
+        "height": {
+            "min": 225,
+            "max": 372,
+            "median": 320
+        },
+        "width": {
+            "min": 179,
+            "max": 507,
+            "median": 205
+        }
+    },
+    "TotalSegmentator_BoxCoordinate_Task01_Coronal-CoT": {
+        "square": 22967,
+        "nonsquare": 534419,
+        "n_distinct_sizes": 367,
+        "height": {
+            "min": 51,
+            "max": 499,
+            "median": 253
+        },
+        "width": {
+            "min": 31,
+            "max": 835,
+            "median": 296
+        }
+    },
+    "TotalSegmentator_BoxCoordinate_Task02_Coronal-CoT": {
+        "square": 6089,
+        "nonsquare": 58248,
+        "n_distinct_sizes": 92,
+        "height": {
+            "min": 11,
+            "max": 1092,
+            "median": 320
+        },
+        "width": {
+            "min": 13,
+            "max": 1915,
+            "median": 72
+        }
+    },
+    "__all_tasks__": {
+        "square": 127621,
+        "nonsquare": 2202149,
+        "n_distinct_sizes": 2428,
+        "height": {
+            "min": 11,
+            "max": 1181,
+            "median": 448
+        },
+        "width": {
+            "min": 10,
+            "max": 2451,
+            "median": 189
+        }
+    }
+}
