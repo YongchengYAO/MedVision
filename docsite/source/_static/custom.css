@@ -31,3 +31,15 @@ nav.bd-links li > a.current {
   color: var(--mv-accent);
   font-weight: 600;
 }
+
+/* Dataset donut figures: the SVGs have a transparent background and near-black
+   labels, so give them a white card so they stay legible in the dark theme. */
+img.donut-card {
+  background: #ffffff;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0.5rem auto;
+}

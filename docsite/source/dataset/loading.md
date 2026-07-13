@@ -56,6 +56,20 @@ export MedVision_ACK_RELEASE='1.1.1'
 ```
 :::
 
+## Loading unfiltered (multi-instance) samples
+
+By default the loader returns the **single-instance** (filtered) set — the one used for leaderboard comparison. To load the **multi-instance** (unfiltered) set instead, set:
+
+```bash
+export MedVision_DISABLE_SAMPLE_FILTERING=true   # default: off
+```
+
+This bypasses the per-sample quality/size filters and returns every planner sample (see [Multi-instance vs single-instance annotations](concepts.md#multi-instance-vs-single-instance-annotations) for what those filters drop). Per-version counts for both sets are in [Dataset versions & statistics](statistics.md#benchmark-annotations-by-version).
+
+:::{warning}
+Do not use multi-instance annotations to compare models on the leaderboard: the current MedVision-V0 SFT/RFT training is not optimized for multi-instance detection and measurement tasks.
+:::
+
 ## Batch download: the `download_datasets` CLI
 
 To fetch many datasets ahead of time (data downloading and building is slow), use the CLI instead of scripting `load_dataset()` calls by hand:

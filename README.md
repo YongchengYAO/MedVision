@@ -190,7 +190,7 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
 > 📚 **Read the Docs:** [Dataset concepts](https://medvision.readthedocs.io/en/latest/dataset/concepts.html) · [Loading data](https://medvision.readthedocs.io/en/latest/dataset/loading.html)
 
 > [!IMPORTANT]
-> **Leaderboard results use annotation v1.0.0.** All leaderboard numbers are computed on the **v1.0.0** annotations. We removed ambiguous cases (multi-instance targets) in metric calculation. For new studies we recommend the **latest** annotation version (currently **v1.1.1**).
+> **Leaderboard results use annotation v1.0.0.** All leaderboard numbers are computed on the **v1.0.0** annotations. We removed ambiguous cases (multi-instance targets) in metric calculation as a workaround. For new studies we recommend the **latest** annotation version (currently **v1.1.1**).
 
 - **Dataset.** For the full description of the MedVision dataset (source datasets, modalities, anatomies, annotation types, and returned fields), see the [Hugging Face dataset repo](https://huggingface.co/datasets/YongchengYAO/MedVision).
 
@@ -201,25 +201,34 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
 
 - **Pixel size (physical spacing) distribution.** Because the quantitative tasks require pixel→mm arithmetic, the distribution of pixel sizes across subtasks is provided in [`pixel_sizes__ds_v1.0.0`](https://github.com/YongchengYAO/MedVision/tree/master/dataset-info/pixel_sizes__ds_v1.0.0).
 
-- **Two annotation-instance counts.** Each benchmark sample is a *(2D slice, target)* pair, counted **per target, never per box** — several boxes of the same target on one slice still count as one annotation. The two tables differ only in whether the dataset **v1.0.0 loader filters** (`MedVision.py`) are applied:
+- **Image size distribution.** The distribution of image sizes across subtasks is provided in [`image_sizes__ds_v1.0.0`](https://github.com/YongchengYAO/MedVision/tree/master/dataset-info/image_sizes__ds_v1.0.0).
+
+- **Multi-instance and single-instance annotations.** Each benchmark sample is a *(2D slice, target)* pair, several instances of the same target on one slice still count as one annotation.
+  - **Single-instance ⊆ multi-instance**
   - **Multi-instance** (unfiltered) — every target carrying ≥ 1 annotation is kept, however many instances (boxes / clusters) it has on the slice and whatever their size.
   - **Single-instance** (filtered) — a target is kept only when it is a single, large-enough instance. Per benchmark task, a sample is dropped when:
 
-| Benchmark task | Single-instance drops the sample when… |
-|---|---|
-| **Box** — detection | the slice has **more than one** box for the target (`len(boxes) > 1`), **or** a box is **< 10 px** on any side |
-| **T/L** — tumor / lesion size | the target has **more than one** cluster on the slice (`n_clusters > 1`; `len(biometric_profile) > 1` on the v1.0.0 fallback) |
-| **A/D** — biometrics (angle / distance) | *never dropped* — every angle and distance sample is kept (the loader only splits them by `metric_type`) |
 
-Every single-instance target therefore also counts as multi-instance: **single-instance ⊆ multi-instance**. (A separate *Mask-Size* segmentation task — masks dropped below 200 px — is **not** part of these benchmark-annotation counts.)
+  | Benchmark task | Single-instance drops the sample when… |
+  |---|---|
+  | **Box** — detection | the slice has **more than one** box for the target (`len(boxes) > 1`), **or** a box is **< 10 px** on any side |
+  | **T/L** — tumor / lesion size | the target has **more than one** cluster on the slice (`n_clusters > 1`; `len(biometric_profile) > 1` on the v1.0.0 fallback) |
+  | **A/D** — biometrics (angle / distance) | *never dropped* — every angle and distance sample is kept (the loader only splits them by `metric_type`) |
+
+
+> [!TIP] 
+> To load the unfiltered (multi-instance) samples, set the environment variable `MedVision_DISABLE_SAMPLE_FILTERING=true` (default off) — it bypasses the per-sample quality/size filters and returns every planner sample.
 
 > [!WARNING]
-> **Multi-instance annotations are not for leaderboard comparison.** To load the unfiltered (multi-instance) samples, set the environment variable `MedVision_DISABLE_SAMPLE_FILTERING=true` (default off) — it bypasses the per-sample quality/size filters (Mask-Size, Box-Size, Tumor-Lesion-Size) and returns every planner sample. **Do not use multi-instance annotations to compare models on the leaderboard**: the current MedVision-V0 SFT/RFT training is not optimized for multi-instance detection and measurement tasks.
+> Multi-instance annotations are not for leaderboard comparison.
+> Do not use multi-instance annotations to compare models on the leaderboad.
+> The current MedVision-V0 SFT/RFT training is not optimized for multi-instance detection and measurement tasks.
 
-- **Per-dataset statistics.** Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`](https://github.com/YongchengYAO/MedVision/tree/master/script/misc/summarize_datasets.sh). The modality / image / slice / segmentation stats are the **same for every dataset version**; only the benchmark-annotation counts (Box / T/L / A/D) depend on it — and among those, only **T/L** changes (Box and A/D are identical across versions).
+### Per-dataset statistics
+Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`](https://github.com/YongchengYAO/MedVision/tree/master/script/misc/summarize_datasets.sh). The modality / image / slice / segmentation stats are the **same for every dataset version**; only the benchmark-annotation counts (Box / T/L / A/D) depend on it — and among those, only **T/L** changes (Box and A/D are identical across versions).
 
 <details>
-<summary>📊 Per-dataset stats — modality, images, slices, segmentation (version-invariant)</summary>
+<summary> Per-dataset stats — modality, images, slices, segmentation (version-invariant)</summary>
 
 <br/>
 
@@ -251,10 +260,10 @@ Every single-instance target therefore also counts as multi-instance: **single-i
 
 </details>
 
-**Benchmark annotations by dataset version.** Single-instance (filtered) vs multi-instance (unfiltered) VQA-sample counts for the three quantitative tasks — **Box** (detection) + **T/L** (tumor/lesion size) + **A/D** (biometrics). Only **T/L** differs across versions:
+**Benchmark annotations by dataset version.** Single-instance (filtered) vs multi-instance (unfiltered) annotation counts for the three quantitative tasks — **Box** (detection) + **T/L** (tumor/lesion size) + **A/D** (biometrics). Only **T/L** differs across versions:
 
 <details>
-<summary>📊 MedVision v1.1.1 (default) — donut + annotation counts</summary>
+<summary> MedVision v1.1.1 (default) </summary>
 
 <br/>
 
@@ -298,7 +307,7 @@ Every single-instance target therefore also counts as multi-instance: **single-i
 </details>
 
 <details>
-<summary>📊 MedVision v1.1.0 — donut + annotation counts</summary>
+<summary> MedVision v1.1.0 </summary>
 
 <br/>
 
@@ -342,7 +351,7 @@ Every single-instance target therefore also counts as multi-instance: **single-i
 </details>
 
 <details>
-<summary>📊 MedVision v1.0.0 — donut + annotation counts</summary>
+<summary> MedVision v1.0.0 </summary>
 
 <br/>
 
@@ -1160,8 +1169,8 @@ ds = load_dataset(
 Since data downloading and processing take time, you can download datasets from the [tasks list](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list) or [configs list](https://github.com/YongchengYAO/MedVision/tree/master/dataset-info/dataset-configs) in advance.
 
 
-> [!NOTE]
-> ⚠️ You need to set an API token for these datasets (see [detailed instructions](https://huggingface.co/datasets/YongchengYAO/MedVision#datasets)): FeTA24, SKM-TEA, and ToothFairy2
+> [!WARNING]
+> You need to set an API token for these datasets (see [detailed instructions](https://huggingface.co/datasets/YongchengYAO/MedVision#datasets)): FeTA24, SKM-TEA, and ToothFairy2
 
 > Command: 
 > 

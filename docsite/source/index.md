@@ -160,6 +160,7 @@ getting-started/quickstart
 
 dataset/concepts
 dataset/loading
+dataset/statistics
 ```
 
 ```{toctree}
