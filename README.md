@@ -273,8 +273,8 @@ Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`]
     <td align="center" width="50%"><b>Multi-instance</b></td>
   </tr>
   <tr>
-    <td align="center"><img src="dataset-info/datasets_summary_v1.1.1/dataset_summary_rings_filtered_2x1.svg" width="100%" alt="v1.1.1 single-instance donut"></td>
-    <td align="center"><img src="dataset-info/datasets_summary_v1.1.1/dataset_summary_rings_raw_2x1.svg" width="100%" alt="v1.1.1 multi-instance donut"></td>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="dataset-info/datasets_summary_v1.1.1/dataset_summary_rings_filtered_2x1_whitebg.svg"><img src="dataset-info/datasets_summary_v1.1.1/dataset_summary_rings_filtered_2x1.svg" width="100%" alt="v1.1.1 single-instance donut"></picture></td>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="dataset-info/datasets_summary_v1.1.1/dataset_summary_rings_raw_2x1_whitebg.svg"><img src="dataset-info/datasets_summary_v1.1.1/dataset_summary_rings_raw_2x1.svg" width="100%" alt="v1.1.1 multi-instance donut"></picture></td>
   </tr>
 </table>
 
@@ -317,8 +317,8 @@ Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`]
     <td align="center" width="50%"><b>Multi-instance</b></td>
   </tr>
   <tr>
-    <td align="center"><img src="dataset-info/datasets_summary_v1.1.0/dataset_summary_rings_filtered_2x1.svg" width="100%" alt="v1.1.0 single-instance donut"></td>
-    <td align="center"><img src="dataset-info/datasets_summary_v1.1.0/dataset_summary_rings_raw_2x1.svg" width="100%" alt="v1.1.0 multi-instance donut"></td>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="dataset-info/datasets_summary_v1.1.0/dataset_summary_rings_filtered_2x1_whitebg.svg"><img src="dataset-info/datasets_summary_v1.1.0/dataset_summary_rings_filtered_2x1.svg" width="100%" alt="v1.1.0 single-instance donut"></picture></td>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="dataset-info/datasets_summary_v1.1.0/dataset_summary_rings_raw_2x1_whitebg.svg"><img src="dataset-info/datasets_summary_v1.1.0/dataset_summary_rings_raw_2x1.svg" width="100%" alt="v1.1.0 multi-instance donut"></picture></td>
   </tr>
 </table>
 
@@ -361,8 +361,8 @@ Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`]
     <td align="center" width="50%"><b>Multi-instance</b></td>
   </tr>
   <tr>
-    <td align="center"><img src="dataset-info/datasets_summary_v1.0.0/dataset_summary_rings_filtered_2x1.svg" width="100%" alt="v1.0.0 single-instance donut"></td>
-    <td align="center"><img src="dataset-info/datasets_summary_v1.0.0/dataset_summary_rings_raw_2x1.svg" width="100%" alt="v1.0.0 multi-instance donut"></td>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="dataset-info/datasets_summary_v1.0.0/dataset_summary_rings_filtered_2x1_whitebg.svg"><img src="dataset-info/datasets_summary_v1.0.0/dataset_summary_rings_filtered_2x1.svg" width="100%" alt="v1.0.0 single-instance donut"></picture></td>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="dataset-info/datasets_summary_v1.0.0/dataset_summary_rings_raw_2x1_whitebg.svg"><img src="dataset-info/datasets_summary_v1.0.0/dataset_summary_rings_raw_2x1.svg" width="100%" alt="v1.0.0 multi-instance donut"></picture></td>
   </tr>
 </table>
 

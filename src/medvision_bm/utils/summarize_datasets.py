@@ -1073,8 +1073,13 @@ def viz_rings(all_summary, out_path, magnify=True, layout="2x1", variant="filter
 
     save_fig_capped(out_path, fig=fig, bbox_inches="tight", transparent=True)
     if magnify and layout == "2x1":            # SVG twin for inline README embedding (GitHub can't render PDF)
-        save_fig_capped(os.path.splitext(out_path)[0] + ".svg", fig=fig,
-                        bbox_inches="tight", transparent=True)
+        svg = os.path.splitext(out_path)[0] + ".svg"
+        save_fig_capped(svg, fig=fig, bbox_inches="tight", transparent=True)
+        # White-background twin, served to GitHub dark mode via a <picture> element in the README
+        # (README HTML strips inline CSS, so the backing must live in a file). The canonical .svg
+        # above stays transparent; only this twin is opaque.
+        save_fig_capped(os.path.splitext(svg)[0] + "_whitebg.svg", fig=fig,
+                        bbox_inches="tight", transparent=False, facecolor="white", edgecolor="white")
     plt.close(fig)
 
 
