@@ -25,6 +25,11 @@ never indexed (BraTS24-MET, HNTSMRG24-preRT, MSD-Colon/Lung/Pancreas).
 Examples:
     python script/visualization/viz_ellipse_fit_comparison.py --orientation sagittal --n 8
     python script/visualization/viz_ellipse_fit_comparison.py --orientation coronal --n 6 --seed 7
+
+Output formats:
+    - No flags → ["png"] (default).
+    - --save_as_pdf → ["pdf"] only.
+    - --save_as_png --save_as_pdf → both files written, one per format.
 """
 
 import argparse
@@ -45,7 +50,7 @@ import nibabel as nib
 import numpy as np
 from scipy import ndimage
 
-REPO = "/mnt/vincent-pvc-rwm/Github/MedVision"
+REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(REPO, "src"))
 
 # Local-only HF loader resolution: data already lives under Data/; setting these
@@ -368,7 +373,7 @@ def main():
 
     formats = [
         f for f, on in (("png", args.save_as_png), ("pdf", args.save_as_pdf)) if on
-    ] or ["pdf"]
+    ] or ["png"]
     out_dir = args.out_dir or os.path.join(DEFAULT_OUT, args.orientation)
     print(f"orientation : {args.orientation} (slice_dim={ORIENT_SLICE_DIM[args.orientation]})")
     print("building candidate pool from HF test configs (union of both summaries)...")

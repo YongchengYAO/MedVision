@@ -11,6 +11,7 @@
 # Optional:
 #   OUTPUT_DIR=<path>            Base output directory for figures (default: <MEDVISION_DIR>/Figures/viz_responses/AD)
 #   LIMIT_PER_JSONL=<N>          Max figures per JSONL file (default: unset = all)
+#   DPI=<N>                      Figure save DPI, clamped to the 34MP cap (default: 100)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MEDVISION_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -23,7 +24,8 @@ if [ -z "$MODEL_DIR" ]; then
     echo "Usage: MODEL_DIR=<path/to/model_dir> bash $(basename "${BASH_SOURCE[0]}")"
     exit 1
 fi
-LIMIT_PER_JSONL="${LIMIT_PER_JSONL:-}"
+LIMIT_PER_JSONL="${LIMIT_PER_JSONL:-30}"
+DPI="${DPI:-100}"
 
 LIMIT_ARG=""
 if [ -n "$LIMIT_PER_JSONL" ]; then
@@ -33,4 +35,6 @@ fi
 python "$SCRIPT_DIR/viz_ad_responses.py" \
     --model_dir "$MODEL_DIR" \
     --output_dir "$OUTPUT_DIR" \
+    --save_as_pdf \
+    --dpi "$DPI" \
     $LIMIT_ARG

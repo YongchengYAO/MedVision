@@ -28,6 +28,7 @@ def plot_label_composition_and_metrics(
     min_sample_size=50,
     output_dir=None,
     output_filename=None,
+    formats=("pdf",),
 ):
     """
     Plot the composition of sample size and metrics for each label across all models.
@@ -285,24 +286,33 @@ def plot_label_composition_and_metrics(
     plt.subplots_adjust(bottom=legend_h_frac + tick_ext_frac + 0.01)
 
     if output_dir and output_filename:
-        output_path = os.path.join(output_dir, output_filename)
-        plt.savefig(output_path, bbox_inches="tight", dpi=300)
-        print(f"Saved figure to {output_path}")
+        stem = os.path.splitext(os.path.join(output_dir, output_filename))[0]
+        for fmt in formats:
+            output_path = f"{stem}.{fmt}"
+            plt.savefig(output_path, bbox_inches="tight", dpi=300, transparent=True)
+            print(f"Saved figure to {output_path}")
 
     plt.show()
 
     return fig, axes
 
 
-def main(in_dir, out_dir, model_name_display_map, folders, use_label_level=True):
+def main(
+    in_dir,
+    out_dir,
+    model_name_display_map,
+    folders,
+    use_label_level=True,
+    formats=("pdf",),
+):
     if use_label_level:
         csv_filename = SUMMARY_FILENAME_PER_BOX_IMG_RATIO_FINELABEL_DETECT_MEAN_METRICS
-        fig_filename = "fig_detection__metrics-boxSize__labelLevel.png"
+        fig_filename = "fig_detection__metrics-boxSize__labelLevel"
     else:
         csv_filename = (
             SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_MEAN_METRICS
         )
-        fig_filename = "fig_detection__metrics-boxSize__anatomyLevel.png"
+        fig_filename = "fig_detection__metrics-boxSize__anatomyLevel"
 
     all_data = {}
     for folder in folders:
@@ -324,6 +334,7 @@ def main(in_dir, out_dir, model_name_display_map, folders, use_label_level=True)
         min_sample_size=SAMPLE_SIZE_THRESHOLD_LABEL,
         output_dir=out_dir,
         output_filename=fig_filename,
+        formats=formats,
     )
 
 
@@ -351,16 +362,26 @@ if __name__ == "__main__":
     level_group.add_argument(
         "--label_level",
         action="store_true",
-        help="Read fine-grained label CSV (default). Outputs metrics_sampleSize_per_label_x_boxSize_labelLevel.png",
+        help="Read fine-grained label CSV (default). Outputs fig_detection__metrics-boxSize__labelLevel.pdf",
     )
     level_group.add_argument(
         "--anatomy_level",
         action="store_true",
-        help="Read anatomy-grouped label CSV. Outputs metrics_sampleSize_per_label_x_boxSize_anatomyLevel.png",
+        help="Read anatomy-grouped label CSV. Outputs fig_detection__metrics-boxSize__anatomyLevel.pdf",
+    )
+    parser.add_argument(
+        "--save_as_png", action="store_true", help="Save figures as PNG."
+    )
+    parser.add_argument(
+        "--save_as_pdf", action="store_true", help="Save figures as PDF."
     )
 
     args = parser.parse_args()
     use_label_level = not args.anatomy_level  # default: label_level
+
+    formats = [
+        f for f, on in (("png", args.save_as_png), ("pdf", args.save_as_pdf)) if on
+    ] or ["pdf"]
 
     with open(args.config) as f:
         cfg = yaml.safe_load(f)
@@ -373,4 +394,5 @@ if __name__ == "__main__":
         model_name_display_map,
         folders,
         use_label_level=use_label_level,
+        formats=formats,
     )

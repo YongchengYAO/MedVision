@@ -69,7 +69,9 @@ def extract_ratio_midpoint(range_str):
     return mapping.get(range_str)
 
 
-def plot_metrics_multi_model(in_dir, out_dir, model_name_display_map, folders):
+def plot_metrics_multi_model(
+    in_dir, out_dir, model_name_display_map, folders, formats=("pdf",)
+):
     Path(out_dir).mkdir(exist_ok=True, parents=True)
 
     model_data = {}
@@ -270,10 +272,12 @@ def plot_metrics_multi_model(in_dir, out_dir, model_name_display_map, folders):
     plt.tight_layout()
     plt.subplots_adjust(bottom=0.12)
 
-    output_path = os.path.join(out_dir, "metrics_boxImgRatio-dotline.png")
-    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    stem = os.path.join(out_dir, "metrics_boxImgRatio-dotline")
+    for fmt in formats:
+        output_path = f"{stem}.{fmt}"
+        plt.savefig(output_path, dpi=300, bbox_inches="tight", transparent=True)
+        print(f"Saved figure to {output_path}")
     plt.close()
-    print(f"Saved figure to {output_path}")
 
 
 if __name__ == "__main__":
@@ -297,12 +301,24 @@ if __name__ == "__main__":
         required=True,
         help="Directory to save the output figure",
     )
+    parser.add_argument(
+        "--save_as_png", action="store_true", help="Save figures as PNG."
+    )
+    parser.add_argument(
+        "--save_as_pdf", action="store_true", help="Save figures as PDF."
+    )
 
     args = parser.parse_args()
+
+    formats = [
+        f for f, on in (("png", args.save_as_png), ("pdf", args.save_as_pdf)) if on
+    ] or ["pdf"]
 
     with open(args.config) as f:
         cfg = yaml.safe_load(f)
     model_name_display_map = cfg["model_display_name"]
     folders = list(model_name_display_map.keys())
 
-    plot_metrics_multi_model(args.in_dir, args.out_dir, model_name_display_map, folders)
+    plot_metrics_multi_model(
+        args.in_dir, args.out_dir, model_name_display_map, folders, formats=formats
+    )

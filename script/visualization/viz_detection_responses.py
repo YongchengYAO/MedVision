@@ -24,7 +24,7 @@ import numpy as np
 from scipy.ndimage import zoom
 
 from medvision_bm.sft.sft_utils import normalize_img
-from medvision_bm.utils.plot_utils import save_fig_capped
+from medvision_bm.utils.plot_utils import _get_appropriate_scale, save_fig_capped
 
 # ── Color palette (light) ─────────────────────────────────────────────────────
 C_FIG_BG = "#FFFFFF"
@@ -65,23 +65,47 @@ _PROMPT_HEADERS = frozenset(
     }
 )
 
-FIG_W = 25.2
+FIG_W = 30.24  # 25.2 × 1.2 — widened 20% (height auto-decreases as text reflows)
 FONTSIZE_IN = 18.0
 FONTSIZE_RS = 18.0
 FONTSIZE_MT = 18.0
 LH_MULT = 1.4
 CHAR_RATIO = 0.601
 
-# Two-column layout (figure fractions)
-LM = 0.025
-_IX = LM + 0.008
-COL_GAP = 0.020
-COL2_W_FRAC = 0.2
-COL2_X_FRAC = 1.0 - COL2_W_FRAC - LM - 0.005
-COL1_W_FRAC = COL2_X_FRAC - _IX - COL_GAP
+# ── Webpage "Case Viewer" section-box palette (from medvision-vlm.github.io index.css) ──
+C_SEG_FILL = "#ffffff"
+C_SEG_EDGE = "#e6e9ef"
+C_RAIL_TEAL = "#0E8C8B"  # Prompt & Metrics left rail + pill
+C_RAIL_INDIGO = "#4f46e5"  # Response left rail + pill
+C_FIGBOX_FILL = "#ffffff"
+C_FIGBOX_EDGE = "#e6e9ef"
 
-COL1_AX_W_IN = (COL1_W_FRAC - 0.014) * FIG_W
-COL2_W_IN = COL2_W_FRAC * FIG_W
+# ── Section-box / figure-box geometry (inches; FIG_W-relative). No outer card/stage. ──
+OUTER_M = 0.22  # figure edge → content (small margin; outer card/stage removed)
+COL_GAP_IN = 0.34  # left text column ↔ right figure box
+LEFT_FRAC = 0.68  # text column : figure column (text widened)
+SEG_GAP = 0.26  # gap between the 3 section boxes
+SEG_PAD_X = 0.26  # seg border → text (both sides)
+SEG_PAD_TOP = 0.24  # seg top border → pill top (margin above tag)
+SEG_PAD_BOT = 0.26  # text bottom → seg bottom border (margin below text)
+SEG_RADIUS = 0.14
+RAIL_W = 0.06  # colored left rail thickness
+PILL_H = 0.44  # tag height (enlarged)
+PILL_PAD_X = 0.20  # text inset inside pill (enlarged)
+PILL_GAP_BELOW = 0.20  # pill bottom → body text top (margin below tag)
+PILL_FS = 18  # pill/tag font size (pt, sans bold; enlarged)
+BODY_PAD = 0.10  # slack so last text line isn't flush to border
+FIGBOX_PAD = 0.20  # figure box border → image region
+FIGBOX_RADIUS = 0.14
+TITLE_H = 0.42  # title band height above each figure
+IMG_GAP = 0.24  # gap between the two stacked images
+IMG_MAX_H = 9.5  # per-image height cap (raised so images fill the figure-box width)
+GUT_L = 0.60  # left gutter (ylabel + yticks) for rotated bottom panel
+GUT_B = 0.48  # bottom gutter (xlabel + xticks) for rotated bottom panel
+# _draw_tokens wraps at max_x=0.985 of the axis while _count_wrapped_lines assumes the
+# full width; shrink the estimate width to match so the box is tall enough (no clipping).
+_WRAP_SAFETY = 0.95
+SEG_EXTRA = SEG_PAD_TOP + PILL_H + PILL_GAP_BELOW + SEG_PAD_BOT  # pill+pad chrome per box
 
 # Response tag patterns
 _RESP_PATTERNS = [
@@ -258,9 +282,18 @@ def _count_wrapped_lines(tokens, fontsize, ax_w_in):
     return line_count
 
 
-def _section_h_in(tokens, fontsize, ax_w_in, pad_in=0.40):
-    n = _count_wrapped_lines(tokens, fontsize, ax_w_in)
-    return max(1.5, n * fontsize * LH_MULT / 72 + pad_in)
+def _text_block_h_in(tokens, fontsize, ax_w_in):
+    """Pure wrapped-text height in inches (no floor / no pad).
+
+    The box chrome (pill + paddings, ``SEG_EXTRA``) supplies vertical padding
+    separately, so — unlike the old ``_section_h_in`` — this must NOT add its own
+    pad or 1.5in floor, else the section-box height double-counts that space.
+
+    Estimates wrap at ``_WRAP_SAFETY`` × the axis width to match ``_draw_tokens``
+    (which wraps at max_x=0.985), so the box is tall enough to show every line.
+    """
+    n = _count_wrapped_lines(tokens, fontsize, ax_w_in * _WRAP_SAFETY)
+    return n * fontsize * LH_MULT / 72 + BODY_PAD
 
 
 def _draw_tokens(ax, tokens, x0, y0, fontsize, ax_w_in, ax_h_in):
@@ -308,6 +341,122 @@ def _draw_tokens(ax, tokens, x0, y0, fontsize, ax_w_in, ax_h_in):
                     )
                     x += need_w
         y -= line_h_ax
+
+
+# ── Webpage-card chrome helpers (shared verbatim by AD / TL / detection) ───────
+# All chrome is drawn into ONE full-figure inch-axes (xlim=(0,FIG_W), ylim=(0,fig_h)),
+# so 1 data-unit == 1 inch on BOTH axes and FancyBboxPatch corners stay circular
+# regardless of the content-driven fig_h.
+
+
+def _round_rect(
+    ax, x, y, w, h, *, radius, facecolor, edgecolor="none", linewidth=1.0, zorder=1
+):
+    """Rounded rectangle in inch-axes data coords (circular corners)."""
+    r = min(radius, w / 2, h / 2)
+    patch = mpatches.FancyBboxPatch(
+        (x + r, y + r),
+        w - 2 * r,
+        h - 2 * r,
+        boxstyle=f"round,pad={r},rounding_size={r}",
+        mutation_aspect=1.0,
+        facecolor=facecolor,
+        edgecolor=edgecolor,
+        linewidth=linewidth,
+        zorder=zorder,
+        transform=ax.transData,
+        clip_on=False,
+    )
+    ax.add_patch(patch)
+    return patch
+
+
+def _pill(ax, x, y, text, *, color, height=PILL_H, fs=PILL_FS, pad_x=PILL_PAD_X, zorder=6):
+    """Fully-rounded pill with centered white bold uppercase text. Returns width (in)."""
+    label = text.upper()
+    char_w_in = fs * 0.60 / 72  # sans-bold avg advance ≈ 0.60·fontsize
+    w = len(label) * char_w_in + 2 * pad_x
+    _round_rect(ax, x, y, w, height, radius=height / 2, facecolor=color, zorder=zorder)
+    ax.text(
+        x + w / 2,
+        y + height / 2,
+        label,
+        ha="center",
+        va="center",
+        color="#ffffff",
+        fontsize=fs,
+        fontweight="bold",
+        fontfamily="sans-serif",
+        zorder=zorder + 1,
+    )
+    return w
+
+
+def _left_rail(ax, x, y, h, *, color, width=RAIL_W, zorder=5):
+    """Thin rounded vertical capsule (section-box left rail)."""
+    _round_rect(ax, x, y, width, h, radius=width / 2, facecolor=color, zorder=zorder)
+
+
+def _place_image_box(fig, box_rect_frac, img_aspect):
+    """Contain+center an image of physical aspect (h/w) inside a box.
+
+    Returns an ``[l, b, w, h]`` fraction rect whose physical inch-aspect == img_aspect,
+    so imshow(aspect=...) fills it exactly with no matplotlib re-fit margin.
+    """
+    fig_w, fig_h = fig.get_size_inches()
+    l, b, w, h = box_rect_frac
+    bw, bh = w * fig_w, h * fig_h
+    box_aspect = bh / bw
+    if img_aspect >= box_aspect:  # image taller → height-limited
+        ih = bh
+        iw = ih / img_aspect
+    else:  # width-limited
+        iw = bw
+        ih = iw * img_aspect
+    return [l + (bw - iw) / 2 / fig_w, b + (bh - ih) / 2 / fig_h, iw / fig_w, ih / fig_h]
+
+
+def _rotated_overlay_chrome(ax, image_2d, psz, slice_dim):
+    """Add L-shaped mm scale bar + orientation axis labels + ticks to a rotated
+    overlay panel drawn via ``imshow(image_2d.T, origin='lower')``.
+
+    Mirrors the webpage renderer (``plot_utils.plot_*_on_image``) but scales the
+    28/20/16 pt fonts down by the panel's on-figure width so labels fit the reserved
+    gutters. Returns the scaled legend fontsize. Assumes fixed limits already set.
+    """
+    H, W = image_2d.shape
+    pos = ax.get_position()
+    fig_w, _ = ax.figure.get_size_inches()
+    ax_w_in = pos.width * fig_w
+    s = min(0.6, max(0.35, ax_w_in / 10.0))
+    lbl_fs, tick_fs, scale_fs, leg_fs = (
+        round(28 * s),
+        round(20 * s),
+        round(20 * s),
+        round(16 * s),
+    )
+
+    # L-shaped white scale bar at lower-left (origin='lower'); mirrors plot_utils.
+    min_idx = int(np.argmin(image_2d.shape[:2]))
+    scale_mm, n_min = _get_appropriate_scale(psz[min_idx], image_2d.shape[min_idx], 10)
+    n_max = int(scale_mm / psz[1 - min_idx])
+    sp0, sp1 = (n_min, n_max) if min_idx == 0 else (n_max, n_min)  # (dim0, dim1) px
+    sx, sy = int(H * 0.05), int(W * 0.05)
+    ax.plot([sx, sx + sp0], [sy, sy], "w-", lw=3)
+    ax.plot([sx, sx], [sy, sy + sp1], "w-", lw=3)
+    ax.text(
+        sx + sp0 + H * 0.01, sy, f"{scale_mm} mm", color="white", ha="left", fontsize=scale_fs
+    )
+
+    xl, yl = {
+        0: ("Anterior →", "Superior →"),
+        1: ("Right →", "Superior →"),
+        2: ("Right →", "Anterior →"),
+    }[slice_dim]
+    ax.set_xlabel(xl, fontsize=lbl_fs)
+    ax.set_ylabel(yl, fontsize=lbl_fs)
+    ax.tick_params(labelsize=tick_fs)
+    return leg_fs
 
 
 # ── Sample filtering (mirrors summarize_detection_task.py) ────────────────────
@@ -361,79 +510,56 @@ def _parse_bbox(coords_str):
         return None
 
 
-def _bbox_to_image_coords(bbox_rel, H, W):
-    """Convert normalized [x_min, y_min, x_max, y_max] (lower-left origin) → col/row for imshow(origin='upper')."""
+def _bbox_to_dim01(bbox_rel, H, W):
+    """Convert normalized [x_min, y_min, x_max, y_max] (lower-left origin) → rotated plot
+    space: dim0 = plot-x (horizontal), dim1 = plot-y (vertical)."""
     x_min, y_min, x_max, y_max = bbox_rel
-    col_min = x_min * W
-    col_max = x_max * W
-    row_min = H * (1 - y_max)
-    row_max = H * (1 - y_min)
-    return col_min, row_min, col_max, row_max
+    d0_min = H * (1 - y_max)
+    d0_max = H * (1 - y_min)
+    d1_min = x_min * W
+    d1_max = x_max * W
+    return d0_min, d1_min, d0_max, d1_max
 
 
 def _draw_detection_overlay_on_ax(ax, doc, sample):
-    """Draw original-resolution image with GT (green dashed) and predicted (orange solid) bounding boxes."""
+    """Draw the original-resolution image with GT (green dashed) and predicted (orange solid)
+    bounding boxes, rotated 90° CCW to match the webpage renderer: imshow(image_2d.T,
+    origin='lower', aspect=psz[1]/psz[0]); Rectangle anchored at (dim0_min, dim1_min)."""
     try:
-        _, image_2d = _load_nifti_2d(
+        psz, image_2d = _load_nifti_2d(
             doc["image_file"], doc["slice_dim"], doc["slice_idx"]
         )
         image_2d = normalize_img(doc, image_2d)
     except Exception:
-        ax.axis("off")
+        ax.set_axis_off()
         return
 
     H, W = image_2d.shape
-    ax.imshow(image_2d, cmap="gray", origin="upper")
+    ax.imshow(image_2d.T, cmap="gray", origin="lower", aspect=psz[1] / psz[0], zorder=-1)
+    ax.set_xlim(-0.5, H - 0.5)
+    ax.set_ylim(-0.5, W - 0.5)
+    ax.set_autoscale_on(False)
 
     # GT bbox
     raw_target = sample.get("target", "[]")
     gt_bbox = json.loads(raw_target) if isinstance(raw_target, str) else raw_target
     if gt_bbox and len(gt_bbox) == 4:
-        c0, r0, c1, r1 = _bbox_to_image_coords(gt_bbox, H, W)
-        ax.add_patch(
-            mpatches.Rectangle(
-                (c0, r0),
-                c1 - c0,
-                r1 - r0,
-                linewidth=4,
-                edgecolor=C_GT_BOX,
-                facecolor="none",
-                linestyle="--",
-                zorder=2,
-            )
-        )
+        d0min, d1min, d0max, d1max = _bbox_to_dim01(gt_bbox, H, W)
+        ax.add_patch(mpatches.Rectangle((d0min, d1min), d0max - d0min, d1max - d1min, linewidth=4, edgecolor=C_GT_BOX, facecolor="none", linestyle="--", zorder=2))
 
     # Predicted bbox
     pred_str = (sample.get("filtered_resps") or [""])[0]
     pred_bbox = _parse_bbox(pred_str)
     if pred_bbox:
-        c0, r0, c1, r1 = _bbox_to_image_coords(pred_bbox, H, W)
-        ax.add_patch(
-            mpatches.Rectangle(
-                (c0, r0),
-                c1 - c0,
-                r1 - r0,
-                linewidth=4,
-                edgecolor=C_PRED_BOX,
-                facecolor="none",
-                linestyle="-",
-                zorder=3,
-            )
-        )
+        d0min, d1min, d0max, d1max = _bbox_to_dim01(pred_bbox, H, W)
+        ax.add_patch(mpatches.Rectangle((d0min, d1min), d0max - d0min, d1max - d1min, linewidth=4, edgecolor=C_PRED_BOX, facecolor="none", linestyle="-", zorder=3))
 
+    leg_fs = _rotated_overlay_chrome(ax, image_2d, psz, doc["slice_dim"])
     legend_handles = [
         mlines.Line2D([], [], color=C_GT_BOX, ls="--", linewidth=4, label="GT bbox"),
         mlines.Line2D([], [], color=C_PRED_BOX, ls="-", linewidth=4, label="Pred bbox"),
     ]
-    ax.legend(
-        handles=legend_handles,
-        loc="upper right",
-        fontsize=14,
-        facecolor="white",
-        edgecolor="#D1D5DB",
-        framealpha=0.85,
-    )
-    ax.axis("off")
+    ax.legend(handles=legend_handles, loc="upper right", fontsize=leg_fs, facecolor="white", edgecolor="#D1D5DB", framealpha=0.85)
 
 
 # ── Sample data helpers ────────────────────────────────────────────────────────
@@ -531,7 +657,7 @@ def _make_filename(sample, dataset_name):
 # ── Main per-sample plot ───────────────────────────────────────────────────────
 
 
-def _plot_sample(sample, out_path, reshape_hw, formats):
+def _plot_sample(sample, out_path, reshape_hw, formats, dpi=100):
     doc = sample["doc"]
     doc_id = sample["doc_id"]
 
@@ -546,160 +672,147 @@ def _plot_sample(sample, out_path, reshape_hw, formats):
     resp_text = _preprocess_response(raw_resp).replace("\n", " ")
 
     in_tokens = _tokenize_input(input_text)
-    in_tokens.append(("\n", C_TEXT, False))
     coord_map = _extract_detection_color_maps(raw_resp)
     rs_tokens = _add_detection_number_colors(_tokenize_resp(resp_text), coord_map)
     mt_tokens = _build_metrics_tokens(sample)
 
-    # ── Layout constants (inches) ─────────────────────────────────────────────
-    HDR_H = 0.35
-    PAD = 0.20
-    BOX_GAP = 0.40
-    OUTER_TOP = 0.40
-    OUTER_BOT = 0.20
+    # ── Layout: webpage "Case Viewer" section boxes (no outer card) ────────────
+    toks = [in_tokens, rs_tokens, mt_tokens]
+    fss = [FONTSIZE_IN, FONTSIZE_RS, FONTSIZE_MT]
+    rail_colors = [C_RAIL_TEAL, C_RAIL_INDIGO, C_RAIL_TEAL]
+    pill_texts = ["Prompt", "Response", "GT · Prediction · Metrics"]
 
-    in_h = _section_h_in(in_tokens, FONTSIZE_IN, COL1_AX_W_IN, PAD)
-    rs_h = _section_h_in(rs_tokens, FONTSIZE_RS, COL1_AX_W_IN, PAD)
-    mt_h = _section_h_in(mt_tokens, FONTSIZE_MT, COL1_AX_W_IN, PAD)
-    col1_content_h = (
-        (HDR_H + in_h) + 2 * BOX_GAP + (HDR_H + rs_h) + BOX_GAP + (HDR_H + mt_h)
-    )
+    # Horizontal budget (inches) — text width drives wrapping, so widths come first.
+    content_w = FIG_W - 2 * OUTER_M
+    avail = content_w - COL_GAP_IN
+    left_w = LEFT_FRAC * avail
+    right_w = avail - left_w
+    text_w = left_w - RAIL_W - 2 * SEG_PAD_X
 
-    fig_h = col1_content_h + OUTER_TOP + OUTER_BOT
+    # Section-box heights = chrome (SEG_EXTRA) + pure wrapped-text height.
+    t_h = [_text_block_h_in(toks[i], fss[i], text_w) for i in range(3)]
+    seg_h = [SEG_EXTRA + t_h[i] for i in range(3)]
+    left_stack_h = sum(seg_h) + 2 * SEG_GAP
 
+    # Right-column image aspects: top = unrotated display; bottom = rotated overlay.
+    H_img, W_img = img.shape
+    disp_aspect = H_img / W_img
+    _nii = nib.load(doc["image_file"])
+    _shape = _nii.header.get_data_shape()
+    _z = _nii.header.get_zooms()
+    _sd = doc["slice_dim"]
+    if _sd == 0:
+        _H, _W, _px0, _px1 = _shape[1], _shape[2], _z[1], _z[2]
+    elif _sd == 1:
+        _H, _W, _px0, _px1 = _shape[0], _shape[2], _z[0], _z[2]
+    else:
+        _H, _W, _px0, _px1 = _shape[0], _shape[1], _z[0], _z[1]
+    rot_aspect = (_W * _px1) / (_H * _px0)  # real-world mm-height / mm-width, rotated
+
+    # Figure box hugs the two images (each with a title). The figure DYNAMICALLY
+    # SHRINKS to fit within the text-column height, so it never forces extra height
+    # (short responses no longer leave the figure taller than the text).
+    fig_inner_w = right_w - 2 * FIGBOX_PAD
+    top_nat = min(fig_inner_w * disp_aspect, IMG_MAX_H)
+    bot_nat = min((fig_inner_w - GUT_L) * rot_aspect, IMG_MAX_H)
+    fig_overhead = 2 * FIGBOX_PAD + 2 * TITLE_H + IMG_GAP + GUT_B  # non-image chrome
+    content_h = max(left_stack_h, fig_overhead)  # text column drives overall height
+    nat_img_h = top_nat + bot_nat
+    scale = min(1.0, (content_h - fig_overhead) / nat_img_h) if nat_img_h > 0 else 1.0
+    top_h = top_nat * scale
+    bot_h = bot_nat * scale
+    figbox_h = fig_overhead + top_h + bot_h
+    fig_h = content_h + 2 * OUTER_M
+
+    # ── Figure + full-figure inch-axes carrying the section / figure boxes ────
     fig = plt.figure(figsize=(FIG_W, fig_h), facecolor=C_FIG_BG)
+    fx = lambda v: v / FIG_W
+    fy = lambda v: v / fig_h
+    ax_bg = fig.add_axes([0, 0, 1, 1], zorder=-1)
+    ax_bg.set_xlim(0, FIG_W)
+    ax_bg.set_ylim(0, fig_h)
+    ax_bg.set_facecolor("none")
+    ax_bg.axis("off")
 
-    tf = lambda v: v / fig_h
+    content_top = fig_h - OUTER_M
+    content_bot = OUTER_M
+    left_x0 = OUTER_M
+    right_x0 = left_x0 + left_w + COL_GAP_IN
 
-    # ── Column 1: section y-positions (bottom-up) ─────────────────────────────
-    y = OUTER_BOT
-    mt_bot = tf(y)
-    mt_hf = tf(HDR_H + mt_h)
-    y += HDR_H + mt_h + BOX_GAP
-    rs_bot = tf(y)
-    rs_hf = tf(HDR_H + rs_h)
-    y += HDR_H + rs_h + 2 * BOX_GAP
-    in_bot = tf(y)
-    in_hf = tf(HDR_H + in_h)
-
-    hkw = dict(
-        transform=fig.transFigure,
-        fontsize=22,
-        fontweight="bold",
-        color=C_TEXT,
-        va="bottom",
-        fontfamily="monospace",
-        zorder=0,
-    )
-    top_pad = tf(0.02)
-    fig.text(_IX + 0.006, in_bot + in_hf - tf(HDR_H * 0.3), "[ Prompt ]", **hkw)
-    fig.text(_IX + 0.006, rs_bot + rs_hf - tf(HDR_H * 0.3), "[ Response ]", **hkw)
-    fig.text(
-        _IX + 0.006,
-        mt_bot + mt_hf - tf(HDR_H * 0.3),
-        "[ GT / Prediction / Metrics ]",
-        **hkw,
-    )
-
-    COL1_AX_L = _IX + 0.004
-    COL1_AX_FRAC = COL1_W_FRAC - 0.008
-
-    def col1_axes(sec_bot, sec_hf):
-        bot = sec_bot + top_pad
-        h = max(0.01, sec_hf - tf(HDR_H) - top_pad)
-        return fig.add_axes([COL1_AX_L, bot, COL1_AX_FRAC, h])
-
-    ax_in = col1_axes(in_bot, in_hf)
-    ax_in.set_facecolor("none")
-    ax_in.axis("off")
-    _draw_tokens(
-        ax_in,
-        in_tokens,
-        0.002,
-        0.998,
-        FONTSIZE_IN,
-        COL1_AX_FRAC * FIG_W,
-        (in_hf - tf(HDR_H) - top_pad) * fig_h,
-    )
-
-    ax_rs = col1_axes(rs_bot, rs_hf)
-    ax_rs.set_facecolor("none")
-    ax_rs.axis("off")
-    _draw_tokens(
-        ax_rs,
-        rs_tokens,
-        0.002,
-        0.998,
-        FONTSIZE_RS,
-        COL1_AX_FRAC * FIG_W,
-        (rs_hf - tf(HDR_H) - top_pad) * fig_h,
-    )
-
-    ax_mt = col1_axes(mt_bot, mt_hf)
-    ax_mt.set_facecolor("none")
-    ax_mt.axis("off")
-    _draw_tokens(
-        ax_mt,
-        mt_tokens,
-        0.002,
-        0.998,
-        FONTSIZE_MT,
-        COL1_AX_FRAC * FIG_W,
-        (mt_hf - tf(HDR_H) - top_pad) * fig_h,
-    )
-
-    # Separator line at bottom of section 1 (Prompt)
-    fig.add_artist(
-        mlines.Line2D(
-            [_IX, 1.0 - LM],
-            [in_bot, in_bot],
-            transform=fig.transFigure,
-            color=C_SEP,
-            linewidth=1.5,
-            zorder=0,
+    # ── Left column: 3 section boxes (rail + pill + text), top-aligned ────────
+    y = content_top
+    for i in range(3):
+        seg_top = y
+        seg_bot = seg_top - seg_h[i]
+        _round_rect(
+            ax_bg, left_x0, seg_bot, left_w, seg_h[i], radius=SEG_RADIUS,
+            facecolor=C_SEG_FILL, edgecolor=C_SEG_EDGE, linewidth=1.0, zorder=4,
         )
+        _left_rail(
+            ax_bg, left_x0, seg_bot + SEG_RADIUS, seg_h[i] - 2 * SEG_RADIUS,
+            color=rail_colors[i], zorder=5,
+        )
+        text_x0 = left_x0 + RAIL_W + SEG_PAD_X
+        _pill(
+            ax_bg, text_x0, seg_top - SEG_PAD_TOP - PILL_H, pill_texts[i],
+            color=rail_colors[i], zorder=6,
+        )
+        text_top = seg_top - SEG_PAD_TOP - PILL_H - PILL_GAP_BELOW
+        text_bot = seg_bot + SEG_PAD_BOT
+        ax_txt = fig.add_axes(
+            [fx(text_x0), fy(text_bot), fx(text_w), fy(text_top - text_bot)]
+        )
+        ax_txt.set_facecolor("none")
+        ax_txt.axis("off")
+        _draw_tokens(ax_txt, toks[i], 0.002, 0.998, fss[i], text_w, text_top - text_bot)
+        y = seg_bot - SEG_GAP
+
+    # ── Right column: figure box (vertically centered) hugging the two images ──
+    figbox_top = content_top - (content_h - figbox_h) / 2
+    figbox_bot = figbox_top - figbox_h
+    _round_rect(
+        ax_bg, right_x0, figbox_bot, right_w, figbox_h, radius=FIGBOX_RADIUS,
+        facecolor=C_FIGBOX_FILL, edgecolor=C_FIGBOX_EDGE, linewidth=1.0, zorder=4,
+    )
+    inner_x0 = right_x0 + FIGBOX_PAD
+    inner_cx = right_x0 + right_w / 2
+    inner_top = figbox_top - FIGBOX_PAD
+    title_kw = dict(
+        ha="center", va="center", fontsize=16, fontweight="bold", color=C_TEXT,
+        fontfamily="sans-serif", zorder=6,
     )
 
-    # Col 2: shared panel width for both images so they render at identical visible widths.
-    # Pick a width such that BOTH (img aspect) and (overlay aspect) fit within 0.35*fig_h.
-    disp_H, disp_W = img.shape
-    disp_aspect = disp_H / disp_W
-    orig_H, orig_W = doc["image_size_2d"]
-    orig_aspect = orig_H / orig_W
-
-    max_h_in = 0.35 * fig_h
-    max_aspect = max(disp_aspect, orig_aspect)
-    panel_w_in = min(COL2_W_IN, max_h_in / max_aspect)
-
-    panel_w_frac = panel_w_in / FIG_W
-    panel_x_frac = COL2_X_FRAC + (COL2_W_FRAC - panel_w_frac) / 2
-
-    img_h_frac = panel_w_in * disp_aspect / fig_h
-    ovl_h_frac = panel_w_in * orig_aspect / fig_h
-
-    # Image 1: centered vertically in section 1 (Prompt)
-    sec1_center = in_bot + in_hf / 2
+    # Top: title + input image (unrotated).
+    ax_bg.text(inner_cx, inner_top - TITLE_H / 2, "Input Image", **title_kw)
+    top_img_top = inner_top - TITLE_H
     ax_img = fig.add_axes(
-        [panel_x_frac, max(0.0, sec1_center - img_h_frac / 2), panel_w_frac, img_h_frac]
+        _place_image_box(
+            fig,
+            [fx(inner_x0), fy(top_img_top - top_h), fx(fig_inner_w), fy(top_h)],
+            disp_aspect,
+        )
     )
     ax_img.imshow(img, cmap="gray", aspect="equal")
     ax_img.axis("off")
 
-    # Image 2: centered vertically in section 2+3 (Response + Metrics)
-    sec23_center = (mt_bot + rs_bot + rs_hf) / 2
+    # Bottom: title + rotated overlay (gutters reserved for labels/ticks).
+    bunit_top = top_img_top - top_h - IMG_GAP
+    ax_bg.text(
+        inner_cx, bunit_top - TITLE_H / 2, "Image with GT and Prediction", **title_kw
+    )
+    bot_img_top = bunit_top - TITLE_H
     ax_ovl = fig.add_axes(
-        [
-            panel_x_frac,
-            max(0.0, sec23_center - ovl_h_frac / 2),
-            panel_w_frac,
-            ovl_h_frac,
-        ]
+        _place_image_box(
+            fig,
+            [fx(inner_x0 + GUT_L), fy(bot_img_top - bot_h), fx(fig_inner_w - GUT_L), fy(bot_h)],
+            rot_aspect,
+        )
     )
     _draw_detection_overlay_on_ax(ax_ovl, doc, sample)
 
     stem = os.path.splitext(out_path)[0]
     for fmt in formats:
-        save_fig_capped(f"{stem}.{fmt}", transparent=True)
+        save_fig_capped(f"{stem}.{fmt}", dpi=dpi, transparent=True)
     plt.close(fig)
     return f"{stem}.{formats[0]}"
 
@@ -734,6 +847,12 @@ def main():
     parser.add_argument(
         "--save_as_pdf", action="store_true", help="Save figures as PDF."
     )
+    parser.add_argument(
+        "--dpi",
+        type=int,
+        default=100,
+        help="Figure save DPI (clamped down to the 34MP arXiv cap). Default 100.",
+    )
     args = parser.parse_args()
 
     if args.jsonl and args.model_dir:
@@ -758,7 +877,8 @@ def main():
         all_jsonls = [
             f
             for f in all_jsonls
-            if not f.endswith("_proc_acc.jsonl") and not f.endswith("_eq_acc.jsonl")
+            if "_proc_acc" not in os.path.basename(f)
+            and "_eq_acc" not in os.path.basename(f)
         ]
         if not all_jsonls:
             raise FileNotFoundError(f"No JSONL files found in: {parsed_dir}")
@@ -794,7 +914,7 @@ def main():
                 doc_id = sample["doc_id"]
                 fname = _make_filename(sample, dataset_name)
                 out_path = os.path.join(per_file_out_dir, fname)
-                out = _plot_sample(sample, out_path, reshape_hw, formats)
+                out = _plot_sample(sample, out_path, reshape_hw, formats, dpi=args.dpi)
                 if out:
                     print(f"  [{i+1}/{len(samples)}] doc_id={doc_id} → {out}")
 
@@ -812,7 +932,7 @@ def main():
         for i, sample in enumerate(samples):
             doc_id = sample["doc_id"]
             out_path = os.path.join(args.output_dir, f"doc_{doc_id:04d}.png")
-            out = _plot_sample(sample, out_path, reshape_hw, formats)
+            out = _plot_sample(sample, out_path, reshape_hw, formats, dpi=args.dpi)
             if out:
                 print(f"  [{i+1}/{len(samples)}] doc_id={doc_id} → {out}")
 

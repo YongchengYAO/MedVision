@@ -16,14 +16,23 @@ Usage:
         --config_yaml <path/to/config.yaml> \
         --task_dir <path/to/task_dir> \
         --fig_dir <output_dir> \
-        --fig_name <output.png> \
+        --fig_name <output.pdf> \
         [--metrics_list METRIC1 METRIC2 ...] \
         [--verbose_model MODEL1 [MODEL2 ...]] \
         [--show_scatter] \
         [--show_label_name] \
         [--radar_cell_inches N] \
         [--label_col N] \
-        [--legend_col N]
+        [--legend_col N] \
+        [--save_as_png] [--save_as_pdf]
+
+Output formats:
+    - No flags (what viz_radar.sh and viz_radar_batch.sh do) → ["pdf"] —
+      exactly what the line-plots→PDF rule wants.
+    - --save_as_png → ["png"] only — an explicit override for when you need
+      a raster copy.
+    - --save_as_png --save_as_pdf → both files written, one per format, via
+      the extension swap in plot_metrics_multi_model.
 
 Config YAML format:
     model_display_name:
@@ -1099,7 +1108,7 @@ def main():
         "--fig_name",
         type=str,
         required=True,
-        help="Output figure filename (e.g., radar_detection.png).",
+        help="Output figure filename (e.g., radar_detection.pdf).",
     )
     parser.add_argument(
         "--metrics_list",

@@ -435,6 +435,10 @@ label_map_regroup = {
     "left scapula": "Others",
     "right scapula": "Others",
     "prostate/uterus": "Others",
+    # ── genuinely-missing anatomy (medvision_ds uses these names; absent from the lists above) ──
+    "pulmonary vein": "Vein",
+    "left maxillary sinus": "Head-Neck",  # no sinus-specific group; Head-Neck is closest
+    "right maxillary sinus": "Head-Neck",
 }
 
 
@@ -761,3 +765,23 @@ CT_HU_windows_WL = {
     "Jawbone": HU_window_WL_map["bone"],
     "Tooth": HU_window_WL_map["bone"],
 }
+
+
+# ----------------------------------------------------------------
+# NOTE: Dataset donut-chart palettes
+# ----------------------------------------------------------------
+# Muted qualitative hue-sweeps, one colour per dataset, used by
+# summarize_datasets.py. When there are more datasets than colours the list is
+# cycled and each wrap is blended further toward white (later rounds lighter);
+# colours are assigned in ring (annotation-count) order so the palette sweeps
+# the donut in listed sequence. Select the active palette in
+# summarize_datasets.py (``_DATASET_COLORS``).
+nature_palette_1 = [
+    "#B66699", "#D49AB5", "#B7A6C7", "#A3BDD8", "#8EBCBB",
+    "#85B293", "#B9C18E", "#E8C38C", "#E8A27D",
+]
+nature_palette_2 = [
+    "#9F8DB8", "#6E8FB2", "#ABC8E5","#7DA494", "#D0D08A", 
+    "#EAB67A", "#E5A79A", "#C16E71", "#D8A0C1",
+]
+# ----------------------------------------------------------------

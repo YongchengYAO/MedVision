@@ -13,6 +13,11 @@ Coordinate conversion (model image space → array space):
 
 Display convention:
     imshow(img.T, origin="lower") → plot_x = idx_dim0 (row), plot_y = idx_dim1 (col)
+
+Output formats:
+    - No flags → ["png"] (default).
+    - --save_as_pdf → ["pdf"] only.
+    - --save_as_png --save_as_pdf → both files written, one per format.
 """
 
 import argparse
@@ -33,6 +38,7 @@ from medvision_bm.sft.sft_utils import normalize_img
 from medvision_bm.utils.plot_utils import plot_tl_axes_on_image
 
 _SLICE_DIM_NAMES = {0: "Sagittal", 1: "Coronal", 2: "Axial"}
+_REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
 def _build_removed_set(json_path):
@@ -201,6 +207,7 @@ def process_model_dir(
     show_coords=False,
     removed_samples_dir=None,
     removed_samples_filename=None,
+    formats=("png",),
 ):
     model_name = os.path.basename(model_dir.rstrip("/"))
     out_dir = os.path.join(base_fig_dir, task_folder, model_name)
@@ -310,6 +317,7 @@ def process_model_dir(
                     show_coords=show_coords,
                     gt_major_pts=gt_major_pts,
                     gt_minor_pts=gt_minor_pts,
+                    formats=formats,
                 )
             except Exception as e:
                 print(f"    WARNING: plotting failed for doc {doc_id}: {e}")
@@ -334,7 +342,7 @@ def main():
     parser.add_argument(
         "--fig_dir",
         type=str,
-        default="/mnt/vincent-pvc-rwm/Github/MedVision/Figures",
+        default=os.path.join(_REPO_DIR, "Figures"),
         help="Base output directory for figures",
     )
     parser.add_argument(
@@ -364,10 +372,20 @@ def main():
         default="multi_cluster_samples_v1.0.0_to_v1.1.0.json",
         help="Filename of the removed-samples JSON within each dataset subdirectory.",
     )
+    parser.add_argument(
+        "--save_as_png", action="store_true", help="Save figures as PNG."
+    )
+    parser.add_argument(
+        "--save_as_pdf", action="store_true", help="Save figures as PDF."
+    )
     args = parser.parse_args()
 
     if args.task_dir is None and args.model_dir is None:
         parser.error("Provide --task_dir or --model_dir")
+
+    formats = [
+        f for f, on in (("png", args.save_as_png), ("pdf", args.save_as_pdf)) if on
+    ] or ["png"]
 
     if args.task_dir is not None:
         task_folder = os.path.basename(args.task_dir.rstrip("/"))
@@ -387,6 +405,7 @@ def main():
                 args.show_coords,
                 removed_samples_dir=args.removed_samples_dir,
                 removed_samples_filename=args.removed_samples_filename,
+                formats=formats,
             )
     else:
         # Single model dir: infer task_folder from parent directory name
@@ -401,6 +420,7 @@ def main():
             args.show_coords,
             removed_samples_dir=args.removed_samples_dir,
             removed_samples_filename=args.removed_samples_filename,
+            formats=formats,
         )
 
 

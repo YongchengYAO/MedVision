@@ -2,12 +2,21 @@
 Assemble a cross-model comparison grid from pre-generated per-sample subfigures.
 
 Reads a base directory whose immediate subfolders are model output directories
-(one per model), each containing per-dataset subfolders of per-sample PNGs. Those
-PNGs are produced by the per-task visualizers in this folder:
+(one per model), each containing per-dataset subfolders of per-sample subfigures.
+Those subfigures are produced by the per-task visualizers in this folder:
 viz_tl_axes.py (TL), viz_ad_landmarks.py (AD), viz_detection_boxes.py (Detection).
 A fixed random subset (seeded from configs.py SEED, overridable via --seed) is
 sampled equally across the datasets common to all models, then laid out into a
 single comparison figure.
+
+Input/output formats (png, svg, pdf) are independent and controlled by
+--input_format (single) and --output_format (one or more), both defaulting to pdf.
+The grid is composited with PyMuPDF: vector inputs (pdf/svg) are placed as true
+vector content (show_pdf_page), so vector -> vector output stays vector; png inputs
+are embedded as raster, and png output rasterizes the final page. svg inputs are
+converted to pdf via cairosvg before placement. Because vector pdf/svg output is not
+pixel-capped, --pdf_image_dpi optionally downsamples the pdf's embedded raster images
+via Ghostscript (overlays stay vector) to bound file size.
 
 Three layout modes:
     default          rows are grouped per model (--row_per_model rows each),
@@ -26,7 +35,10 @@ Usage:
     python viz_compile_grid.py \
         --dir_subfigures <base_dir_of_model_subfolders> \
         --limit_subfigures <N >= num_datasets> \
-        --output <output.png> \
+        --output <output_path> \
+        [--input_format {png,svg,pdf}] \
+        [--output_format {png,svg,pdf} [{png,svg,pdf} ...]] \
+        [--pdf_image_dpi N] \
         [--row_per_model N] \
         [--dir_model <model_folder_name>] \
         [--seed N] \
@@ -39,17 +51,19 @@ import math
 import random
 from pathlib import Path
 
+import fitz  # PyMuPDF
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
-from matplotlib.lines import Line2D
 
-from medvision_bm.utils.plot_utils import FIG_DPI, save_fig_capped, save_img_capped
+from medvision_bm.utils.plot_utils import FIG_DPI, MAX_FIG_MP
 
 from medvision_bm.utils.configs import SEED
+
+PT_PER_IN = 72.0  # PDF points per inch
+_LABEL_FONT = fitz.Font("hebo")  # Helvetica-Bold, matches the old fontweight="bold"
 
 MODEL_NAME_MAP = {
     "MedVision__fullRFT__qwen25vl-7b-fullSFT__AD-TL-D__512x512__PRxAnswer_s250": "fullRFT",
@@ -57,7 +71,7 @@ MODEL_NAME_MAP = {
 }
 
 
-def _select_samples(models, limit, rng):
+def _select_samples(models, limit, input_format, rng):
     """Return ordered list of (dataset, filename) with equal samples per dataset.
 
     Each dataset receives ceil(limit / n_datasets) samples, so total may exceed
@@ -79,11 +93,13 @@ def _select_samples(models, limit, rng):
 
     common_files = {}
     for dataset in common_datasets:
-        files_sets = [set(f.name for f in (m / dataset).glob("*.png")) for m in models]
+        files_sets = [
+            set(f.name for f in (m / dataset).glob(f"*.{input_format}")) for m in models
+        ]
         common_files[dataset] = sorted(set.intersection(*files_sets))
         if not common_files[dataset]:
             raise ValueError(
-                f"No common PNG files found across all models for dataset '{dataset}'"
+                f"No common '.{input_format}' files found across all models for dataset '{dataset}'"
             )
 
     per_dataset = math.ceil(limit / n_datasets)
@@ -96,66 +112,221 @@ def _select_samples(models, limit, rng):
     return [(ds, f) for ds in common_datasets for f in selected_by_dataset[ds]]
 
 
-def _draw_model_labels_and_separators(fig, models, anchor_axes, show_model_label):
-    """Draw rotated model name text and horizontal separator lines between model groups."""
+# ── PyMuPDF compositing primitives ───────────────────────────────────────────
+
+
+def _rect_pts(bbox, w_pt, h_pt):
+    """Convert a matplotlib figure-fraction bbox (y bottom-up) to a fitz.Rect in
+    points on a page of size (w_pt, h_pt) (y top-down)."""
+    x0, y0, x1, y1 = (
+        (bbox.x0, bbox.y0, bbox.x1, bbox.y1) if hasattr(bbox, "x0") else bbox
+    )
+    return fitz.Rect(x0 * w_pt, (1 - y1) * h_pt, x1 * w_pt, (1 - y0) * h_pt)
+
+
+def _open_src_as_pdf(path, input_format):
+    """Return a 1-page fitz Document for a vector subfigure (pdf directly, svg via cairosvg)."""
+    if input_format == "pdf":
+        return fitz.open(str(path))
+    import cairosvg  # only needed for svg inputs
+
+    return fitz.open("pdf", cairosvg.svg2pdf(url=str(path)))
+
+
+def _place_subfig(page, rect, path, input_format, subdocs):
+    """Place one subfigure into rect. Vector inputs are embedded as vector via
+    show_pdf_page; png inputs are embedded as raster. keep_proportion=False
+    stretches to fill the cell, matching the old imshow(aspect="auto")."""
+    if input_format == "png":
+        page.insert_image(rect, filename=str(path), keep_proportion=False)
+    else:
+        src = _open_src_as_pdf(path, input_format)
+        subdocs.append(src)
+        page.show_pdf_page(rect, src, 0, keep_proportion=False)
+
+
+def _draw_text(page, rect, text, fontsize, rotate=0):
+    """Draw bold text centered in rect, optionally rotated (90 = CCW, bottom-to-top)."""
+    cx, cy = (rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2
+    tl = _LABEL_FONT.text_length(text, fontsize=fontsize)
+    tw = fitz.TextWriter(page.rect)
+    tw.append((cx - tl / 2, cy + fontsize * 0.35), text, font=_LABEL_FONT, fontsize=fontsize)
+    if rotate:
+        tw.write_text(page, morph=(fitz.Point(cx, cy), fitz.Matrix(rotate)))
+    else:
+        tw.write_text(page)
+
+
+def _model_label_elements(models, anchor_positions, show_model_label):
+    """Build rotated model-name text placements and inter-model separator y-fractions
+    from per-model anchor bboxes (leftmost cell of each row). Returns
+    (text_places, sep_fracs) where text_places = [(bbox, text, fontsize, rotate), ...]."""
+    text_places, sep_fracs = [], []
     n_models = len(models)
-    for model_idx, model in enumerate(models):
-        bbox_first = anchor_axes[model_idx][0].get_position()
-        bbox_last = anchor_axes[model_idx][-1].get_position()
-
+    for i, model in enumerate(models):
+        first = anchor_positions[i][0]
+        last = anchor_positions[i][-1]
         if show_model_label:
-            model_name = MODEL_NAME_MAP.get(model.name, model.name)
-            y_center = (bbox_first.y1 + bbox_last.y0) / 2
-            x_label = (bbox_first.x0 + bbox_first.x1) / 2
-            fig.text(
-                x_label,
-                y_center,
-                model_name,
-                rotation=90,
-                va="center",
-                ha="center",
-                fontsize=11,
-                fontweight="bold",
-                transform=fig.transFigure,
-            )
-
-        if model_idx < n_models - 1:
-            bbox_next = anchor_axes[model_idx + 1][0].get_position()
-            y_sep = (bbox_last.y0 + bbox_next.y1) / 2
-            fig.add_artist(
-                Line2D(
-                    [0.0, 1.0],
-                    [y_sep, y_sep],
-                    transform=fig.transFigure,
-                    color="black",
-                    linewidth=1.5,
-                    clip_on=False,
-                )
-            )
+            name = MODEL_NAME_MAP.get(model.name, model.name)
+            bbox = (first.x0, last.y0, first.x1, first.y1)
+            text_places.append((bbox, name, 11, 90))
+        if i < n_models - 1:
+            nxt = anchor_positions[i + 1][0]
+            sep_fracs.append((last.y0 + nxt.y1) / 2)
+    return text_places, sep_fracs
 
 
-def _save_fig_formats(out_path, formats, **kwargs):
-    """Save the current figure once per requested format, swapping out_path's extension."""
+def _build_page(w_in, h_in, img_places, text_places, sep_fracs, input_format):
+    """Render a single grid page into a new 1-page fitz Document.
+
+    img_places  = [(bbox, src_path), ...]
+    text_places = [(bbox, text, fontsize, rotate), ...]
+    sep_fracs   = [y_fraction, ...]   (full-width horizontal separators)
+
+    Returns (doc, subdocs) where subdocs are the per-cell source Documents that
+    must stay open until the page is saved/rasterized.
+    """
+    w_pt, h_pt = w_in * PT_PER_IN, h_in * PT_PER_IN
+    doc = fitz.open()
+    page = doc.new_page(width=w_pt, height=h_pt)
+    subdocs = []
+    for bbox, path in img_places:
+        _place_subfig(page, _rect_pts(bbox, w_pt, h_pt), path, input_format, subdocs)
+    for bbox, text, fontsize, rotate in text_places:
+        _draw_text(page, _rect_pts(bbox, w_pt, h_pt), text, fontsize, rotate)
+    for y_frac in sep_fracs:
+        y = (1 - y_frac) * h_pt
+        page.draw_line(
+            fitz.Point(0, y), fitz.Point(w_pt, y), color=(0, 0, 0), width=1.5
+        )
+    return doc, subdocs
+
+
+def _compose_panels(panel_docs, horizontal):
+    """Stitch multiple 1-page panel Documents into one page, preserving vectors.
+
+    horizontal=True -> side by side (top-aligned); False -> stacked (left-aligned).
+    """
+    sizes = [(d[0].rect.width, d[0].rect.height) for d in panel_docs]
+    if horizontal:
+        w_pt, h_pt = sum(w for w, _ in sizes), max(h for _, h in sizes)
+    else:
+        w_pt, h_pt = max(w for w, _ in sizes), sum(h for _, h in sizes)
+
+    out = fitz.open()
+    page = out.new_page(width=w_pt, height=h_pt)
+    x = y = 0
+    for d, (w, h) in zip(panel_docs, sizes):
+        page.show_pdf_page(fitz.Rect(x, y, x + w, y + h), d, 0)
+        if horizontal:
+            x += w
+        else:
+            y += h
+    return out
+
+
+def _downsample_pdf_images(pdf_path, dpi):
+    """Downsample embedded raster images in pdf_path (in place) to `dpi` via Ghostscript,
+    leaving vector paths and text untouched (only image XObjects are re-encoded). This
+    bounds the file size of a vector-composited grid whose bulk is the per-cell raster
+    medical-image, without rasterizing the overlays. Requires `gs` on PATH; Flate keeps
+    the downsample lossless."""
+    import shutil
+    import subprocess
+
+    gs = shutil.which("gs")
+    if gs is None:
+        raise RuntimeError(
+            "--pdf_image_dpi requires Ghostscript ('gs') on PATH, but it was not found."
+        )
+    pdf_path = Path(pdf_path)
+    tmp = pdf_path.with_name(pdf_path.stem + ".gs_tmp.pdf")
+    cmd = [
+        gs,
+        "-sDEVICE=pdfwrite",
+        "-dCompatibilityLevel=1.5",
+        # pdfwrite defaults to auto-rotating pages by text orientation; our rotated
+        # model/dataset labels would otherwise flip the whole grid 90 degrees.
+        "-dAutoRotatePages=/None",
+        "-dDownsampleColorImages=true",
+        "-dColorImageDownsampleType=/Bicubic",
+        f"-dColorImageResolution={dpi}",
+        "-dColorImageDownsampleThreshold=1.0",
+        "-dDownsampleGrayImages=true",
+        "-dGrayImageDownsampleType=/Bicubic",
+        f"-dGrayImageResolution={dpi}",
+        "-dGrayImageDownsampleThreshold=1.0",
+        "-dAutoFilterColorImages=false",
+        "-dColorImageFilter=/FlateEncode",
+        "-dAutoFilterGrayImages=false",
+        "-dGrayImageFilter=/FlateEncode",
+        "-dNOPAUSE",
+        "-dBATCH",
+        "-dQUIET",
+        f"-sOutputFile={tmp}",
+        str(pdf_path),
+    ]
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    if proc.returncode != 0:
+        tmp.unlink(missing_ok=True)
+        raise RuntimeError(
+            f"Ghostscript image downsampling failed (exit {proc.returncode}):\n{proc.stderr}"
+        )
+    tmp.replace(pdf_path)
+
+
+def _export(doc, out_path, output_formats, pdf_image_dpi=None):
+    """Write the single-page doc to each requested format, swapping out_path's suffix.
+    png rasterizes at up to FIG_DPI, clamped so the pixel count stays within MAX_FIG_MP.
+    pdf_image_dpi (>0) downsamples the pdf's embedded rasters via Ghostscript (pdf only)."""
+    page = doc[0]
     p = Path(out_path)
-    for fmt in formats:
-        save_fig_capped(str(p.with_suffix(f".{fmt}")), **kwargs)
+    for fmt in output_formats:
+        target = p.with_suffix(f".{fmt}")
+        if fmt == "pdf":
+            doc.save(str(target))
+            if pdf_image_dpi and pdf_image_dpi > 0:
+                _downsample_pdf_images(target, pdf_image_dpi)
+        elif fmt == "svg":
+            with open(target, "w") as f:
+                f.write(page.get_svg_image())
+        elif fmt == "png":
+            w_in = page.rect.width / PT_PER_IN
+            h_in = page.rect.height / PT_PER_IN
+            max_dpi = (MAX_FIG_MP * 1e6 / (w_in * h_in)) ** 0.5
+            dpi = int(min(FIG_DPI, max_dpi))
+            page.get_pixmap(dpi=dpi, alpha=True).save(str(target))
+        else:
+            raise ValueError(f"Unsupported output format: {fmt}")
+        print(f"Saved: {target}")
 
 
-def _save_img_formats(img, out_path, formats):
-    """Save a composited PIL image once per format. PDF can't hold an alpha channel,
-    so RGBA panels are flattened onto white (matching the pre-transparency behavior)."""
-    from PIL import Image
-
-    p = Path(out_path)
-    for fmt in formats:
-        out = img
-        if fmt != "png" and img.mode == "RGBA":
-            out = Image.new("RGB", img.size, "white")
-            out.paste(img, mask=img.split()[-1])
-        save_img_capped(out, str(p.with_suffix(f".{fmt}")))
+def _close_all(*docs):
+    for d in docs:
+        try:
+            d.close()
+        except Exception:
+            pass
 
 
-def _compile_figure(models, samples, row_per_model, output, show_model_label=True, formats=("png",)):
+def _group_by_dataset(samples):
+    """Return (samples_by_dataset, dataset_order) preserving first-seen order."""
+    samples_by_dataset, dataset_order = {}, []
+    for ds, f in samples:
+        if ds not in samples_by_dataset:
+            samples_by_dataset[ds] = []
+            dataset_order.append(ds)
+        samples_by_dataset[ds].append(f)
+    return samples_by_dataset, dataset_order
+
+
+# ── Layout modes ─────────────────────────────────────────────────────────────
+
+
+def _compile_figure(
+    models, samples, row_per_model, output, output_formats, show_model_label=True,
+    input_format="pdf", pdf_image_dpi=None
+):
     n_cols_img = math.ceil(len(samples) / row_per_model)
     n_models = len(models)
     n_total_rows = n_models * row_per_model
@@ -184,45 +355,42 @@ def _compile_figure(models, samples, row_per_model, output, show_model_label=Tru
         bottom=0.0,
     )
 
-    # anchor_axes[model_idx][row_in_model] = leftmost axis of that row (for label/separator positioning)
-    anchor_axes = []
+    img_places = []
+    # anchor_positions[model_idx][row_in_model] = leftmost cell bbox of that row
+    anchor_positions = []
     for model_idx, model in enumerate(models):
         model_anchors = []
         for row_in_model in range(row_per_model):
             row_idx = model_idx * row_per_model + row_in_model
 
             if show_model_label:
-                ax_lbl = fig.add_subplot(gs[row_idx, 0])
-                ax_lbl.axis("off")
-                model_anchors.append(ax_lbl)
+                model_anchors.append(gs[row_idx, 0].get_position(fig))
 
             for col_idx in range(n_cols_img):
                 sample_idx = row_in_model * n_cols_img + col_idx
-                ax_img = fig.add_subplot(gs[row_idx, col_idx + col_offset])
-                ax_img.axis("off")
+                pos = gs[row_idx, col_idx + col_offset].get_position(fig)
                 if not show_model_label and col_idx == 0:
-                    model_anchors.append(ax_img)
+                    model_anchors.append(pos)
                 if sample_idx < len(samples):
                     dataset, filename = samples[sample_idx]
-                    img = mpimg.imread(str(model / dataset / filename))
-                    ax_img.imshow(img, aspect="auto")
+                    img_places.append((pos, model / dataset / filename))
 
-        anchor_axes.append(model_anchors)
+        anchor_positions.append(model_anchors)
 
-    fig.canvas.draw()
-    _draw_model_labels_and_separators(fig, models, anchor_axes, show_model_label)
+    texts, seps = _model_label_elements(models, anchor_positions, show_model_label)
+    doc, subdocs = _build_page(fig_w, fig_h, img_places, texts, seps, input_format)
+    plt.close(fig)
 
     out_path = Path(output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    _save_fig_formats(out_path, formats, fig=fig, bbox_inches="tight", transparent=True)
-    plt.close(fig)
-    print(f"Saved: {out_path}")
+    _export(doc, out_path, output_formats, pdf_image_dpi)
+    _close_all(doc, *subdocs)
 
 
 def _make_dataset_as_col_panel(
-    models, ds_group, samples_by_dataset, rows_per_model, panel_size, show_model_label
+    models, ds_group, samples_by_dataset, rows_per_model, panel_size, show_model_label, input_format
 ):
-    """Render one dataset-as-col panel into a new Figure and return it (caller must close)."""
+    """Render one dataset-as-col panel into a 1-page fitz Document. Returns (doc, subdocs)."""
     n_models = len(models)
     n_total_rows = n_models * rows_per_model
     cell_h, cell_w, label_w, header_h = 3.0, 3.0, 0.6, 0.15
@@ -246,63 +414,48 @@ def _make_dataset_as_col_panel(
         bottom=0.0,
     )
 
+    text_places = []
     for ds_idx, dataset in enumerate(ds_group):
-        ax_hdr = fig.add_subplot(gs[0, ds_idx + col_offset])
-        ax_hdr.axis("off")
-        ax_hdr.text(
-            0.5,
-            0.05,
-            dataset,
-            va="bottom",
-            ha="center",
-            fontsize=16,
-            fontweight="bold",
-            transform=ax_hdr.transAxes,
-        )
+        text_places.append((gs[0, ds_idx + col_offset].get_position(fig), dataset, 16, 0))
 
-    anchor_axes = []
+    img_places = []
+    anchor_positions = []
     for model_idx, model in enumerate(models):
         model_anchors = []
         for row_in_model in range(rows_per_model):
             row_idx = 1 + model_idx * rows_per_model + row_in_model
 
             if show_model_label:
-                ax_lbl = fig.add_subplot(gs[row_idx, 0])
-                ax_lbl.axis("off")
-                model_anchors.append(ax_lbl)
+                model_anchors.append(gs[row_idx, 0].get_position(fig))
 
             for ds_idx, dataset in enumerate(ds_group):
-                ax_img = fig.add_subplot(gs[row_idx, ds_idx + col_offset])
-                ax_img.axis("off")
+                pos = gs[row_idx, ds_idx + col_offset].get_position(fig)
                 if not show_model_label and ds_idx == 0:
-                    model_anchors.append(ax_img)
+                    model_anchors.append(pos)
                 ds_files = samples_by_dataset[dataset]
                 if row_in_model < len(ds_files):
-                    img = mpimg.imread(str(model / dataset / ds_files[row_in_model]))
-                    ax_img.imshow(img, aspect="auto")
+                    img_places.append((pos, model / dataset / ds_files[row_in_model]))
 
-        anchor_axes.append(model_anchors)
+        anchor_positions.append(model_anchors)
 
-    fig.canvas.draw()
-    _draw_model_labels_and_separators(fig, models, anchor_axes, show_model_label)
-    return fig
+    labels, seps = _model_label_elements(models, anchor_positions, show_model_label)
+    doc, subdocs = _build_page(
+        fig_w, fig_h, img_places, text_places + labels, seps, input_format
+    )
+    plt.close(fig)
+    return doc, subdocs
 
 
 def _compile_figure_dataset_as_col(
-    models, samples, output, show_model_label=True, num_panel=1, formats=("png",)
+    models, samples, output, output_formats, show_model_label=True, num_panel=1,
+    input_format="pdf", pdf_image_dpi=None
 ):
     """Dataset-as-columns layout: each column = one dataset; rows = samples within that dataset.
 
     If num_panel > 1, datasets are split into vertically stacked panels to reduce figure width.
-    Each panel is rendered as a separate Figure and stitched with PIL.
+    Each panel is rendered as its own fitz page and stitched vector-preserving with show_pdf_page.
     """
-    samples_by_dataset = {}
-    dataset_order = []
-    for ds, f in samples:
-        if ds not in samples_by_dataset:
-            samples_by_dataset[ds] = []
-            dataset_order.append(ds)
-        samples_by_dataset[ds].append(f)
+    samples_by_dataset, dataset_order = _group_by_dataset(samples)
 
     rows_per_model = max(len(v) for v in samples_by_dataset.values())
     panel_size = math.ceil(len(dataset_order) / num_panel)
@@ -313,48 +466,30 @@ def _compile_figure_dataset_as_col(
     out_path = Path(output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if num_panel == 1:
-        fig = _make_dataset_as_col_panel(
+    panel_docs, all_subdocs = [], []
+    for ds_group in dataset_groups:
+        if not ds_group:
+            continue
+        d, sub = _make_dataset_as_col_panel(
             models,
-            dataset_groups[0],
+            ds_group,
             samples_by_dataset,
             rows_per_model,
             panel_size,
             show_model_label,
+            input_format,
         )
-        _save_fig_formats(out_path, formats, fig=fig, bbox_inches="tight", transparent=True)
-        plt.close(fig)
+        panel_docs.append(d)
+        all_subdocs += sub
+
+    if len(panel_docs) == 1:
+        final, composed = panel_docs[0], None
     else:
-        import io
+        final = _compose_panels(panel_docs, horizontal=False)
+        composed = final
 
-        from PIL import Image
-
-        panel_images = []
-        for ds_group in dataset_groups:
-            fig = _make_dataset_as_col_panel(
-                models,
-                ds_group,
-                samples_by_dataset,
-                rows_per_model,
-                panel_size,
-                show_model_label,
-            )
-            buf = io.BytesIO()
-            fig.savefig(buf, format="png", bbox_inches="tight", dpi=FIG_DPI, transparent=True)
-            plt.close(fig)
-            buf.seek(0)
-            panel_images.append(Image.open(buf).copy())
-
-        max_w = max(img.width for img in panel_images)
-        total_h = sum(img.height for img in panel_images)
-        result = Image.new("RGBA", (max_w, total_h), (0, 0, 0, 0))
-        y = 0
-        for img in panel_images:
-            result.paste(img, (0, y), img)
-            y += img.height
-        _save_img_formats(result, out_path, formats)
-
-    print(f"Saved: {out_path}")
+    _export(final, out_path, output_formats, pdf_image_dpi)
+    _close_all(*panel_docs, *all_subdocs, *([composed] if composed else []))
 
 
 def _make_dataset_as_row_panel(
@@ -364,9 +499,10 @@ def _make_dataset_as_row_panel(
     cols_per_dataset,
     panel_size,
     show_model_label,
+    input_format,
     num_row_per_ds=1,
 ):
-    """Render one dataset-as-row panel into a new Figure and return it (caller must close)."""
+    """Render one dataset-as-row panel into a 1-page fitz Document. Returns (doc, subdocs)."""
     n_models = len(models)
     cell_h, cell_w, label_w, ds_label_w = 3.0, 3.0, 0.6, 0.6
     n_label_cols = (1 if show_model_label else 0) + 1
@@ -398,70 +534,65 @@ def _make_dataset_as_row_panel(
     ds_label_col_idx = 1 if show_model_label else 0
     img_col_offset = n_label_cols
 
-    anchor_axes = []
+    img_places = []
+    text_places = []
+    anchor_positions = []
     for model_idx, model in enumerate(models):
         model_anchors = []
         for ds_idx, dataset in enumerate(ds_group):
             base_row = model_idx * panel_size * num_row_per_ds + ds_idx * num_row_per_ds
 
             if show_model_label:
-                ax_model_lbl = fig.add_subplot(
-                    gs[base_row : base_row + num_row_per_ds, 0]
+                model_anchors.append(
+                    gs[base_row : base_row + num_row_per_ds, 0].get_position(fig)
                 )
-                ax_model_lbl.axis("off")
-                model_anchors.append(ax_model_lbl)
 
-            ax_ds_lbl = fig.add_subplot(
-                gs[base_row : base_row + num_row_per_ds, ds_label_col_idx]
-            )
-            ax_ds_lbl.axis("off")
-            ax_ds_lbl.text(
-                0.5,
-                0.5,
-                dataset,
-                va="center",
-                ha="center",
-                fontsize=16,
-                fontweight="bold",
-                rotation=90,
-                transform=ax_ds_lbl.transAxes,
-            )
+            ds_lbl_pos = gs[
+                base_row : base_row + num_row_per_ds, ds_label_col_idx
+            ].get_position(fig)
+            text_places.append((ds_lbl_pos, dataset, 16, 90))
             if not show_model_label:
-                model_anchors.append(ax_ds_lbl)
+                model_anchors.append(ds_lbl_pos)
 
             ds_files = samples_by_dataset[dataset]
             for row_in_ds in range(num_row_per_ds):
                 row_idx = base_row + row_in_ds
                 for col_idx in range(cols_per_dataset):
                     sample_idx = row_in_ds * cols_per_dataset + col_idx
-                    ax_img = fig.add_subplot(gs[row_idx, img_col_offset + col_idx])
-                    ax_img.axis("off")
+                    pos = gs[row_idx, img_col_offset + col_idx].get_position(fig)
                     if sample_idx < len(ds_files):
-                        img = mpimg.imread(str(model / dataset / ds_files[sample_idx]))
-                        ax_img.imshow(img, aspect="auto")
+                        img_places.append(
+                            (pos, model / dataset / ds_files[sample_idx])
+                        )
 
-        anchor_axes.append(model_anchors)
+        anchor_positions.append(model_anchors)
 
-    fig.canvas.draw()
-    _draw_model_labels_and_separators(fig, models, anchor_axes, show_model_label)
-    return fig
+    labels, seps = _model_label_elements(models, anchor_positions, show_model_label)
+    doc, subdocs = _build_page(
+        fig_w, fig_h, img_places, text_places + labels, seps, input_format
+    )
+    plt.close(fig)
+    return doc, subdocs
 
 
 def _compile_figure_dataset_as_row(
-    models, samples, output, show_model_label=True, num_panel=1, num_row_per_ds=1, formats=("png",)
+    models,
+    samples,
+    output,
+    output_formats,
+    show_model_label=True,
+    num_panel=1,
+    num_row_per_ds=1,
+    input_format="pdf",
+    pdf_image_dpi=None,
 ):
     """Dataset-as-rows layout: each row = one dataset; columns = samples within that dataset.
 
     If num_panel > 1, datasets are split into horizontally arranged side-by-side panels
-    to reduce figure height. Each panel is rendered as a separate Figure and stitched with PIL.
+    to reduce figure height. Each panel is rendered as its own fitz page and stitched
+    vector-preserving with show_pdf_page.
     """
-    samples_by_dataset = {}
-    dataset_order = []
-    for ds, f in samples:
-        if ds not in samples_by_dataset:
-            samples_by_dataset[ds] = []
-            dataset_order.append(ds)
-        samples_by_dataset[ds].append(f)
+    samples_by_dataset, dataset_order = _group_by_dataset(samples)
 
     cols_per_dataset = math.ceil(
         max(len(v) for v in samples_by_dataset.values()) / num_row_per_ds
@@ -474,50 +605,31 @@ def _compile_figure_dataset_as_row(
     out_path = Path(output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if num_panel == 1:
-        fig = _make_dataset_as_row_panel(
+    panel_docs, all_subdocs = [], []
+    for ds_group in dataset_groups:
+        if not ds_group:
+            continue
+        d, sub = _make_dataset_as_row_panel(
             models,
-            dataset_groups[0],
+            ds_group,
             samples_by_dataset,
             cols_per_dataset,
             panel_size,
             show_model_label,
+            input_format,
             num_row_per_ds=num_row_per_ds,
         )
-        _save_fig_formats(out_path, formats, fig=fig, bbox_inches="tight", transparent=True)
-        plt.close(fig)
+        panel_docs.append(d)
+        all_subdocs += sub
+
+    if len(panel_docs) == 1:
+        final, composed = panel_docs[0], None
     else:
-        import io
+        final = _compose_panels(panel_docs, horizontal=True)
+        composed = final
 
-        from PIL import Image
-
-        panel_images = []
-        for ds_group in dataset_groups:
-            fig = _make_dataset_as_row_panel(
-                models,
-                ds_group,
-                samples_by_dataset,
-                cols_per_dataset,
-                panel_size,
-                show_model_label,
-                num_row_per_ds=num_row_per_ds,
-            )
-            buf = io.BytesIO()
-            fig.savefig(buf, format="png", bbox_inches="tight", dpi=FIG_DPI, transparent=True)
-            plt.close(fig)
-            buf.seek(0)
-            panel_images.append(Image.open(buf).copy())
-
-        total_w = sum(img.width for img in panel_images)
-        max_h = max(img.height for img in panel_images)
-        result = Image.new("RGBA", (total_w, max_h), (0, 0, 0, 0))
-        x = 0
-        for img in panel_images:
-            result.paste(img, (x, 0), img)
-            x += img.width
-        _save_img_formats(result, out_path, formats)
-
-    print(f"Saved: {out_path}")
+    _export(final, out_path, output_formats, pdf_image_dpi)
+    _close_all(*panel_docs, *all_subdocs, *([composed] if composed else []))
 
 
 def main():
@@ -544,7 +656,30 @@ def main():
     parser.add_argument(
         "--output",
         required=True,
-        help="Output PNG file path",
+        help="Output file path; its extension is replaced per --output_format",
+    )
+    parser.add_argument(
+        "--input_format",
+        choices=["png", "svg", "pdf"],
+        default="pdf",
+        help="Format of the input subfigures to read (default: pdf)",
+    )
+    parser.add_argument(
+        "--output_format",
+        nargs="+",
+        choices=["png", "svg", "pdf"],
+        default=["pdf"],
+        help="One or more output formats to write (default: pdf). "
+        "pdf/svg keep vector inputs as vectors; png rasterizes the final page.",
+    )
+    parser.add_argument(
+        "--pdf_image_dpi",
+        type=int,
+        default=None,
+        help="For pdf output only: downsample the embedded raster images to this dpi via "
+        "Ghostscript, keeping vector overlays sharp, to bound file size. Omit or <=0 to "
+        "disable (full-resolution vector). Requires 'gs' on PATH. ~120-150 is a good "
+        "balance; going much lower can be counterproductive.",
     )
     parser.add_argument(
         "--dir_model",
@@ -588,12 +723,6 @@ def main():
         help="Number of rows per dataset for --dataset_as_row (default: 1). "
         "When >1, samples within each dataset wrap across multiple rows.",
     )
-    parser.add_argument(
-        "--save_as_png", action="store_true", help="Save figures as PNG."
-    )
-    parser.add_argument(
-        "--save_as_pdf", action="store_true", help="Save figures as PDF."
-    )
     args = parser.parse_args()
 
     if args.dataset_as_col and args.dataset_as_row:
@@ -626,30 +755,40 @@ def main():
 
     seed = args.seed if args.seed is not None else SEED
     rng = random.Random(seed)
-    samples = _select_samples(models, args.limit_subfigures, rng)
+    samples = _select_samples(models, args.limit_subfigures, args.input_format, rng)
 
-    formats = [
-        f for f, on in (("png", args.save_as_png), ("pdf", args.save_as_pdf)) if on
-    ] or ["png"]
+    if args.pdf_image_dpi and args.pdf_image_dpi > 0 and "pdf" not in args.output_format:
+        import warnings
+
+        warnings.warn(
+            "--pdf_image_dpi only affects pdf output, but 'pdf' is not in --output_format; "
+            "it will have no effect.",
+            UserWarning,
+            stacklevel=2,
+        )
 
     if args.dataset_as_col:
         _compile_figure_dataset_as_col(
             models,
             samples,
             args.output,
+            args.output_format,
             show_model_label=show_model_label,
             num_panel=args.dataset_as_col_num_panel,
-            formats=formats,
+            input_format=args.input_format,
+            pdf_image_dpi=args.pdf_image_dpi,
         )
     elif args.dataset_as_row:
         _compile_figure_dataset_as_row(
             models,
             samples,
             args.output,
+            args.output_format,
             show_model_label=show_model_label,
             num_panel=args.dataset_as_row_num_panel,
             num_row_per_ds=args.dataset_as_row_num_row_per_ds,
-            formats=formats,
+            input_format=args.input_format,
+            pdf_image_dpi=args.pdf_image_dpi,
         )
     else:
         _compile_figure(
@@ -657,8 +796,10 @@ def main():
             samples,
             args.row_per_model,
             args.output,
+            args.output_format,
             show_model_label=show_model_label,
-            formats=formats,
+            input_format=args.input_format,
+            pdf_image_dpi=args.pdf_image_dpi,
         )
 
 

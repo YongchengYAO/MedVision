@@ -39,5 +39,6 @@ LEVEL_ARG=""
 python -m medvision_bm.benchmark.viz_detection_sampleSize_per_label_x_boxSize \
     --in_dir "$IN_DIR" \
     --out_dir "$OUT_DIR" \
+    --save_as_pdf \
     "${CONFIG_ARG[@]}" \
     $LEVEL_ARG

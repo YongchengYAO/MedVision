@@ -26,7 +26,7 @@ python "$SCRIPT_DIR/viz_radar.py" \
     --config_yaml "$SCRIPT_DIR/config-detect-CoT.yaml" \
     --task_dir "$RESULTS_DIR/MedVision-detect-v2" \
     --fig_dir "$FIG_DIR" \
-    --fig_name fig_detection-v2.png \
+    --fig_name fig_detection-v2.pdf \
     --metrics_list Recall Precision F1 \
     --show_label_name \
     --label_col 2 \
@@ -38,7 +38,7 @@ python "$SCRIPT_DIR/viz_radar.py" \
     --config_yaml "$SCRIPT_DIR/config-detect-CoT--SFT-RFT.yaml" \
     --task_dir "$RESULTS_DIR/MedVision-detect-v2" \
     --fig_dir "$FIG_DIR" \
-    --fig_name fig_detection--SFT-RFT-v2.png \
+    --fig_name fig_detection--SFT-RFT-v2.pdf \
     --metrics_list Recall Precision F1 \
     --verbose_model "$VERBOSE_DETECT" \
     --show_label_name \
@@ -51,7 +51,7 @@ python "$SCRIPT_DIR/viz_radar.py" \
     --config_yaml "$SCRIPT_DIR/config-detect-CoT-planeOOD.yaml" \
     --task_dir "$RESULTS_DIR/MedVision-detect-v2-CoT-planeOOD" \
     --fig_dir "$FIG_DIR" \
-    --fig_name fig_detection-planeOOD.png \
+    --fig_name fig_detection-planeOOD.pdf \
     --metrics_list Recall Precision F1 IoU \
     --show_label_name \
     --label_col 3 \
@@ -63,7 +63,7 @@ python "$SCRIPT_DIR/viz_radar.py" \
     --config_yaml "$SCRIPT_DIR/config-detect-CoT-taskOOD.yaml" \
     --task_dir "$RESULTS_DIR/MedVision-detect-v2-CoT-taskOOD" \
     --fig_dir "$FIG_DIR" \
-    --fig_name fig_detection-taskOOD.png \
+    --fig_name fig_detection-taskOOD.pdf \
     --metrics_list Recall Precision F1 IoU \
     --show_label_name \
     --label_col 3 \
@@ -77,7 +77,7 @@ python "$SCRIPT_DIR/viz_radar.py" \
     --config_yaml "$SCRIPT_DIR/config-AD-CoT.yaml" \
     --task_dir "$RESULTS_DIR/MedVision-AD-v2-CoT" \
     --fig_dir "$FIG_DIR" \
-    --fig_name fig_AD-CoT.png \
+    --fig_name fig_AD-CoT.pdf \
     --metrics_list avgMRE \
     --show_label_name \
     --label_col 2 \
@@ -89,7 +89,7 @@ python "$SCRIPT_DIR/viz_radar.py" \
     --config_yaml "$SCRIPT_DIR/config-AD-CoT--SFT-RFT.yaml" \
     --task_dir "$RESULTS_DIR/MedVision-AD-v2-CoT" \
     --fig_dir "$FIG_DIR" \
-    --fig_name fig_AD-CoT--SFT-RFT.png \
+    --fig_name fig_AD-CoT--SFT-RFT.pdf \
     --metrics_list avgMRE \
     --verbose_model "$VERBOSE_AD_TL" \
     --show_label_name \
@@ -104,7 +104,7 @@ python "$SCRIPT_DIR/viz_radar.py" \
     --config_yaml "$SCRIPT_DIR/config-TL-CoT.yaml" \
     --task_dir "$RESULTS_DIR/MedVision-TL-v2-CoT" \
     --fig_dir "$FIG_DIR" \
-    --fig_name fig_TL-CoT.png \
+    --fig_name fig_TL-CoT.pdf \
     --metrics_list avgMRE \
     --show_label_name \
     --label_col 1 \
@@ -116,7 +116,7 @@ python "$SCRIPT_DIR/viz_radar.py" \
     --config_yaml "$SCRIPT_DIR/config-TL-CoT--SFT-RFT.yaml" \
     --task_dir "$RESULTS_DIR/MedVision-TL-v2-CoT" \
     --fig_dir "$FIG_DIR" \
-    --fig_name fig_TL-CoT--SFT-RFT.png \
+    --fig_name fig_TL-CoT--SFT-RFT.pdf \
     --metrics_list avgMRE \
     --verbose_model "$VERBOSE_AD_TL" \
     --show_label_name \
@@ -129,7 +129,7 @@ python "$SCRIPT_DIR/viz_radar.py" \
     --config_yaml "$SCRIPT_DIR/config-TL-CoT-planeOOD.yaml" \
     --task_dir "$RESULTS_DIR/MedVision-TL-v2-CoT-planeOOD" \
     --fig_dir "$FIG_DIR" \
-    --fig_name fig_TL-CoT-planeOOD.png \
+    --fig_name fig_TL-CoT-planeOOD.pdf \
     --metrics_list avgMRE \
     --verbose_model "$VERBOSE_AD_TL" \
     --show_label_name \
@@ -142,7 +142,7 @@ python "$SCRIPT_DIR/viz_radar.py" \
     --config_yaml "$SCRIPT_DIR/config-TL-CoT-taskOOD.yaml" \
     --task_dir "$RESULTS_DIR/MedVision-TL-v2-CoT-taskOOD" \
     --fig_dir "$FIG_DIR" \
-    --fig_name fig_TL-CoT-taskOOD.png \
+    --fig_name fig_TL-CoT-taskOOD.pdf \
     --metrics_list avgMRE \
     --verbose_model "$VERBOSE_AD_TL" \
     --show_label_name \

@@ -32,6 +32,7 @@ import os
 import statistics
 from collections import Counter, defaultdict
 
+from medvision_bm.utils import configs
 from medvision_bm.utils.parse_utils import get_labelsMap_imgModality_from_seg_benchmark_plan
 from medvision_bm.utils.plan_utils import (
     AXIS_TO_PLANE,
@@ -740,40 +741,52 @@ def _break_anat(name):
     return name.replace(" Tumor/Lesion", "\nTumor/Lesion")
 
 
+# Outer-ring tint gradient: a FIXED blend increment per sub-label, so every dataset shades along
+# the same gradient -- a 2-label ring shows that gradient's first 2 steps instead of stretching the
+# whole 0..0.85 range across just 2 wedges (which made small rings read as two unrelated colours).
+# Step = full range / (largest sub-label count - 1), i.e. 24 labels (TotalSegmentator) span 0..0.85.
+_SHADE_STEP = 0.85 / 23
+_SHADE_MAX = 0.85
+
+
 def _shade_palette(base, n):
-    """``n`` tints of ``base`` (an RGB(A) tuple): index 0 is the pure base (darkest), later
-    indices blend toward white. Used to shade one dataset's sub-label wedges by count rank so a
-    single dataset reads as one hue with a light-to-dark gradient (darkest = most annotations)."""
+    """``n`` tints of ``base`` (an RGB(A) tuple): index 0 is the pure base (darkest), each later
+    index blends one fixed ``_SHADE_STEP`` further toward white (capped at ``_SHADE_MAX``). Used to
+    shade one dataset's sub-label wedges by count rank so a single dataset reads as one hue with a
+    light-to-dark gradient (darkest = most annotations)."""
     r, g, b = base[0], base[1], base[2]
     out = []
     for i in range(n):
-        f = 0.0 if n <= 1 else 0.66 * i / (n - 1)          # 0 (darkest) .. 0.66 (lightest tint)
+        f = min(_SHADE_STEP * i, _SHADE_MAX)               # 0 (darkest) .. 0.85 (lightest tint)
         out.append((r + (1 - r) * f, g + (1 - g) * f, b + (1 - b) * f, 1.0))
     return out
 
 
-# Canonical dataset order = the key order of BiometricVQA-info/config_samples_all-Dataset-Task.json,
-# so a given dataset always lands on the same colour. Unknown datasets fall back to sorted order.
-_DATASET_ORDER = [
-    "AbdomenAtlas1.0Mini", "AbdomenCT-1K", "ACDC", "AMOS22", "autoPET-III", "BCV15", "BraTS24",
-    "CAMUS", "Ceph-Biometrics-400", "CrossMoDA", "FeTA24", "FLARE22", "HNTSMRG24", "ISLES24",
-    "KiPA22", "KiTS23", "MSD", "OAIZIB-CM", "SKM-TEA", "ToothFairy2", "TopCoW24", "TotalSegmentator",
-]
+# Dataset donut palette. Named palettes live in configs.py (nature_palette_1/2); pick the active one
+# here. Colours cycle + lighten per wrap (see _WRAP_LIGHTEN) and are assigned in count-desc ring
+# order, so the palette sweeps the donut in listed sequence (biggest wedge = first colour).
+_DATASET_COLORS = configs.nature_palette_2   # swap to configs.nature_palette_1 for the other palette
+
+# Each time the colour list wraps, the reused hue is blended this much further toward white, so a
+# later round of datasets gets a LIGHTER tint of the same hue (wrap 0 = pure, wrap 1 = 0.33 toward
+# white, wrap 2 = 0.55, ...) and no two datasets share a colour.
+_WRAP_LIGHTEN = 0.33
 
 
 def _dataset_palette(keys):
-    """One base colour per dataset, matching the colour scheme of BiometricVQA-Bench's
-    ``plot_dataset_donut_chart-noMaskSize-all.py``: ``Set3`` for <=10 datasets, ``tab20c`` for
-    <=20, else ``Spectral`` (our 22 datasets -> ``Spectral``), sampled at ``n`` discrete steps.
-    Colours are assigned in canonical config order (``_DATASET_ORDER``; unknowns appended in sorted
-    order), so each dataset lands on the same colour it has in the reference figure."""
-    import matplotlib.pyplot as plt
+    """One colour per dataset, assigned to ``keys`` IN THE ORDER GIVEN. The caller passes datasets in
+    ring-draw order (annotation count, desc), so ``_DATASET_COLORS`` sweeps the ring in listed
+    sequence (biggest wedge = first colour) and the legend matches. Colours cycle through the list;
+    each time it wraps the reused hue is blended further toward white by ``_WRAP_LIGHTEN`` (later
+    rounds lighter) so no two datasets share a colour."""
+    from matplotlib.colors import to_rgba
 
-    rank = {name: i for i, name in enumerate(_DATASET_ORDER)}
-    ordered = sorted(keys, key=lambda k: (rank.get(k, len(rank)), k))
-    n = len(ordered)
-    cmap = plt.get_cmap("Set3" if n <= 10 else "tab20c" if n <= 20 else "Spectral", n)
-    return {k: cmap(i) for i, k in enumerate(ordered)}
+    out = {}
+    for i, k in enumerate(keys):
+        r, g, b, a = to_rgba(_DATASET_COLORS[i % len(_DATASET_COLORS)])
+        t = 1.0 - (1.0 - _WRAP_LIGHTEN) ** (i // len(_DATASET_COLORS))   # 0 (pure) .. ->1 (white)
+        out[k] = (r + (1 - r) * t, g + (1 - g) * t, b + (1 - b) * t, a)
+    return out
 
 
 def _curved_text(ax, text, radius, center_deg, char_deg, fs, color, flip=False):
@@ -970,11 +983,13 @@ def viz_rings(all_summary, out_path, magnify=True, layout="2x1", variant="filter
     if not any("n_benchmark_annotations" in v for _, v in ordered):
         print("  [warn] no n_benchmark_annotations in summary; donut falls back to seg-based counts")
 
-    ds_color = _dataset_palette([k for k, _ in ordered])
-
     datasets = [(k, v) for k, v in ordered if _bench_count(v) > 0]
     datasets.sort(key=lambda kv: _bench_count(kv[1]), reverse=True)
     total = sum(_bench_count(v) for _, v in datasets) or 1
+
+    # colours follow the RING order (datasets sorted by count desc), so _DATASET_COLORS sweeps the
+    # ring in listed sequence -- biggest wedge = first colour -- and the legend below matches.
+    ds_color = _dataset_palette([k for k, _ in datasets])
 
     W, R_OUT = 0.32, 1.0                       # ring width; center hole = 1 - 2*W = 0.36
     START, P_NAME = 90.0, 0.03                  # start at 12 o'clock; min proportion for an inner label
@@ -1072,7 +1087,7 @@ def viz_rings(all_summary, out_path, magnify=True, layout="2x1", variant="filter
     leg.get_title().set_fontweight("bold")
 
     save_fig_capped(out_path, fig=fig, bbox_inches="tight", transparent=True)
-    if magnify and layout == "2x1":            # SVG twin for inline README embedding (GitHub can't render PDF)
+    if magnify and layout in ("2x1", "1x2"):   # SVG twin for inline README + webpage embedding (GitHub can't render PDF)
         svg = os.path.splitext(out_path)[0] + ".svg"
         save_fig_capped(svg, fig=fig, bbox_inches="tight", transparent=True)
         # White-background twin, served to GitHub dark mode via a <picture> element in the README

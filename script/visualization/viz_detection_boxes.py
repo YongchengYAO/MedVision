@@ -13,6 +13,11 @@ Coordinate conversion (model image space → array space):
 
 Display convention:
     imshow(img.T, origin="lower") → plot_x = idx_dim0 (row), plot_y = idx_dim1 (col)
+
+Output formats:
+    - No flags → ["png"] (default).
+    - --save_as_pdf → ["pdf"] only.
+    - --save_as_png --save_as_pdf → both files written, one per format.
 """
 
 import argparse
@@ -28,6 +33,8 @@ from medvision_bm.medvision_lmms_eval.lmms_eval.tasks.medvision.medvision_utils 
 )
 from medvision_bm.sft.sft_utils import normalize_img
 from medvision_bm.utils.plot_utils import plot_detection_on_image
+
+_REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 # Matches exactly two parenthesized (x, y) pairs where each value is in [0, 1].
 # Mirrors the regex in plot_tl_axes.py for consistent CoT parsing.
@@ -108,7 +115,7 @@ def _box_to_array_space(box_norm, H, W):
     return [H * (1 - y_max), x_min * W, H * (1 - y_min), x_max * W]
 
 
-def process_model_dir(model_dir, task_folder, base_fig_dir, limit_per_jsonl):
+def process_model_dir(model_dir, task_folder, base_fig_dir, limit_per_jsonl, formats):
     model_name = os.path.basename(model_dir.rstrip("/"))
     out_dir = os.path.join(base_fig_dir, task_folder, model_name)
     os.makedirs(out_dir, exist_ok=True)
@@ -193,6 +200,7 @@ def process_model_dir(model_dir, task_folder, base_fig_dir, limit_per_jsonl):
                     slice_dim=slice_dim,
                     slice_idx=slice_idx,
                     fig_path=fig_path,
+                    formats=formats,
                 )
             except Exception as e:
                 print(f"    WARNING: plotting failed for doc {doc_id}: {e}")
@@ -217,7 +225,7 @@ def main():
     parser.add_argument(
         "--fig_dir",
         type=str,
-        default="/mnt/vincent-pvc-rwm/Github/MedVision/Figures",
+        default=os.path.join(_REPO_DIR, "Figures"),
         help="Base output directory for figures",
     )
     parser.add_argument(
@@ -227,10 +235,20 @@ def main():
         dest="limit_per_jsonl",
         help="Max samples to process per JSONL file",
     )
+    parser.add_argument(
+        "--save_as_png", action="store_true", help="Save figures as PNG."
+    )
+    parser.add_argument(
+        "--save_as_pdf", action="store_true", help="Save figures as PDF."
+    )
     args = parser.parse_args()
 
     if args.task_dir is None and args.model_dir is None:
         parser.error("Provide --task_dir or --model_dir")
+
+    formats = [
+        f for f, on in (("png", args.save_as_png), ("pdf", args.save_as_pdf)) if on
+    ] or ["png"]
 
     if args.task_dir is not None:
         task_folder = os.path.basename(args.task_dir.rstrip("/"))
@@ -243,13 +261,15 @@ def main():
         for model_dir in model_dirs:
             print(f"Model: {os.path.basename(model_dir.rstrip('/'))}")
             process_model_dir(
-                model_dir, task_folder, args.fig_dir, args.limit_per_jsonl
+                model_dir, task_folder, args.fig_dir, args.limit_per_jsonl, formats
             )
     else:
         model_dir = args.model_dir.rstrip("/")
         task_folder = os.path.basename(os.path.dirname(model_dir))
         print(f"Model: {os.path.basename(model_dir)}")
-        process_model_dir(model_dir, task_folder, args.fig_dir, args.limit_per_jsonl)
+        process_model_dir(
+            model_dir, task_folder, args.fig_dir, args.limit_per_jsonl, formats
+        )
 
 
 if __name__ == "__main__":

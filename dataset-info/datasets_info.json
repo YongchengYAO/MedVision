@@ -1,0 +1,506 @@
+{
+  "medvision_ds_version": "1.1.1",
+  "datasets": {
+    "ACDC": {
+      "dataset": "ACDC",
+      "dataset_website": "https://www.creatis.insa-lyon.fr/Challenge/acdc/databases.html",
+      "dataset_data": [
+        "https://humanheart-project.creatis.insa-lyon.fr/database/#collection/637218c173e9f0047faa00fb"
+      ],
+      "license": [
+        "CC BY-NC-SA 4.0"
+      ],
+      "paper": [
+        "https://doi.org/10.1109/TMI.2018.2837502"
+      ],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/ACDC"
+      ],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "detection",
+        "segmentation"
+      ]
+    },
+    "AMOS22": {
+      "dataset": "AMOS22",
+      "dataset_website": "https://amos22.grand-challenge.org",
+      "dataset_data": [
+        "https://zenodo.org/records/7262581"
+      ],
+      "license": [
+        "CC BY 4.0"
+      ],
+      "paper": [
+        "https://doi.org/10.48550/arXiv.2206.08023"
+      ],
+      "hf_data": [],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "detection",
+        "segmentation"
+      ]
+    },
+    "AbdomenAtlas1.0Mini": {
+      "dataset": "AbdomenAtlas1.0Mini",
+      "dataset_website": "https://github.com/MrGiovanni/AbdomenAtlas",
+      "dataset_data": [
+        "https://huggingface.co/datasets/AbdomenAtlas/AbdomenAtlas1.0Mini"
+      ],
+      "license": [
+        "CC BY-NC-SA 4.0"
+      ],
+      "paper": [
+        "https://doi.org/10.1016/j.media.2024.103285"
+      ],
+      "hf_data": [],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "detection",
+        "segmentation"
+      ]
+    },
+    "AbdomenCT-1K": {
+      "dataset": "AbdomenCT-1K",
+      "dataset_website": "https://github.com/JunMa11/AbdomenCT-1K",
+      "dataset_data": [
+        "https://zenodo.org/records/5903099",
+        "https://zenodo.org/records/5903846",
+        "https://zenodo.org/records/5903769"
+      ],
+      "license": [
+        "CC BY 4.0"
+      ],
+      "paper": [
+        "https://doi.org/10.1109/TPAMI.2021.3100536"
+      ],
+      "hf_data": [],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "detection",
+        "segmentation"
+      ]
+    },
+    "BCV15": {
+      "dataset": "BCV15",
+      "dataset_website": "https://www.synapse.org/Synapse:syn3193805/wiki/89480",
+      "dataset_data": [
+        "https://www.synapse.org/Synapse:syn3193805/wiki/217789",
+        "https://www.synapse.org/Synapse:syn3193805/wiki/217790"
+      ],
+      "license": [],
+      "paper": [],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/BCV15-Lite"
+      ],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "detection",
+        "segmentation"
+      ]
+    },
+    "BraTS24": {
+      "dataset": "",
+      "dataset_website": "https://www.synapse.org/Synapse:syn53708249/wiki/",
+      "dataset_data": [
+        "https://www.synapse.org/Synapse:syn59059776",
+        "https://www.synapse.org/Synapse:syn59059764",
+        "https://www.synapse.org/Synapse:syn59059779",
+        "https://www.synapse.org/Synapse:syn58894466"
+      ],
+      "license": [],
+      "paper": [
+        "https://doi.org/10.48550/arXiv.2405.18368",
+        "https://doi.org/10.48550/arXiv.2405.18383",
+        "https://doi.org/10.48550/arXiv.2404.15009"
+      ],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/BraTS24-Lite"
+      ],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "biometry",
+        "detection",
+        "segmentation"
+      ]
+    },
+    "CAMUS": {
+      "dataset": "CAMUS",
+      "dataset_website": "https://www.creatis.insa-lyon.fr/Challenge/camus/",
+      "dataset_data": [
+        "https://humanheart-project.creatis.insa-lyon.fr/database/#collection/6373703d73e9f0047faa1bc8"
+      ],
+      "license": [
+        "CC BY-NC-SA 4.0"
+      ],
+      "paper": [
+        "https://doi.org/10.1109/TMI.2019.2900516"
+      ],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/CAMUS-Lite"
+      ],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "detection",
+        "segmentation"
+      ]
+    },
+    "Ceph-Biometrics-400": {
+      "dataset": "Ceph-Biometrics-400",
+      "dataset_website": "",
+      "dataset_data": [
+        "https://figshare.com/s/37ec464af8e81ae6ebbf"
+      ],
+      "license": [
+        "N/A",
+        "CC BY-NC 4.0"
+      ],
+      "paper": [
+        "https://doi.org/10.1038/srep33581"
+      ],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/Ceph-Biometrics-400"
+      ],
+      "notes": [],
+      "has_segmentation": false,
+      "_source_modules": [
+        "biometry"
+      ]
+    },
+    "CrossMoDA": {
+      "dataset": "CrossMoDA",
+      "dataset_website": "https://crossmoda-challenge.ml",
+      "dataset_data": [
+        "https://zenodo.org/records/4662239"
+      ],
+      "license": [
+        "CC BY 4.0"
+      ],
+      "paper": [
+        "https://doi.org/10.1016/j.media.2022.102628"
+      ],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/CrossMoDA-Lite"
+      ],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "detection",
+        "segmentation"
+      ]
+    },
+    "FLARE22": {
+      "dataset": "FLARE22",
+      "dataset_website": "https://flare22.grand-challenge.org",
+      "dataset_data": [
+        "https://drive.google.com/drive/folders/1x0l-bxte46QFn5K_ZJzBxp8HsscF8v6t"
+      ],
+      "license": [],
+      "paper": [
+        "https://doi.org/10.1016/S2589-7500(24)00154-7"
+      ],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/FLARE22-Lite"
+      ],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "detection",
+        "segmentation"
+      ]
+    },
+    "FeTA24": {
+      "dataset": "FeTA24",
+      "dataset_website": "https://fetachallenge.github.io",
+      "dataset_data": [
+        "https://www.synapse.org/Synapse:syn25649159/wiki/610007"
+      ],
+      "license": [],
+      "paper": [
+        "https://zenodo.org/records/10986046"
+      ],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/FeTA24-Biometrics"
+      ],
+      "notes": [
+        {
+          "text": "\u26a0\ufe0f This dataset does not allow redistribution, so you need to apply for access from the data owners. MedVision downloads the raw data automatically from Synapse, so once you have access, set the SYNAPSE_TOKEN environment variable before using MedVision.",
+          "url": "https://huggingface.co/datasets/YongchengYAO/MedVision#datasets",
+          "url_label": "Access requirements \u2192"
+        },
+        {
+          "text": "\ud83d\udcdd In this HF dataset (FeTA24-Biometrics) we only released the preprocessed data and our landmarks."
+        }
+      ],
+      "has_segmentation": true,
+      "_source_modules": [
+        "biometry",
+        "detection",
+        "segmentation"
+      ]
+    },
+    "HNTSMRG24": {
+      "dataset": "HNTSMRG24",
+      "dataset_website": "https://hntsmrg24.grand-challenge.org",
+      "dataset_data": [
+        "https://zenodo.org/records/11199559"
+      ],
+      "license": [
+        "CC BY-NC 4.0"
+      ],
+      "paper": [
+        "https://doi.org/10.48550/arXiv.2411.18585"
+      ],
+      "hf_data": [],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "biometry",
+        "detection",
+        "segmentation"
+      ]
+    },
+    "ISLES24": {
+      "dataset": "ISLES24",
+      "dataset_website": "https://isles-24.grand-challenge.org",
+      "dataset_data": [
+        "https://isles-24.grand-challenge.org/dataset/"
+      ],
+      "license": [
+        "CC BY-NC"
+      ],
+      "paper": [
+        "https://doi.org/10.48550/arXiv.2408.11142",
+        "https://doi.org/10.48550/arXiv.2403.19425"
+      ],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/ISLES24-MR-Lite"
+      ],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "detection",
+        "segmentation"
+      ]
+    },
+    "KiPA22": {
+      "dataset": "KiPA22",
+      "dataset_website": "https://kipa22.grand-challenge.org",
+      "dataset_data": [
+        "https://kipa22.grand-challenge.org/dataset/"
+      ],
+      "license": [
+        "CC BY-NC-ND"
+      ],
+      "paper": [
+        "https://doi.org/10.1016/j.media.2021.102055",
+        "https://doi.org/10.1016/j.media.2020.101722",
+        "https://doi.org/10.1016/j.eururo.2010.11.037",
+        "https://doi.org/10.1016/j.eururo.2012.05.056"
+      ],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/KiPA22"
+      ],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "biometry",
+        "detection",
+        "segmentation"
+      ]
+    },
+    "KiTS23": {
+      "dataset": "KiTS23",
+      "dataset_website": "https://kits-challenge.org/kits23/",
+      "dataset_data": [
+        "https://github.com/neheller/kits23#data-download"
+      ],
+      "license": [
+        "CC BY-NC-SA 4.0"
+      ],
+      "paper": [
+        "https://doi.org/10.48550/arXiv.2307.01984"
+      ],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/KiTS23-Lite"
+      ],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "biometry",
+        "detection",
+        "segmentation"
+      ]
+    },
+    "MSD": {
+      "dataset": "MSD",
+      "dataset_website": "http://medicaldecathlon.com/dataaws/",
+      "dataset_data": [
+        "http://medicaldecathlon.com/dataaws/"
+      ],
+      "license": [
+        "CC BY-SA 4.0"
+      ],
+      "paper": [
+        "https://doi.org/10.1038/s41467-022-30695-9"
+      ],
+      "hf_data": [],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "biometry",
+        "detection",
+        "segmentation"
+      ]
+    },
+    "OAIZIB-CM": {
+      "dataset": "OAIZIB-CM",
+      "dataset_website": "https://github.com/YongchengYAO/CartiMorph",
+      "dataset_data": [
+        "https://huggingface.co/datasets/YongchengYAO/OAIZIB-CM"
+      ],
+      "license": [
+        "CC BY-NC 4.0"
+      ],
+      "paper": [
+        "https://doi.org/10.1016/j.media.2018.11.009",
+        "https://doi.org/10.1016/j.media.2023.103035",
+        "https://doi.org/10.1007/978-3-031-82007-6_16"
+      ],
+      "hf_data": [],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "detection",
+        "segmentation"
+      ]
+    },
+    "SKM-TEA": {
+      "dataset": "SKM-TEA",
+      "dataset_website": "https://aimi.stanford.edu/datasets/skm-tea-knee-mri",
+      "dataset_data": [
+        "https://aimi.stanford.edu/datasets/skm-tea-knee-mri"
+      ],
+      "license": [],
+      "paper": [
+        "https://openreview.net/pdf?id=YDMFgD_qJuA"
+      ],
+      "hf_data": [],
+      "notes": [
+        {
+          "text": "\u26a0\ufe0f This dataset does not allow redistribution, so you need to apply for access from the data owners, process the raw data, upload the preprocessed data to your own private HF dataset repo, and set the MedVision_SKMTEA_HF_ID environment variable.",
+          "url": "https://huggingface.co/datasets/YongchengYAO/MedVision#datasets",
+          "url_label": "Access requirements \u2192"
+        }
+      ],
+      "has_segmentation": true,
+      "_source_modules": [
+        "detection",
+        "segmentation"
+      ]
+    },
+    "ToothFairy2": {
+      "dataset": "ToothFairy2",
+      "dataset_website": "https://toothfairy2.grand-challenge.org",
+      "dataset_data": [
+        "https://ditto.ing.unimore.it/toothfairy2/"
+      ],
+      "license": [
+        "CC BY-SA"
+      ],
+      "paper": [
+        "https://doi.org/10.1109/TMI.2024.3523096",
+        "https://doi.org/10.1109/ACCESS.2024.3408629",
+        "https://doi.org/10.1109/CVPR52688.2022.02046"
+      ],
+      "hf_data": [],
+      "notes": [
+        {
+          "text": "\u26a0\ufe0f This dataset does not allow redistribution, so you need to apply for access from the data owners, process the raw data, upload the preprocessed data to your own private HF dataset repo, and set the MedVision_ToothFairy2_HF_ID environment variable.",
+          "url": "https://huggingface.co/datasets/YongchengYAO/MedVision#datasets",
+          "url_label": "Access requirements \u2192"
+        }
+      ],
+      "has_segmentation": true,
+      "_source_modules": [
+        "detection",
+        "segmentation"
+      ]
+    },
+    "TopCoW24": {
+      "dataset": "TopCoW24",
+      "dataset_website": "https://topcow24.grand-challenge.org",
+      "dataset_data": [
+        "https://doi.org/10.5281/zenodo.15692629"
+      ],
+      "license": [],
+      "paper": [
+        "https://doi.org/10.48550/arXiv.2312.17670"
+      ],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/TopCoW24-Seg"
+      ],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "detection",
+        "segmentation"
+      ]
+    },
+    "TotalSegmentator": {
+      "dataset": "TotalSegmentator",
+      "dataset_website": "https://github.com/wasserth/TotalSegmentator",
+      "dataset_data": [
+        "https://zenodo.org/records/10047292",
+        "https://zenodo.org/records/14710732"
+      ],
+      "license": [
+        "CC BY 4.0",
+        "CC BY-NC-SA 2.0"
+      ],
+      "paper": [
+        "https://doi.org/10.1148/ryai.230024"
+      ],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/TotalSegmentator-CT-Lite",
+        "https://huggingface.co/datasets/YongchengYAO/TotalSegmentator-MR-Lite"
+      ],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "detection",
+        "segmentation"
+      ]
+    },
+    "autoPET-III": {
+      "dataset": "autoPET-III",
+      "dataset_website": "https://autopet-iii.grand-challenge.org",
+      "dataset_data": [
+        "https://autopet-iii.grand-challenge.org"
+      ],
+      "license": [
+        "CC BY-NC 4.0"
+      ],
+      "paper": [
+        "https://doi.org/10.1038/s41597-022-01718-3"
+      ],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/autoPET-III-Lite"
+      ],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "biometry",
+        "detection",
+        "segmentation"
+      ]
+    }
+  }
+}

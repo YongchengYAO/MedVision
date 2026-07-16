@@ -12,6 +12,11 @@
 # Optional:
 #   FIG_DIR=<path>         Base output directory for figures (default: <MEDVISION_DIR>/Figures)
 #   LIMIT_PER_JSONL=<N>    Max samples per JSONL file (default: unset = all)
+#
+# Output formats (resolved by viz_ad_landmarks.py):
+#   - No flags (what this script does) → ["png"] — default.
+#   - --save_as_pdf → ["pdf"] only.
+#   - --save_as_png --save_as_pdf → both files written, one per format.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MEDVISION_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -19,7 +24,7 @@ MEDVISION_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TASK_DIR="${TASK_DIR:-}"
 MODEL_DIR="${MODEL_DIR:-}"
 FIG_DIR="${FIG_DIR:-$MEDVISION_DIR/Figures}"
-LIMIT_PER_JSONL="${LIMIT_PER_JSONL:-}"
+LIMIT_PER_JSONL="${LIMIT_PER_JSONL:-30}"
 
 if [ -n "$TASK_DIR" ] && [ -n "$MODEL_DIR" ]; then
     echo "Error: set only one of TASK_DIR or MODEL_DIR, not both."
@@ -43,4 +48,5 @@ INPUT_ARGS=()
 python "$SCRIPT_DIR/viz_ad_landmarks.py" \
     "${INPUT_ARGS[@]}" \
     --fig_dir "$FIG_DIR" \
+    --save_as_pdf \
     $LIMIT_ARG

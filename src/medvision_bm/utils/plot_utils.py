@@ -81,6 +81,7 @@ def plot_tl_axes_on_image(
     show_coords=False,
     gt_major_pts=None,
     gt_minor_pts=None,
+    formats=("png",),
 ):
     """
     Plot a 2D medical image slice with GT axes (dashed), model-predicted axes (solid),
@@ -106,6 +107,7 @@ def plot_tl_axes_on_image(
         mask_2d:         optional (H, W) binary array; plotted as green contour if provided
         gt_major_pts:    optional [(dim0_p1, dim1_p1), (dim0_p2, dim1_p2)] GT, in array space
         gt_minor_pts:    optional [(dim0_p3, dim1_p3), (dim0_p4, dim1_p4)] GT, in array space
+        formats:         output file extensions to save, e.g. ("png",) or ("pdf",)
     """
     img_height, img_width = image_2d.shape  # H=dim0, W=dim1
     # After 90° CCW: plot-x unit = 1 row (pixel_sizes[0] mm), plot-y unit = 1 col (pixel_sizes[1] mm)
@@ -280,7 +282,9 @@ def plot_tl_axes_on_image(
     plt.tight_layout(pad=1.5, rect=[0.05, 0.05, 0.95, 0.95])
 
     os.makedirs(os.path.dirname(fig_path), exist_ok=True)
-    save_fig_capped(fig_path, bbox_inches="tight")
+    stem = os.path.splitext(fig_path)[0]
+    for fmt in formats:
+        save_fig_capped(f"{stem}.{fmt}", bbox_inches="tight", transparent=True)
     plt.close()
 
 
@@ -292,6 +296,7 @@ def plot_detection_on_image(
     slice_dim,
     slice_idx,
     fig_path,
+    formats=("png",),
 ):
     """
     Plot a 2D medical image slice with GT and model-predicted bounding boxes.
@@ -313,7 +318,8 @@ def plot_detection_on_image(
         pred_box:    [dim0_min, dim1_min, dim0_max, dim1_max] in array space, or None
         slice_dim:   0=Sagittal, 1=Coronal, 2=Axial
         slice_idx:   integer slice index
-        fig_path:    full output path including filename
+        fig_path:    full output path including filename (extension is replaced per format)
+        formats:     output file extensions to save, e.g. ("png",) or ("pdf",)
     """
     import matplotlib.lines as mlines
     import matplotlib.patches as mpatches
@@ -419,7 +425,9 @@ def plot_detection_on_image(
     plt.tight_layout(pad=1.5, rect=[0.05, 0.05, 0.95, 0.95])
 
     os.makedirs(os.path.dirname(fig_path), exist_ok=True)
-    save_fig_capped(fig_path, bbox_inches="tight")
+    stem = os.path.splitext(fig_path)[0]
+    for fmt in formats:
+        save_fig_capped(f"{stem}.{fmt}", bbox_inches="tight", transparent=True)
     plt.close()
 
 
@@ -433,6 +441,7 @@ def plot_ad_on_image(
     slice_idx,
     fig_path,
     show_coords=False,
+    formats=("png",),
 ):
     """
     Plot a 2D image slice with GT and model-predicted landmarks for an A/D task.
@@ -450,6 +459,7 @@ def plot_ad_on_image(
         slice_idx:   integer slice index
         fig_path:    output path including filename
         show_coords: annotate each dot with its relative (x, y)
+        formats:     output file extensions to save, e.g. ("png",) or ("pdf",)
     """
     import matplotlib.lines as mlines
 
@@ -700,5 +710,7 @@ def plot_ad_on_image(
     plt.tight_layout(pad=1.5, rect=[0.05, 0.05, 0.95, 0.95])
 
     os.makedirs(os.path.dirname(fig_path), exist_ok=True)
-    save_fig_capped(fig_path, bbox_inches="tight")
+    stem = os.path.splitext(fig_path)[0]
+    for fmt in formats:
+        save_fig_capped(f"{stem}.{fmt}", bbox_inches="tight", transparent=True)
     plt.close()

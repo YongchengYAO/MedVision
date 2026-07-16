@@ -6,11 +6,11 @@
 
   # Dataset and Benchmark for *Quantitative* Medical Image Analysis
 
-  | 🌏 [**Project**](https://medvision-vlm.github.io) | 🧑🏻‍💻 [**GitHub**](https://github.com/YongchengYAO/MedVision) | 📦 [**PyPI**](https://pypi.org/project/medvision-bm/) | 📚 [**Docs**](https://medvision.readthedocs.io/en/latest/index.html) | 🩻 [**Dataset**](https://huggingface.co/datasets/YongchengYAO/MedVision) | 🐳 [**Docker**](https://hub.docker.com/r/vincentycyao/medvision/tags) | 🤗 [**Models**](https://huggingface.co/collections/YongchengYAO/medvision-v0) | 🚀 [**Demo**](https://huggingface.co/spaces/YongchengYAO/MedVision-V0-demo) | 📖 [**arXiv**](https://arxiv.org/abs/2511.18676) |
+  | 🌏 [**Project**](https://medvision-vlm.github.io) | 🧑🏻‍💻 [**GitHub**](https://github.com/YongchengYAO/MedVision) | 📚 [**Docs**](https://medvision.readthedocs.io/en/latest/index.html) | 🩻 [**Dataset**](https://huggingface.co/datasets/YongchengYAO/MedVision) | 🔎 [**Data Explorer**](https://medvision-vlm.github.io/explorer.html) | 🐳 [**Docker**](https://hub.docker.com/r/vincentycyao/medvision/tags) | 🤗 [**Models**](https://huggingface.co/collections/YongchengYAO/medvision-v0) | 🚀 [**Demo**](https://huggingface.co/spaces/YongchengYAO/MedVision-V0-demo) | 📖 [**arXiv**](https://arxiv.org/abs/2511.18676) |
 
   🔎 Benchmarking VLMs for medical vision tasks: detection and measurement 📏
 
-  💿 30.8M annotated samples | multi-modality | multi-anatomy | 3D/2D medical image 💿
+  💿 29K 3D images | 11.2M 2D slices | 24.3M single-instance / 45.3M multi-instance annotations | multi-modality | multi-anatomy 💿
 
   📏 Annotation: segmentation mask | landmark coordinate | bounding box | tumor/lesion size | distance | angle 📏
 

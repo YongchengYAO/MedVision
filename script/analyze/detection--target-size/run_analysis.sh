@@ -8,7 +8,7 @@
 # Options:
 #   --config <yaml>              YAML mapping model folder → display name
 #                                (default: ${SCRIPT_DIR}/config-detect-boxImgRatio.yaml)
-#   --out_dir <path>             Output directory for PNG (default: script dir)
+#   --out_dir <path>             Output directory for figures (default: <repo>/Figures)
 #   --limit <N>                  Limit samples per JSONL
 #   --skip_model_wo_parsed_files Skip models missing parsed/ (only with --task_dir)
 #   --processes, -p <N>           Worker count for parsing
@@ -23,7 +23,7 @@ export PYTHONPATH="${REPO_DIR}/src${PYTHONPATH:+:${PYTHONPATH}}"
 TASK_DIR=""
 MODEL_DIR=""
 CONFIG="${SCRIPT_DIR}/config-detect-boxImgRatio.yaml"
-OUT_DIR="${SCRIPT_DIR}"
+OUT_DIR="${REPO_DIR}/Figures"
 LIMIT=""
 SKIP_FLAG=""
 PROCESSES=""
@@ -124,4 +124,4 @@ python -m medvision_bm.benchmark.viz_detection_performance_per_boxImgRatio \
     --out_dir "${OUT_DIR}"
 
 echo ""
-echo "Done. Figure saved to: ${OUT_DIR}/metrics_boxImgRatio-dotline.png"
+echo "Done. Figure saved to: ${OUT_DIR}/metrics_boxImgRatio-dotline.pdf"

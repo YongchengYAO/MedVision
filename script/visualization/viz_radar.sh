@@ -13,7 +13,7 @@
 #
 # Optional:
 #   FIG_DIR=<path>               Output directory for figures (default: <MEDVISION_DIR>/Figures)
-#   FIG_NAME=<name>              Output filename (default: radar_<TASK_TYPE>.png)
+#   FIG_NAME=<name>              Output filename (default: radar_<TASK_TYPE>.pdf)
 #   METRICS_LIST=<list>          Space-separated metric names (default: "Precision F1")
 #   VERBOSE_MODEL=<list>         Space-separated model names for violin overlay (default: unset)
 #   SHOW_SCATTER=1               Overlay jittered scatter on violin (default: unset)
@@ -21,6 +21,14 @@
 #   RADAR_CELL_INCHES=<N>        Width per radar subplot in inches (default: 8)
 #   LABEL_COL=<N>                Columns in the label panel (default: unset = auto)
 #   LEGEND_COL=<N>               Columns in the model legend (default: unset = auto)
+#
+# Output formats (resolved by viz_radar.py):
+#   - No flags (what viz_radar.sh and viz_radar_batch.sh do) → ["pdf"] — exactly
+#     what the line-plots→PDF rule wants.
+#   - --save_as_png → ["png"] only — an explicit override for when you need a
+#     raster copy.
+#   - --save_as_png --save_as_pdf → both files written, one per format, via the
+#     extension swap in viz_radar.py.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MEDVISION_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -44,7 +52,7 @@ if [ -z "$TASK_TYPE" ] || [ -z "$CONFIG_YAML" ] || [ -z "$TASK_DIR" ]; then
     exit 1
 fi
 
-FIG_NAME="${FIG_NAME:-radar_${TASK_TYPE}.png}"
+FIG_NAME="${FIG_NAME:-radar_${TASK_TYPE}.pdf}"
 
 METRICS_ARG=()
 if [ -n "$METRICS_LIST" ]; then

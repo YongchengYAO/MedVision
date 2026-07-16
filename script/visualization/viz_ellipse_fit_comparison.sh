@@ -16,6 +16,11 @@
 #   N=4 ORIENTATIONS="sagittal" bash viz_ellipse_fit_comparison.sh
 #   SEED=7 MIN_DIV=35 bash viz_ellipse_fit_comparison.sh
 #   OUT_DIR=/tmp/ellipse_fit bash viz_ellipse_fit_comparison.sh
+#
+# Output formats (resolved by viz_ellipse_fit_comparison.py):
+#   - No flags (what this script does) → ["png"] — default.
+#   - --save_as_pdf → ["pdf"] only.
+#   - --save_as_png --save_as_pdf → both files written, one per format.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MEDVISION_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"

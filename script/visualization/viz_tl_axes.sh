@@ -13,6 +13,11 @@
 #   FIG_DIR=<path>               Base output directory for figures (default: <MEDVISION_DIR>/Figures)
 #   LIMIT_PER_JSONL=<N>          Max samples per JSONL file (default: unset = all)
 #   REMOVED_SAMPLES_DIR=<path>   Root dir of per-dataset removed-samples JSONs (default: unset = no filtering)
+#
+# Output formats (resolved by viz_tl_axes.py):
+#   - No flags (what this script does) → ["png"] — default.
+#   - --save_as_pdf → ["pdf"] only.
+#   - --save_as_png --save_as_pdf → both files written, one per format.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MEDVISION_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -20,7 +25,7 @@ MEDVISION_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TASK_DIR="${TASK_DIR:-}"
 MODEL_DIR="${MODEL_DIR:-}"
 FIG_DIR="${FIG_DIR:-$MEDVISION_DIR/Figures}"
-LIMIT_PER_JSONL="${LIMIT_PER_JSONL:-}"
+LIMIT_PER_JSONL="${LIMIT_PER_JSONL:-30}"
 REMOVED_SAMPLES_DIR="${REMOVED_SAMPLES_DIR:-}"
 
 if [ -n "$TASK_DIR" ] && [ -n "$MODEL_DIR" ]; then
@@ -50,5 +55,6 @@ INPUT_ARGS=()
 python "$SCRIPT_DIR/viz_tl_axes.py" \
     "${INPUT_ARGS[@]}" \
     --fig_dir "$FIG_DIR" \
+    --save_as_pdf \
     $REMOVED_ARG \
     $LIMIT_ARG

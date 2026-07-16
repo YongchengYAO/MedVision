@@ -1,0 +1,653 @@
+{
+  "http://medicaldecathlon.com/dataaws/": {
+    "url": "http://medicaldecathlon.com/dataaws/",
+    "status": 200,
+    "final_url": "http://medicaldecathlon.com/dataaws/",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://aimi.stanford.edu/datasets/skm-tea-knee-mri": {
+    "url": "https://aimi.stanford.edu/datasets/skm-tea-knee-mri",
+    "status": 200,
+    "final_url": "https://aimi.stanford.edu/datasets/skm-tea-knee-mri",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://amos22.grand-challenge.org": {
+    "url": "https://amos22.grand-challenge.org",
+    "status": 200,
+    "final_url": "https://amos22.grand-challenge.org/",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://autopet-iii.grand-challenge.org": {
+    "url": "https://autopet-iii.grand-challenge.org",
+    "status": 200,
+    "final_url": "https://autopet-iii.grand-challenge.org/",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://crossmoda-challenge.ml": {
+    "url": "https://crossmoda-challenge.ml",
+    "status": 200,
+    "final_url": "https://crossmoda-challenge.ml/",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://ditto.ing.unimore.it/toothfairy2/": {
+    "url": "https://ditto.ing.unimore.it/toothfairy2/",
+    "status": 200,
+    "final_url": "https://ditto.ing.unimore.it/toothfairy2/",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://doi.org/10.1007/978-3-031-82007-6_16": {
+    "url": "https://doi.org/10.1007/978-3-031-82007-6_16",
+    "status": 200,
+    "final_url": "https://link.springer.com/chapter/10.1007/978-3-031-82007-6_16",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.1016/S2589-7500(24)00154-7": {
+    "url": "https://doi.org/10.1016/S2589-7500(24)00154-7",
+    "status": 200,
+    "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S2589750024001547",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.1016/j.eururo.2010.11.037": {
+    "url": "https://doi.org/10.1016/j.eururo.2010.11.037",
+    "status": 200,
+    "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0302283810011395",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.1016/j.eururo.2012.05.056": {
+    "url": "https://doi.org/10.1016/j.eururo.2012.05.056",
+    "status": 200,
+    "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0302283812006409",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.1016/j.media.2018.11.009": {
+    "url": "https://doi.org/10.1016/j.media.2018.11.009",
+    "status": 200,
+    "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S1361841518304882",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.1016/j.media.2020.101722": {
+    "url": "https://doi.org/10.1016/j.media.2020.101722",
+    "status": 200,
+    "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S1361841520300864",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.1016/j.media.2021.102055": {
+    "url": "https://doi.org/10.1016/j.media.2021.102055",
+    "status": 200,
+    "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S1361841521001018",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.1016/j.media.2022.102628": {
+    "url": "https://doi.org/10.1016/j.media.2022.102628",
+    "status": 200,
+    "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S1361841522002560",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.1016/j.media.2023.103035": {
+    "url": "https://doi.org/10.1016/j.media.2023.103035",
+    "status": 200,
+    "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S1361841523002955",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.1016/j.media.2024.103285": {
+    "url": "https://doi.org/10.1016/j.media.2024.103285",
+    "status": 200,
+    "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S136184152400210X",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.1038/s41467-022-30695-9": {
+    "url": "https://doi.org/10.1038/s41467-022-30695-9",
+    "status": 200,
+    "final_url": "https://www.nature.com/articles/s41467-022-30695-9",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.1038/s41597-022-01718-3": {
+    "url": "https://doi.org/10.1038/s41597-022-01718-3",
+    "status": 200,
+    "final_url": "https://www.nature.com/articles/s41597-022-01718-3",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.1038/srep33581": {
+    "url": "https://doi.org/10.1038/srep33581",
+    "status": 200,
+    "final_url": "https://www.nature.com/articles/srep33581",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.1109/ACCESS.2024.3408629": {
+    "url": "https://doi.org/10.1109/ACCESS.2024.3408629",
+    "status": 202,
+    "final_url": "https://ieeexplore.ieee.org/document/10546255/",
+    "redirected": true,
+    "verdict": "BOT-CHALLENGE"
+  },
+  "https://doi.org/10.1109/CVPR52688.2022.02046": {
+    "url": "https://doi.org/10.1109/CVPR52688.2022.02046",
+    "status": 202,
+    "final_url": "https://ieeexplore.ieee.org/document/9879649/",
+    "redirected": true,
+    "verdict": "BOT-CHALLENGE"
+  },
+  "https://doi.org/10.1109/TMI.2018.2837502": {
+    "url": "https://doi.org/10.1109/TMI.2018.2837502",
+    "status": 202,
+    "final_url": "https://ieeexplore.ieee.org/document/8360453/",
+    "redirected": true,
+    "verdict": "BOT-CHALLENGE"
+  },
+  "https://doi.org/10.1109/TMI.2019.2900516": {
+    "url": "https://doi.org/10.1109/TMI.2019.2900516",
+    "status": 202,
+    "final_url": "https://ieeexplore.ieee.org/document/8649738/",
+    "redirected": true,
+    "verdict": "BOT-CHALLENGE"
+  },
+  "https://doi.org/10.1109/TMI.2024.3523096": {
+    "url": "https://doi.org/10.1109/TMI.2024.3523096",
+    "status": 202,
+    "final_url": "https://ieeexplore.ieee.org/document/10816445/",
+    "redirected": true,
+    "verdict": "BOT-CHALLENGE"
+  },
+  "https://doi.org/10.1109/TPAMI.2021.3100536": {
+    "url": "https://doi.org/10.1109/TPAMI.2021.3100536",
+    "status": 202,
+    "final_url": "https://ieeexplore.ieee.org/document/9497733/",
+    "redirected": true,
+    "verdict": "BOT-CHALLENGE"
+  },
+  "https://doi.org/10.1148/ryai.230024": {
+    "url": "https://doi.org/10.1148/ryai.230024",
+    "status": 403,
+    "final_url": "https://pubs.rsna.org/doi/10.1148/ryai.230024",
+    "redirected": true,
+    "verdict": "BLOCKED"
+  },
+  "https://doi.org/10.48550/arXiv.2206.08023": {
+    "url": "https://doi.org/10.48550/arXiv.2206.08023",
+    "status": 200,
+    "final_url": "https://arxiv.org/abs/2206.08023",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.48550/arXiv.2307.01984": {
+    "url": "https://doi.org/10.48550/arXiv.2307.01984",
+    "status": 200,
+    "final_url": "https://arxiv.org/abs/2307.01984",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.48550/arXiv.2312.17670": {
+    "url": "https://doi.org/10.48550/arXiv.2312.17670",
+    "status": 200,
+    "final_url": "https://arxiv.org/abs/2312.17670",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.48550/arXiv.2403.19425": {
+    "url": "https://doi.org/10.48550/arXiv.2403.19425",
+    "status": 200,
+    "final_url": "https://arxiv.org/abs/2403.19425",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.48550/arXiv.2404.15009": {
+    "url": "https://doi.org/10.48550/arXiv.2404.15009",
+    "status": 200,
+    "final_url": "https://arxiv.org/abs/2404.15009",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.48550/arXiv.2405.18368": {
+    "url": "https://doi.org/10.48550/arXiv.2405.18368",
+    "status": 200,
+    "final_url": "https://arxiv.org/abs/2405.18368",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.48550/arXiv.2405.18383": {
+    "url": "https://doi.org/10.48550/arXiv.2405.18383",
+    "status": 200,
+    "final_url": "https://arxiv.org/abs/2405.18383",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.48550/arXiv.2408.11142": {
+    "url": "https://doi.org/10.48550/arXiv.2408.11142",
+    "status": 200,
+    "final_url": "https://arxiv.org/abs/2408.11142",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.48550/arXiv.2411.18585": {
+    "url": "https://doi.org/10.48550/arXiv.2411.18585",
+    "status": 200,
+    "final_url": "https://arxiv.org/abs/2411.18585",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://doi.org/10.5281/zenodo.15692629": {
+    "url": "https://doi.org/10.5281/zenodo.15692629",
+    "status": 200,
+    "final_url": "https://zenodo.org/records/15692630",
+    "redirected": true,
+    "verdict": "REDIRECT"
+  },
+  "https://drive.google.com/drive/folders/1x0l-bxte46QFn5K_ZJzBxp8HsscF8v6t": {
+    "url": "https://drive.google.com/drive/folders/1x0l-bxte46QFn5K_ZJzBxp8HsscF8v6t",
+    "status": 200,
+    "final_url": "https://drive.google.com/drive/folders/1x0l-bxte46QFn5K_ZJzBxp8HsscF8v6t",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://fetachallenge.github.io": {
+    "url": "https://fetachallenge.github.io",
+    "status": 200,
+    "final_url": "https://fetachallenge.github.io/",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://figshare.com/s/37ec464af8e81ae6ebbf": {
+    "url": "https://figshare.com/s/37ec464af8e81ae6ebbf",
+    "status": 202,
+    "final_url": "https://figshare.com/s/37ec464af8e81ae6ebbf",
+    "redirected": false,
+    "verdict": "BOT-CHALLENGE"
+  },
+  "https://flare22.grand-challenge.org": {
+    "url": "https://flare22.grand-challenge.org",
+    "status": 200,
+    "final_url": "https://flare22.grand-challenge.org/",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://github.com/JunMa11/AbdomenCT-1K": {
+    "url": "https://github.com/JunMa11/AbdomenCT-1K",
+    "status": 200,
+    "final_url": "https://github.com/JunMa11/AbdomenCT-1K",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://github.com/MrGiovanni/AbdomenAtlas": {
+    "url": "https://github.com/MrGiovanni/AbdomenAtlas",
+    "status": 200,
+    "final_url": "https://github.com/MrGiovanni/AbdomenAtlas",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://github.com/YongchengYAO/CartiMorph": {
+    "url": "https://github.com/YongchengYAO/CartiMorph",
+    "status": 200,
+    "final_url": "https://github.com/YongchengYAO/CartiMorph",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://github.com/neheller/kits23#data-download": {
+    "url": "https://github.com/neheller/kits23#data-download",
+    "status": 200,
+    "final_url": "https://github.com/neheller/kits23#data-download",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://github.com/wasserth/TotalSegmentator": {
+    "url": "https://github.com/wasserth/TotalSegmentator",
+    "status": 200,
+    "final_url": "https://github.com/wasserth/TotalSegmentator",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://hntsmrg24.grand-challenge.org": {
+    "url": "https://hntsmrg24.grand-challenge.org",
+    "status": 200,
+    "final_url": "https://hntsmrg24.grand-challenge.org/",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://huggingface.co/datasets/AbdomenAtlas/AbdomenAtlas1.0Mini": {
+    "url": "https://huggingface.co/datasets/AbdomenAtlas/AbdomenAtlas1.0Mini",
+    "status": 200,
+    "final_url": "https://huggingface.co/datasets/AbdomenAtlas/AbdomenAtlas1.0Mini",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://huggingface.co/datasets/YongchengYAO/ACDC": {
+    "url": "https://huggingface.co/datasets/YongchengYAO/ACDC",
+    "status": 200,
+    "final_url": "https://huggingface.co/datasets/YongchengYAO/ACDC",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://huggingface.co/datasets/YongchengYAO/BCV15-Lite": {
+    "url": "https://huggingface.co/datasets/YongchengYAO/BCV15-Lite",
+    "status": 200,
+    "final_url": "https://huggingface.co/datasets/YongchengYAO/BCV15-Lite",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://huggingface.co/datasets/YongchengYAO/BraTS24-Lite": {
+    "url": "https://huggingface.co/datasets/YongchengYAO/BraTS24-Lite",
+    "status": 200,
+    "final_url": "https://huggingface.co/datasets/YongchengYAO/BraTS24-Lite",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://huggingface.co/datasets/YongchengYAO/CAMUS-Lite": {
+    "url": "https://huggingface.co/datasets/YongchengYAO/CAMUS-Lite",
+    "status": 200,
+    "final_url": "https://huggingface.co/datasets/YongchengYAO/CAMUS-Lite",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://huggingface.co/datasets/YongchengYAO/Ceph-Biometrics-400": {
+    "url": "https://huggingface.co/datasets/YongchengYAO/Ceph-Biometrics-400",
+    "status": 200,
+    "final_url": "https://huggingface.co/datasets/YongchengYAO/Ceph-Biometrics-400",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://huggingface.co/datasets/YongchengYAO/CrossMoDA-Lite": {
+    "url": "https://huggingface.co/datasets/YongchengYAO/CrossMoDA-Lite",
+    "status": 200,
+    "final_url": "https://huggingface.co/datasets/YongchengYAO/CrossMoDA-Lite",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://huggingface.co/datasets/YongchengYAO/FLARE22-Lite": {
+    "url": "https://huggingface.co/datasets/YongchengYAO/FLARE22-Lite",
+    "status": 200,
+    "final_url": "https://huggingface.co/datasets/YongchengYAO/FLARE22-Lite",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://huggingface.co/datasets/YongchengYAO/FeTA24-Biometrics": {
+    "url": "https://huggingface.co/datasets/YongchengYAO/FeTA24-Biometrics",
+    "status": 200,
+    "final_url": "https://huggingface.co/datasets/YongchengYAO/FeTA24-Biometrics",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://huggingface.co/datasets/YongchengYAO/ISLES24-MR-Lite": {
+    "url": "https://huggingface.co/datasets/YongchengYAO/ISLES24-MR-Lite",
+    "status": 200,
+    "final_url": "https://huggingface.co/datasets/YongchengYAO/ISLES24-MR-Lite",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://huggingface.co/datasets/YongchengYAO/KiPA22": {
+    "url": "https://huggingface.co/datasets/YongchengYAO/KiPA22",
+    "status": 200,
+    "final_url": "https://huggingface.co/datasets/YongchengYAO/KiPA22",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://huggingface.co/datasets/YongchengYAO/KiTS23-Lite": {
+    "url": "https://huggingface.co/datasets/YongchengYAO/KiTS23-Lite",
+    "status": 200,
+    "final_url": "https://huggingface.co/datasets/YongchengYAO/KiTS23-Lite",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://huggingface.co/datasets/YongchengYAO/OAIZIB-CM": {
+    "url": "https://huggingface.co/datasets/YongchengYAO/OAIZIB-CM",
+    "status": 200,
+    "final_url": "https://huggingface.co/datasets/YongchengYAO/OAIZIB-CM",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://huggingface.co/datasets/YongchengYAO/TopCoW24-Seg": {
+    "url": "https://huggingface.co/datasets/YongchengYAO/TopCoW24-Seg",
+    "status": 200,
+    "final_url": "https://huggingface.co/datasets/YongchengYAO/TopCoW24-Seg",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://huggingface.co/datasets/YongchengYAO/TotalSegmentator-CT-Lite": {
+    "url": "https://huggingface.co/datasets/YongchengYAO/TotalSegmentator-CT-Lite",
+    "status": 200,
+    "final_url": "https://huggingface.co/datasets/YongchengYAO/TotalSegmentator-CT-Lite",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://huggingface.co/datasets/YongchengYAO/TotalSegmentator-MR-Lite": {
+    "url": "https://huggingface.co/datasets/YongchengYAO/TotalSegmentator-MR-Lite",
+    "status": 200,
+    "final_url": "https://huggingface.co/datasets/YongchengYAO/TotalSegmentator-MR-Lite",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://huggingface.co/datasets/YongchengYAO/autoPET-III-Lite": {
+    "url": "https://huggingface.co/datasets/YongchengYAO/autoPET-III-Lite",
+    "status": 200,
+    "final_url": "https://huggingface.co/datasets/YongchengYAO/autoPET-III-Lite",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://humanheart-project.creatis.insa-lyon.fr/database/#collection/637218c173e9f0047faa00fb": {
+    "url": "https://humanheart-project.creatis.insa-lyon.fr/database/#collection/637218c173e9f0047faa00fb",
+    "status": 200,
+    "final_url": "https://humanheart-project.creatis.insa-lyon.fr/database/#collection/637218c173e9f0047faa00fb",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://humanheart-project.creatis.insa-lyon.fr/database/#collection/6373703d73e9f0047faa1bc8": {
+    "url": "https://humanheart-project.creatis.insa-lyon.fr/database/#collection/6373703d73e9f0047faa1bc8",
+    "status": 200,
+    "final_url": "https://humanheart-project.creatis.insa-lyon.fr/database/#collection/6373703d73e9f0047faa1bc8",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://isles-24.grand-challenge.org": {
+    "url": "https://isles-24.grand-challenge.org",
+    "status": 200,
+    "final_url": "https://isles-24.grand-challenge.org/",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://isles-24.grand-challenge.org/dataset/": {
+    "url": "https://isles-24.grand-challenge.org/dataset/",
+    "status": 403,
+    "final_url": "https://isles-24.grand-challenge.org/dataset/",
+    "redirected": false,
+    "verdict": "BLOCKED"
+  },
+  "https://kipa22.grand-challenge.org": {
+    "url": "https://kipa22.grand-challenge.org",
+    "status": 200,
+    "final_url": "https://kipa22.grand-challenge.org/",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://kipa22.grand-challenge.org/dataset/": {
+    "url": "https://kipa22.grand-challenge.org/dataset/",
+    "status": 403,
+    "final_url": "https://kipa22.grand-challenge.org/dataset/",
+    "redirected": false,
+    "verdict": "BLOCKED"
+  },
+  "https://kits-challenge.org/kits23/": {
+    "url": "https://kits-challenge.org/kits23/",
+    "status": 200,
+    "final_url": "https://kits-challenge.org/kits23/",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://openreview.net/pdf?id=YDMFgD_qJuA": {
+    "url": "https://openreview.net/pdf?id=YDMFgD_qJuA",
+    "status": 200,
+    "final_url": "https://openreview.net/pdf?id=YDMFgD_qJuA",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://toothfairy2.grand-challenge.org": {
+    "url": "https://toothfairy2.grand-challenge.org",
+    "status": 200,
+    "final_url": "https://toothfairy2.grand-challenge.org/",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://topcow24.grand-challenge.org": {
+    "url": "https://topcow24.grand-challenge.org",
+    "status": 200,
+    "final_url": "https://topcow24.grand-challenge.org/",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://www.creatis.insa-lyon.fr/Challenge/acdc/databases.html": {
+    "url": "https://www.creatis.insa-lyon.fr/Challenge/acdc/databases.html",
+    "status": 200,
+    "final_url": "https://www.creatis.insa-lyon.fr/Challenge/acdc/databases.html",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://www.creatis.insa-lyon.fr/Challenge/camus/": {
+    "url": "https://www.creatis.insa-lyon.fr/Challenge/camus/",
+    "status": 200,
+    "final_url": "https://www.creatis.insa-lyon.fr/Challenge/camus/",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://www.synapse.org/Synapse:syn25649159/wiki/610007": {
+    "url": "https://www.synapse.org/Synapse:syn25649159/wiki/610007",
+    "status": 200,
+    "final_url": "https://www.synapse.org/Synapse:syn25649159/wiki/610007",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://www.synapse.org/Synapse:syn3193805/wiki/217789": {
+    "url": "https://www.synapse.org/Synapse:syn3193805/wiki/217789",
+    "status": 200,
+    "final_url": "https://www.synapse.org/Synapse:syn3193805/wiki/217789",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://www.synapse.org/Synapse:syn3193805/wiki/217790": {
+    "url": "https://www.synapse.org/Synapse:syn3193805/wiki/217790",
+    "status": 200,
+    "final_url": "https://www.synapse.org/Synapse:syn3193805/wiki/217790",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://www.synapse.org/Synapse:syn3193805/wiki/89480": {
+    "url": "https://www.synapse.org/Synapse:syn3193805/wiki/89480",
+    "status": 200,
+    "final_url": "https://www.synapse.org/Synapse:syn3193805/wiki/89480",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://www.synapse.org/Synapse:syn53708249/wiki/": {
+    "url": "https://www.synapse.org/Synapse:syn53708249/wiki/",
+    "status": 200,
+    "final_url": "https://www.synapse.org/Synapse:syn53708249/wiki/",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://www.synapse.org/Synapse:syn58894466": {
+    "url": "https://www.synapse.org/Synapse:syn58894466",
+    "status": 200,
+    "final_url": "https://www.synapse.org/Synapse:syn58894466",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://www.synapse.org/Synapse:syn59059764": {
+    "url": "https://www.synapse.org/Synapse:syn59059764",
+    "status": 200,
+    "final_url": "https://www.synapse.org/Synapse:syn59059764",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://www.synapse.org/Synapse:syn59059776": {
+    "url": "https://www.synapse.org/Synapse:syn59059776",
+    "status": 200,
+    "final_url": "https://www.synapse.org/Synapse:syn59059776",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://www.synapse.org/Synapse:syn59059779": {
+    "url": "https://www.synapse.org/Synapse:syn59059779",
+    "status": 200,
+    "final_url": "https://www.synapse.org/Synapse:syn59059779",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://zenodo.org/records/10047292": {
+    "url": "https://zenodo.org/records/10047292",
+    "status": 200,
+    "final_url": "https://zenodo.org/records/10047292",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://zenodo.org/records/10986046": {
+    "url": "https://zenodo.org/records/10986046",
+    "status": 200,
+    "final_url": "https://zenodo.org/records/10986046",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://zenodo.org/records/11199559": {
+    "url": "https://zenodo.org/records/11199559",
+    "status": 200,
+    "final_url": "https://zenodo.org/records/11199559",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://zenodo.org/records/14710732": {
+    "url": "https://zenodo.org/records/14710732",
+    "status": 200,
+    "final_url": "https://zenodo.org/records/14710732",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://zenodo.org/records/4662239": {
+    "url": "https://zenodo.org/records/4662239",
+    "status": 200,
+    "final_url": "https://zenodo.org/records/4662239",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://zenodo.org/records/5903099": {
+    "url": "https://zenodo.org/records/5903099",
+    "status": 200,
+    "final_url": "https://zenodo.org/records/5903099",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://zenodo.org/records/5903769": {
+    "url": "https://zenodo.org/records/5903769",
+    "status": 200,
+    "final_url": "https://zenodo.org/records/5903769",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://zenodo.org/records/5903846": {
+    "url": "https://zenodo.org/records/5903846",
+    "status": 200,
+    "final_url": "https://zenodo.org/records/5903846",
+    "redirected": false,
+    "verdict": "OK"
+  },
+  "https://zenodo.org/records/7262581": {
+    "url": "https://zenodo.org/records/7262581",
+    "status": 200,
+    "final_url": "https://zenodo.org/records/7262581",
+    "redirected": false,
+    "verdict": "OK"
+  }
+}
