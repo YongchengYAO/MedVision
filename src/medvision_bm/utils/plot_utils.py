@@ -4,6 +4,8 @@ import matplotlib.lines as mlines
 import numpy as np
 from matplotlib import pyplot as plt
 
+from medvision_bm.utils.configs import landmark_dot_colors
+
 # Target render dpi and per-image megapixel cap for all MedVision figures.
 # arXiv warns (from Feb 2026) on images larger than 34 MP (~A4 at 600 dpi); we
 # keep every figure at or below that pixel ceiling. See info.arxiv.org/help/sizes.
@@ -209,7 +211,7 @@ def plot_tl_axes_on_image(
         )
 
         # Landmark dots P1–P4: scatter(x=dim0, y=dim1)
-        colors = ["#4285F4", "#EA4335", "#FDB813", "#34A853"]
+        colors = landmark_dot_colors
         offset_x = img_height * 0.015 if show_coords else 0
         for j, (dim0, dim1) in enumerate(
             [major_axis_pts[0], major_axis_pts[1], minor_axis_pts[0], minor_axis_pts[1]]
@@ -463,7 +465,7 @@ def plot_ad_on_image(
     """
     import matplotlib.lines as mlines
 
-    _DOT_COLORS = ["#4285F4", "#EA4335", "#FDB813", "#34A853"]
+    _DOT_COLORS = landmark_dot_colors
 
     img_height, img_width = image_2d.shape
     aspect_ratio = pixel_sizes[1] / pixel_sizes[0]

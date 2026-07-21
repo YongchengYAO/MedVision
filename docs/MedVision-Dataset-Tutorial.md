@@ -1,76 +1,120 @@
-# Hosting 3D Medical Image Datasets on Hugging Face: A Deep Dive into MedVision
+# Getting Started with the MedVision Dataset
 
-> [!NOTE]
-> *   **MedVision** relies on a remote data loading script.
-> *   `trust_remote_code` is no longer supported in `datasets>=4.0.0`. Please install `datasets` with `pip install datasets==3.6.0`.
+> [!WARNING]
+> `MedVision` relies on a remote data-loading script. `trust_remote_code` is no longer supported in `datasets>=4.0.0`, so pin **`datasets==3.6.0`**. Since dataset **v1.1.0**, the environment variable `MedVision_PLANNER_VERSION` is **required** — loading fails loudly if it is unset.
 
-Hosting large-scale, complex medical datasets requires more than just uploading files; it demands a robust architecture to handle 3D volumes, diverse modalities, and precise annotations. In this post, we explore how the [MedVision dataset](https://huggingface.co/datasets/YongchengYAO/MedVision) leverages Hugging Face's advanced dataset features to manage this complexity.
+This is a 5-minute tour of the [MedVision dataset](https://huggingface.co/datasets/YongchengYAO/MedVision): what it is, how its configs are named, and how to install and load one. Deeper reference lives in the [documentation](https://medvision.readthedocs.io) — we point you there rather than inlining everything.
 
 ## 🩻 What is MedVision?
 
-[MedVision](https://github.com/YongchengYAO/MedVision) is a large-scale, multi-anatomy, multi-modality dataset designed for **quantitative medical image analysis**. It standardizes **22 public datasets** (like *BraTS24*, *MSD*, *OAIZIB-CM*) — covering XR, CT, MRI, US, and PET — into a unified structure with **30.8M image-annotation pairs**, suitable for training massive foundation models. Images are stored as 3D volumes in RAS+ orientation, and annotations carry **real-world units** (mm and degrees) derived from the physical spacing in the image headers.
+**MedVision** is a large-scale, multi-anatomy, multi-modality dataset for **quantitative medical image analysis**. It standardizes **22 public datasets** (`BraTS24`, `MSD`, `OAIZIB-CM`, …) — covering XR, CT, MRI, US, and PET — into one unified structure:
 
-### ✨ Key Features
+| | |
+|---|---|
+| 3D images | **29,031** |
+| 2D slices | **11.2M** |
+| Single-instance annotations | **24.3M** |
+| Multi-instance annotations | **45.3M** |
+| On-disk footprint (full copy) | **~1 TB** |
 
-1.  **📦 Automatic Data Handling**: Automatic downloading and processing of 3D images.
-2.  **✂️ Dynamic Slicing**: Dynamic loading of 2D slices from local 3D volumes, along any of the three anatomical planes (axial, coronal, sagittal).
-3.  **📏 Quantitative Annotations**: Detailed annotations including bounding boxes, mask size, tumor/lesion size, and angle/distance measurements.
-4.  **🏗️ Dataset Codebase**: A dedicated codebase (`medvision_ds`) for robust dataset construction.
+Images are stored as 3D volumes in RAS+ orientation, and annotations carry **real-world units** (mm and degrees) derived from the physical spacing in the image headers. That is what makes the benchmark *quantitative* rather than categorical: a box measured as 40 pixels wide means something only once you multiply by the millimetres-per-pixel of that scan.
 
-> [!TIP]
-> For the dataset/data-config naming conventions and the fields returned by `load_dataset()`, see the [Essential Dataset Concept](https://github.com/YongchengYAO/MedVision#-essential-dataset-concept) section of the repository README.
+A benchmark sample is a *(2D slice, target)* pair, counted **per target, not per instance**. The two annotation totals differ only in whether per-sample quality/size filters are applied — the filtered **single-instance** set (24.3M) is the default and the one to use for leaderboard comparison. See [Dataset versions & statistics](https://medvision.readthedocs.io/en/latest/dataset/statistics.html) for the full breakdown.
 
-## 🛠️ Deep Dive: The Data Processing Script
+**Key features:** automatic download and processing of 3D volumes; dynamic 2D slicing along any anatomical plane (axial, coronal, sagittal); quantitative annotations (bounding boxes, mask size, tumor/lesion size, angle/distance); and a dedicated construction codebase, `medvision_ds`.
 
-The magic behind MedVision's integration with the `datasets` library lies in its processing script, [`MedVision.py`](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/MedVision.py). This script orchestrates everything from dependency management to dynamic data slicing.
+## 🧭 Data Configs: Naming What You Want
 
-### 1. ⚙️ Configuration Definition (`MedVisionConfig`)
+Two terms do a lot of work. A **dataset** is one of the 22 upstream sources. A **data config** is a named, ready-to-load subset — pass a config name to `load_dataset()` to select exactly which slices and annotations you get. Config names follow a fixed five-part convention:
 
-Medical datasets often require distinct subsets. For example, a user might need **2D sagittal slices** for segmenting target A, but **2D axial slices** for target B. To handle this, MedVision implements a custom configuration class inheriting from `datasets.BuilderConfig`.
+```text
+{dataset}_{annotation-type}_{task-ID}_{slice}_{split}
+```
 
-**How it works:**
-The `MedVisionConfig` class defines essential parameters like `taskType`, `imageType` (2D/3D), and `imageSliceType` (axial/coronal/sagittal) to ensure the correct data view is loaded. Basically, data configuration defines what data will be extracted from the raw data storage.
+| Field | Values | Meaning |
+|---|---|---|
+| `dataset` | `OAIZIB-CM`, `BraTS24`, … | which upstream source |
+| `annotation-type` | `BoxSize`, `TumorLesionSize`, `BiometricsFromLandmarks`, `MaskSize` | what kind of target |
+| `task-ID` | `Task01`, `Task02`, … | a **local** task index within that dataset |
+| `slice` | `Axial`, `Coronal`, `Sagittal` | slicing plane |
+| `split` | `Train`, `Test` | subject-level split (70/30) |
 
-> [!TIP]
-> **Documentation**: [Hugging Face BuilderConfig](https://huggingface.co/docs/datasets/en/package_reference/builder_classes#datasets.BuilderConfig)
+Two concrete names:
 
-### 2. 🗂️ Data Preparation (`_split_generators`)
+```text
+OAIZIB-CM_BoxSize_Task01_Axial_Test
+BraTS24_TumorLesionSize_Task01_Axial_Train
+```
 
-The `_split_generators` method is responsible for downloading the data and organizing it into splits (Train/Test). The split is made **at the subject level** (70/30), so slices from one subject never appear in both splits.
+The annotation type decides what the model must produce (and which fields each sample carries): `BoxSize` for bounding-box detection, `TumorLesionSize` for major/minor axis lengths in mm, `BiometricsFromLandmarks` for angles (degrees) and distances (mm) from landmarks, and `MaskSize` for segmentation-mask area. Every sample also carries the geometry needed to interpret it (`pixel_size`, `voxel_size`, slice locators, and more).
 
-**Key Features:**
+📚 Full reference: [Dataset concepts](https://medvision.readthedocs.io/en/latest/dataset/concepts.html) · browse configs interactively in the [Data Explorer](https://medvision-vlm.github.io/explorer.html).
 
-1.  **🧩 Dataset Codebase**: Usage of `medvision_ds`, a distinct codebase located in the [src](https://huggingface.co/datasets/YongchengYAO/MedVision/tree/main/src) folder of the repo. This handles the heavy lifting of data downloading, processing, and annotation generation (via benchmark planners).
-    
-    > [!TIP]
-    > For advanced usage and installation instructions, see the [official guide](https://huggingface.co/datasets/YongchengYAO/MedVision#advanced-usage).
-2.  **📥 Raw Image Download**: It checks the `MedVision_DATA_DIR` environment variable and saves the data there.
-3.  **🔄 Preprocessing**: It invokes specific download scripts to fetch raw image files and standardizes them (e.g., converting to NIfTI format, reorienting to RAS+ orientation).
-4.  **📝 Annotation Handling**: It loads annotations and metadata directly from the benchmark planners, the JSON files released within the dataset repository.
+## 📦 Installation
 
-> [!TIP]
-> **Documentation**: [Hugging Face SplitGenerator](https://huggingface.co/docs/datasets/en/package_reference/builder_classes#datasets.SplitGenerator)
+To just load the data, `datasets` is all you need — pinned to `3.6.0`:
 
-### 3. 💾 Data Loading (`_generate_examples`)
+```bash
+pip install datasets==3.6.0
+```
 
-This method yields the actual training samples. For 3D medical images, simply reading a 3D volume file isn't always sufficient, as many current Vision-Language Models (VLMs) operate on 2D image inputs. Therefore, a flexible method to load 2D slices from 3D volumes is essential.
+To use the benchmark tooling too (batch-download CLI, evaluation, SFT/RFT), install the `medvision_bm` package (Python ≥ 3.9); it already declares the `datasets==3.6.0` pin:
 
-**How it works:**
-For a specific dataset configuration, the script iterates through the cases in the benchmark planner. It dynamically processes the data and filters out invalid samples.
+```bash
+pip install medvision_bm
+```
 
-> [!TIP]
-> **Documentation**: [Hugging Face: Build and Load](https://huggingface.co/docs/datasets/en/about_dataset_load#build-and-load)
+Note that the data-loading code (`medvision_ds`) is a **separate** package — installing `medvision_bm` does not pull it in. Install it explicitly, pointing at the folder where datasets should live:
 
-## 📥 Data Downloading & Advanced Usage
+```bash
+python -m medvision_bm.benchmark.install_medvision_ds --data_dir ./Data
+```
 
-While the script automates much of the process, some datasets (like *SKM-TEA* or *ToothFairy2*) have restrictive licenses that prevent direct automatic downloading. For these, MedVision provides a **Data Downloading** guide. Users must manually download the raw data, process it using the provided tools (`python -m medvision_bm.benchmark.download_datasets`), and format it correctly before the Hugging Face script can load it.
+Clone the repo if you plan to run evaluations or fine-tuning (the launcher scripts and task lists ship in the repository, not the package).
 
-*   **Read more**: [MedVision Data Downloading Guide](https://github.com/YongchengYAO/MedVision#-data-downloading-optional)
+📚 Full reference: [Installation](https://medvision.readthedocs.io/en/latest/getting-started/installation.html)
 
-***
+## 🚀 Loading Your First Config
 
-## 🌟 Key Takeaways for Your Own Datasets
+Set `MedVision_DATA_DIR` (where raw data, caches, and Arrow files live — a full copy is ~1 TB) and `MedVision_PLANNER_VERSION` **before** calling `load_dataset()`, and pass `trust_remote_code=True`:
 
-1.  **Use `BuilderConfig`** to organize complex datasets with multiple subsets or tasks.
-2.  **Automate Installation** inside `_split_generators` if your dataset requires custom helper code.
-3.  **Process Dynamically** in `_generate_examples` to save disk space and allow for flexible data views (e.g., generating 2D slices from 3D volumes on the fly).
+```python
+import os
+from datasets import load_dataset
+
+os.environ["MedVision_DATA_DIR"] = "/path/to/Data"
+os.environ["MedVision_PLANNER_VERSION"] = "latest"   # required since v1.1.0
+
+ds = load_dataset(
+    "YongchengYAO/MedVision",
+    name="OAIZIB-CM_BoxSize_Task01_Axial_Test",
+    trust_remote_code=True,
+    split="test",  # "test" for *_Test configs, "train" for *_Train configs
+)
+```
+
+The `split` argument must match the split baked into the config name.
+
+`MedVision_PLANNER_VERSION` selects which versioned annotation release builds the samples: `latest` (currently `1.1.1`), or an exact version like `1.1.0` / `1.0.0`. Different versions can change the exact sample set, so keep it fixed for reproducibility — **published leaderboard numbers use `1.0.0`**; for new studies we recommend `latest`. Pinning below the latest also requires `MedVision_ACK_RELEASE` set to the current latest.
+
+📚 Full reference: [Loading data](https://medvision.readthedocs.io/en/latest/dataset/loading.html)
+
+## 📥 Batch Downloads & Restricted Datasets
+
+Downloading and building is slow, so for many configs use the CLI rather than scripting `load_dataset()` calls by hand. Ready-made lists (`ConfigurationsList_All.csv`, `_Test.csv`, `_Train.csv`) ship in the repo:
+
+```bash
+python -m medvision_bm.benchmark.download_datasets \
+  --configs_csv dataset-info/dataset-configs/ConfigurationsList_Test.csv \
+  --data_dir <data-folder>
+```
+
+Three source datasets (**FeTA24**, **SKM-TEA**, **ToothFairy2**) do not allow redistribution, so MedVision cannot mirror them. You apply for access from the owners yourself, then point MedVision at your own copy via environment variables. The other 19 datasets need no credentials. See the [restricted datasets overview](https://huggingface.co/datasets/YongchengYAO/MedVision#datasets) for the step-by-step guides.
+
+## 🔗 Links
+
+- 📊 Dataset: <https://huggingface.co/datasets/YongchengYAO/MedVision>
+- 📖 Documentation: <https://medvision.readthedocs.io>
+  - [Dataset concepts](https://medvision.readthedocs.io/en/latest/dataset/concepts.html) · [Loading data](https://medvision.readthedocs.io/en/latest/dataset/loading.html) · [Installation](https://medvision.readthedocs.io/en/latest/getting-started/installation.html)
+- 🔎 Interactive Data Explorer: <https://medvision-vlm.github.io/explorer.html>
+- 💻 Code: <https://github.com/YongchengYAO/MedVision>

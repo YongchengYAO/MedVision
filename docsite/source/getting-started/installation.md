@@ -102,16 +102,16 @@ The dataset loader and the benchmark drivers read their configuration from the e
 | `MedVision_FORCE_INSTALL_CODE` | No | Reinstall `medvision_ds` to the latest on load (keeps you notified of new releases). | `True` (default) / `False` |
 | `MedVision_FORCE_DOWNLOAD_DATA` | No | Force re-download of raw images and annotations. | `False` (default) / `True` |
 | `MEDVISION_RESP_CACHE` | No | Per-sample response cache that makes an interrupted evaluation resumable; set to `0` to disable and reproduce the plain no-cache behaviour. | enabled by default / `0` = off |
-| `HF_TOKEN` | Restricted data only | Hugging Face access token for gated source datasets. | Token string |
+| `HF_TOKEN` | Restricted data only | Hugging Face access token, so the loader can read your own private repo holding restricted data. | Token string |
 | `SYNAPSE_TOKEN` | Restricted data only | Synapse authentication token for Synapse-hosted source datasets (e.g. FeTA24). | Token string |
-| `MedVision_SKMTEA_HF_ID` | Restricted data only | Hugging Face repo ID of the gated SKM-TEA mirror you have access to. | `<user>/<repo>` |
-| `MedVision_ToothFairy2_HF_ID` | Restricted data only | Hugging Face repo ID granting ToothFairy2 access. | `<user>/<repo>` |
+| `MedVision_SKMTEA_HF_ID` | Restricted data only | Your own private Hugging Face repo holding the SKM-TEA data you prepared. | `<user>/<repo>` |
+| `MedVision_ToothFairy2_HF_ID` | Restricted data only | Your own private Hugging Face repo holding the ToothFairy2 data you prepared. | `<user>/<repo>` |
 
 :::{warning}
 `MedVision_ACK_RELEASE=1.1.1` is required **only** when you pin `MedVision_PLANNER_VERSION` to a version below the latest (`1.1.0` or `1.0.0`). It confirms you have read the release note explaining what changed — most importantly the corrected tumour/lesion ellipse fit in `1.1.1`. When you run with `latest` (or `1.1.1`) you do not need to set it.
 :::
 
-A few source datasets (FeTA24, SKM-TEA, ToothFairy2) sit behind access gates. Only set the restricted tokens above if a subtask you are running touches one of those datasets; everything else downloads without credentials.
+Three source datasets (FeTA24, SKM-TEA, ToothFairy2) cannot be redistributed, so you apply for access from the data owner and — for SKM-TEA and ToothFairy2 — host the data you prepared in your own private Hugging Face repo. Only set the restricted variables above if a subtask you are running touches one of those datasets; everything else downloads without credentials. See [Restricted source datasets](../dataset/loading.md#restricted-source-datasets) for the full procedure.
 
 ## Next steps
 

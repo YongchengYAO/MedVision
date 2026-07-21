@@ -23,6 +23,8 @@ PDF_IMAGE_DPI="${PDF_IMAGE_DPI:-100}"
 RFT_MODEL="MedVision__fullRFT__qwen25vl-7b-fullSFT__AD-TL-D__512x512__PRxAnswer_s250"
 RFT_MODEL_DETECT="MedVision__fullRFT__qwen25vl-7b-fullSFT__AD-TL-D__512x512__PRxAnswer_s250_CoT"
 
+pip install pymupdf
+
 # ── AD ──────────────────────────────────────────────────────────────────────
 
 # AD, RFT model

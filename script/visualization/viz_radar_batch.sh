@@ -108,7 +108,7 @@ python "$SCRIPT_DIR/viz_radar.py" \
     --metrics_list avgMRE \
     --show_label_name \
     --label_col 1 \
-    --legend_col 1
+    --legend_col 2
 
 # TL-CoT, SFT-RFT, violin overlay
 python "$SCRIPT_DIR/viz_radar.py" \

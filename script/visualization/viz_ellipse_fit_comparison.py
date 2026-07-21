@@ -61,7 +61,12 @@ os.environ.setdefault("MedVision_ACK_RELEASE", "1.1.1")  # ack older version vs 
 
 from datasets import load_dataset  # noqa: E402
 
-from medvision_bm.utils.configs import SEED  # noqa: E402
+from medvision_bm.utils.configs import (  # noqa: E402
+    IMG_COLOR,
+    MASK_COLOR,
+    REAL_COLOR,
+    SEED,
+)
 from medvision_bm.utils.plot_utils import _get_appropriate_scale, save_fig_capped  # noqa: E402
 
 PIXSIZE_DIR = os.path.join(REPO, "dataset-info/pixel_sizes__ds_v1.0.0")
@@ -72,10 +77,6 @@ HF_REPO = "YongchengYAO/MedVision"
 ORIENT_SLICE_DIM = {"sagittal": 0, "coronal": 1}
 RECORD_COLS = ["image_file", "mask_file", "label", "slice_dim", "slice_idx",
                "pixel_size", "voxel_size", "dataset_name", "taskID"]
-
-IMG_COLOR = "#EA4335"   # image-space fit (red)
-REAL_COLOR = "#4285F4"  # real-space fit (blue)
-MASK_COLOR = "#2ECC71"  # green
 
 
 # --------------------------------------------------------------------------- #

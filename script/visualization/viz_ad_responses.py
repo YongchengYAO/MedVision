@@ -26,44 +26,31 @@ import numpy as np
 from scipy.ndimage import zoom
 
 from medvision_bm.sft.sft_utils import normalize_img
+from medvision_bm.utils.configs import (
+    C_ANS,
+    C_FIG_BG,
+    C_FIGBOX_FILL,
+    C_GT_MAJOR,
+    C_GT_MINOR,
+    C_IMG_PROMPT,
+    C_IMG_SIZE,
+    C_LABEL_NAME,
+    C_MAJ_LEN,
+    C_PIXEL_SIZE,
+    C_RAIL_INDIGO,
+    C_RAIL_TEAL,
+    C_REASON,
+    C_SEG_FILL,
+    C_STEP_ANS,
+    C_TEXT,
+    C_THINK,
+    C_TOOL,
+)
+from medvision_bm.utils.configs import landmark_dot_colors as _DOT_COLORS
+from medvision_bm.utils.configs import response_coord_colors as _COORD_COLORS
+from medvision_bm.utils.configs import tag_colors as _TAG_COLORS
 from medvision_bm.utils.plot_utils import _get_appropriate_scale, save_fig_capped
 
-# ── Color palette (light) ─────────────────────────────────────────────────────
-C_FIG_BG = "#FFFFFF"
-C_BOX_EDGE = "#4B5563"
-C_SEP = "#D1D5DB"
-C_HEADER = "#1D4ED8"
-C_TEXT = "#111827"
-C_THINK = "#9CA3AF"
-C_REASON = "#0284C7"
-C_STEP_ANS = "#16A34A"
-C_ANS = "#EA580C"
-C_TOOL = "#7C3AED"
-
-# Prompt section highlights
-C_IMG_PROMPT = "#D97706"
-C_LABEL_NAME = "#059669"  # green-600 — landmark / line description
-C_IMG_SIZE = "#1D4ED8"
-C_PIXEL_SIZE = "#6D28D9"
-
-# 8 coordinate colors — step 1 uses [0:4], step 2 uses [4:8]
-_COORD_COLORS = [
-    "#DC2626",  # red-600
-    "#F97316",  # orange-500
-    "#EAB308",  # yellow-500
-    "#84CC16",  # lime-400
-    "#06B6D4",  # cyan-500
-    "#0EA5E9",  # sky-500
-    "#A21CAF",  # fuchsia-700
-    "#4F46E5",  # indigo-600
-]
-C_MAJ_LEN = "#0F766E"  # teal-700 — measurement result
-
-# GT overlay colors
-C_GT_MAJOR = "#A21CAF"  # fuchsia-700 — GT landmark / line 1
-C_GT_MINOR = "#4F46E5"  # indigo-600  — GT line 2 (angle only)
-
-_TAG_COLORS = frozenset({C_THINK, C_REASON, C_STEP_ANS, C_ANS, C_TOOL})
 _PROMPT_HEADERS = frozenset(
     {
         "Task:",
@@ -73,22 +60,12 @@ _PROMPT_HEADERS = frozenset(
     }
 )
 
-_DOT_COLORS = ["#4285F4", "#EA4335", "#FDB813", "#34A853"]
-
 FIG_W = 30.24  # 25.2 × 1.2 — widened 20% (height auto-decreases as text reflows)
 FONTSIZE_IN = 18.0
 FONTSIZE_RS = 18.0
 FONTSIZE_MT = 18.0
 LH_MULT = 1.4
 CHAR_RATIO = 0.601
-
-# ── Webpage "Case Viewer" section-box palette (from medvision-vlm.github.io index.css) ──
-C_SEG_FILL = "#ffffff"
-C_SEG_EDGE = "#e6e9ef"
-C_RAIL_TEAL = "#0E8C8B"  # Prompt & Metrics left rail + pill
-C_RAIL_INDIGO = "#4f46e5"  # Response left rail + pill
-C_FIGBOX_FILL = "#ffffff"
-C_FIGBOX_EDGE = "#e6e9ef"
 
 # ── Section-box / figure-box geometry (inches; FIG_W-relative). No outer card/stage. ──
 OUTER_M = 0.22  # figure edge → content (small margin; outer card/stage removed)
@@ -99,12 +76,12 @@ SEG_PAD_X = 0.26  # seg border → text (both sides)
 SEG_PAD_TOP = 0.24  # seg top border → pill top (margin above tag)
 SEG_PAD_BOT = 0.26  # text bottom → seg bottom border (margin below text)
 SEG_RADIUS = 0.14
-RAIL_W = 0.06  # colored left rail thickness
+BOX_LW = 1.8  # full-perimeter accent border width (pt)
 PILL_H = 0.44  # tag height (enlarged)
 PILL_PAD_X = 0.20  # text inset inside pill (enlarged)
 PILL_GAP_BELOW = 0.20  # pill bottom → body text top (margin below tag)
 PILL_FS = 18  # pill/tag font size (pt, sans bold; enlarged)
-BODY_PAD = 0.10  # slack so last text line isn't flush to border
+BODY_PAD = 0.0  # none needed: the line-height already clears the last descender
 FIGBOX_PAD = 0.20  # figure box border → image region
 FIGBOX_RADIUS = 0.14
 TITLE_H = 0.42  # title band height above each figure
@@ -112,9 +89,10 @@ IMG_GAP = 0.24  # gap between the two stacked images
 IMG_MAX_H = 9.5  # per-image height cap (raised so images fill the figure-box width)
 GUT_L = 0.60  # left gutter (ylabel + yticks) for rotated bottom panel
 GUT_B = 0.48  # bottom gutter (xlabel + xticks) for rotated bottom panel
-# _draw_tokens wraps at max_x=0.985 of the axis while _count_wrapped_lines assumes the
-# full width; shrink the estimate width to match so the box is tall enough (no clipping).
-_WRAP_SAFETY = 0.95
+# _draw_tokens starts text at x0=0.002 and wraps at max_x=0.985, so its usable width is
+# exactly 0.983 of the axis. Matching that here makes the estimated line count EQUAL the
+# drawn line count, so the box ends on the last line instead of trailing blank ones.
+_WRAP_SAFETY = 0.983
 SEG_EXTRA = SEG_PAD_TOP + PILL_H + PILL_GAP_BELOW + SEG_PAD_BOT  # pill+pad chrome per box
 
 # Response tag patterns
@@ -354,7 +332,7 @@ def _tokenize_task_line(line):
 
 def _tokenize_input(text):
     tokens = []
-    for line in text.split("\n"):
+    for line in text.rstrip().split("\n"):
         stripped = line.strip()
         if stripped in _PROMPT_HEADERS:
             tokens.append((line, C_TEXT, True))
@@ -416,8 +394,9 @@ def _text_block_h_in(tokens, fontsize, ax_w_in):
     separately, so — unlike the old ``_section_h_in`` — this must NOT add its own
     pad or 1.5in floor, else the section-box height double-counts that space.
 
-    Estimates wrap at ``_WRAP_SAFETY`` × the axis width to match ``_draw_tokens``
-    (which wraps at max_x=0.985), so the box is tall enough to show every line.
+    Estimates wrap at ``_WRAP_SAFETY`` × the axis width, which is exactly the usable
+    width ``_draw_tokens`` lays out into, so the estimated line count equals the drawn
+    one — the box shows every line with no trailing blank lines below the last.
     """
     n = _count_wrapped_lines(tokens, fontsize, ax_w_in * _WRAP_SAFETY)
     return n * fontsize * LH_MULT / 72 + BODY_PAD
@@ -517,11 +496,6 @@ def _pill(ax, x, y, text, *, color, height=PILL_H, fs=PILL_FS, pad_x=PILL_PAD_X,
         zorder=zorder + 1,
     )
     return w
-
-
-def _left_rail(ax, x, y, h, *, color, width=RAIL_W, zorder=5):
-    """Thin rounded vertical capsule (section-box left rail)."""
-    _round_rect(ax, x, y, width, h, radius=width / 2, facecolor=color, zorder=zorder)
 
 
 def _place_image_box(fig, box_rect_frac, img_aspect):
@@ -852,7 +826,7 @@ def _plot_sample(
     # ── Layout: webpage "Case Viewer" section boxes (no outer card) ────────────
     toks = [in_tokens, rs_tokens, mt_tokens]
     fss = [FONTSIZE_IN, FONTSIZE_RS, FONTSIZE_MT]
-    rail_colors = [C_RAIL_TEAL, C_RAIL_INDIGO, C_RAIL_TEAL]
+    accent_colors = [C_RAIL_TEAL, C_RAIL_INDIGO, C_RAIL_TEAL]
     pill_texts = ["Prompt", "Response", "GT · Prediction · Metrics"]
 
     # Horizontal budget (inches) — text width drives wrapping, so widths come first.
@@ -860,7 +834,7 @@ def _plot_sample(
     avail = content_w - COL_GAP_IN
     left_w = LEFT_FRAC * avail
     right_w = avail - left_w
-    text_w = left_w - RAIL_W - 2 * SEG_PAD_X
+    text_w = left_w - 2 * SEG_PAD_X
 
     # Section-box heights = chrome (SEG_EXTRA) + pure wrapped-text height.
     t_h = [_text_block_h_in(toks[i], fss[i], text_w) for i in range(3)]
@@ -882,9 +856,9 @@ def _plot_sample(
         _H, _W, _px0, _px1 = _shape[0], _shape[1], _z[0], _z[1]
     rot_aspect = (_W * _px1) / (_H * _px0)  # real-world mm-height / mm-width, rotated
 
-    # Figure box hugs the two images (each with a title). The figure DYNAMICALLY
-    # SHRINKS to fit within the text-column height, so it never forces extra height
-    # (short responses no longer leave the figure taller than the text).
+    # The images (each with a title) DYNAMICALLY SHRINK to fit within the text-column
+    # height, so they never force extra height. The box itself then spans that full
+    # height, so its top/bottom edges line up with the first/last section box.
     fig_inner_w = right_w - 2 * FIGBOX_PAD
     top_nat = min(fig_inner_w * disp_aspect, IMG_MAX_H)
     bot_nat = min((fig_inner_w - GUT_L) * rot_aspect, IMG_MAX_H)
@@ -894,7 +868,8 @@ def _plot_sample(
     scale = min(1.0, (content_h - fig_overhead) / nat_img_h) if nat_img_h > 0 else 1.0
     top_h = top_nat * scale
     bot_h = bot_nat * scale
-    figbox_h = fig_overhead + top_h + bot_h
+    fig_content_h = fig_overhead + top_h + bot_h  # titles + images, natural size
+    figbox_h = content_h  # aligned with the text column, not hugging the images
     fig_h = content_h + 2 * OUTER_M
 
     # ── Figure + full-figure inch-axes carrying the section / figure boxes ────
@@ -919,16 +894,12 @@ def _plot_sample(
         seg_bot = seg_top - seg_h[i]
         _round_rect(
             ax_bg, left_x0, seg_bot, left_w, seg_h[i], radius=SEG_RADIUS,
-            facecolor=C_SEG_FILL, edgecolor=C_SEG_EDGE, linewidth=1.0, zorder=4,
+            facecolor=C_SEG_FILL, edgecolor=accent_colors[i], linewidth=BOX_LW, zorder=4,
         )
-        _left_rail(
-            ax_bg, left_x0, seg_bot + SEG_RADIUS, seg_h[i] - 2 * SEG_RADIUS,
-            color=rail_colors[i], zorder=5,
-        )
-        text_x0 = left_x0 + RAIL_W + SEG_PAD_X
+        text_x0 = left_x0 + SEG_PAD_X
         _pill(
             ax_bg, text_x0, seg_top - SEG_PAD_TOP - PILL_H, pill_texts[i],
-            color=rail_colors[i], zorder=6,
+            color=accent_colors[i], zorder=6,
         )
         text_top = seg_top - SEG_PAD_TOP - PILL_H - PILL_GAP_BELOW
         text_bot = seg_bot + SEG_PAD_BOT
@@ -940,16 +911,16 @@ def _plot_sample(
         _draw_tokens(ax_txt, toks[i], 0.002, 0.998, fss[i], text_w, text_top - text_bot)
         y = seg_bot - SEG_GAP
 
-    # ── Right column: figure box (vertically centered) hugging the two images ──
-    figbox_top = content_top - (content_h - figbox_h) / 2
+    # ── Right column: figure box, top/bottom flush with the text column ───────
+    figbox_top = content_top
     figbox_bot = figbox_top - figbox_h
     _round_rect(
         ax_bg, right_x0, figbox_bot, right_w, figbox_h, radius=FIGBOX_RADIUS,
-        facecolor=C_FIGBOX_FILL, edgecolor=C_FIGBOX_EDGE, linewidth=1.0, zorder=4,
+        facecolor=C_FIGBOX_FILL, edgecolor=C_RAIL_TEAL, linewidth=BOX_LW, zorder=4,
     )
     inner_x0 = right_x0 + FIGBOX_PAD
     inner_cx = right_x0 + right_w / 2
-    inner_top = figbox_top - FIGBOX_PAD
+    inner_top = figbox_top - FIGBOX_PAD - (figbox_h - fig_content_h) / 2
     title_kw = dict(
         ha="center", va="center", fontsize=16, fontweight="bold", color=C_TEXT,
         fontfamily="sans-serif", zorder=6,

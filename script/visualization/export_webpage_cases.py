@@ -8,8 +8,9 @@ Export MedVision benchmark results as case-study data for the project webpage's
 interactive case viewer (medvision-vlm.github.io).
 
 For each task (Detection, Tumor/Lesion size, Angle/Distance) it:
-  1. Randomly selects samples per dataset (seeded; default 1234) and reports each
-     sample's original metric (Detection: precision/recall/F1; TL & AD: MRE).
+  1. Sweeps through every distinct displayed target (the case viewer's TARGET buttons),
+     selecting a seeded sample per target (default seed 1234) and reporting each sample's
+     original metric (Detection: precision/recall/F1; TL & AD: MRE).
   2. Saves ONE overlay PNG per case into <page_dir>/figure/cases/<model>/:
        *_overlay.png — GT vs prediction overlay (pixel-size-scaled renderers in
                        medvision_bm.utils.plot_utils). If the model response can't
@@ -32,7 +33,7 @@ Example:
         --det_models "MedVision-V0=/mnt/.../MedVision-detect-v2/MedVision__fullRFT__...s250_CoT" \
         --ad_models  "MedVision-V0=/mnt/.../MedVision-AD-v2-CoT/MedVision__fullRFT__...s250" \
         --page_dir /mnt/vincent-pvc-rwm/Github/medvision-vlm.github.io \
-        --per_dataset 3 --per_task_max 60
+        --per_target 1
 """
 
 import argparse
@@ -898,28 +899,48 @@ def _collect_model(
     return collected
 
 
-def _select_shared_keys(collected, per_dataset, per_task_max, seed):
-    """Pick a SHARED, ordered list of (dataset, doc_id) present in EVERY model, seeded.
+def _select_shared_keys(task, collected, per_target, per_task_max, seed):
+    """Pick a SHARED, ordered list of join keys present in EVERY model, seeded, that
+    sweeps through every distinct DISPLAYED target (the case viewer's TARGET buttons).
 
-    collected: {model_name: {(ds, doc_id): rec}}. Returns the keys common to all models,
-    sampled up to per_dataset per dataset then capped to per_task_max. Computed ONCE and
-    reused for every model, so each model's case list is built from identical samples in
-    identical order (case N == same sample across models)."""
+    collected: {model_name: {key: (sample, proc, eq)}}. Returns the keys common to all
+    models, grouped by the displayed target string — _target_modality() output, post
+    label_map_rename, the exact value the viewer dedups its TARGET selector on, so 'aorta'
+    from two datasets and merged aliases (e.g. anterior/posterior hippocampus) collapse
+    into one group — with per_target keys sampled from each group. Computed ONCE and reused
+    for every model, so each model's case list is built from identical samples in identical
+    order (case N == same sample across models). The target is only a grouping attribute
+    computed on the fly from a representative sample (docs are identical across models per
+    key); the join key itself is unchanged.
+
+    per_task_max: optional safety ceiling on total keys; None = no cap (default), so the
+    per-target sweep is never truncated. If set and it would truncate, some labels are
+    dropped — logged."""
     if not collected:
         return []
     common = set.intersection(*[set(c.keys()) for c in collected.values()])
     if not common:
         return []
+    any_model = next(iter(collected.values()))  # docs identical across models per key
     rng = random.Random(seed)
-    by_ds = {}
+    key_target = {}
+    by_target = {}
     for key in common:
-        by_ds.setdefault(key[0], []).append(key)
+        target, _ = _target_modality(task, any_model[key][0], key[0])
+        key_target[key] = target
+        by_target.setdefault(target, []).append(key)
     selected = []
-    for ds in sorted(by_ds):
-        keys = sorted(by_ds[ds])  # deterministic order before sampling
-        selected.extend(rng.sample(keys, min(per_dataset, len(keys))))
-    if len(selected) > per_task_max:
+    for target in sorted(by_target):
+        keys = sorted(by_target[target])  # deterministic order before sampling
+        selected.extend(rng.sample(keys, min(per_target, len(keys))))
+    if per_task_max is not None and len(selected) > per_task_max:
         selected = rng.sample(selected, per_task_max)
+        kept = len({key_target[k] for k in selected})
+        print(
+            f"  [{task}] per_task_max={per_task_max} truncated the sweep to "
+            f"{len(selected)} case(s): {kept}/{len(by_target)} target(s) kept "
+            f"(some labels dropped)"
+        )
     return selected
 
 
@@ -1073,30 +1094,37 @@ def main():
         "--page_dir", required=True, help="Project page repo (medvision-vlm.github.io)"
     )
     ap.add_argument(
-        "--per_dataset",
+        "--per_target",
         type=int,
         default=None,
-        help="Samples per dataset (fallback when per-task arg not given).",
+        help="Samples per displayed target (fallback when per-task arg not given).",
     )
     ap.add_argument(
-        "--per_dataset_det",
+        "--per_target_det",
         type=int,
-        default=10,
-        help="Samples per dataset for Detection (default 10).",
+        default=1,
+        help="Samples per displayed target for Detection (default 1 = one per label).",
     )
     ap.add_argument(
-        "--per_dataset_tl",
+        "--per_target_tl",
         type=int,
-        default=20,
-        help="Samples per dataset for TL (default 20).",
+        default=1,
+        help="Samples per displayed target for TL (default 1 = one per label).",
     )
     ap.add_argument(
-        "--per_dataset_ad",
+        "--per_target_ad",
         type=int,
-        default=20,
-        help="Samples per dataset for AD (default 20).",
+        default=1,
+        help="Samples per displayed target for AD (default 1 = one per label).",
     )
-    ap.add_argument("--per_task_max", type=int, default=50)
+    ap.add_argument(
+        "--per_task_max",
+        type=int,
+        default=None,
+        help="Optional safety ceiling on total cases per task (default None = no cap, so "
+        "the per-target sweep is never truncated). If set and it would truncate, some "
+        "labels are dropped (logged).",
+    )
     ap.add_argument(
         "--seed",
         type=int,
@@ -1174,13 +1202,13 @@ def main():
         or ([("MedVision-V0", args.ad_dir)] if args.ad_dir else []),
     }
 
-    # Per-task sample quota: explicit per-task arg used unless global --per_dataset is given.
-    per_dataset_by_task = {
+    # Per-task sweep density: explicit per-task arg used unless global --per_target is given.
+    per_target_by_task = {
         "Detection": (
-            args.per_dataset_det if args.per_dataset is None else args.per_dataset
+            args.per_target_det if args.per_target is None else args.per_target
         ),
-        "TL": args.per_dataset_tl if args.per_dataset is None else args.per_dataset,
-        "AD": args.per_dataset_ad if args.per_dataset is None else args.per_dataset,
+        "TL": args.per_target_tl if args.per_target is None else args.per_target,
+        "AD": args.per_target_ad if args.per_target is None else args.per_target,
     }
 
     by_task = {}
@@ -1199,9 +1227,10 @@ def main():
             if cm:
                 collected[name] = cm
 
-        # One shared, seeded sample set, rendered by EVERY model in the same order.
+        # One shared, seeded sample set — one per displayed target — rendered by EVERY
+        # model in the same order.
         selected = _select_shared_keys(
-            collected, per_dataset_by_task[task], args.per_task_max, args.seed
+            task, collected, per_target_by_task[task], args.per_task_max, args.seed
         )
         print(
             f"  [{task}] {len(selected)} shared case(s) across {len(collected)} model(s)"

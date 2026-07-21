@@ -133,12 +133,33 @@ ds = load_dataset(
 
 Note that the CLI's `--force_download_data` maps to `MedVision_FORCE_DOWNLOAD_DATA`; it forces the builder to run and re-fetch raw data for every requested item.
 
-## Gated source datasets
+## Restricted source datasets
 
-A few source datasets are access-restricted and need credentials before they will download. Set the relevant tokens in your environment first:
+Three source datasets **do not allow redistribution**, so MedVision cannot ship or mirror them. You apply for access from the data owner yourself, then point MedVision at your own copy.
 
-- **FeTA24** — hosted on Synapse behind a data-use agreement; provide `SYNAPSE_TOKEN`.
-- **SKM-TEA** — Stanford AIMI knee-MRI released under a data-use agreement, so MedVision serves it from a *gated* Hugging Face mirror rather than fetching it freely; provide `MedVision_SKMTEA_HF_ID` (a mirror repo you have been granted access to) together with `HF_TOKEN`.
-- **ToothFairy2** — a gated Hugging Face repo; provide `MedVision_ToothFairy2_HF_ID` and `HF_TOKEN`.
+**FeTA24** only needs a token — it is hosted on Synapse behind a registration agreement:
 
-Without these, requesting a config from a gated dataset will fail at download time. See the dataset card for the exact per-dataset access steps.
+```bash
+export SYNAPSE_TOKEN=<your-synapse-token>
+```
+
+**SKM-TEA and ToothFairy2** need one extra step. Once access is granted, you download and process the raw data yourself, upload the *preprocessed* data to **your own private Hugging Face dataset repo**, and set the env var to that repo:
+
+| Dataset | Apply for access at | Env var |
+|---|---|---|
+| SKM-TEA | <https://aimi.stanford.edu/datasets/skm-tea-knee-mri> | `MedVision_SKMTEA_HF_ID` |
+| ToothFairy2 | <https://ditto.ing.unimore.it/toothfairy2/> | `MedVision_ToothFairy2_HF_ID` |
+
+`HF_TOKEN` is what lets the loader read that private repo, so authenticate as well:
+
+```bash
+export HF_TOKEN=<your-hf-token>
+hf auth login --token $HF_TOKEN --add-to-git-credential
+
+export MedVision_SKMTEA_HF_ID=<your-user>/<your-private-repo>
+export MedVision_ToothFairy2_HF_ID=<your-user>/<your-private-repo>
+```
+
+Step-by-step preparation guides live on the dataset card: [restricted datasets overview](https://huggingface.co/datasets/YongchengYAO/MedVision#datasets), [prepare SKM-TEA](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/dataset_skm-tea.md), [prepare ToothFairy2](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/dataset_toothfairy2.md).
+
+Without these, requesting a config from a restricted dataset will fail at download time. The other 19 datasets need no credentials.

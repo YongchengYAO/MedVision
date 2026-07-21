@@ -653,7 +653,7 @@ def _barh_panel(ax, data, title, *, order=None, exclude=None, color_of=None, sha
     ax.set_yticklabels(cats, fontsize=8, fontweight="bold")
     ax.invert_yaxis()  # first category at top
     ax.set_xscale("log")
-    vmax = max(vals) if vals else 1
+    vmax = max(vals, default=1) or 1  # `or 1`: an all-zero panel (e.g. --no_detection) still scales
     vmin = min((v for v in vals if v > 0), default=1)
     ax.set_xlim(10 ** math.floor(math.log10(vmin)), vmax * 4)  # headroom for value labels
     for yi, v in zip(y, vals):
@@ -667,12 +667,16 @@ def _barh_panel(ax, data, title, *, order=None, exclude=None, color_of=None, sha
 
 
 def viz_summary(all_stats, out_path):
-    """Render the 4 collection-level distributions as one compact figure.
+    """Render the 5 collection-level distributions as one compact figure.
 
-    Panels: images-by-modality and 2D-slices-by-modality (top row); volumes-by-anatomy
-    and 2D-slices-by-anatomy (bottom row). Bars are log-scaled with exact value labels
-    (counts span ~3 orders of magnitude). Saved as a transparent vector PDF via
-    ``save_fig_capped`` (project figure convention).
+    Row 1 (2 panels): images-by-modality and 2D-slices-by-modality.
+    Row 2 (3 narrower panels): volumes-by-anatomy, then the two annotation views of the same
+    anatomy groups -- single-instance (``boxsize_by_anatomy``, the v1.0.0-filtered benchmark
+    BoxSize count) and multi-instance (``2D-slices_by_anatomy``, the unfiltered per-(slice,label)
+    count). Each anatomy panel sorts by its OWN values descending, so the row order differs
+    between panels -- read each panel's own y labels rather than comparing across a row. Bars are
+    log-scaled with exact value labels (counts span ~3 orders of magnitude). Saved as a
+    transparent vector PDF via ``save_fig_capped`` (project figure convention).
     """
     import matplotlib
 
@@ -681,32 +685,45 @@ def viz_summary(all_stats, out_path):
 
     from medvision_bm.utils.plot_utils import save_fig_capped
 
+    # The two annotation panels are nested BY DESIGN, not disjoint:
+    #   single-instance = (slice, label) items with exactly ONE cluster >= 10 px in both dims
+    #   multi-instance  = (slice, label) items with ONE OR MORE clusters, unfiltered (a superset)
+    # Both come from the DETECTION plan so the pair stays in the same benchmark units -- the
+    # seg-derived 2D-slices_by_anatomy is numerically identical today, but only coincidentally
+    # (cf. the same guard in _bench_anatomy). Either may be empty under --no_detection.
+    anat_single = all_stats.get("boxsize_by_anatomy") or {}
+    anat_multi = all_stats.get("boxsize_by_anatomy_raw") or {}
+    anat_panels = [
+        ("# 3D Images by Anatomy", all_stats["volumes_by_anatomy"]),
+        ("# Single-instance Annotations per Anatomy", anat_single),
+        ("# Multi-instance Annotations per Anatomy", anat_multi),
+    ]
     n_mod = max(len(all_stats["images_by_modality"]), len(all_stats["2D-slices_by_modality"]), 1)
-    n_anat = max(
-        sum(k not in _ANATOMY_EXCLUDE for k in all_stats["volumes_by_anatomy"]),
-        sum(k not in _ANATOMY_EXCLUDE for k in all_stats["2D-slices_by_anatomy"]),
-        1,
-    )
+    n_anat = max(len({k for _, d in anat_panels for k in d} - _ANATOMY_EXCLUDE), 1)
     fig_h = 1.2 + n_mod * 0.30 + n_anat * 0.22  # scale height to the taller (anatomy) row
-    fig = plt.figure(figsize=(13, fig_h))
-    gs = fig.add_gridspec(
-        2, 2, height_ratios=[n_mod, n_anat], hspace=0.30, wspace=0.34,
-        left=0.15, right=0.97, top=0.92, bottom=0.05,
+    fig = plt.figure(figsize=(15, fig_h))
+    # nested grid: row 1 keeps 2 half-width panels, row 2 holds 3 narrower ones (own wspace, since
+    # each anatomy panel must still clear its y-tick label column)
+    outer = fig.add_gridspec(
+        2, 1, height_ratios=[n_mod, n_anat], hspace=0.30,
+        left=0.13, right=0.98, top=0.92, bottom=0.05,
     )
+    gs_mod = outer[0].subgridspec(1, 2, wspace=0.34)
+    gs_anat = outer[1].subgridspec(1, 3, wspace=0.52)
 
     def mod_color(c):
         return _MODALITY_COLORS.get(c, "#888888")
 
     mod_order = list(_MODALITY_COLORS)  # fixed order, consistent across the two modality panels
 
-    _barh_panel(fig.add_subplot(gs[0, 0]), all_stats["images_by_modality"],
+    _barh_panel(fig.add_subplot(gs_mod[0, 0]), all_stats["images_by_modality"],
                 "# 3D Images by Modality", order=mod_order, color_of=mod_color)
-    _barh_panel(fig.add_subplot(gs[0, 1]), all_stats["2D-slices_by_modality"],
+    _barh_panel(fig.add_subplot(gs_mod[0, 1]), all_stats["2D-slices_by_modality"],
                 "# 2D Slices by Modality", order=mod_order, color_of=mod_color)
-    _barh_panel(fig.add_subplot(gs[1, 0]), all_stats["volumes_by_anatomy"],
-                "# 3D Images by Anatomy", exclude=_ANATOMY_EXCLUDE, shade=_ANATOMY_CMAP)
-    _barh_panel(fig.add_subplot(gs[1, 1]), all_stats["2D-slices_by_anatomy"],
-                "# Annotations by Anatomy", exclude=_ANATOMY_EXCLUDE, shade=_ANATOMY_CMAP)
+    for i, (title, data) in enumerate(anat_panels):
+        # no `order=`: each anatomy panel sorts by its OWN values, descending
+        _barh_panel(fig.add_subplot(gs_anat[0, i]), data, title,
+                    exclude=_ANATOMY_EXCLUDE, shade=_ANATOMY_CMAP)
 
     save_fig_capped(out_path, fig=fig, bbox_inches="tight", transparent=True)
     plt.close(fig)
@@ -770,6 +787,14 @@ _DATASET_COLORS = configs.nature_palette_2   # swap to configs.nature_palette_1 
 # Each time the colour list wraps, the reused hue is blended this much further toward white, so a
 # later round of datasets gets a LIGHTER tint of the same hue (wrap 0 = pure, wrap 1 = 0.33 toward
 # white, wrap 2 = 0.55, ...) and no two datasets share a colour.
+#
+# Deliberately NOT configs.extend_palette: that helper alternates darker/lighter per wrap, which
+# scores better on paper (min pairwise dE 10.7 vs 5.3 here) but renders the second round DARKER
+# than the base wedges, reading as emphasis rather than as a repeat. A lighten-only variant of it
+# reaches 10.6 by rotating hue instead, at the cost of more saturated wedges. Both were tried and
+# rejected for this figure: the muted, uniformly-pale wrap below is the intended look. The tradeoff
+# accepted here is that rounds 2 and 3 are close to each other (5.3, vs ~2.3 = just-noticeable);
+# the wedge labels and the named legend carry identity for the small datasets.
 _WRAP_LIGHTEN = 0.33
 
 
@@ -995,8 +1020,10 @@ def viz_rings(all_summary, out_path, magnify=True, layout="2x1", variant="filter
     START, P_NAME = 90.0, 0.03                  # start at 12 o'clock; min proportion for an inner label
     INNER_MIN = P_NAME * 360.0                  # deg: below this a dataset is "small" -> enlarged panel
 
-    # raw counts every mask instance, so CAMUS (US, ~1.34M) creeps just under the "small" cutoff and
-    # then dominates the zoom; keep it out of the enlarged panel (and its dotted arc) for raw.
+    # unfiltering lifts the collection total (x1.87) far more than it lifts CAMUS (x1.41, 951K ->
+    # 1.34M -- US structures rarely trip the multi-cluster/size filters), so CAMUS's share falls
+    # 3.92% -> 2.96% and slips just under the 3% "small" cutoff, where it then dominates the zoom;
+    # keep it out of the enlarged panel (and its dotted arc) for raw.
     enlarge_exclude = {"CAMUS"} if variant == "raw" else set()
 
     # proportional spans for the main donut (clockwise from 12 o'clock); tail = too small to label
@@ -1079,7 +1106,14 @@ def viz_rings(all_summary, out_path, magnify=True, layout="2x1", variant="filter
     axl.axis("off")
     handles = [Patch(facecolor=ds_color[k], label=f"{_short_ds(k)} ({_abbrev(_bench_count(s))})")
                for k, s in datasets]
-    # raw counts every mask instance; filtered keeps one box per (slice,label) => single-instance
+    # NESTED, NOT DISJOINT. "single-instance" = the items the v1.0.0 filters keep (BoxSize: exactly
+    # one cluster, >= 10 px in both dims; T/L: a single-cluster slice); "multi-instance" = the same
+    # items UNFILTERED, i.e. ">= 1 instance", so it is a strict SUPERSET (24.3M contained in 45.3M),
+    # never the complement -- do not add the two variants. Neither counter tallies components: N
+    # clusters of one label on one slice count ONCE, not N; the variants differ only in which items
+    # are admitted. SCOPE: these legend values are _bench_count, the 3-task total (24,279,534 /
+    # 45,338,754), while the outer ring -- and the anatomy panels in dataset_summary.pdf -- are
+    # BoxSize-only (24,236,327 / 45,274,250). A/D is unfiltered, so its 7,925 is equal on both sides.
     leg_title = "# Multi-instance Annotations" if variant == "raw" else "# Single-instance Annotations"
     leg = axl.legend(handles=handles, loc="center", ncol=leg_ncol, frameon=False, fontsize=17,
                      title=leg_title, title_fontsize=28.5,
@@ -1205,10 +1239,12 @@ def main():
                              "BoxSize. Default: BoxSize is counted (loads large detection plans).")
     parser.add_argument("--viz", action="store_true",
                         help="Also render dataset_summary.pdf (bar panels), "
-                             "dataset_summary_wordcloud.png (anatomy word cloud; needs the wordcloud "
-                             "package), and the 2-ring donut in filtered + raw benchmark counts, each "
-                             "as a magnified-inset (dataset_summary_rings_{filtered,raw}.pdf) and a "
-                             "compact (…_compact.pdf) variant.")
+                             "dataset_summary_wordcloud.pdf (anatomy word cloud; needs `pip install "
+                             "wordcloud` -- NOT a declared dependency, and the figure is silently "
+                             "skipped with a warning when it is missing), and the 2-ring donut in "
+                             "filtered + raw benchmark counts, each as a magnified-inset "
+                             "(dataset_summary_rings_{filtered,raw}_{2x1,1x2}.pdf) and a compact "
+                             "(…_compact.pdf) variant.")
     parser.add_argument("--viz_only", action="store_true",
                         help="Figure-only: skip the scan, render all figures from the existing "
                              "dataset_summary_filtered.json in --out_dir, then exit.")

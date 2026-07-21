@@ -55,11 +55,66 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import yaml
+from matplotlib.colors import to_rgba
 from matplotlib.gridspec import GridSpec
 from matplotlib.transforms import blended_transform_factory
 
-from medvision_bm.utils.configs import EXCLUDED_KEYS, MINIMUM_GROUP_SIZE
+from medvision_bm.utils.configs import (
+    C_ANATOMY_LABEL,
+    C_TUMOR_LESION_LABEL,
+    EXCLUDED_KEYS,
+    MINIMUM_GROUP_SIZE,
+    radar_model_colors,
+)
 from medvision_bm.utils.plot_utils import save_fig_capped
+
+# Model colours, matched to the box-to-image-ratio figure
+# (medvision_bm.benchmark.viz_detection_performance_per_boxImgRatio, produced by
+# script/analyze/detection--target-size/run_analysis.sh) so the two read as one family:
+# tab10 in order, then each reused hue DARKENED to 80% on the wrap.
+# `configs.radar_model_colors` is byte-identical to `plt.cm.tab10.colors`, so it is used here to
+# keep the palette config-driven rather than reaching into a matplotlib colormap.
+#
+# NOT configs.extend_palette: that applies its own alternating lighter/darker HLS shift, which
+# would diverge from the reference for every model past the 10th.
+_MODEL_COLORS = radar_model_colors
+_WRAP_DARKEN = 0.8
+
+# Legend text. One size for every task; a multi-column legend is then scaled to the label block's
+# width by plot_label_mapping (see there). The band keeps that fit from running away when a config
+# has very few / very many models -- it is a guard, not the usual outcome.
+_LEGEND_FONTSIZE = 16
+_LEGEND_FONTSIZE_RANGE = (7.0, 22.0)
+
+# Angle box plot. The 45° labels are 3 lines deep, and each extra line offsets diagonally into the
+# next box's slot, so the per-model width is what keeps them from colliding — raise it, not the
+# rotation, if a longer model name ever overlaps.
+_BOX_FACE_ALPHA = 0.7
+_BOX_LABEL_ROTATION = 45
+_BOX_INCHES_PER_MODEL = 1.05
+
+
+def model_palette(n):
+    """``n`` model colours: ``_MODEL_COLORS`` in order, reused hues darkened by ``_WRAP_DARKEN``.
+
+    Public because ``export_radar_data.py`` imports it, so the PDF radar and the interactive web
+    radar stay on one palette definition.
+
+    Mirrors the reference figure's rule exactly (viz_detection_performance_per_boxImgRatio, the
+    ``base_colors``/``darker_color`` block). Note the darkening does NOT compound: it is applied to
+    every index past the first cycle, so >= 2 full wraps (21+ models) would repeat a colour. With
+    18 models the list wraps once and every colour is distinct.
+    """
+    from matplotlib.colors import to_hex, to_rgb
+
+    out = []
+    for i in range(n):
+        base = _MODEL_COLORS[i % len(_MODEL_COLORS)]
+        if i < len(_MODEL_COLORS):
+            out.append(base)
+        else:
+            out.append(to_hex(tuple(c * _WRAP_DARKEN for c in to_rgb(base))))
+    return out
 
 
 def load_config(config_path):
@@ -489,7 +544,8 @@ def plot_radar_chart(
     N = len(label_numbers)
     angles = [n / float(N) * 2 * pi for n in range(N)]
     angles += angles[:1]
-    base_colors = plt.cm.tab10.colors
+    # One colour per model, in config order (see model_palette: tab10, reused hues darkened).
+    model_colors = model_palette(len(data_dict))
 
     # MRE and MAE are "lower is better": invert so the outer ring = best performance.
     # Inversion: plot_value = 1 - clamp(metric_value, 0, 1)
@@ -511,7 +567,7 @@ def plot_radar_chart(
             linewidth=3,
             alpha=0.9,
             label=display_name,
-            color=base_colors[i % len(base_colors)],
+            color=model_colors[i],
         )
 
     if verbose_samples_by_model is not None:
@@ -532,7 +588,9 @@ def plot_radar_chart(
 
     ax.set_xticks(angles[:-1])
     colored_labels = [
-        (num, "#770087", "bold") if is_purple_label(name) else (num, "black", "normal")
+        (num, C_TUMOR_LESION_LABEL, "bold")
+        if is_purple_label(name)
+        else (num, C_ANATOMY_LABEL, "normal")
         for num, name in zip(label_numbers, label_names)
     ]
     ax.set_xticklabels([str(num) for num in label_numbers], fontsize=16)
@@ -589,6 +647,175 @@ _DATASET_ABBR = {
 _RE_DISTANCE = re.compile(r"^(.+)_distance_L-(\d+)-(\d+)$")
 # Angle:     {dataset}_angle_A-L_{p1}_{p2}-L_{p3}_{p4}
 _RE_ANGLE = re.compile(r"^(.+)_angle_A-L_(\d+)_(\d+)-L_(\d+)_(\d+)$")
+
+
+def split_ad_labels(labels):
+    """Partition AD labels into ``[("Angle", [...]), ("Distance", [...])]``, dropping empty groups.
+
+    Angle and distance are measured in different units (degree vs mm) and come from different
+    dataset sets, so they get their own radar row rather than sharing one set of spokes.
+    Labels matching neither pattern are appended to a trailing "Other" group so nothing is
+    silently dropped.
+    """
+    angle = [x for x in labels if _RE_ANGLE.match(x)]
+    distance = [x for x in labels if _RE_DISTANCE.match(x)]
+    other = [x for x in labels if not _RE_ANGLE.match(x) and not _RE_DISTANCE.match(x)]
+    return [(n, ls) for n, ls in (("Angle", angle), ("Distance", distance), ("Other", other)) if ls]
+
+
+def _pooled_success_rate(parsed_dir, labels):
+    """Sample-weighted success rate over ``labels`` from a model's AD summary JSON.
+
+    ``SR = Σ(SuccessRate_t · num_samples_t) / Σ num_samples_t`` — i.e. total successful parses over
+    total samples across the given targets. Returns ``None`` if the summary is missing or covers
+    none of the targets (so the caller can label it n/a rather than 0%).
+    """
+    from medvision_bm.utils.configs import SUMMARY_FILENAME_AD_METRICS
+
+    path = os.path.join(parsed_dir, SUMMARY_FILENAME_AD_METRICS)
+    if not os.path.exists(path):
+        return None
+    with open(path) as f:
+        summary = json.load(f)
+    label_set = set(labels)
+    succ = total = 0
+    for target, m in summary.items():
+        if target not in label_set:
+            continue
+        n = m.get("num_samples", 0)
+        succ += m.get("SuccessRate", 0.0) * n
+        total += n
+    return (succ / total) if total else None
+
+
+# Combining Low Line: appended after each character it underlines that character, so the rule is
+# part of the glyph run and therefore rotates and line-wraps with the text for free.
+#
+# Deliberately NOT mathtext ``\underline``: that is only available in matplotlib >= 3.11 and raises
+# "Unknown symbol: \underline" on 3.10.x, which is what ships in this project's environment. Plain
+# text also renders hyphens correctly, whereas mathtext turns "-" into a wider minus glyph.
+_COMBINING_LOW_LINE = "̲"
+
+
+def _underline(text):
+    """``text`` with a combining low line after every character (including spaces, so the rule
+    reads as one continuous underline rather than per-word dashes)."""
+    return "".join(ch + _COMBINING_LOW_LINE for ch in text)
+
+
+def _boxplot_model_label(name, sr):
+    """Stacked x-tick label: model name / parameter count / ``SR=NN%``.
+
+    The trailing parenthetical of a display name is the parameter count ("MedVision-V0 (7B)"), so
+    it goes on its own line to keep the rotated labels short. Both identity lines are underlined
+    when SR < 50%; the SR line itself stays plain.
+    """
+    m = re.match(r"^(.*?)\s*(\([^()]*\))$", name)
+    name_part, param_part = (m.group(1), m.group(2)) if m else (name, None)
+    mark = _underline if (sr is not None and sr < 0.5) else (lambda s: s)
+
+    lines = [mark(name_part)]
+    if param_part:
+        lines.append(mark(param_part))
+    lines.append("SR=n/a" if sr is None else f"SR={sr * 100:.0f}%")
+    return "\n".join(lines)
+
+
+def plot_angle_mae_boxplot(
+    task_dir, models, model_display_name, angle_labels, out_stem, formats=("pdf",)
+):
+    """Save a box plot of per-sample angle MAE (degrees), one box per model.
+
+    Complements the AD radar, which shows avgMRE per target: this shows the *distribution* of
+    absolute error pooled across all angle targets, so heavy tails and outliers are visible.
+    Reads ``avgMAE`` (a plain float per sample) via :func:`load_per_sample_values`; samples whose
+    parse failed carry ``success: false`` and are skipped there.
+
+    Boxes are ordered by ascending MAE (best model leftmost, MAE = the mean of the box's own
+    samples).
+
+    COLOUR IS BOUND TO THE MODEL BEFORE ORDERING: each model takes ``palette[i]`` at its index *i*
+    in ``models`` — the same config order, palette and ``model_palette`` call the radar uses — and
+    that colour travels with the model through the MAE sort. So a model has the SAME colour in the
+    radar and here, even though the two figures order models differently. Do not re-derive the
+    colour from a box's position; that would repaint models by rank and break the correspondence.
+
+    Under each box: the model's success rate (SR, pooled over angle targets from the summary JSON);
+    model names with SR < 50% are underlined, since a low-SR box summarises only the minority of
+    samples that parsed.
+    """
+    # palette indexed by config order == the radar's mapping (see plot_radar_chart / the verbose
+    # colour block in plot_metrics_multi_model, which both use model_palette over the same list)
+    palette = model_palette(len(models))
+    recs = []
+    for i, model in enumerate(models):
+        parsed_dir = os.path.join(task_dir, model, "parsed")
+        if not os.path.isdir(parsed_dir):
+            continue
+        by_label = load_per_sample_values(
+            parsed_dir, "avgMAE", angle_labels, task_type="AD"
+        )
+        values = [v for vs in by_label.values() for v in vs]
+        if not values:
+            print(f"[Warning] No angle avgMAE samples for {model}; omitted from the box plot.")
+            continue
+        recs.append(
+            {
+                "values": values,
+                "mae": sum(values) / len(values),        # the model's MAE = mean of its samples
+                "sr": _pooled_success_rate(parsed_dir, angle_labels),
+                "name": model_display_name.get(model, model),
+                "color": palette[i],                     # bound BEFORE the sort, by config index
+            }
+        )
+
+    if not recs:
+        print("[Warning] No angle samples found for any model; box plot skipped.")
+        return None
+
+    recs.sort(key=lambda r: r["mae"])                     # ascending MAE; colours travel with recs
+
+    fig, ax = plt.subplots(figsize=(max(10, _BOX_INCHES_PER_MODEL * len(recs) + 4), 7))
+    bp = ax.boxplot(
+        [r["values"] for r in recs],
+        patch_artist=True,
+        showfliers=False,   # angle AE has a long tail; fliers would compress every box
+        showmeans=True,     # boxes are ORDERED by mean (= MAE); mark it so the sort key is visible
+        meanprops=dict(marker="D", markerfacecolor="#111111",
+                       markeredgecolor="none", markersize=4),
+        widths=0.62,
+        medianprops=dict(color="#222222", linewidth=2),
+        whiskerprops=dict(color="#555555"),
+        capprops=dict(color="#555555"),
+    )
+    # Alpha on the FACE only (not patch.set_alpha, which would fade the outline too), so the box
+    # reads lighter while its edge, median and whiskers stay crisp.
+    for patch, r in zip(bp["boxes"], recs):
+        patch.set_facecolor(to_rgba(r["color"], _BOX_FACE_ALPHA))
+        patch.set_edgecolor("#555555")
+
+    ax.set_xticks(range(1, len(recs) + 1))
+    # Angled rather than vertical. A 3-line label at 45° offsets each extra line perpendicular to
+    # the text, so it drifts diagonally into its neighbour's slot -- the reason _BOX_INCHES_PER_MODEL
+    # buys enough horizontal room per box for the block to clear the next one.
+    ax.set_xticklabels(
+        [_boxplot_model_label(r["name"], r["sr"]) for r in recs],
+        rotation=_BOX_LABEL_ROTATION,
+        ha="right",
+        rotation_mode="anchor",
+        fontsize=10,
+    )
+    ax.set_ylabel("MAE (degree)", fontsize=14)
+    ax.grid(axis="y", color="#CCCCCC", linewidth=0.5, alpha=0.7)
+    ax.set_axisbelow(True)
+    for spine in ("top", "right"):
+        ax.spines[spine].set_visible(False)
+
+    for fmt in formats:
+        save_fig_capped(f"{out_stem}.{fmt}", bbox_inches="tight", transparent=True)
+    print(f"Angle MAE box plot saved to: {out_stem}.{formats[0]}")
+    plt.close(fig)
+    return f"{out_stem}.{formats[0]}"
 
 
 def abbreviate_label_name(name):
@@ -692,7 +919,9 @@ def plot_label_mapping(
         legend_handles: Line handles from axes[0].get_legend_handles_labels(), or None.
         legend_labels: Display names matching legend_handles, or None.
         label_col: Number of columns for the label list. None = auto.
-        legend_col: Number of columns for the model legend. None = auto.
+        legend_col: Number of columns for the model legend. None = auto. When the legend ends up
+            with more than one column its font is scaled so the legend's rendered width matches
+            the label block's, keeping the panel's two stacked elements the same width.
     """
     ax.axis("off")
 
@@ -713,6 +942,7 @@ def plot_label_mapping(
 
     # TL label names use the default font; all others use monospace.
     label_fontfamily = "monospace" if task_type != "TL" else None
+    label_texts = []
 
     for col_idx, col_labels in enumerate(columns):
         x_pos = (
@@ -723,9 +953,9 @@ def plot_label_mapping(
         for i, (num, name) in enumerate(col_labels):
             abbreviated_name = abbreviate_label_name(name)
             if task_type == "TL" or is_purple_label(name):
-                color, fontweight = "#770087", "bold"
+                color, fontweight = C_TUMOR_LESION_LABEL, "bold"
             else:
-                color, fontweight = "black", "normal"
+                color, fontweight = C_ANATOMY_LABEL, "normal"
             text_kwargs = dict(
                 transform=ax.transAxes,
                 fontsize=16,
@@ -735,35 +965,73 @@ def plot_label_mapping(
             )
             if label_fontfamily is not None:
                 text_kwargs["fontfamily"] = label_fontfamily
-            ax.text(
-                x_pos,
-                y_pos - i * line_height,
-                f"{num}: {abbreviated_name}",
-                **text_kwargs,
+            label_texts.append(
+                ax.text(
+                    x_pos,
+                    y_pos - i * line_height,
+                    f"{num}: {abbreviated_name}",
+                    **text_kwargs,
+                )
             )
 
     max_lines = max(len(col) for col in columns)
     next_y = y_pos - max_lines * line_height
 
+    legend_refit = None
     if legend_handles and legend_labels:
         n_legend_cols = (
             legend_col
             if legend_col is not None
             else (2 if len(legend_handles) > 4 else 1)
         )
-        ax.legend(
-            legend_handles,
-            legend_labels,
-            loc="upper left",
-            bbox_to_anchor=(col_x_positions[0], next_y - line_height * 0.5),
-            fontsize=16,
-            ncol=n_legend_cols,
-            frameon=True,
-        )
+
+        def _draw_legend(fontsize):
+            return ax.legend(
+                legend_handles,
+                legend_labels,
+                loc="upper left",
+                bbox_to_anchor=(col_x_positions[0], next_y - line_height * 0.5),
+                fontsize=fontsize,
+                ncol=n_legend_cols,
+                frameon=True,
+            )
+
+        # One base size for every task (no per-task special case).
+        state = {"legend": _draw_legend(_LEGEND_FONTSIZE)}
+
+        if n_legend_cols > 1 and label_texts:
+
+            def legend_refit():
+                """Scale the legend's font until its width matches the label block's.
+
+                Every part of a legend's width — text, handle, padding, column spacing — is a
+                multiple of its font size, so width is essentially LINEAR in font size and one
+                correction lands within a few percent. This measures the CURRENT size rather than
+                the base, so calling it again simply corrects whatever error is left: the caller
+                re-runs it after ``tight_layout``, which is what makes the fit exact for
+                multi-column label blocks (their inter-column gap is in axes fractions, so it
+                rescales when the layout changes the axes' pixel width).
+                """
+                fig = ax.figure
+                fig.canvas.draw()
+                renderer = fig.canvas.get_renderer()
+                extents = [t.get_window_extent(renderer) for t in label_texts]
+                label_px = max(e.x1 for e in extents) - min(e.x0 for e in extents)
+                legend_px = state["legend"].get_window_extent(renderer).width
+                if label_px <= 0 or legend_px <= 0:
+                    return
+                current = state["legend"].get_texts()[0].get_fontsize()
+                lo, hi = _LEGEND_FONTSIZE_RANGE
+                fitted = min(max(current * label_px / legend_px, lo), hi)
+                if abs(fitted - current) > 0.1:
+                    state["legend"].remove()
+                    state["legend"] = _draw_legend(fitted)
+
+            legend_refit()  # first pass, so the pre-layout figure is already close
 
     has_modality = any("@" in name for name in label_mapping.values())
     title = "Label @ Modality" if has_modality else "Label"
-    return title, col_x_positions[0]
+    return title, col_x_positions[0], legend_refit
 
 
 def plot_metrics_multi_model(
@@ -853,7 +1121,17 @@ def plot_metrics_multi_model(
         print("No common labels found across all models")
         return
 
-    label_mapping = {i + 1: label for i, label in enumerate(common_labels)}
+    # Row groups. AD splits into an Angle row and a Distance row (different units, different
+    # datasets); every other task keeps its single unnamed group, i.e. the original layout.
+    label_groups = (
+        split_ad_labels(common_labels) if task_type == "AD" else [(None, common_labels)]
+    )
+    # Spoke numbering restarts at 1 within each row, so each row gets its own mapping panel.
+    group_mappings = [
+        {i + 1: label for i, label in enumerate(labels)} for _, labels in label_groups
+    ]
+
+    label_mapping = group_mappings[0]
     label_numbers = list(label_mapping.keys())
 
     if verbose_model is None:
@@ -901,7 +1179,9 @@ def plot_metrics_multi_model(
     num_metric_cols = int(np.ceil(np.sqrt(num_metrics)))
     num_metric_rows = int(np.ceil(num_metrics / num_metric_cols))
 
-    if show_label_name and num_metrics == 3:
+    num_groups = len(label_groups)
+
+    if show_label_name and num_metrics == 3 and num_groups == 1:
         # 2×2 grid; label occupies the vacant 4th slot [1, 1].
         gs_rows, gs_cols = 2, 2
         width_ratios = height_ratios = None
@@ -909,7 +1189,7 @@ def plot_metrics_multi_model(
         fig_height = RADAR_INCHES * 2
         label_panel_width = RADAR_INCHES
         label_panel_height = RADAR_INCHES
-    elif show_label_name and num_metrics == 4:
+    elif show_label_name and num_metrics == 4 and num_groups == 1:
         # 2×2 radar subplots + full-width label row at the bottom.
         gs_rows, gs_cols = 3, 2
         width_ratios = None
@@ -923,18 +1203,22 @@ def plot_metrics_multi_model(
         if show_label_name:
             _num_label_cols = label_col if label_col is not None else 1
             _max = RADAR_INCHES * num_metric_cols
-            _, _wr = _compute_label_panel_layout(label_mapping, _num_label_cols, _max)
+            # size the shared label column for the WIDEST group, so no row's panel is clipped
+            _wr = max(
+                _compute_label_panel_layout(m, _num_label_cols, _max)[1]
+                for m in group_mappings
+            )
             LABEL_INCHES = _max * _wr
         else:
             LABEL_INCHES = 0
-        gs_rows = num_metric_rows
+        gs_rows = num_metric_rows * num_groups
         gs_cols = num_metric_cols + (1 if show_label_name else 0)
         width_ratios = [RADAR_INCHES] * num_metric_cols + (
             [LABEL_INCHES] if show_label_name else []
         )
         height_ratios = None
         fig_width = RADAR_INCHES * num_metric_cols + LABEL_INCHES
-        fig_height = RADAR_INCHES * num_metric_rows
+        fig_height = RADAR_INCHES * num_metric_rows * num_groups
         label_panel_width = LABEL_INCHES
         label_panel_height = RADAR_INCHES * num_metric_rows
 
@@ -947,76 +1231,104 @@ def plot_metrics_multi_model(
         height_ratios=height_ratios,
     )
 
-    axes = []
-    for idx in range(num_metrics):
-        row = idx // num_metric_cols
-        col = idx % num_metric_cols
-        axes.append(fig.add_subplot(gs[row, col], projection="polar"))
-
-    if show_label_name:
-        if num_metrics == 3:
-            mapping_ax = fig.add_subplot(gs[1, 1])
-        elif num_metrics == 4:
-            mapping_ax = fig.add_subplot(gs[2, :])
+    # One row-block of radars per label group (AD: Angle then Distance; otherwise a single block).
+    group_axes, mapping_axes = [], []
+    for g in range(num_groups):
+        row_base = g * num_metric_rows
+        group_axes.append(
+            [
+                fig.add_subplot(
+                    gs[row_base + idx // num_metric_cols, idx % num_metric_cols],
+                    projection="polar",
+                )
+                for idx in range(num_metrics)
+            ]
+        )
+        if not show_label_name:
+            mapping_axes.append(None)
+        elif num_groups == 1 and num_metrics == 3:
+            mapping_axes.append(fig.add_subplot(gs[1, 1]))
+        elif num_groups == 1 and num_metrics == 4:
+            mapping_axes.append(fig.add_subplot(gs[2, :]))
+        elif num_groups == 1:
+            mapping_axes.append(fig.add_subplot(gs[:, num_metric_cols]))
         else:
-            mapping_ax = fig.add_subplot(gs[:, num_metric_cols])
-    else:
-        mapping_ax = None
+            mapping_axes.append(
+                fig.add_subplot(
+                    gs[row_base : row_base + num_metric_rows, num_metric_cols]
+                )
+            )
+
+    axes = group_axes[0]
+    mapping_ax = mapping_axes[0]
 
     # Pre-compute verbose model colours to match the plotted line colours.
     verbose_model_colors = {}
     if verbose_models:
-        base_colors = plt.cm.tab10.colors
+        # Must match plot_radar_chart's assignment exactly (same palette, same
+        # model order) so the violin overlays share their line's colour.
+        model_colors = model_palette(len(model_data))
         for idx, model_name in enumerate(model_data.keys()):
             if model_name in verbose_models:
-                verbose_model_colors[model_name] = base_colors[idx % len(base_colors)]
+                verbose_model_colors[model_name] = model_colors[idx]
         for verbose_model_name in verbose_models:
             verbose_model_colors.setdefault(verbose_model_name, "gray")
 
     # axis_titles: ax → (x_axes, title_text, ha)
     axis_titles = {}
 
-    for idx, metric in enumerate(metrics_list):
-        metric_data = {}
-        max_value = 0
-        for model_name, df in model_data.items():
-            df_filtered = (
-                df[df["Target"].isin(common_labels)]
-                .set_index("Target")
-                .reindex(common_labels)
+    for g, (group_name, group_labels) in enumerate(label_groups):
+        g_numbers = list(group_mappings[g].keys())
+        for idx, metric in enumerate(metrics_list):
+            metric_data = {}
+            max_value = 0
+            for model_name, df in model_data.items():
+                df_filtered = (
+                    df[df["Target"].isin(group_labels)]
+                    .set_index("Target")
+                    .reindex(group_labels)
+                )
+                values = df_filtered[metric].tolist()
+                metric_data[model_name] = values
+                max_value = max(max_value, max(values))
+
+            _title = plot_radar_chart(
+                metric_data,
+                metric,
+                g_numbers,
+                group_labels,
+                group_axes[g][idx],
+                max_value,
+                model_display_name,
+                verbose_samples_by_model=verbose_samples_by_metric.get(metric),
+                verbose_model_colors=verbose_model_colors,
+                show_scatter=show_scatter,
             )
-            values = df_filtered[metric].tolist()
-            metric_data[model_name] = values
-            max_value = max(max_value, max(values))
+            if group_name is not None:
+                _title = f"{group_name} — {_title}"
+            axis_titles[group_axes[g][idx]] = (0.5, _title, "center")
 
-        _title = plot_radar_chart(
-            metric_data,
-            metric,
-            label_numbers,
-            common_labels,
-            axes[idx],
-            max_value,
-            model_display_name,
-            verbose_samples_by_model=verbose_samples_by_metric.get(metric),
-            verbose_model_colors=verbose_model_colors,
-            show_scatter=show_scatter,
-        )
-        axis_titles[axes[idx]] = (0.5, _title, "center")
-
-    handles, leg_labels = axes[0].get_legend_handles_labels()
+    handles, leg_labels = group_axes[0][0].get_legend_handles_labels()
+    legend_refits = []
     if show_label_name:
-        _label_title, _label_x = plot_label_mapping(
-            label_mapping,
-            mapping_ax,
-            task_type,
-            panel_width_inches=label_panel_width,
-            panel_height_inches=label_panel_height,
-            legend_handles=handles,
-            legend_labels=leg_labels,
-            label_col=label_col,
-            legend_col=legend_col,
-        )
-        axis_titles[mapping_ax] = (_label_x, _label_title, "left")
+        for g in range(num_groups):
+            # The model legend is shared across rows, so draw it once, in the LAST row's panel
+            # (passing None suppresses it in plot_label_mapping).
+            is_last = g == num_groups - 1
+            _label_title, _label_x, _legend_refit = plot_label_mapping(
+                group_mappings[g],
+                mapping_axes[g],
+                task_type,
+                panel_width_inches=label_panel_width,
+                panel_height_inches=label_panel_height,
+                legend_handles=handles if is_last else None,
+                legend_labels=leg_labels if is_last else None,
+                label_col=label_col,
+                legend_col=legend_col,
+            )
+            axis_titles[mapping_axes[g]] = (_label_x, _label_title, "left")
+            if _legend_refit is not None:
+                legend_refits.append(_legend_refit)
     else:
         _legend_ncol = (
             legend_col if legend_col is not None else (2 if len(handles) > 4 else 1)
@@ -1032,7 +1344,15 @@ def plot_metrics_multi_model(
 
     plt.tight_layout(pad=0.5, w_pad=0.5, h_pad=4.0)
 
-    all_axes = axes + ([mapping_ax] if show_label_name else [])
+    # tight_layout changes the panel's pixel width, which moves the label block's inter-column gaps
+    # (they are in axes fractions). Re-run the fit on the final geometry so the legend really does
+    # match the label block; each pass corrects the remaining error, so this converges.
+    for _refit in legend_refits:
+        _refit()
+
+    all_axes = [ax for g_axes in group_axes for ax in g_axes] + (
+        [a for a in mapping_axes if a is not None] if show_label_name else []
+    )
 
     # Measure true content top per row for pixel-accurate title placement.
     fig.canvas.draw()
@@ -1072,6 +1392,21 @@ def plot_metrics_multi_model(
     output_file = f"{stem}.{formats[0]}"
     print(f"Figure saved to: {output_file}")
     plt.close()
+
+    # AD only: an extra box plot of the per-sample angle absolute error, which the radar (a single
+    # avgMRE per target) cannot show. Saved alongside the radar figure.
+    angle_labels = next(
+        (labels for name, labels in label_groups if name == "Angle"), []
+    )
+    if angle_labels:
+        plot_angle_mae_boxplot(
+            task_dir,
+            list(model_data.keys()),
+            model_display_name,
+            angle_labels,
+            f"{stem}_angle-MAE-box",
+            formats=formats,
+        )
 
 
 def main():

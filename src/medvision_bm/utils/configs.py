@@ -781,7 +781,213 @@ nature_palette_1 = [
     "#85B293", "#B9C18E", "#E8C38C", "#E8A27D",
 ]
 nature_palette_2 = [
-    "#9F8DB8", "#6E8FB2", "#ABC8E5","#7DA494", "#D0D08A", 
+    "#9F8DB8", "#6E8FB2", "#ABC8E5","#7DA494", "#D0D08A",
     "#EAB67A", "#E5A79A", "#C16E71", "#D8A0C1",
 ]
+# ----------------------------------------------------------------
+
+
+# ----------------------------------------------------------------
+# NOTE: Palette cycling for more targets than colours
+# ----------------------------------------------------------------
+# When a palette runs out, ``extend_palette`` reuses each base hue but shifts it
+# hard in HLS so the repeat stays visually separable both from its own base and
+# from every other colour in the list. Wraps alternate dark / light around the
+# base with growing magnitude, and each wrap also rotates hue:
+#
+#   wrap 0  pure base
+#   wrap 1  darker  + hue -20 deg
+#   wrap 2  lighter, saturation boosted + hue +20 deg
+#   wrap 3  darker still + hue -40 deg
+#   ...
+#
+# Three details matter:
+#
+#   * Lightness moves as a fraction of the remaining headroom to black / white,
+#     not as a flat offset. A flat offset washes out on an already-pale palette
+#     (nature_palette_2), which is why the old lighten-only cycling produced
+#     near-identical wedges.
+#   * The lighter wrap BOOSTS saturation. Lightening alone drags every hue
+#     toward white, collapsing distinct base hues into the same pale grey; the
+#     boost keeps them hued.
+#   * _WRAP_LIGHTNESS_MIN floors how dark a wrap may go. Chasing maximum dE
+#     alone drove the darker wraps to near-black (L* 17-25), which reads as
+#     muddy rather than as a distinct colour. The floor trades some separation
+#     for wrapped colours that stay mid-tone (L* >= ~32).
+#
+# Minimum pairwise dE, old lighten-only cycling -> this function:
+#   nature_palette_1, 22 targets:   3.0 ->  9.8
+#   nature_palette_2, 22 targets:   5.3 -> 10.7
+#   radar_model_colors, 16 targets:17.9 -> 12.6
+# (dE ~2.3 is a just-noticeable difference, so the old 3.0 was effectively a
+# duplicate.) Cycling a short palette this far is inherently lossy -- prefer a
+# longer base palette when more than ~2 wraps are expected.
+_WRAP_LIGHTNESS_BLEND = (0.30, 0.46, 0.56)  # per magnitude step; last value repeats
+_WRAP_LIGHT_SATURATION = 1.40               # saturation scale on lighter wraps
+_WRAP_HUE_STEP = 20.0 / 360.0               # +/- per magnitude step
+_WRAP_LIGHTNESS_MIN = 0.34                  # floor: keep wrapped colours off black
+_WRAP_LIGHTNESS_MAX = 0.93                  # ceiling: keep wrapped colours off white
+
+
+def _wrap_shift(wrap):
+    """(lightness_blend, saturation_scale, hue_offset) for cycle round ``wrap``.
+
+    ``wrap`` 0 is the untouched base. Odd wraps go darker, even wraps go lighter,
+    and the magnitude grows every two wraps so no two rounds land on the same
+    colour. ``lightness_blend`` is a signed fraction of the headroom toward black
+    (negative) or white (positive).
+    """
+    if wrap <= 0:
+        return 0.0, 1.0, 0.0
+    step = (wrap + 1) // 2                      # 1, 1, 2, 2, 3, 3, ...
+    darker = wrap % 2 == 1                      # wrap 1 dark, wrap 2 light, ...
+    blend = _WRAP_LIGHTNESS_BLEND[min(step - 1, len(_WRAP_LIGHTNESS_BLEND) - 1)]
+    if darker:
+        return -blend, 1.0, -_WRAP_HUE_STEP * step
+    return blend, _WRAP_LIGHT_SATURATION, _WRAP_HUE_STEP * step
+
+
+def extend_palette(base_colors, n, as_hex=True):
+    """``n`` visually distinct colours cycled from ``base_colors``.
+
+    The first ``len(base_colors)`` entries are the base palette unchanged; every
+    further wrap re-uses the same hues with the HLS shift described above, so a
+    target list longer than the palette never produces two identical colours.
+
+    Args:
+        base_colors: palette to cycle. Each entry may be a ``#RRGGBB`` string or
+            an RGB(A) tuple of floats in 0..1 (e.g. ``plt.cm.tab10.colors``).
+        n: number of colours to return.
+        as_hex: return ``#RRGGBB`` strings (default) instead of RGB float tuples.
+
+    Returns:
+        list of length ``n``.
+    """
+    import colorsys
+
+    if not base_colors:
+        raise ValueError("base_colors must not be empty")
+
+    period = len(base_colors)
+    out = []
+    for i in range(n):
+        base = base_colors[i % period]
+        if isinstance(base, str):
+            hex_str = base.lstrip("#")
+            rgb = tuple(int(hex_str[j : j + 2], 16) / 255.0 for j in (0, 2, 4))
+        else:
+            rgb = tuple(float(c) for c in base[:3])
+
+        d_light, s_scale, d_hue = _wrap_shift(i // period)
+        if d_light == 0.0 and s_scale == 1.0 and d_hue == 0.0:
+            out.append(_rgb_to_hex(rgb) if as_hex else rgb)
+            continue
+
+        h, l, s = colorsys.rgb_to_hls(*rgb)
+        # blend toward black (d_light < 0) or white (d_light > 0) by |d_light|
+        l = l * (1.0 + d_light) if d_light < 0 else l + (1.0 - l) * d_light
+        shifted = colorsys.hls_to_rgb(
+            (h + d_hue) % 1.0,
+            min(max(l, _WRAP_LIGHTNESS_MIN), _WRAP_LIGHTNESS_MAX),
+            min(max(s * s_scale, 0.0), 1.0),
+        )
+        out.append(_rgb_to_hex(shifted) if as_hex else shifted)
+    return out
+
+
+def _rgb_to_hex(rgb):
+    """``(r, g, b)`` floats in 0..1 -> ``#RRGGBB``."""
+    return "#{:02X}{:02X}{:02X}".format(
+        *(int(round(min(max(c, 0.0), 1.0) * 255)) for c in rgb)
+    )
+# ----------------------------------------------------------------
+
+
+# ----------------------------------------------------------------
+# NOTE: Palettes for script/visualization/viz_*.py
+# ----------------------------------------------------------------
+# Shared by viz_tl_responses.py, viz_ad_responses.py and
+# viz_detection_responses.py, which each used to carry a private copy of this
+# block. Names are kept as the viz scripts already used them (C_*), so those
+# scripts import by name. Geometry / font constants stay in the viz scripts.
+
+# ── Response-figure palette (light theme) ──
+C_FIG_BG = "#FFFFFF"
+C_BOX_EDGE = "#4B5563"  # dark grey
+C_SEP = "#D1D5DB"
+C_HEADER = "#1D4ED8"
+C_TEXT = "#111827"
+C_THINK = "#9CA3AF"
+C_REASON = "#0284C7"
+C_STEP_ANS = "#16A34A"
+C_ANS = "#EA580C"
+C_TOOL = "#7C3AED"
+C_TAG_GREY = "#6B7280"  # display color for all <> tags
+
+# Prompt section highlights
+C_IMG_PROMPT = "#D97706"
+C_LABEL_NAME = "#059669"  # green-600 — label / landmark / line description
+C_IMG_SIZE = "#1D4ED8"
+C_PIXEL_SIZE = "#6D28D9"  # violet-700, distinct from C_TOOL (#7C3AED)
+
+# Measurement results
+C_MAJ_LEN = "#0F766E"  # teal-700 — major axis length / A-D measurement
+C_MIN_LEN = "#BE185D"  # pink-700 — minor axis length
+
+# GT overlay colors (distinct from each other and from prediction colors)
+C_GT_MAJOR = "#A21CAF"  # fuchsia-700 — GT major axis / landmark / line 1
+C_GT_MINOR = "#4F46E5"  # indigo-600  — GT minor axis / line 2
+C_GT_BOX = "#2ECC71"    # green  — GT bounding box
+C_PRED_BOX = "#F37020"  # orange — predicted bounding box
+
+# Response tag colors, as a set (used to test whether a token is a tag)
+tag_colors = frozenset({C_THINK, C_REASON, C_STEP_ANS, C_ANS, C_TOOL})
+
+# 8 coordinate colors — chosen to avoid conflicts with all fixed token colors.
+# TL: [0:4] = P1/P2 major (x, y), [4:8] = P1/P2 minor (x, y).
+# A-D: step 1 uses [0:4], step 2 uses [4:8].
+response_coord_colors = [
+    "#DC2626",  # red-600
+    "#F97316",  # orange-500
+    "#EAB308",  # yellow-500
+    "#84CC16",  # lime-400
+    "#06B6D4",  # cyan-500
+    "#0EA5E9",  # sky-500
+    "#A21CAF",  # fuchsia-700
+    "#4F46E5",  # indigo-600
+]
+
+# 4 coordinate colors for bounding boxes — lower-left (x, y), upper-right (x, y).
+detection_coord_colors = [
+    "#DC2626",  # red-600    — lower-left x
+    "#F97316",  # orange-500 — lower-left y
+    "#06B6D4",  # cyan-500   — upper-right x
+    "#0EA5E9",  # sky-500    — upper-right y
+]
+
+# Overlay landmark dot colors (plot_tl_axes_on_image / plot_ad_on_image convention).
+landmark_dot_colors = ["#4285F4", "#EA4335", "#FDB813", "#34A853"]
+
+# ── Webpage "Case Viewer" section boxes (from medvision-vlm.github.io index.css) ──
+C_SEG_FILL = "#ffffff"
+C_SEG_EDGE = "#e6e9ef"
+C_RAIL_TEAL = "#0E8C8B"  # Prompt & Metrics left rail + pill
+C_RAIL_INDIGO = "#4f46e5"  # Response left rail + pill
+C_FIGBOX_FILL = "#ffffff"
+C_FIGBOX_EDGE = "#e6e9ef"
+
+# ── viz_radar.py ──
+# Per-model series colors; cycled through extend_palette when a figure has more
+# models than colors. Hex mirror of matplotlib's tab10.
+radar_model_colors = [
+    "#1F77B4", "#FF7F0E", "#2CA02C", "#D62728", "#9467BD",
+    "#8C564B", "#E377C2", "#7F7F7F", "#BCBD22", "#17BECF",
+]
+C_TUMOR_LESION_LABEL = "#770087"  # purple — tumor / lesion spoke labels
+C_ANATOMY_LABEL = "black"         # all other spoke labels
+
+# ── viz_ellipse_fit_comparison.py ──
+IMG_COLOR = "#EA4335"   # image-space fit (red)
+REAL_COLOR = "#4285F4"  # real-space fit (blue)
+MASK_COLOR = "#2ECC71"  # green — mask contour
 # ----------------------------------------------------------------

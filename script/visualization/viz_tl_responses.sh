@@ -25,7 +25,7 @@ if [ -z "$MODEL_DIR" ]; then
     echo "Usage: MODEL_DIR=<path/to/model_dir> bash $(basename "${BASH_SOURCE[0]}")"
     exit 1
 fi
-LIMIT_PER_JSONL="${LIMIT_PER_JSONL:-10}"
+LIMIT_PER_JSONL="${LIMIT_PER_JSONL:-30}"
 REMOVED_SAMPLES_DIR="${REMOVED_SAMPLES_DIR:-}"
 DPI="${DPI:-100}"
 

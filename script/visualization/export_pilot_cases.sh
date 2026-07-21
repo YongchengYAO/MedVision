@@ -26,12 +26,15 @@
 #   # Append/incremental: reuse PNGs already on disk, only draw NEW cases:
 #   SKIP_EXISTING=1 bash export_pilot_cases.sh
 #
-#   PAGE_DIR=/path PER_DATASET_TL=20 bash export_pilot_cases.sh
+#   PAGE_DIR=/path PER_TASK_MAX=40 bash export_pilot_cases.sh
+#
+# By default the selection SWEEPS every distinct displayed target (the viewer's TARGET
+# buttons), taking one seeded case per target — so every label is covered.
 #
 # Environment-variable knobs (map to export_webpage_cases.py CLI flags):
 #   PAGE_DIR             Project page repo root          -> --page_dir
-#   PER_DATASET_TL       TL samples / dataset (20)       -> --per_dataset_tl
-#   PER_TASK_MAX         Hard cap on samples / task      -> --per_task_max
+#   PER_TARGET_TL        TL samples / target (1)         -> --per_target_tl
+#   PER_TASK_MAX         Optional cap on cases / task    -> --per_task_max (unset = no cap)
 #   SEED                 Sample-selection seed (1234)    -> --seed
 #   REMOVED_SAMPLES_DIR  TL multi-cluster exclusion root -> --removed_samples_dir
 #   SKIP_EXISTING=1      Skip re-rendering existing PNGs -> --skip_existing
@@ -63,14 +66,20 @@ MV_V0="MedVision__fullRFT__qwen25vl-7b-fullSFT__AD-TL-D__512x512__PRxAnswer_s250
 # per task config). To APPEND a new API model without re-rendering the existing models' PNGs,
 # add its line below and run with SKIP_EXISTING=1 (see usage above).
 TL_MODELS=(
-    "MedVision-V0 (7B)=$RESULTS/MedVision-TL-v2-CoT/${MV_V0}"
-    "Claude-Fable-5=$RESULTS/MedVision-TL-CoT/Claude-Fable-5"
-    "Gemini-3.1-Pro=$RESULTS/MedVision-TL-CoT/Gemini-3.1-Pro"
+    "MedVision-V0 (7B)=$RESULTS/MedVision-TL-CoT-limit100/${MV_V0}"
+    "Claude-Fable-5=$RESULTS/MedVision-TL-CoT-limit100/Claude-Fable-5"
+    "Gemini-3.1-Pro=$RESULTS/MedVision-TL-CoT-limit100/Gemini-3.1-Pro"
 )
 
 PAGE_DIR="${PAGE_DIR:-/mnt/vincent-pvc-rwm/Github/medvision-vlm.github.io}"
-PER_DATASET_TL="${PER_DATASET_TL:-20}"
-PER_TASK_MAX="${PER_TASK_MAX:-1000}"
+PER_TARGET_TL="${PER_TARGET_TL:-2}"
+# Optional hard cap on total cases per task. Unset (default) -> no cap: the per-target
+# sweep covers every label. Set it to bound the figure count (some labels then dropped).
+PER_TASK_MAX="${PER_TASK_MAX:-200}"
+PER_TASK_MAX_ARGS=()
+if [ -n "$PER_TASK_MAX" ]; then
+    PER_TASK_MAX_ARGS=(--per_task_max "$PER_TASK_MAX")
+fi
 SEED="${SEED:-1234}"
 
 # Optional T/L sample filtering (matches summarize_TL_task.py). Set REMOVED_SAMPLES_DIR
@@ -97,8 +106,8 @@ python "$SCRIPT_DIR/export_webpage_cases.py" \
     --cases_js static/js/cases-pilot.js \
     --task_key_suffix="-Pilot" \
     --nonmedvision_topleft \
-    --per_dataset_tl "$PER_DATASET_TL" \
-    --per_task_max "$PER_TASK_MAX" \
+    --per_target_tl "$PER_TARGET_TL" \
     --seed "$SEED" \
+    "${PER_TASK_MAX_ARGS[@]}" \
     "${REMOVED_ARGS[@]}" \
     "${SKIP_ARGS[@]}"
