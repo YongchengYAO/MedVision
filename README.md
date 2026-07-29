@@ -6,11 +6,11 @@
 
   # Dataset and Benchmark for *Quantitative* Medical Image Analysis
 
-  | 🌏 [**Project**](https://medvision-vlm.github.io) | 🧑🏻‍💻 [**GitHub**](https://github.com/YongchengYAO/MedVision) | 📚 [**Docs**](https://medvision.readthedocs.io/en/latest/index.html) | 🩻 [**Dataset**](https://huggingface.co/datasets/YongchengYAO/MedVision) | 🔎 [**Data Explorer**](https://medvision-vlm.github.io/explorer.html) | 🐳 [**Docker**](https://hub.docker.com/r/vincentycyao/medvision/tags) | 🤗 [**Models**](https://huggingface.co/collections/YongchengYAO/medvision-v0) | 🚀 [**Demo**](https://huggingface.co/spaces/YongchengYAO/MedVision-V0-demo) | 📖 [**arXiv**](https://arxiv.org/abs/2511.18676) |
+  | 🌏 [**Project**](https://medvision-vlm.github.io) | 🧑🏻‍💻 [**GitHub**](https://github.com/YongchengYAO/MedVision) | 📚 [**Docs**](https://medvision.readthedocs.io/en/latest/index.html) | 🩻 [**Dataset**](https://huggingface.co/datasets/YongchengYAO/MedVision) | 🔎 [**Data Explorer**](https://medvision-vlm.github.io/explorer.html) | 🐳 [**Docker**](https://hub.docker.com/r/vincentycyao/medvision/tags) | 🤗 [**Models**](https://huggingface.co/collections/YongchengYAO/medvision-v0) | 🚀 [**Demo**](https://huggingface.co/spaces/YongchengYAO/MedVision-V0-demo) | 📖 [**arXiv**](https://arxiv.org/abs/2511.18676) | 💼 [**LinkedIn**](https://www.linkedin.com/in/yongcheng-yao-379b44279) |
 
   🔎 Benchmarking VLMs for medical vision tasks: detection and measurement 📏
 
-  💿 29K 3D images | 11.2M 2D slices | 24.3M single-instance / 45.3M multi-instance annotations | multi-modality | multi-anatomy 💿
+  💿 32.7K 3D images | 11.9M 2D slices | 24.7M single-instance / 46.7M multi-instance annotations | multi-modality | multi-anatomy 💿
 
   📏 Annotation: segmentation mask | landmark coordinate | bounding box | tumor/lesion size | distance | angle 📏
 
@@ -67,6 +67,10 @@ MedVision benchmarks **19 vision–language models** — open-weight general-pur
 
 # 🔥 News
 
+- [Jul 28, 2026] 🚀 Release **MedVision** dataset v1.2.0 [[release-v1.2.0]](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.2.0.md)
+  - Highlight: 8 new datasets (130 configs) — AFIDs, DEEP-PSMA, LIDC-IDRI, LNQ2023, MAMA-MIA, PDDCA, PI-CAI, VerSe.
+  - **No existing annotation changed.** Annotation versions now resolve per dataset: the version you set is a *ceiling*, and each dataset loads the newest annotation it published at or before it. Pinning `'1.1.1'` or older keeps working for every pre-existing dataset (check [Annotation Version Control](https://medvision-vlm.github.io/explorer.html)).
+  - ⚠️ **Fixes a stale-cache defect present in all earlier versions.** The cache key used the version you *requested* rather than the annotation actually loaded, so `load_dataset` could silently return previously cached rows after the annotations changed — which really happened, to the v1.1.0 T/L train/test split. See [Fixed: cached data could be stale](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.2.0.md#fixed-cached-data-could-be-stale) for who is affected and how to clear it. The data root is now part of the key too, which matters only if your HuggingFace cache is not already co-located with it. Because the cache key changed, **existing Arrow caches rebuild once** on next use (reads the annotation file, no re-download)
 - [Jul 21, 2026] Updated [leaderboard](https://medvision-vlm.github.io/) and [data explorer](https://medvision-vlm.github.io/explorer.html) 
 - [Jul 4, 2026] Released the benchmarking/fine-tuning codebase `medvision_bm` v1.1.1 — [release notes](https://github.com/YongchengYAO/MedVision/blob/master/docs/codebase-release/release-v1.1.1.md)
   - 📚 New [documentation site](https://medvision.readthedocs.io/en/latest/index.html) on Read the Docs: installation, dataset, benchmarking, and fine-tuning guides plus the full CLI and Python API reference.
@@ -191,11 +195,11 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
 > 📚 **Read the Docs:** [Dataset concepts](https://medvision.readthedocs.io/en/latest/dataset/concepts.html) · [Loading data](https://medvision.readthedocs.io/en/latest/dataset/loading.html)
 
 > [!IMPORTANT]
-> **Leaderboard results use annotation v1.0.0.** All leaderboard numbers are computed on the **v1.0.0** annotations. We removed ambiguous cases (multi-instance targets) in metric calculation as a workaround. For new studies we recommend the **latest** annotation version (currently **v1.1.1**).
+> **Leaderboard results use annotation v1.0.0.** All leaderboard numbers are computed on the **v1.0.0** annotations. We removed ambiguous cases (multi-instance targets) in metric calculation as a workaround. For new studies we recommend the **latest** annotation version (currently **v1.2.0**).
 
 - **Dataset.** For the full description of the MedVision dataset (source datasets, modalities, anatomies, annotation types, and returned fields), see the [Hugging Face dataset repo](https://huggingface.co/datasets/YongchengYAO/MedVision).
 
-- **Benchmark subtasks ↔ dataset subsets.** Each subtask in this benchmark links to a subset of the MedVision dataset. The per-subtask sample sizes are listed for each dataset version:
+- **Benchmark subtasks ↔ dataset subsets.** Each subtask in this benchmark links to a subset of the MedVision dataset. The per-subtask sample sizes are listed for dataset versions `1.0.0`–`1.1.1`:
   - [`all_tasks__ds_v1.0.0`](https://github.com/YongchengYAO/MedVision/tree/master/dataset-info/all_tasks__ds_v1.0.0)
   - [`all_tasks__ds_v1.1.0`](https://github.com/YongchengYAO/MedVision/tree/master/dataset-info/all_tasks__ds_v1.1.0)
   - [`all_tasks__ds_v1.1.1`](https://github.com/YongchengYAO/MedVision/tree/master/dataset-info/all_tasks__ds_v1.1.1)
@@ -226,7 +230,7 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
 > The current MedVision-V0 SFT/RFT training is not optimized for multi-instance detection and measurement tasks.
 
 ### Per-dataset statistics
-Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`](https://github.com/YongchengYAO/MedVision/tree/master/script/misc/summarize_datasets.sh). The modality / image / slice / segmentation stats are the **same for every dataset version**; only the benchmark-annotation counts (Box / T/L / A/D) depend on it — and among those, only **T/L** changes (Box and A/D are identical across versions).
+Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`](https://github.com/YongchengYAO/MedVision/tree/master/script/misc/summarize_datasets.sh). The modality / image / slice / segmentation stats are the **same for every dataset version**; only the benchmark-annotation counts (Box / T/L / A/D) depend on it — and among those, only **T/L** changes (Box and A/D are identical across versions). Each row is version-invariant, but the *set* of rows is not: the table lists the 30 datasets present in v1.2.0, so its **Total** row is specific to that release.
 
 <details>
 <summary> Per-dataset stats — modality, images, slices, segmentation (version-invariant)</summary>
@@ -236,6 +240,7 @@ Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`]
 | Dataset | Modality | 3D Images | 3D Masks | 2D Slices | Seg. annotations |
 |---|---|--:|--:|--:|--:|
 | ACDC | MRI | 300 | 300 | 43,962 | 94,160 |
+| AFIDs | MRI | 72 | 0 | 432 | 0 |
 | AMOS22 | CT, MRI | 360 | 360 | 251,637 | 1,215,776 |
 | AbdomenAtlas1.0Mini | CT | 5,195 | 5,195 | 3,778,805 | 13,770,398 |
 | AbdomenCT-1K | CT | 1,000 | 1,000 | 711,155 | 1,549,325 |
@@ -244,27 +249,86 @@ Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`]
 | CAMUS | ultrasound | 1,000 | 1,000 | 670,964 | 1,341,433 |
 | Ceph-Biometrics-400 | X Ray | 400 | 0 | 7,600 | 0 |
 | CrossMoDA | MRI | 105 | 105 | 14,115 | 16,623 |
+| DEEP-PSMA | PET | 200 | 200 | 50,341 | 50,341 |
 | FLARE22 | CT | 50 | 50 | 34,235 | 152,954 |
 | FeTA24 | MRI | 80 | 80 | 35,776 | 153,599 |
 | HNTSMRG24 | MRI | 300 | 300 | 56,078 | 62,424 |
 | ISLES24 | MRI | 298 | 149 | 97,228 | 97,228 |
 | KiPA22 | CT | 70 | 70 | 29,494 | 74,690 |
 | KiTS23 | CT | 489 | 489 | 190,642 | 291,550 |
+| LIDC-IDRI | CT | 1,013 | 1,013 | 73,976 | 73,976 |
+| LNQ2023 | CT | 120 | 120 | 25,331 | 25,331 |
+| MAMA-MIA | MRI | 1,506 | 1,506 | 214,408 | 214,408 |
 | MSD | CT, MRI | 3,225 | 1,741 | 791,706 | 1,438,472 |
 | OAIZIB-CM | MRI | 507 | 507 | 358,728 | 922,989 |
+| PDDCA | CT | 48 | 48 | 15,003 | 37,119 |
+| PI-CAI | MRI | 425 | 425 | 42,857 | 42,857 |
 | SKM-TEA | MRI | 310 | 155 | 173,690 | 475,828 |
 | ToothFairy2 | CT | 480 | 480 | 397,531 | 2,131,223 |
 | TopCoW24 | CT, MRI | 250 | 250 | 87,953 | 251,901 |
 | TotalSegmentator | CT, MRI | 1,844 | 1,844 | 1,091,563 | 16,979,575 |
+| VerSe | CT | 325 | 325 | 208,402 | 874,896 |
 | autoPET-III | CT, PET | 2,076 | 1,038 | 360,638 | 360,638 |
-| **Total (22)** | — | **29,031** | **18,206** | **11,237,090** | **45,274,250** |
+| **Total (30)** | — | **32,740** | **21,843** | **11,867,840** | **46,593,178** |
 
 </details>
 
-**Benchmark annotations by dataset version.** Single-instance (filtered) vs multi-instance (unfiltered) annotation counts for the three quantitative tasks — **Box** (detection) + **T/L** (tumor/lesion size) + **A/D** (biometrics). Only **T/L** differs across versions:
+**Benchmark annotations by dataset version.** Single-instance (filtered) vs multi-instance (unfiltered) annotation counts for the three quantitative tasks — **Box** (detection) + **T/L** (tumor/lesion size) + **A/D** (biometrics). Only **T/L** annotations were ever regenerated (in v1.1.0 and v1.1.1); v1.2.0 corrected nothing and differs only by adding 8 datasets, so each block totals the datasets its release contained — 30 for v1.2.0, 22 for the rest:
 
 <details>
-<summary> MedVision v1.1.1 (default) </summary>
+<summary> MedVision v1.2.0 (default) </summary>
+
+<br/>
+
+<table>
+  <tr>
+    <td align="center" width="50%"><b>Single-instance</b></td>
+    <td align="center" width="50%"><b>Multi-instance</b></td>
+  </tr>
+  <tr>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="dataset-info/datasets_summary_v1.2.0/dataset_summary_rings_filtered_2x1_whitebg.svg"><img src="dataset-info/datasets_summary_v1.2.0/dataset_summary_rings_filtered_2x1.svg" width="100%" alt="v1.2.0 single-instance donut"></picture></td>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="dataset-info/datasets_summary_v1.2.0/dataset_summary_rings_raw_2x1_whitebg.svg"><img src="dataset-info/datasets_summary_v1.2.0/dataset_summary_rings_raw_2x1.svg" width="100%" alt="v1.2.0 multi-instance donut"></picture></td>
+  </tr>
+</table>
+
+| Dataset | Single-instance (Box / T/L / A/D) | Multi-instance (Box / T/L / A/D) |
+|---|--|--|
+| ACDC | 14,271 (Box 14,271) | 94,160 (Box 94,160) |
+| AFIDs | 432 (A/D 432) | 432 (A/D 432) |
+| AMOS22 | 666,532 (Box 666,532) | 1,215,776 (Box 1,215,776) |
+| AbdomenAtlas1.0Mini | 9,748,290 (Box 9,748,290) | 13,770,398 (Box 13,770,398) |
+| AbdomenCT-1K | 1,041,588 (Box 1,041,588) | 1,549,325 (Box 1,549,325) |
+| BCV15 | 68,543 (Box 68,543) | 125,870 (Box 125,870) |
+| BraTS24 | 1,131,404 (Box 1,115,524 · T/L 15,880) | 3,793,777 (Box 3,767,594 · T/L 26,183) |
+| CAMUS | 951,370 (Box 951,370) | 1,341,433 (Box 1,341,433) |
+| Ceph-Biometrics-400 | 7,600 (A/D 7,600) | 7,600 (A/D 7,600) |
+| CrossMoDA | 4,076 (Box 4,076) | 16,623 (Box 16,623) |
+| DEEP-PSMA | 2,273 (Box 2,179 · T/L 94) | 51,094 (Box 50,341 · T/L 753) |
+| FLARE22 | 104,211 (Box 104,211) | 152,954 (Box 152,954) |
+| FeTA24 | 49,412 (Box 49,087 · A/D 325) | 153,924 (Box 153,599 · A/D 325) |
+| HNTSMRG24 | 34,301 (Box 32,029 · T/L 2,272) | 65,612 (Box 62,424 · T/L 3,188) |
+| ISLES24 | 9,774 (Box 9,774) | 97,228 (Box 97,228) |
+| KiPA22 | 40,724 (Box 37,647 · T/L 3,077) | 77,832 (Box 74,690 · T/L 3,142) |
+| KiTS23 | 121,539 (Box 114,491 · T/L 7,048) | 299,584 (Box 291,550 · T/L 8,034) |
+| LIDC-IDRI | 10,796 (Box 10,379 · T/L 417) | 74,493 (Box 73,976 · T/L 517) |
+| LNQ2023 | 1,698 (Box 1,653 · T/L 45) | 25,569 (Box 25,331 · T/L 238) |
+| MAMA-MIA | 71,094 (Box 67,767 · T/L 3,327) | 219,525 (Box 214,408 · T/L 5,117) |
+| MSD | 283,577 (Box 277,451 · T/L 6,126) | 1,451,386 (Box 1,438,472 · T/L 12,914) |
+| OAIZIB-CM | 648,048 (Box 648,048) | 922,989 (Box 922,989) |
+| PDDCA | 15,208 (Box 15,076 · A/D 132) | 37,251 (Box 37,119 · A/D 132) |
+| PI-CAI | 5,850 (Box 5,455 · T/L 395) | 43,267 (Box 42,857 · T/L 410) |
+| SKM-TEA | 262,338 (Box 262,338) | 475,828 (Box 475,828) |
+| ToothFairy2 | 1,413,979 (Box 1,413,979) | 2,131,223 (Box 2,131,223) |
+| TopCoW24 | 41,829 (Box 41,829) | 251,901 (Box 251,901) |
+| TotalSegmentator | 7,603,455 (Box 7,603,455) | 16,979,575 (Box 16,979,575) |
+| VerSe | 351,811 (Box 350,311 · A/D 1,500) | 876,396 (Box 874,896 · A/D 1,500) |
+| autoPET-III | 32,673 (Box 31,794 · T/L 879) | 363,756 (Box 360,638 · T/L 3,118) |
+| **Total (30)** | **24,738,696** | **46,666,781** |
+
+</details>
+
+<details>
+<summary> MedVision v1.1.1 </summary>
 
 <br/>
 
@@ -1167,7 +1231,7 @@ ds = load_dataset(
 
 > 📚 **Read the Docs:** [Loading data → batch download](https://medvision.readthedocs.io/en/latest/dataset/loading.html) · [CLI reference](https://medvision.readthedocs.io/en/latest/reference/cli.html)
 
-Since data downloading and processing take time, you can download datasets from the [tasks list](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list) or [configs list](https://github.com/YongchengYAO/MedVision/tree/master/dataset-info/dataset-configs) in advance.
+Since data downloading and processing take time, you can download datasets from the [tasks list](https://github.com/YongchengYAO/MedVision/tree/master/tasks_list) or [configs list](https://github.com/YongchengYAO/MedVision/tree/master/dataset-info/dataset-configs/v1.0.0-v1.1.1) in advance.
 
 
 > [!WARNING]
@@ -1210,7 +1274,9 @@ MedVision is released under the [Creative Commons Attribution 4.0 International 
 
 # 🩵 Acknowledgement
 
-This work was supported by the United Kingdom Research and Innovation (grant EP/S02431X/1), UKRI Centre for Doctoral Training in Biomedical AI at the University of Edinburgh, School of Informatics.
+This work was supported by 
+- The United Kingdom Research and Innovation (grant EP/S02431X/1), UKRI Centre for Doctoral Training in Biomedical AI at the University of Edinburgh, School of Informatics
+- The Edinburgh International Data Facility (EIDF) and the Data-Driven Innovation Programme at the University of Edinburgh.
 
 
 MedVision is based on some open-source projects:

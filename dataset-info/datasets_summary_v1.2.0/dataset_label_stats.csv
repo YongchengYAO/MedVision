@@ -1,0 +1,442 @@
+dataset,modality,category,name,anatomy_group,n_volumes,n_2D-slices,mean,median,mean_ROI_pixel_count,unit
+ACDC,MRI,label,left ventricular cavity,Heart,300,25825,227.7506,177.0,227.7506,mm2
+ACDC,MRI,label,myocardium,Heart,300,33818,175.2173,127.0,175.2173,mm2
+ACDC,MRI,label,right ventricular cavity,Heart,300,34517,167.3244,99.0,167.3244,mm2
+AFIDs,MRI,measurement,distance_mm,,72,432,37.5588,32.9225,,mm
+AMOS22,CT,label,aorta,Artery,360,76922,1466.7986,1106.53,848.332,mm2
+AMOS22,CT,label,bladder,Urinary System,296,72069,1699.6304,1165.0703,979.4894,mm2
+AMOS22,CT,label,duodenum,Intestine,359,75501,713.6091,480.4545,420.7784,mm2
+AMOS22,CT,label,esophagus,Esophagus,359,39261,382.7753,268.0234,227.9214,mm2
+AMOS22,CT,label,gall bladder,Gallbladder,337,44875,616.6266,487.4154,364.9158,mm2
+AMOS22,CT,label,left adrenal gland,Adrenal Gland,360,27419,136.1213,110.7031,79.4797,mm2
+AMOS22,CT,label,left kidney,Kidney,359,64427,2226.1677,2195.7031,1293.3134,mm2
+AMOS22,CT,label,liver,Liver,360,175474,7192.9013,6840.312,4132.6935,mm2
+AMOS22,CT,label,pancreas,Pancreas,360,95196,719.7799,541.8945,422.3086,mm2
+AMOS22,CT,label,postcava,Vein,360,54949,1192.0707,570.1992,679.9144,mm2
+AMOS22,CT,label,prostate/uterus,Others,291,44724,1083.5811,850.7832,659.4626,mm2
+AMOS22,CT,label,right adrenal gland,Adrenal Gland,359,26329,121.0827,97.75,70.9451,mm2
+AMOS22,CT,label,right kidney,Kidney,358,64122,2111.2512,2092.1191,1238.7449,mm2
+AMOS22,CT,label,spleen,Spleen,357,85648,2339.3962,1987.7051,1330.3071,mm2
+AMOS22,CT,label,stomach,Stomach,357,119450,2732.2796,2013.3751,1669.5179,mm2
+AMOS22,MRI,label,aorta,Artery,360,16898,766.1092,366.1205,490.4373,mm2
+AMOS22,MRI,label,bladder,Urinary System,296,264,690.964,679.4714,652.8523,mm2
+AMOS22,MRI,label,duodenum,Intestine,359,11370,513.4216,367.9242,313.8921,mm2
+AMOS22,MRI,label,esophagus,Esophagus,359,7605,165.7482,92.625,105.0469,mm2
+AMOS22,MRI,label,gall bladder,Gallbladder,337,5843,635.1087,545.0625,399.2156,mm2
+AMOS22,MRI,label,left adrenal gland,Adrenal Gland,360,3845,112.838,86.8055,68.7386,mm2
+AMOS22,MRI,label,left kidney,Kidney,359,10323,2032.5948,1883.9688,1269.3197,mm2
+AMOS22,MRI,label,liver,Liver,360,24801,6967.9844,6808.333,4327.2649,mm2
+AMOS22,MRI,label,pancreas,Pancreas,360,14369,810.5652,623.4375,516.1476,mm2
+AMOS22,MRI,label,postcava,Vein,360,12126,598.7174,253.8281,361.1828,mm2
+AMOS22,MRI,label,prostate/uterus,Others,291,168,387.5301,227.0,238.5179,mm2
+AMOS22,MRI,label,right adrenal gland,Adrenal Gland,359,3307,89.7075,72.0,53.3849,mm2
+AMOS22,MRI,label,right kidney,Kidney,358,10364,2009.7914,1853.101,1223.9852,mm2
+AMOS22,MRI,label,spleen,Spleen,357,12537,2271.5093,2014.5247,1413.8636,mm2
+AMOS22,MRI,label,stomach,Stomach,357,15590,1582.5489,1385.4507,981.8022,mm2
+AbdomenAtlas1.0Mini,CT,label,aorta,Artery,5185,1621624,1111.4631,568.3899,1013.059,mm2
+AbdomenAtlas1.0Mini,CT,label,gallbladder,Gallbladder,5032,720761,522.3563,417.6328,462.3589,mm2
+AbdomenAtlas1.0Mini,CT,label,left kidney,Kidney,5132,1206144,2399.9324,2192.1875,2110.675,mm2
+AbdomenAtlas1.0Mini,CT,label,liver,Liver,5184,2980069,8456.9112,7950.8575,7700.7533,mm2
+AbdomenAtlas1.0Mini,CT,label,pancreas,Pancreas,5164,1537817,802.6153,601.1719,712.7627,mm2
+AbdomenAtlas1.0Mini,CT,label,postcava (inferior vena cava),Vein,5188,1123791,954.3491,423.8642,800.5775,mm2
+AbdomenAtlas1.0Mini,CT,label,right kidney,Kidney,5138,1208902,2354.4622,2204.9561,2106.5413,mm2
+AbdomenAtlas1.0Mini,CT,label,spleen,Spleen,5166,1474108,2611.3956,2284.9994,2354.1731,mm2
+AbdomenAtlas1.0Mini,CT,label,stomach,Stomach,5184,1897182,2587.3134,1986.3286,2112.0027,mm2
+AbdomenCT-1K,CT,label,kidney,Kidney,1000,358398,3472.0861,3233.775,3047.0628,mm2
+AbdomenCT-1K,CT,label,liver,Liver,1000,587580,8636.1459,8210.8965,7704.0604,mm2
+AbdomenCT-1K,CT,label,pancreas,Pancreas,1000,309744,879.5227,645.7036,767.7586,mm2
+AbdomenCT-1K,CT,label,spleen,Spleen,998,293603,2627.0856,2308.4609,2366.2561,mm2
+BCV15,CT,label,aorta,Artery,30,6797,1258.2959,823.7812,602.0268,mm2
+BCV15,CT,label,bladder,Urinary System,30,6485,3225.2378,2995.6055,1616.1571,mm2
+BCV15,CT,label,esophagus,Esophagus,30,3697,382.4839,280.0312,178.2505,mm2
+BCV15,CT,label,gallbladder,Gallbladder,28,4045,556.1001,420.1758,269.5721,mm2
+BCV15,CT,label,inferior vena cava,Vein,30,5382,1405.0625,620.1125,696.7157,mm2
+BCV15,CT,label,left adrenal gland,Adrenal Gland,30,2960,154.1264,117.6797,74.6027,mm2
+BCV15,CT,label,left kidney,Kidney,30,6132,2201.9216,2170.2579,1091.9628,mm2
+BCV15,CT,label,liver,Liver,30,17119,8604.7046,8156.8652,4197.9602,mm2
+BCV15,CT,label,pancreas,Pancreas,30,8982,782.2438,570.2344,386.2391,mm2
+BCV15,CT,label,portal vein and splenic vein,Vein,30,11758,252.7386,138.8848,124.7743,mm2
+BCV15,CT,label,rectum,Intestine,30,5453,1305.4837,1020.5078,646.6483,mm2
+BCV15,CT,label,right adrenal gland,Adrenal Gland,30,2695,137.3952,106.0312,65.9199,mm2
+BCV15,CT,label,right kidney,Kidney,30,6248,2158.6483,2101.5819,1062.6535,mm2
+BCV15,CT,label,small bowel,Intestine,28,11183,4034.8496,2871.0938,2000.398,mm2
+BCV15,CT,label,spleen,Spleen,30,8510,3230.7806,2322.4512,1588.5434,mm2
+BCV15,CT,label,stomach,Stomach,30,11848,3274.95,2687.4609,1548.6161,mm2
+BCV15,CT,label,uterus,Uterus,30,6576,2360.8113,2034.5592,1157.839,mm2
+BraTS24,MRI,label,cystic component of brain,Brain Tumor/Lesion,432,28252,280.9403,123.0,280.9403,mm2
+BraTS24,MRI,label,enhancing brain tumor,Brain Tumor/Lesion,768,64048,287.8362,177.0,287.8362,mm2
+BraTS24,MRI,label,enhancing brain tumor tissue,Brain Tumor/Lesion,7496,846512,260.1448,130.0,260.9438,mm2
+BraTS24,MRI,label,gross tumor volume of brain,Brain Tumor/Lesion,500,62026,482.1001,247.2998,651.8954,mm2
+BraTS24,MRI,label,non-enhancing brain tumor,Brain Tumor/Lesion,1044,152668,804.2731,636.0,804.2731,mm2
+BraTS24,MRI,label,non-enhancing brain tumor core,Brain Tumor/Lesion,4404,314224,152.0046,63.0,152.1764,mm2
+BraTS24,MRI,label,peritumoral edema of brain,Brain Tumor/Lesion,360,33580,513.9792,303.0,513.9792,mm2
+BraTS24,MRI,label,resection cavity of brain,Brain Tumor/Lesion,5496,554100,453.0698,274.0,453.0698,mm2
+BraTS24,MRI,label,surrounding non-enhancing flair hyperintensity of brain,Brain Tumor/Lesion,8956,1712184,707.0693,469.0,707.863,mm2
+BraTS24,MRI,measurement,major_axis_mm,,2502,26183,35.4542,32.7841,,mm
+BraTS24,MRI,measurement,minor_axis_mm,,2502,26183,24.9667,22.8065,,mm
+CAMUS,ultrasound,label,left atrium,Heart,1000,319925,660.476,636.944,2787.3516,mm2
+CAMUS,ultrasound,label,left ventricle,Heart,1000,584841,656.0491,544.852,2768.6694,mm2
+CAMUS,ultrasound,label,left ventricular myocardium,Heart,1000,436667,805.7443,703.164,3400.4153,mm2
+Ceph-Biometrics-400,X Ray,measurement,angle_deg,,400,3200,45.339,45.0845,,degree
+Ceph-Biometrics-400,X Ray,measurement,distance_mm,,400,4400,69.0159,65.2155,,mm
+CrossMoDA,MRI,label,cochlea,Head-Neck,105,6621,14.4166,13.29,31.8836,mm2
+CrossMoDA,MRI,label,vestibular schwannoma,Head-Neck Tumor/Lesion,105,10002,131.4258,92.9004,284.4721,mm2
+DEEP-PSMA,PET,label,total tumor burden,Miscellaneous Tumor/Lesion,200,50341,1830.3285,729.8696,173.1609,mm2
+DEEP-PSMA,PET,measurement,major_axis_mm,,62,753,59.4003,52.8081,,mm
+DEEP-PSMA,PET,measurement,minor_axis_mm,,62,753,39.4718,34.5444,,mm
+FLARE22,CT,label,aorta,Artery,50,11532,1162.4306,694.2271,722.1678,mm2
+FLARE22,CT,label,duodenum,Intestine,50,12148,895.3682,671.0056,561.1521,mm2
+FLARE22,CT,label,esophagus,Esophagus,50,6208,366.3519,308.1446,225.8254,mm2
+FLARE22,CT,label,gallbladder,Gallbladder,50,7620,630.1573,497.2558,393.3146,mm2
+FLARE22,CT,label,inferior vena cava (ivc),Vein,50,9656,1270.543,533.3956,791.7297,mm2
+FLARE22,CT,label,left adrenal gland (lag),Adrenal Gland,50,4734,158.3348,132.8593,97.9303,mm2
+FLARE22,CT,label,left kidney,Kidney,50,11018,2600.0192,2547.8846,1606.2272,mm2
+FLARE22,CT,label,liver,Liver,50,27767,8355.3927,8170.4955,5164.8234,mm2
+FLARE22,CT,label,pancreas,Pancreas,50,14599,918.0127,662.0438,569.9081,mm2
+FLARE22,CT,label,right adrenal gland (rag),Adrenal Gland,50,4444,141.9993,115.315,87.5988,mm2
+FLARE22,CT,label,right kidney,Kidney,50,11102,2572.6556,2528.8231,1584.4586,mm2
+FLARE22,CT,label,spleen,Spleen,50,13406,2500.8227,2165.7321,1554.9905,mm2
+FLARE22,CT,label,stomach,Stomach,50,18720,2558.6888,2144.4289,1622.8189,mm2
+FeTA24,MRI,label,brainstem,Brain,80,11931,125.7208,95.6476,504.5346,mm2
+FeTA24,MRI,label,cerebellum,Brain,80,10893,208.6251,174.25,832.7786,mm2
+FeTA24,MRI,label,deep grey matter,Brain,80,13567,303.5141,270.5,1225.7644,mm2
+FeTA24,MRI,label,external cerebrospinal fluid,Brain,80,35422,890.9487,887.4452,3590.3153,mm2
+FeTA24,MRI,label,grey matter,Brain,80,30897,476.0121,432.5141,1910.8696,mm2
+FeTA24,MRI,label,ventricles,Brain,80,21260,290.9628,191.6424,1203.5081,mm2
+FeTA24,MRI,label,white matter,Brain,80,29629,1093.5327,1019.529,4396.1744,mm2
+FeTA24,MRI,measurement,distance_mm,,65,325,41.86,36.0,,mm
+HNTSMRG24,MRI,label,metastatic lymph node,Metastatic Lymph Node,259,35063,386.8377,245.8176,508.3669,mm2
+HNTSMRG24,MRI,label,primary gross tumor volume (head & neck),Head-Neck Tumor/Lesion,249,27361,335.0086,221.0,439.0286,mm2
+HNTSMRG24,MRI,measurement,major_axis_mm,,266,3188,27.3006,25.564,,mm
+HNTSMRG24,MRI,measurement,minor_axis_mm,,266,3188,17.8634,17.1362,,mm
+ISLES24,MRI,label,stroke infarct,Brain Tumor/Lesion,294,97228,509.189,181.6425,734.3103,mm2
+KiPA22,CT,label,kidney,Kidney,70,26239,1808.1832,1749.9309,4556.8928,mm2
+KiPA22,CT,label,kidney tumor,Kidney Tumor/Lesion,70,13483,994.8833,766.1101,2513.0105,mm2
+KiPA22,CT,label,renal artery,Artery,70,20844,50.8823,38.6784,129.347,mm2
+KiPA22,CT,label,renal vein,Vein,70,14124,139.7102,118.7292,352.3171,mm2
+KiPA22,CT,measurement,major_axis_mm,,68,3142,34.8885,34.2759,,mm
+KiPA22,CT,measurement,minor_axis_mm,,68,3142,29.6886,29.5784,,mm
+KiTS23,CT,label,kidney,Kidney,489,185539,3239.3486,3068.8477,2554.0687,mm2
+KiTS23,CT,label,kidney cyst,Kidney Tumor/Lesion,248,29267,643.6738,220.2148,386.0791,mm2
+KiTS23,CT,label,kidney tumor,Kidney Tumor/Lesion,489,76744,2516.3279,1195.7754,1784.9495,mm2
+KiTS23,CT,measurement,major_axis_mm,,436,8034,66.1201,56.5619,,mm
+KiTS23,CT,measurement,minor_axis_mm,,436,8034,53.9866,46.9804,,mm
+LIDC-IDRI,CT,label,lung nodule,Lung Tumor/Lesion,880,73976,72.4539,25.822,82.4633,mm2
+LIDC-IDRI,CT,measurement,major_axis_mm,,187,517,17.2784,15.6822,,mm
+LIDC-IDRI,CT,measurement,minor_axis_mm,,187,517,13.46,12.3352,,mm
+LNQ2023,CT,label,mediastinal lymph node,Metastatic Lymph Node,120,25331,483.1226,254.592,202.3861,mm2
+LNQ2023,CT,measurement,major_axis_mm,,79,238,34.2153,28.1346,,mm
+LNQ2023,CT,measurement,minor_axis_mm,,79,238,19.4204,16.2708,,mm
+MAMA-MIA,MRI,label,breast tumor,Breast Tumor/Lesion,1506,214408,578.9852,327.5005,640.6127,mm2
+MAMA-MIA,MRI,measurement,major_axis_mm,,963,5117,37.7085,33.1569,,mm
+MAMA-MIA,MRI,measurement,minor_axis_mm,,963,5117,28.8639,25.2662,,mm
+MSD,CT,label,colon cancer primaries,Colon Tumor/Lesion,126,17258,749.3279,496.207,314.3648,mm2
+MSD,CT,label,liver,Liver,131,88876,8449.8266,7935.4614,11232.4302,mm2
+MSD,CT,label,liver cancer,Liver Tumor/Lesion,118,31539,1177.7839,415.1519,1756.4153,mm2
+MSD,CT,label,liver tumor,Liver Tumor/Lesion,303,49727,2346.5422,916.692,1070.7307,mm2
+MSD,CT,label,liver vessel,Liver,303,117627,284.5463,193.3594,147.3859,mm2
+MSD,CT,label,lung cancer,Lung Tumor/Lesion,63,7493,606.3589,250.293,706.7721,mm2
+MSD,CT,label,pancreas,Pancreas,281,79040,836.1769,626.3503,503.9518,mm2
+MSD,CT,label,pancreas cancer,Pancreas Tumor/Lesion,281,20668,490.7187,268.3227,289.6987,mm2
+MSD,CT,label,spleen,Spleen,41,10754,2546.8203,2277.3215,1168.5974,mm2
+MSD,MRI,label,anterior hippocampus,Brain,260,13547,98.7535,102.0,98.7535,mm2
+MSD,MRI,label,edema of brain,Brain Tumor/Lesion,1936,422836,892.7344,708.0,892.7344,mm2
+MSD,MRI,label,enhancing brain tumor,Brain Tumor/Lesion,1888,254928,461.7191,344.0,461.7191,mm2
+MSD,MRI,label,left atrium of heart,Heart,20,3330,1400.4166,1332.8125,842.3559,mm2
+MSD,MRI,label,non-enhancing brain tumor,Brain Tumor/Lesion,1936,284988,367.6604,218.0,367.6604,mm2
+MSD,MRI,label,peripheral zone of prostate,Prostate,64,9900,409.938,299.25,238.9139,mm2
+MSD,MRI,label,posterior hippocampus,Brain,260,16101,76.5448,73.0,76.5448,mm2
+MSD,MRI,label,transition zone of prostate,Prostate,60,9860,1250.9388,1017.0938,753.6341,mm2
+MSD,CT;MRI,measurement,major_axis_mm,,1095,12914,48.8152,41.0905,,mm
+MSD,CT;MRI,measurement,minor_axis_mm,,1095,12914,36.1086,28.5635,,mm
+OAIZIB-CM,MRI,label,femoral cartilage,Knee Soft Tissue,507,218462,243.1645,191.151,1133.9201,mm2
+OAIZIB-CM,MRI,label,femur,Knee Bone,507,272717,2381.1521,2276.2032,11103.7428,mm2
+OAIZIB-CM,MRI,label,lateral tibial cartilage,Knee Soft Tissue,507,98878,82.5667,61.2766,385.0234,mm2
+OAIZIB-CM,MRI,label,medial tibial cartilage,Knee Soft Tissue,507,106855,67.1011,46.9583,312.9045,mm2
+OAIZIB-CM,MRI,label,tibia,Knee Bone,507,226077,1913.0195,1936.0105,8920.7559,mm2
+PDDCA,CT,label,brainstem,Brain,48,4411,659.6302,630.7572,308.6151,mm2
+PDDCA,CT,label,left optic nerve,Head-Neck,48,2988,25.1951,17.55,11.6566,mm2
+PDDCA,CT,label,left parotid gland,Head-Neck,48,5220,604.865,532.651,283.0144,mm2
+PDDCA,CT,label,left submandibular gland,Head-Neck,41,2604,258.317,232.7315,114.0058,mm2
+PDDCA,CT,label,mandible,Jawbone,40,9648,515.8915,470.4,238.1256,mm2
+PDDCA,CT,label,optic chiasm,Head-Neck,48,1754,36.268,32.34,16.8318,mm2
+PDDCA,CT,label,right optic nerve,Head-Neck,48,2993,22.21,15.84,10.3091,mm2
+PDDCA,CT,label,right parotid gland,Head-Neck,48,5207,621.4999,546.1,293.4469,mm2
+PDDCA,CT,label,right submandibular gland,Head-Neck,36,2294,261.8083,242.9812,113.983,mm2
+PDDCA,CT,measurement,distance_mm,,33,132,117.8103,102.5783,,mm
+PI-CAI,MRI,label,clinically significant prostate cancer lesion,Prostate Tumor/Lesion,425,42857,196.5381,88.56,234.3084,mm2
+PI-CAI,MRI,measurement,major_axis_mm,,163,410,27.2606,28.0359,,mm
+PI-CAI,MRI,measurement,minor_axis_mm,,163,410,18.8169,15.0909,,mm
+SKM-TEA,MRI,label,femoral cartilage,Knee Soft Tissue,310,142702,188.3359,150.1108,941.5722,mm2
+SKM-TEA,MRI,label,lateral meniscus,Knee Soft Tissue,310,59638,79.1459,56.7409,395.5621,mm2
+SKM-TEA,MRI,label,lateral tibial cartilage,Knee Soft Tissue,310,66638,86.7384,64.7508,433.854,mm2
+SKM-TEA,MRI,label,medial meniscus,Knee Soft Tissue,310,71574,75.0931,45.5,375.876,mm2
+SKM-TEA,MRI,label,medial tibial cartilage,Knee Soft Tissue,310,70936,72.9039,50.7331,364.751,mm2
+SKM-TEA,MRI,label,patellar cartilage,Knee Soft Tissue,310,64340,115.8595,84.75,579.2803,mm2
+ToothFairy2,CT,label,bridge,Others,90,11313,49.9215,45.27,554.6828,mm2
+ToothFairy2,CT,label,crown,Others,174,32313,81.9921,72.18,911.0235,mm2
+ToothFairy2,CT,label,implant,Others,62,6567,21.9283,19.26,243.6482,mm2
+ToothFairy2,CT,label,left inferior alveolar canal,Jawbone,480,173213,11.0915,8.82,123.2383,mm2
+ToothFairy2,CT,label,left maxillary sinus,Head-Neck,46,8347,80.171,54.9,890.7894,mm2
+ToothFairy2,CT,label,lower jawbone,Jawbone,479,381955,530.0052,470.88,5888.9463,mm2
+ToothFairy2,CT,label,lower left canine,Tooth,438,58808,37.2236,28.8,413.5956,mm2
+ToothFairy2,CT,label,lower left central incisor,Tooth,421,46938,21.8657,16.47,242.952,mm2
+ToothFairy2,CT,label,lower left first molar,Tooth,262,39460,63.8603,60.93,709.5588,mm2
+ToothFairy2,CT,label,lower left first premolar,Tooth,406,49109,32.919,24.75,365.7662,mm2
+ToothFairy2,CT,label,lower left lateral incisor,Tooth,431,52009,24.5302,18.54,272.5577,mm2
+ToothFairy2,CT,label,lower left second molar,Tooth,321,46473,62.6683,58.77,696.3148,mm2
+ToothFairy2,CT,label,lower left second premolar,Tooth,366,45079,36.2157,27.45,402.3962,mm2
+ToothFairy2,CT,label,lower left third molar (wisdom tooth),Tooth,259,36129,59.1499,58.05,657.2213,mm2
+ToothFairy2,CT,label,lower right canine,Tooth,444,59465,37.6357,28.89,418.1741,mm2
+ToothFairy2,CT,label,lower right central incisor,Tooth,422,46881,22.0307,16.56,244.7857,mm2
+ToothFairy2,CT,label,lower right first molar,Tooth,262,39357,63.4398,59.94,704.8861,mm2
+ToothFairy2,CT,label,lower right first premolar,Tooth,421,50942,32.9496,24.48,366.1068,mm2
+ToothFairy2,CT,label,lower right lateral incisor,Tooth,428,51346,24.8053,18.54,275.614,mm2
+ToothFairy2,CT,label,lower right second molar,Tooth,309,44899,62.3793,58.77,693.1034,mm2
+ToothFairy2,CT,label,lower right second premolar,Tooth,370,46182,36.5301,27.9,405.8896,mm2
+ToothFairy2,CT,label,lower right third molar (wisdom tooth),Tooth,271,37931,59.3814,58.5,659.7933,mm2
+ToothFairy2,CT,label,pharynx,Head-Neck,480,186895,341.2633,263.16,3791.8144,mm2
+ToothFairy2,CT,label,right inferior alveolar canal,Jawbone,480,172611,11.2322,9.0,124.8018,mm2
+ToothFairy2,CT,label,right maxillary sinus,Head-Neck,45,7952,82.0926,62.01,912.14,mm2
+ToothFairy2,CT,label,upper jawbone,Jawbone,185,50883,169.4252,100.44,1882.5018,mm2
+ToothFairy2,CT,label,upper left canine,Tooth,220,19394,30.0929,24.57,334.366,mm2
+ToothFairy2,CT,label,upper left central incisor,Tooth,192,17052,28.6587,23.76,318.4305,mm2
+ToothFairy2,CT,label,upper left first molar,Tooth,284,32666,55.8902,56.25,621.0026,mm2
+ToothFairy2,CT,label,upper left first premolar,Tooth,265,23346,31.0444,27.9,344.9373,mm2
+ToothFairy2,CT,label,upper left lateral incisor,Tooth,171,14607,23.0885,19.53,256.5389,mm2
+ToothFairy2,CT,label,upper left second molar,Tooth,279,32201,55.5424,56.07,617.1381,mm2
+ToothFairy2,CT,label,upper left second premolar,Tooth,270,23996,32.6459,30.87,362.7323,mm2
+ToothFairy2,CT,label,upper left third molar (wisdom tooth),Tooth,142,14879,44.9335,41.76,499.2616,mm2
+ToothFairy2,CT,label,upper right canine,Tooth,210,18658,30.0746,25.02,334.1617,mm2
+ToothFairy2,CT,label,upper right central incisor,Tooth,182,16488,29.3705,24.39,326.3388,mm2
+ToothFairy2,CT,label,upper right first molar,Tooth,278,31488,54.4748,53.73,605.2756,mm2
+ToothFairy2,CT,label,upper right first premolar,Tooth,253,21989,30.5349,27.0,339.2761,mm2
+ToothFairy2,CT,label,upper right lateral incisor,Tooth,157,13697,23.2451,19.8,258.2784,mm2
+ToothFairy2,CT,label,upper right second molar,Tooth,274,30857,53.2504,52.74,591.6716,mm2
+ToothFairy2,CT,label,upper right second premolar,Tooth,265,23236,31.6923,29.16,352.1363,mm2
+ToothFairy2,CT,label,upper right third molar (wisdom tooth),Tooth,129,13612,45.7218,42.66,508.0195,mm2
+TopCoW24,CT,label,anterior communicating artery,Artery,212,2243,5.114,4.291,18.7931,mm2
+TopCoW24,CT,label,basilar artery,Artery,250,6866,18.3484,13.0328,67.8941,mm2
+TopCoW24,CT,label,left anterior cerebral artery,Artery,250,13433,9.6843,6.334,35.6282,mm2
+TopCoW24,CT,label,left internal carotid artery,Artery,249,8405,21.3289,18.7781,78.8056,mm2
+TopCoW24,CT,label,left middle cerebral artery,Artery,249,8085,12.8124,10.2041,46.9707,mm2
+TopCoW24,CT,label,left posterior cerebral artery,Artery,250,11931,8.4814,6.2561,31.1328,mm2
+TopCoW24,CT,label,left posterior communicating artery,Artery,111,2431,5.1327,3.9991,18.9194,mm2
+TopCoW24,CT,label,right anterior cerebral artery,Artery,250,13615,9.5436,6.2014,35.3601,mm2
+TopCoW24,CT,label,right internal carotid artery,Artery,250,8712,21.244,18.6316,79.0844,mm2
+TopCoW24,CT,label,right middle cerebral artery,Artery,247,8371,12.8552,10.5029,47.3857,mm2
+TopCoW24,CT,label,right posterior cerebral artery,Artery,250,11698,8.4119,6.0738,30.9253,mm2
+TopCoW24,CT,label,right posterior communicating artery,Artery,122,2881,4.7097,3.3469,16.7733,mm2
+TopCoW24,CT,label,third a2 segment,Artery,31,903,5.5566,3.3237,19.9402,mm2
+TopCoW24,MRI,label,anterior communicating artery,Artery,212,3214,4.9014,4.275,32.8619,mm2
+TopCoW24,MRI,label,basilar artery,Artery,250,9794,23.0678,17.01,154.2262,mm2
+TopCoW24,MRI,label,left anterior cerebral artery,Artery,250,18635,11.3965,7.4915,76.2578,mm2
+TopCoW24,MRI,label,left internal carotid artery,Artery,249,17115,49.4237,42.2161,331.1216,mm2
+TopCoW24,MRI,label,left middle cerebral artery,Artery,249,11765,13.4193,10.8656,90.0301,mm2
+TopCoW24,MRI,label,left posterior cerebral artery,Artery,250,17230,9.6572,7.125,64.6294,mm2
+TopCoW24,MRI,label,left posterior communicating artery,Artery,111,3531,5.5404,4.4531,37.3585,mm2
+TopCoW24,MRI,label,right anterior cerebral artery,Artery,250,19099,11.3583,7.5796,76.0293,mm2
+TopCoW24,MRI,label,right internal carotid artery,Artery,250,17534,47.2215,40.0775,316.1061,mm2
+TopCoW24,MRI,label,right middle cerebral artery,Artery,247,11967,12.4768,10.5093,83.4858,mm2
+TopCoW24,MRI,label,right posterior cerebral artery,Artery,250,16934,9.3998,6.9469,62.8863,mm2
+TopCoW24,MRI,label,right posterior communicating artery,Artery,122,4201,5.0197,3.9188,33.8548,mm2
+TopCoW24,MRI,label,third a2 segment,Artery,31,1308,6.9865,4.1423,46.828,mm2
+TotalSegmentator,CT,label,aorta,Artery,1378,276837,1488.7119,893.25,661.6497,mm2
+TotalSegmentator,CT,label,brachiocephalic trunk,Artery,731,39869,201.5961,168.75,89.5983,mm2
+TotalSegmentator,CT,label,brain,Brain,313,53351,6452.7404,5355.0,2867.8846,mm2
+TotalSegmentator,CT,label,colon,Colon,1206,347407,2752.2367,2072.25,1223.2163,mm2
+TotalSegmentator,CT,label,costal cartilages,Rib,1017,338403,669.858,474.75,297.7146,mm2
+TotalSegmentator,CT,label,duodenum,Intestine,950,103182,661.7954,490.5,294.1313,mm2
+TotalSegmentator,CT,label,esophagus,Esophagus,1255,170349,329.6532,173.25,146.5125,mm2
+TotalSegmentator,CT,label,gallbladder,Gallbladder,790,52575,559.5174,445.5,248.6744,mm2
+TotalSegmentator,CT,label,heart,Heart,1124,212753,4328.8357,4065.75,1923.927,mm2
+TotalSegmentator,CT,label,inferior vena cava,Vein,1229,154726,684.2808,380.25,304.1248,mm2
+TotalSegmentator,CT,label,left 10th rib,Rib,880,184414,120.2399,94.5,53.44,mm2
+TotalSegmentator,CT,label,left 11th rib,Rib,856,142858,98.6298,81.0,43.8355,mm2
+TotalSegmentator,CT,label,left 12th rib,Rib,787,73719,72.6739,58.5,32.2995,mm2
+TotalSegmentator,CT,label,left 1st rib,Rib,741,86768,160.7914,126.0,71.4628,mm2
+TotalSegmentator,CT,label,left 2nd rib,Rib,752,121634,132.0816,103.5,58.7029,mm2
+TotalSegmentator,CT,label,left 3rd rib,Rib,772,146574,125.3981,92.25,55.7325,mm2
+TotalSegmentator,CT,label,left 4th rib,Rib,806,163691,137.7677,101.25,61.2301,mm2
+TotalSegmentator,CT,label,left 5th rib,Rib,867,179186,143.5522,103.5,63.801,mm2
+TotalSegmentator,CT,label,left 6th rib,Rib,908,191736,156.4624,114.75,69.5388,mm2
+TotalSegmentator,CT,label,left 7th rib,Rib,890,201985,158.2112,117.0,70.3161,mm2
+TotalSegmentator,CT,label,left 8th rib,Rib,888,204161,137.7336,101.25,61.215,mm2
+TotalSegmentator,CT,label,left 9th rib,Rib,890,200521,132.6817,101.25,58.9696,mm2
+TotalSegmentator,CT,label,left adrenal gland,Adrenal Gland,965,48076,134.7473,114.75,59.8877,mm2
+TotalSegmentator,CT,label,left atrial appendage,Heart,671,40132,242.7977,220.5,107.9101,mm2
+TotalSegmentator,CT,label,left autochthon,Others,1465,326896,1982.8131,967.5,881.2503,mm2
+TotalSegmentator,CT,label,left brachiocephalic vein,Vein,731,67162,254.4718,218.25,113.0986,mm2
+TotalSegmentator,CT,label,left clavicle,Others,816,111553,290.7712,245.25,129.2317,mm2
+TotalSegmentator,CT,label,left common carotid artery,Artery,753,65631,108.0027,63.0,48.0012,mm2
+TotalSegmentator,CT,label,left femur,Knee Bone,680,103359,2034.7653,1694.25,904.3401,mm2
+TotalSegmentator,CT,label,left gluteus maximus,Hip,708,151956,3477.0042,2961.0,1545.3352,mm2
+TotalSegmentator,CT,label,left gluteus medius,Hip,757,125506,2143.4863,1993.5,952.6606,mm2
+TotalSegmentator,CT,label,left gluteus minimus,Hip,673,77257,842.6585,805.5,374.5149,mm2
+TotalSegmentator,CT,label,left hip,Hip,813,196350,2130.9674,1829.25,947.0966,mm2
+TotalSegmentator,CT,label,left humerus,Others,712,68143,952.5565,780.75,423.3585,mm2
+TotalSegmentator,CT,label,left iliac artery,Artery,781,117873,179.4494,119.25,79.7553,mm2
+TotalSegmentator,CT,label,left iliac vein,Vein,776,120608,295.348,222.75,131.2658,mm2
+TotalSegmentator,CT,label,left iliopsoas,Hip,1106,205879,1500.3917,1046.25,666.8407,mm2
+TotalSegmentator,CT,label,left kidney,Kidney,1014,109872,1742.8276,1638.0,774.5901,mm2
+TotalSegmentator,CT,label,left kidney cyst,Kidney Tumor/Lesion,30,3185,1475.8467,1082.25,655.9319,mm2
+TotalSegmentator,CT,label,left lung lower lobe,Lung,1006,264609,5101.5728,4328.9995,2267.3657,mm2
+TotalSegmentator,CT,label,left lung upper lobe,Lung,1024,275764,5578.8492,4839.75,2479.4885,mm2
+TotalSegmentator,CT,label,left scapula,Others,877,164956,764.8873,573.75,339.9499,mm2
+TotalSegmentator,CT,label,left subclavian artery,Artery,751,79746,152.9079,92.25,67.9591,mm2
+TotalSegmentator,CT,label,liver,Liver,1180,310036,8023.1366,7179.75,3565.8385,mm2
+TotalSegmentator,CT,label,pancreas,Pancreas,993,135326,693.7639,524.2499,308.3395,mm2
+TotalSegmentator,CT,label,portal vein and splenic vein,Vein,830,149552,223.7121,126.0,99.4276,mm2
+TotalSegmentator,CT,label,prostate,Prostate,381,23608,742.2715,753.75,329.8985,mm2
+TotalSegmentator,CT,label,pulmonary vein,Vein,773,92985,332.5924,312.75,147.8188,mm2
+TotalSegmentator,CT,label,right 10th rib,Rib,865,185216,119.2416,94.5,52.9963,mm2
+TotalSegmentator,CT,label,right 11th rib,Rib,864,143097,96.2036,81.0,42.7571,mm2
+TotalSegmentator,CT,label,right 12th rib,Rib,778,72874,71.6501,56.25,31.8445,mm2
+TotalSegmentator,CT,label,right 1st rib,Rib,738,86072,162.2655,128.25,72.118,mm2
+TotalSegmentator,CT,label,right 2nd rib,Rib,749,119179,133.7175,103.5,59.43,mm2
+TotalSegmentator,CT,label,right 3rd rib,Rib,766,140897,127.1036,94.5,56.4905,mm2
+TotalSegmentator,CT,label,right 4th rib,Rib,787,156564,141.8974,103.5,63.0655,mm2
+TotalSegmentator,CT,label,right 5th rib,Rib,840,172319,151.1679,108.0,67.1857,mm2
+TotalSegmentator,CT,label,right 6th rib,Rib,869,185216,159.8331,114.75,71.0369,mm2
+TotalSegmentator,CT,label,right 7th rib,Rib,851,198487,160.7017,117.0,71.423,mm2
+TotalSegmentator,CT,label,right 8th rib,Rib,860,204059,142.5123,103.5,63.3388,mm2
+TotalSegmentator,CT,label,right 9th rib,Rib,860,200826,135.4454,101.25,60.198,mm2
+TotalSegmentator,CT,label,right adrenal gland,Adrenal Gland,993,46936,124.7194,103.5,55.4308,mm2
+TotalSegmentator,CT,label,right autochthon,Others,1458,328326,1956.4319,960.75,869.5253,mm2
+TotalSegmentator,CT,label,right brachiocephalic vein,Vein,735,38710,223.0564,189.0,99.1362,mm2
+TotalSegmentator,CT,label,right clavicle,Others,813,111952,304.9012,258.75,135.5116,mm2
+TotalSegmentator,CT,label,right common carotid artery,Artery,721,48635,92.7181,56.25,41.208,mm2
+TotalSegmentator,CT,label,right femur,Knee Bone,679,100061,2029.4445,1730.25,901.9753,mm2
+TotalSegmentator,CT,label,right gluteus maximus,Hip,710,152933,3573.8402,3062.2503,1588.3734,mm2
+TotalSegmentator,CT,label,right gluteus medius,Hip,741,128280,2034.8571,1849.5,904.3809,mm2
+TotalSegmentator,CT,label,right gluteus minimus,Hip,668,80952,853.0378,796.5,379.1279,mm2
+TotalSegmentator,CT,label,right hip,Hip,806,194455,2130.0116,1836.0,946.6718,mm2
+TotalSegmentator,CT,label,right humerus,Others,706,68705,1004.8695,857.25,446.6087,mm2
+TotalSegmentator,CT,label,right iliac artery,Artery,780,120243,175.3997,117.0,77.9554,mm2
+TotalSegmentator,CT,label,right iliac vein,Vein,771,109405,266.0735,191.25,118.2549,mm2
+TotalSegmentator,CT,label,right iliopsoas,Hip,1114,204378,1439.9105,1008.0,639.9602,mm2
+TotalSegmentator,CT,label,right kidney,Kidney,979,107590,1749.2864,1665.0,777.4606,mm2
+TotalSegmentator,CT,label,right kidney cyst,Kidney Tumor/Lesion,25,2331,2036.2934,983.25,905.0193,mm2
+TotalSegmentator,CT,label,right lung lower lobe,Lung,991,271533,5619.3054,4907.25,2497.4691,mm2
+TotalSegmentator,CT,label,right lung middle lobe,Lung,881,186921,3113.6251,2751.75,1383.8334,mm2
+TotalSegmentator,CT,label,right lung upper lobe,Lung,894,218038,5800.0794,5335.8747,2577.8131,mm2
+TotalSegmentator,CT,label,right scapula,Others,851,162643,763.9649,578.2499,339.5399,mm2
+TotalSegmentator,CT,label,right subclavian artery,Artery,731,68979,157.5356,94.5,70.0158,mm2
+TotalSegmentator,CT,label,sacrum,Hip,759,134715,1491.4837,1444.5,662.8817,mm2
+TotalSegmentator,CT,label,skull,Brain,467,90180,2826.9162,2544.7503,1256.4072,mm2
+TotalSegmentator,CT,label,small bowel,Intestine,1056,256729,4259.1351,3552.75,1892.9489,mm2
+TotalSegmentator,CT,label,spinal cord,Spine,1603,301274,419.4361,193.5,186.4161,mm2
+TotalSegmentator,CT,label,spleen,Spleen,1110,151411,2502.8145,2135.25,1112.362,mm2
+TotalSegmentator,CT,label,sternum,Others,956,140268,651.3525,438.75,289.49,mm2
+TotalSegmentator,CT,label,stomach,Stomach,1127,197791,2602.0733,1995.75,1156.477,mm2
+TotalSegmentator,CT,label,superior vena cava,Vein,777,64811,448.081,303.75,199.1471,mm2
+TotalSegmentator,CT,label,thyroid gland,Head-Neck,704,55152,353.5519,310.5,157.1342,mm2
+TotalSegmentator,CT,label,trachea,Head-Neck,792,126554,411.7185,292.5,182.986,mm2
+TotalSegmentator,CT,label,urinary bladder,Urinary System,656,82812,2536.9326,2083.5,1127.5256,mm2
+TotalSegmentator,CT,label,vertebra C1,Spine,246,23610,276.3286,193.5,122.8127,mm2
+TotalSegmentator,CT,label,vertebra C2,Spine,252,22593,346.8149,270.0,154.14,mm2
+TotalSegmentator,CT,label,vertebra C3,Spine,229,19137,292.6206,243.0,130.0536,mm2
+TotalSegmentator,CT,label,vertebra C4,Spine,250,20536,284.7185,229.5,126.5415,mm2
+TotalSegmentator,CT,label,vertebra C5,Spine,349,24424,272.4251,225.0,121.0778,mm2
+TotalSegmentator,CT,label,vertebra C6,Spine,556,36350,243.6382,186.75,108.2837,mm2
+TotalSegmentator,CT,label,vertebra C7,Spine,690,63012,279.6259,195.75,124.2782,mm2
+TotalSegmentator,CT,label,vertebra L1,Spine,801,104591,733.8885,632.25,326.1727,mm2
+TotalSegmentator,CT,label,vertebra L2,Spine,712,99297,739.4354,571.5,328.6379,mm2
+TotalSegmentator,CT,label,vertebra L3,Spine,645,95833,801.1502,648.0,356.0668,mm2
+TotalSegmentator,CT,label,vertebra L4,Spine,636,92730,828.1591,780.75,368.0707,mm2
+TotalSegmentator,CT,label,vertebra L5,Spine,619,91487,806.2182,742.5,358.3192,mm2
+TotalSegmentator,CT,label,vertebra S1,Spine,597,68981,803.7265,794.25,357.2118,mm2
+TotalSegmentator,CT,label,vertebra T1,Spine,704,83251,370.3546,270.0,164.602,mm2
+TotalSegmentator,CT,label,vertebra T10,Spine,877,103844,612.6542,542.25,272.2907,mm2
+TotalSegmentator,CT,label,vertebra T11,Spine,887,101682,694.2931,686.25,308.5747,mm2
+TotalSegmentator,CT,label,vertebra T12,Spine,871,99942,750.1703,742.5,333.409,mm2
+TotalSegmentator,CT,label,vertebra T2,Spine,724,86147,375.7466,303.75,166.9985,mm2
+TotalSegmentator,CT,label,vertebra T3,Spine,742,85286,370.2489,310.5,164.5551,mm2
+TotalSegmentator,CT,label,vertebra T4,Spine,738,85464,386.641,328.5,171.8405,mm2
+TotalSegmentator,CT,label,vertebra T5,Spine,733,85138,400.8759,328.5,178.1671,mm2
+TotalSegmentator,CT,label,vertebra T6,Spine,732,84241,409.4696,306.0,181.9865,mm2
+TotalSegmentator,CT,label,vertebra T7,Spine,745,86589,445.5016,319.5,198.0007,mm2
+TotalSegmentator,CT,label,vertebra T8,Spine,796,91284,482.3728,353.25,214.3879,mm2
+TotalSegmentator,CT,label,vertebra T9,Spine,849,99152,532.1756,414.0,236.5225,mm2
+TotalSegmentator,MRI,label,aorta,Artery,1378,52359,716.9571,397.6875,382.1444,mm2
+TotalSegmentator,MRI,label,brain,Brain,313,31066,9008.6459,9473.4081,10037.4644,mm2
+TotalSegmentator,MRI,label,colon,Colon,1206,100982,1749.3813,1082.3337,767.0549,mm2
+TotalSegmentator,MRI,label,duodenum,Intestine,950,23379,528.0366,353.2031,234.3806,mm2
+TotalSegmentator,MRI,label,esophagus,Esophagus,1255,21586,230.3613,140.625,117.0367,mm2
+TotalSegmentator,MRI,label,gallbladder,Gallbladder,790,10594,593.1741,461.9695,249.817,mm2
+TotalSegmentator,MRI,label,heart,Heart,1124,46663,3441.8434,2992.5,1584.3792,mm2
+TotalSegmentator,MRI,label,inferior vena cava,Vein,1229,32257,561.2663,278.4474,261.7316,mm2
+TotalSegmentator,MRI,label,intervertebral discs,Spine,413,74366,774.9217,507.8522,407.9252,mm2
+TotalSegmentator,MRI,label,left adrenal gland,Adrenal Gland,965,8077,134.5751,110.2849,64.6722,mm2
+TotalSegmentator,MRI,label,left autochthon,Others,1465,67705,1875.4882,987.5,813.07,mm2
+TotalSegmentator,MRI,label,left clavicle,Others,816,13094,154.5579,108.2812,166.2214,mm2
+TotalSegmentator,MRI,label,left femur,Knee Bone,680,29006,1680.2465,1456.3122,1350.6119,mm2
+TotalSegmentator,MRI,label,left gluteus maximus,Hip,708,24678,2421.2461,1757.1886,1256.0814,mm2
+TotalSegmentator,MRI,label,left gluteus medius,Hip,757,21674,1496.8665,1244.6986,635.8295,mm2
+TotalSegmentator,MRI,label,left gluteus minimus,Hip,673,11322,707.0486,614.3906,317.8593,mm2
+TotalSegmentator,MRI,label,left hip,Hip,813,44157,1096.2731,818.9055,628.4311,mm2
+TotalSegmentator,MRI,label,left humerus,Others,712,14172,695.777,407.6028,557.0887,mm2
+TotalSegmentator,MRI,label,left iliac artery,Artery,781,15471,117.7797,84.5658,60.9527,mm2
+TotalSegmentator,MRI,label,left iliac vein,Vein,776,16363,183.1555,135.375,97.741,mm2
+TotalSegmentator,MRI,label,left iliopsoas,Hip,1106,55281,1259.8333,870.851,593.2311,mm2
+TotalSegmentator,MRI,label,left kidney,Kidney,1014,31985,1684.6759,1497.8906,751.6819,mm2
+TotalSegmentator,MRI,label,left lung,Lung,260,76038,4875.3417,3889.9527,2682.6581,mm2
+TotalSegmentator,MRI,label,left scapula,Others,877,16571,385.2071,306.2439,341.5633,mm2
+TotalSegmentator,MRI,label,liver,Liver,1180,85769,6824.6212,5885.25,3135.1462,mm2
+TotalSegmentator,MRI,label,pancreas,Pancreas,993,29931,618.1334,462.5,284.6298,mm2
+TotalSegmentator,MRI,label,portal and splenic veins,Vein,188,25994,161.9631,97.875,73.9269,mm2
+TotalSegmentator,MRI,label,prostate,Prostate,381,4926,787.8288,624.2543,818.1175,mm2
+TotalSegmentator,MRI,label,right adrenal gland,Adrenal Gland,993,7118,113.3368,95.3039,56.7872,mm2
+TotalSegmentator,MRI,label,right autochthon,Others,1458,63590,1876.8388,1021.428,816.2693,mm2
+TotalSegmentator,MRI,label,right clavicle,Others,813,12305,149.6089,98.7188,111.9669,mm2
+TotalSegmentator,MRI,label,right femur,Knee Bone,679,32654,1738.2526,1469.5312,1766.0534,mm2
+TotalSegmentator,MRI,label,right gluteus maximus,Hip,710,26344,2506.8105,1838.3224,1271.6434,mm2
+TotalSegmentator,MRI,label,right gluteus medius,Hip,741,21780,1482.1346,1233.7313,618.0395,mm2
+TotalSegmentator,MRI,label,right gluteus minimus,Hip,668,11913,689.6305,584.1,309.2173,mm2
+TotalSegmentator,MRI,label,right hip,Hip,806,45385,1069.2685,801.5624,603.3719,mm2
+TotalSegmentator,MRI,label,right humerus,Others,706,12191,738.5353,448.4375,456.6676,mm2
+TotalSegmentator,MRI,label,right iliac artery,Artery,780,15153,113.3242,83.7159,58.4029,mm2
+TotalSegmentator,MRI,label,right iliac vein,Vein,771,14541,165.0361,119.25,86.8426,mm2
+TotalSegmentator,MRI,label,right iliopsoas,Hip,1114,55951,1206.6312,833.5876,570.5507,mm2
+TotalSegmentator,MRI,label,right kidney,Kidney,979,30184,1691.6699,1519.3315,746.6391,mm2
+TotalSegmentator,MRI,label,right lung,Lung,260,80330,5518.8481,4225.3228,2726.8839,mm2
+TotalSegmentator,MRI,label,right scapula,Others,851,12126,395.4381,338.1429,239.0267,mm2
+TotalSegmentator,MRI,label,sacrum,Hip,759,32286,1136.8231,961.509,581.8335,mm2
+TotalSegmentator,MRI,label,small bowel,Intestine,1056,67768,2288.8402,1482.0,970.4652,mm2
+TotalSegmentator,MRI,label,spinal cord,Spine,1603,89870,408.4811,194.4643,251.4076,mm2
+TotalSegmentator,MRI,label,spleen,Spleen,1110,42596,2203.7252,1807.9993,1020.8832,mm2
+TotalSegmentator,MRI,label,stomach,Stomach,1127,47863,1814.905,1480.0,792.4797,mm2
+TotalSegmentator,MRI,label,urinary bladder,Urinary System,656,13787,1613.0785,1159.375,962.399,mm2
+TotalSegmentator,MRI,label,vertebrae,Spine,423,102545,1301.0201,791.1719,731.4085,mm2
+VerSe,CT,label,vertebra C1,Spine,47,7456,296.2298,215.175,372.9146,mm2
+VerSe,CT,label,vertebra C2,Spine,47,7903,356.6682,268.3553,451.4019,mm2
+VerSe,CT,label,vertebra C3,Spine,51,7291,291.4529,234.4047,370.0772,mm2
+VerSe,CT,label,vertebra C4,Spine,52,7535,284.8992,226.3431,359.7583,mm2
+VerSe,CT,label,vertebra C5,Spine,60,9031,291.3713,232.0,365.1851,mm2
+VerSe,CT,label,vertebra C6,Spine,64,10661,298.3825,242.9813,393.5043,mm2
+VerSe,CT,label,vertebra C7,Spine,88,16887,322.2074,250.0,454.4607,mm2
+VerSe,CT,label,vertebra L1,Spine,279,65950,749.7636,678.6926,1088.9522,mm2
+VerSe,CT,label,vertebra L2,Spine,278,70508,772.8141,655.9049,1124.7354,mm2
+VerSe,CT,label,vertebra L3,Spine,276,72732,817.8555,720.1977,1180.3018,mm2
+VerSe,CT,label,vertebra L4,Spine,273,70480,853.2413,830.2111,1234.0539,mm2
+VerSe,CT,label,vertebra L5,Spine,257,65573,853.5772,805.0,1159.4396,mm2
+VerSe,CT,label,vertebra L6,Spine,47,13872,892.8446,740.495,1399.6838,mm2
+VerSe,CT,label,vertebra T1,Spine,136,28140,376.7531,294.0,524.5399,mm2
+VerSe,CT,label,vertebra T10,Spine,231,49771,617.9792,572.4083,876.8582,mm2
+VerSe,CT,label,vertebra T11,Spine,249,52002,693.9881,697.6734,1052.1775,mm2
+VerSe,CT,label,vertebra T12,Spine,253,52600,756.6671,775.1958,1132.2569,mm2
+VerSe,CT,label,vertebra T13,Spine,6,1331,859.0999,858.8772,1004.7971,mm2
+VerSe,CT,label,vertebra T2,Spine,154,32414,374.9118,321.0,535.2886,mm2
+VerSe,CT,label,vertebra T3,Spine,138,28706,372.7782,326.1793,530.2628,mm2
+VerSe,CT,label,vertebra T4,Spine,139,29269,381.7671,329.3753,536.7964,mm2
+VerSe,CT,label,vertebra T5,Spine,139,30471,393.2848,325.0,553.0082,mm2
+VerSe,CT,label,vertebra T6,Spine,139,31515,411.6295,319.9218,579.1861,mm2
+VerSe,CT,label,vertebra T7,Spine,147,33574,451.1206,336.6615,627.5175,mm2
+VerSe,CT,label,vertebra T8,Spine,158,35572,492.7182,380.0,675.2167,mm2
+VerSe,CT,label,vertebra T9,Spine,197,43652,542.5371,454.0,776.5113,mm2
+VerSe,CT,measurement,distance_mm,,250,1250,55.0874,35.7519,,mm
+VerSe,CT,measurement,angle_deg,,250,250,15.8713,15.3755,,degree
+autoPET-III,CT,label,tumor,Miscellaneous Tumor/Lesion,2076,180319,1474.7154,617.0353,205.4035,mm2
+autoPET-III,PET,label,tumor,Miscellaneous Tumor/Lesion,2076,180319,1474.7154,617.0353,205.4035,mm2
+autoPET-III,CT;PET,measurement,major_axis_mm,,457,3118,53.603,45.6757,,mm
+autoPET-III,CT;PET,measurement,minor_axis_mm,,457,3118,37.2506,31.2328,,mm

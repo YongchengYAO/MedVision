@@ -42,37 +42,69 @@ def find_plan_files(dataset_dir, plan_type):
     return sorted(glob.glob(pattern))
 
 
-@functools.lru_cache(maxsize=2)
-def load_benchmark_plan(dataset_dir, plan_type, version=None):
-    """Load one benchmark plan dict, or ``None`` if absent.
+def plan_version_of(path):
+    """Version tuple parsed from a ``benchmark_plan_<type>_v<X.Y.Z>.json.gz`` filename."""
+    return tuple(int(p) for p in os.path.basename(path).rsplit("_v", 1)[1].split(".json")[0].split("."))
 
-    ``version=None`` picks the highest available version; otherwise an exact match on the
-    ``_v<version>.json.gz`` suffix. If the requested version is absent for this dataset, fall back
-    to the highest available version (warning once) rather than returning ``None`` — this keeps a
-    pinned ``--plan_version`` from silently emptying datasets that only ship an older version
-    (e.g. Ceph/FeTA have biometry ``v1.0.0`` only). Returns ``None`` only when the plan type is
-    entirely absent. Cached (maxsize=2) so a dataset's plan is not re-read once per task; callers
-    must treat the returned dict as read-only.
+
+def resolve_plan_path(dataset_dir, plan_type, version=None):
+    """Path of the newest ``plan_type`` plan published at or before ``version``, or ``None``.
+
+    This is the loader's **ceiling** rule — *the newest annotation that existed at or before this
+    point* — and it is the single resolution rule for every plan family, so a summary run cannot
+    mix versions across families.
+
+    ``version=None`` means the newest available. ``None`` is returned when the family is absent,
+    **or when nothing was published at or before ``version``** — i.e. the dataset did not exist yet
+    at that version, so it must contribute nothing to that version's summary.
+
+    This deliberately replaced an "exact match, else highest available" rule. The old fallback
+    existed so a pinned ``--plan_version`` could not silently empty a dataset shipping only an
+    OLDER version (Ceph/FeTA have biometry ``v1.0.0`` only) — ceiling resolution preserves that
+    exactly. What it fixes is the case the old rule never anticipated: a plan published *above* the
+    pin. Since v1.2.0 that is real (8 datasets ship v1.2.0 plans only), and "highest available"
+    leaked them into 1.0.0/1.1.0/1.1.1 summaries. Verified: across the 22 pre-v1.2.0 datasets x 4
+    pins x 3 families the two rules agree on every single case, so no historical summary moves.
     """
     files = find_plan_files(dataset_dir, plan_type)
+    if version is not None:
+        cap = tuple(int(p) for p in version.split("."))
+        files = [f for f in files if plan_version_of(f) <= cap]
     if not files:
         return None
-    if version is None:
-        path = files[-1]
-    else:
-        path = next(
-            (f for f in files if os.path.basename(f).endswith(f"_v{version}.json.gz")), None
-        )
-        if path is None:
-            path = files[-1]  # requested version missing -> highest available
-            key = (dataset_dir, plan_type, version)
-            if key not in _warned_versions:
-                _warned_versions.add(key)
-                print(
-                    f"[plan_utils] {os.path.basename(dataset_dir)}: {plan_type} plan v{version} "
-                    f"not found; using {os.path.basename(path)} instead",
-                    file=sys.stderr,
-                )
+    return max(files, key=plan_version_of)
+
+
+def dataset_exists_at(dataset_dir, version=None):
+    """True if the dataset published ANY plan at or before ``version``.
+
+    A dataset added in a later release has no plan at or before an earlier pin, so it did not exist
+    then and must be skipped entirely rather than reported with zeros.
+    """
+    return any(resolve_plan_path(dataset_dir, pt, version)
+               for pt in ("segmentation", "detection", "biometry"))
+
+
+@functools.lru_cache(maxsize=2)
+def load_benchmark_plan(dataset_dir, plan_type, version=None):
+    """Load one benchmark plan dict, or ``None``. Resolution: see ``resolve_plan_path``.
+
+    Cached (maxsize=2) so a dataset's plan is not re-read once per task; callers must treat the
+    returned dict as read-only. Warns once per (dataset, type, version) when the resolved plan is
+    not an exact version match, so a fallback is never silent.
+    """
+    path = resolve_plan_path(dataset_dir, plan_type, version)
+    if path is None:
+        return None
+    if version is not None and not os.path.basename(path).endswith(f"_v{version}.json.gz"):
+        key = (dataset_dir, plan_type, version)
+        if key not in _warned_versions:
+            _warned_versions.add(key)
+            print(
+                f"[plan_utils] {os.path.basename(dataset_dir)}: {plan_type} plan v{version} "
+                f"not found; using {os.path.basename(path)} instead",
+                file=sys.stderr,
+            )
     with gzip.open(path, "rt") as fh:
         return json.load(fh)
 

@@ -6,11 +6,11 @@ MedVision is a benchmark built for *quantitative* medical image analysis: instea
 
 ## What MedVision holds
 
-At the data level, MedVision consolidates **22 public medical imaging datasets** — including collections such as BraTS24, MSD, and OAIZIB-CM — into a single, uniformly structured resource of **29K 3D images** and **11.2 million annotated 2D slices**, carrying — across the three quantitative tasks — **24.3 million single-instance annotations**, or **45.3 million multi-instance annotations** with the per-sample quality/size filters lifted ([what those filters drop](#multi-instance-vs-single-instance-annotations)). Neither figure counts instances: several boxes or clusters of the same target on one slice are one annotation in both. The imaging spans five modalities: X-ray (XR), CT, MRI, ultrasound (US), and PET, across many anatomical regions.
+At the data level, MedVision consolidates **30 public medical imaging datasets** — including collections such as BraTS24, MSD, and OAIZIB-CM — into a single, uniformly structured resource of **32.7K 3D images** and **11.9 million annotated 2D slices**, carrying — across the three quantitative tasks — **24.7 million single-instance annotations**, or **46.7 million multi-instance annotations** with the per-sample quality/size filters lifted ([what those filters drop](#multi-instance-vs-single-instance-annotations)). Neither figure counts instances: several boxes or clusters of the same target on one slice are one annotation in both. The imaging spans five modalities: X-ray (XR), CT, MRI, ultrasound (US), and PET, across many anatomical regions.
 
 Source images are kept as 3D volumes reoriented to RAS+ (a canonical right-anterior-superior axis convention), which makes plane definitions consistent across datasets that were originally stored with different orientations. Because most vision-language models consume 2D images, MedVision does not ship pre-cut slices: the loader slices volumes to 2D on the fly along any of the three anatomical planes — axial, coronal or sagittal — at load time. This keeps the on-disk footprint tied to the volumes themselves (a full copy is around 1 TB) rather than to an exploded set of PNGs.
 
-**Segmentation masks.** Every dataset except Ceph-Biometrics-400 ships with segmentation masks: dense manual ground truth drawn by expert annotators, and the source of the label names shown in each task's label map below. To download the image and mask files, load any of a dataset's detection configs — MedVision distributes only the annotations, and the loader fetches and preprocesses the raw imaging into the dataset folder you specify.
+**Segmentation masks.** Every dataset except Ceph-Biometrics-400 and AFIDs — both landmark-only — ships with segmentation masks: dense manual ground truth drawn by expert annotators, and the source of the label names shown in each task's label map below. To download the image and mask files, load any of a dataset's detection configs — MedVision distributes only the annotations, and the loader fetches and preprocesses the raw imaging into the dataset folder you specify.
 
 :::{note}
 MedVision distributes only the annotations. The Hugging Face loader script fetches and preprocesses the raw imaging for you into `MedVision_DATA_DIR`. The end-to-end mechanics are covered in [Loading data](loading.md).
@@ -20,7 +20,7 @@ MedVision distributes only the annotations. The Hugging Face loader script fetch
 
 Two vocabulary terms do a lot of work throughout the codebase:
 
-- A **dataset** is one of the 22 upstream sources, referenced by its short name (`BraTS24`, `MSD`, `OAIZIB-CM`, …).
+- A **dataset** is one of the 30 upstream sources, referenced by its short name (`BraTS24`, `MSD`, `OAIZIB-CM`, …).
 - A **data config** is a named, ready-to-load subset of MedVision. You pass a config name to select exactly which slices and annotations you get.
 
 Config names follow a fixed five-part convention:

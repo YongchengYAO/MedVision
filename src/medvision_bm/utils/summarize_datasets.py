@@ -37,8 +37,9 @@ from medvision_bm.utils.parse_utils import get_labelsMap_imgModality_from_seg_be
 from medvision_bm.utils.plan_utils import (
     AXIS_TO_PLANE,
     anatomy_group,
-    find_plan_files,
+    dataset_exists_at,
     load_benchmark_plan,
+    resolve_plan_path,
     slice_entries,
 )
 
@@ -179,23 +180,25 @@ def labels_map_from_medvision_ds(dataset, task_id, fallback_labels_map):
     return fallback_labels_map
 
 
-def _load_plan_v100(dataset_dir, family):
-    """Load a ``benchmark_plan_{family}_v1.0.0.json.gz`` directly (uncached), or ``None``.
+def _load_plan_uncached(dataset_dir, family, version=None):
+    """Same resolution as ``load_benchmark_plan`` (see ``resolve_plan_path``), but uncached.
 
-    Bypasses the ``functools.lru_cache`` in ``load_benchmark_plan`` on purpose: the detection
-    plan can be hundreds of MB (multi-GB decompressed for TotalSegmentator/AbdomenAtlas), so it
-    must not be retained in the cache. Version is pinned to 1.0.0 because that is the paper's
-    benchmark release (all seg/det ship 1.0.0 only, and T/L filtering is version-conditional).
+    Bypasses that function's ``functools.lru_cache`` on purpose: the detection plan can be
+    hundreds of MB (multi-GB decompressed for TotalSegmentator/AbdomenAtlas), so it must not be
+    retained in the cache.
     """
-    path = os.path.join(dataset_dir, f"benchmark_plan_{family}_v1.0.0.json.gz")
-    if not os.path.exists(path):
+    path = resolve_plan_path(dataset_dir, family, version)
+    if path is None:
         return None
     with gzip.open(path, "rt") as fh:
         return json.load(fh)
 
 
-def _count_boxsize(dataset_dir, dataset):
-    """BoxSize sample counts + per-anatomy breakdowns from the v1.0.0 detection plan.
+def _count_boxsize(dataset_dir, dataset, version=None):
+    """BoxSize sample counts + per-anatomy breakdowns from the detection plan.
+
+    ``version`` caps which detection plan is read (newest at or before it); see
+    ``resolve_plan_path``. Datasets first published after ``version`` yield zeros.
 
     Computes BOTH the filtered and the raw (unfiltered) count in one pass over train+test and
     all three planes; anatomy is mapped via the medvision_ds-sourced ``labels_map``:
@@ -207,7 +210,7 @@ def _count_boxsize(dataset_dir, dataset):
 
     Returns ``(n_filtered, filtered_by_anatomy, n_raw, raw_by_anatomy)`` (Counters).
     """
-    plan = _load_plan_v100(dataset_dir, "detection")
+    plan = _load_plan_uncached(dataset_dir, "detection", version)
     if plan is None:
         return 0, Counter(), 0, Counter()
     n_f = n_r = 0
@@ -289,7 +292,7 @@ def count_benchmark_annotations(dataset_dir, dataset, skip_detection=False, vers
     task_f, task_r = {}, {}
     anat_f, anat_r = Counter(), Counter()
     if not skip_detection:
-        n_bf, anat_f, n_br, anat_r = _count_boxsize(dataset_dir, dataset)
+        n_bf, anat_f, n_br, anat_r = _count_boxsize(dataset_dir, dataset, version)
         if n_bf:
             task_f["BoxSize"] = n_bf
         if n_br:
@@ -310,12 +313,15 @@ def process_dataset(datasets_root, dataset, plan_version, skip_detection=False):
     dataset_dir = os.path.join(datasets_root, dataset)
     n_img_disk, n_mask_disk, n_other_disk = scan_ondisk(dataset_dir)
 
+    # Every family is resolved against plan_version, so a dataset never reports a task type (or an
+    # inventory) from a plan published after the requested version.
     task_types = [
-        pt for pt in ("segmentation", "detection", "biometry") if find_plan_files(dataset_dir, pt)
+        pt for pt in ("segmentation", "detection", "biometry")
+        if resolve_plan_path(dataset_dir, pt, plan_version)
     ]
 
     # Canonical inventory: segmentation (labels + ROI) if present, else biometry (AD-only sets).
-    canonical = load_benchmark_plan(dataset_dir, "segmentation", version=None)
+    canonical = load_benchmark_plan(dataset_dir, "segmentation", plan_version)
     if canonical is None:
         canonical = load_benchmark_plan(dataset_dir, "biometry", plan_version)
 
@@ -1322,6 +1328,18 @@ def main():
             d for d in os.listdir(datasets_root)
             if os.path.isdir(os.path.join(datasets_root, d)) and not d.endswith("_regen")
         )
+
+    # Drop datasets that had not been published at --plan_version: they carry no plan at or before
+    # it, so they belong to a later release and must be absent from this summary entirely (not
+    # listed with zeros). This is what lets one Datasets/ root holding every dataset still produce
+    # a faithful summary for an older version.
+    if args.plan_version:
+        skipped = [d for d in datasets
+                   if not dataset_exists_at(os.path.join(datasets_root, d), args.plan_version)]
+        if skipped:
+            datasets = [d for d in datasets if d not in set(skipped)]
+            print(f"[scope] v{args.plan_version}: skipping {len(skipped)} dataset(s) first "
+                  f"published later: {', '.join(skipped)}")
 
     files_path = os.path.join(out_dir, "dataset_files.jsonl")
     per_dataset, all_label_rows = {}, []

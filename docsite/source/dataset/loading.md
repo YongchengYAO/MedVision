@@ -82,7 +82,7 @@ python -m medvision_bm.benchmark.download_datasets \
 
 # ...or from a configs CSV (config names in the first column):
 python -m medvision_bm.benchmark.download_datasets \
-  --configs_csv dataset-info/dataset-configs/ConfigurationsList_Test.csv \
+  --configs_csv dataset-info/dataset-configs/v1.0.0-v1.1.1/ConfigurationsList_Test.csv \
   --data_dir <data-folder>
 ```
 
@@ -90,7 +90,7 @@ Arguments:
 
 - `--data_dir` — **required**; the folder that becomes `MedVision_DATA_DIR` (datasets and the fetched dataset source code land here).
 - `--tasks_json` — path to a task-list JSON; its top-level keys are read as task names (the same format used under `tasks_list/`).
-- `--configs_csv` — path to a CSV whose first column lists config names. Ready-made lists ship in [`dataset-info/dataset-configs/`](https://github.com/YongchengYAO/MedVision/tree/master/dataset-info/dataset-configs): `ConfigurationsList_All.csv`, `ConfigurationsList_Test.csv`, and `ConfigurationsList_Train.csv`.
+- `--configs_csv` — path to a CSV whose first column lists config names. Ready-made lists ship in [`dataset-info/dataset-configs/v1.0.0-v1.1.1/`](https://github.com/YongchengYAO/MedVision/tree/master/dataset-info/dataset-configs/v1.0.0-v1.1.1): `ConfigurationsList_All.csv`, `ConfigurationsList_Test.csv`, and `ConfigurationsList_Train.csv`.
 - `--split` — `test` (default) or `train`; controls which split of each task/config is requested.
 - `--force_download_data` — store-true flag that forces re-download of the raw imaging data.
 

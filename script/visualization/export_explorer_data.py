@@ -3,21 +3,35 @@
 
 Reads ``ConfigurationsList_Test.csv``, resolves every **non-MaskSize** test config to
 ``{dataset, task_type, task_id, plane, modality, subtype, anatomy_groups}``, and writes
-``<page_dir>/static/js/explorer-data.js`` defining the ``window.MEDVISION_EXPLORER`` global that
-``static/js/explorer.js`` consumes. Mirrors ``export_webpage_cases.py`` (same ``--page_dir`` convention).
+``<page_dir>/static/js/explorer-data.js`` defining the ``window.MEDVISION_EXPLORER`` global.
+Mirrors ``export_webpage_cases.py`` (same ``--page_dir`` convention).
+
+TWO webpage panels read this one blob, and there is no second exporter:
+  - ``static/js/explorer.js``        — the Dataset Explorer (all fields).
+  - ``static/js/dataset-preview.js`` — the Dataset Preview plate, which uses only ``body_parts``,
+    ``configs[].dataset``, ``configs[].anatomy_groups`` and ``release_version``.
+So re-running this script is the whole update path for both after a dataset is added.
 
 Two different resolutions run per config, and they deliberately read different modules:
 
 ANATOMY (drives the filter) — from the SEGMENTATION labels_map:
   - ``BoxSize`` (detection)        -> live ``preprocess_segmentation.benchmark_plan`` ``tasks[id-1]``;
                                       anatomy = regroup of EVERY label in ``labels_map``.
-  - ``TumorLesionSize``            -> ``benchmark_plan_biometry_v*.json.gz`` ``tasks[id-1]``;
+  - ``TumorLesionSize``            -> live ``preprocess_biometry.benchmark_plan`` ``tasks[id-1]``;
                                       anatomy = regroup of the SINGLE ``labels_map[str(target_label)]``.
-  - ``BiometricsFromLandmarks``    -> dataset-level anatomy override
-                                      (``Ceph-Biometrics-400`` -> Head-Neck, ``FeTA24`` -> Brain).
+  - ``BiometricsFromLandmarks``    -> dataset-level anatomy override (BIOMETRY_ANATOMY).
   - ``MaskSize``                   -> SKIPPED (segmentation mask area; excluded from the explorer).
 
 TASK DETAIL (the panel shown on click) — from the module the LOADER reads (see TASK_MODULE).
+
+Every read is from a live ``medvision_ds`` module — nothing is read out of ``Data/``. An earlier
+version opened ``benchmark_plan_biometry_v*.json.gz`` off disk for the two biometry task types,
+which made the export impossible for any dataset whose data this machine does not hold. The two
+sources were verified to agree on ``image_modality``, ``labels_map``, ``target_label`` and the
+``biometrics_map`` metric types for all 29 (dataset, task) pairs published before v1.2.0 — against
+the NEWEST plan on disk, which is the one the old code opened. They disagree on the *v1.0.0* plans
+of BraTS24, HNTSMRG24 and MSD, whose label names were later revised; the modules carry the current
+names, which are the ones ``label_map_regroup`` is keyed on.
 
 Why they differ for ``BoxSize``: the detection and segmentation ``labels_map`` are NOT identical for
 every dataset. KiPA22 label 4 is "tumor" in detection but "kidney tumor" in segmentation, and
@@ -36,8 +50,7 @@ Example
         --page_dir /mnt/vincent-pvc-rwm/Github/medvision-vlm.github.io
 """
 import argparse
-import glob
-import gzip
+import ast
 import importlib
 import json
 import os
@@ -51,8 +64,11 @@ from medvision_bm.utils.parse_utils import (
 
 # ── static config ───────────────────────────────────────────────────────────────────────────────
 REPO = "/mnt/vincent-pvc-rwm/Github/MedVision"
-DEFAULT_CONFIGS_CSV = os.path.join(REPO, "dataset-info/dataset-configs/ConfigurationsList_Test.csv")
-DEFAULT_DATA_DIR = os.path.join(REPO, "Data")
+# Config lists are versioned (the v1.2.0 release added 8 datasets, so the catalogue is no longer
+# one list). The earlier catalogue lives in dataset-info/dataset-configs/v1.0.0-v1.1.1/ —
+# script/misc/*_v1.0.0.sh and friends still read it.
+DEFAULT_CONFIGS_CSV = os.path.join(
+    REPO, "dataset-info/dataset-configs/v1.2.0/ConfigurationsList_Test.csv")
 DEFAULT_DATASET_INFO = os.path.join(REPO, "dataset-info/datasets_info.json")
 
 # medvision_ds is pip-installed as a NON-editable copy in site-packages that silently shadows the
@@ -71,8 +87,52 @@ TASK_MODULE = {
     "BiometricsFromLandmarks": "biometry",
 }
 
-VERSIONS = ["1.1.1", "1.1.0", "1.0.0"]
-LATEST_VERSION = "1.1.1"
+# The loader's per-(dataset, plan-kind) table of published annotation versions, lifted verbatim
+# from MedVision.py. From v1.2.0 the release version and the annotation version are separate
+# things: MedVision_PLANNER_VERSION picks a RELEASE, and each dataset then loads the newest
+# annotation published at or before it.
+#
+# The explorer's version selector is driven by this table alone — it offers a config's OWN
+# annotation versions, so KiTS23 biometry tops out at 1.1.1 and never lists 1.2.0. That keeps every
+# option a genuinely different set of annotation files (pinning 1.2.0 there would have resolved to
+# the same 1.1.1 files) and makes the pinned version the version loaded, which the T/L landmark
+# folder suffix reads directly. Below a config's newest entry, MedVision_ACK_RELEASE is required.
+# Parsed rather than imported: MedVision.py imports `datasets` and is 10k lines of loader.
+def load_annotation_index(medvision_py):
+    """``_ANNOTATION_INDEX`` from MedVision.py, as {dataset: {kind: [versions ascending]}}."""
+    with open(medvision_py) as fh:
+        tree = ast.parse(fh.read(), filename=medvision_py)
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(
+            isinstance(t, ast.Name) and t.id == "_ANNOTATION_INDEX" for t in node.targets
+        ):
+            raw = ast.literal_eval(node.value)
+            return {ds: {k: sorted(v, key=_vtuple) for k, v in kinds.items()}
+                    for ds, kinds in raw.items()}
+    raise ValueError(f"_ANNOTATION_INDEX not found in {medvision_py}")
+
+
+def _vtuple(v):
+    return tuple(int(p) for p in str(v).split("."))
+
+
+def load_release_version(medvision_py):
+    """The repo release version — ``MedVisionConfig.__init__``'s hardcoded ``version=``.
+
+    This is what ``MedVision_ACK_RELEASE`` must equal, and it is deliberately NOT the newest
+    annotation version nor ``medvision_ds.__version__``: MedVision.py is re-fetched from the hub on
+    every load, so the release it declares is the remote one (see the comment at that call site).
+    """
+    with open(medvision_py) as fh:
+        tree = ast.parse(fh.read(), filename=medvision_py)
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "__init__"):
+            continue
+        for kw in node.keywords:
+            if kw.arg == "version" and isinstance(kw.value, ast.Constant):
+                return kw.value.value
+    raise ValueError(f"no super().__init__(version=...) found in {medvision_py}")
 
 # Body part -> anatomy groups, codified from the comment banners in
 # medvision_bm/utils/configs.py::label_map_regroup. Order within each list is curated
@@ -88,7 +148,8 @@ BODY_PART_GROUPS = {
         "Adrenal Gland", "Colon", "Colon Tumor/Lesion", "Intestine",
         "Esophagus", "Stomach",
     ],
-    "Pelvis (Uro-Gynae)": ["Urinary System", "Uterus", "Prostate"],
+    "Pelvis (Uro-Gynae)": ["Urinary System", "Uterus", "Prostate", "Prostate Tumor/Lesion"],
+    "Breast": ["Breast Tumor/Lesion"],
     "Vasculature": ["Artery", "Vein"],
     "Musculoskeletal": ["Hip", "Rib", "Spine", "Knee Bone", "Knee Soft Tissue"],
     "Dentistry": ["Jawbone", "Tooth"],
@@ -97,9 +158,25 @@ BODY_PART_GROUPS = {
     "Other": ["Others"],
 }
 GROUP2BODY = {g: bp for bp, gs in BODY_PART_GROUPS.items() for g in gs}
+# The preview plate draws body part -> anatomy label as a tree and states that its leader lines
+# never cross, which is only true while this stays a partition. A group listed twice would be
+# swallowed silently by the dict above.
+_seen = [g for gs in BODY_PART_GROUPS.values() for g in gs]
+if len(_seen) != len(set(_seen)):
+    raise ValueError(
+        "BODY_PART_GROUPS is not a partition; anatomy group(s) under more than one body part: "
+        + str(sorted({g for g in _seen if _seen.count(g) > 1})))
 
 # Landmark-biometry datasets have no per-label mask; anatomy is assigned at the dataset level.
-BIOMETRY_ANATOMY = {"Ceph-Biometrics-400": "Head-Neck", "FeTA24": "Brain"}
+# AFIDs = 32 brain fiducials; PDDCA = head-and-neck organs at risk; VerSe = lumbar (L1-L5)
+# vertebral centroids. Sources: doc/release-v1.2.0-datasets.md in the medvision_ds repo.
+BIOMETRY_ANATOMY = {
+    "AFIDs": "Brain",
+    "Ceph-Biometrics-400": "Head-Neck",
+    "FeTA24": "Brain",
+    "PDDCA": "Head-Neck",
+    "VerSe": "Spine",
+}
 
 # Raw benchmark-plan modality string -> the five explorer modality buckets.
 MODALITY_NORM = {
@@ -111,21 +188,13 @@ TASK_TYPES = ("BoxSize", "TumorLesionSize", "BiometricsFromLandmarks")  # MaskSi
 
 
 # ── resolution helpers ──────────────────────────────────────────────────────────────────────────
-_bio_cache: dict[str, dict | None] = {}
-
-
-def _load_biometry_plan(data_dir: str, dataset: str):
-    """Return the highest-version biometry benchmark plan dict for ``dataset`` (or None)."""
-    if dataset in _bio_cache:
-        return _bio_cache[dataset]
-    pattern = os.path.join(data_dir, "Datasets", dataset, "benchmark_plan_biometry_v*.json.gz")
-    files = sorted(glob.glob(pattern))
-    if not files:
-        _bio_cache[dataset] = None
+def _biometry_task(dataset: str, task_id):
+    """``preprocess_biometry.benchmark_plan['tasks'][task_id - 1]`` for ``dataset`` (or None)."""
+    plan = _module_plan(dataset, "biometry")
+    tasks = (plan or {}).get("tasks", [])
+    if not (task_id and 1 <= task_id <= len(tasks)):
         return None
-    with gzip.open(files[-1], "rt") as fh:
-        _bio_cache[dataset] = json.load(fh)
-    return _bio_cache[dataset]
+    return tasks[task_id - 1]
 
 
 def _seg_modality(dataset: str):
@@ -141,13 +210,10 @@ def _biometry_subtype(dataset: str, task_id):
     """Derive Distance/Angle from the biometry plan's ``biometrics_map`` metric types when the config
     name carries no subtype token (e.g. FeTA24, whose metrics are all distances). Returns None if mixed
     or unknown."""
-    plan = _load_biometry_plan(DEFAULT_DATA_DIR, dataset)
-    if not plan:
+    task = _biometry_task(dataset, task_id)
+    if task is None:
         return None
-    tasks = plan.get("tasks", [])
-    if not (task_id and 1 <= task_id <= len(tasks)):
-        return None
-    types = {m.get("metric_type") for m in (tasks[task_id - 1].get("biometrics_map") or [])}
+    types = {m.get("metric_type") for m in (task.get("biometrics_map") or [])}
     if types == {"distance"}:
         return "Distance"
     if types == {"angle"}:
@@ -247,13 +313,9 @@ def _resolve(name: str):
             groups.add(g)
 
     elif task_type == "TumorLesionSize":
-        plan = _load_biometry_plan(DEFAULT_DATA_DIR, dataset)
-        if plan is None:
-            raise ValueError(f"{name}: no biometry benchmark plan on disk")
-        tasks = plan.get("tasks", [])
-        if not (task_id and 1 <= task_id <= len(tasks)):
-            raise ValueError(f"{name}: task index {task_id} out of range ({len(tasks)} tasks)")
-        task = tasks[task_id - 1]
+        task = _biometry_task(dataset, task_id)
+        if task is None:
+            raise ValueError(f"{name}: task index {task_id} out of range in preprocess_biometry")
         modality_raw = task.get("image_modality") or ""
         label = (task.get("labels_map") or {}).get(str(task.get("target_label")))
         if label is None:
@@ -268,10 +330,8 @@ def _resolve(name: str):
         if g is None:
             raise ValueError(f"{name}: no biometry anatomy override for {dataset}")
         groups.add(g)
-        plan = _load_biometry_plan(DEFAULT_DATA_DIR, dataset)
-        modality_raw = ""
-        if plan and task_id and 1 <= task_id <= len(plan.get("tasks", [])):
-            modality_raw = plan["tasks"][task_id - 1].get("image_modality") or ""
+        task = _biometry_task(dataset, task_id)
+        modality_raw = (task or {}).get("image_modality") or ""
         if not modality_raw:  # e.g. FeTA24 biometry leaves image_modality empty
             modality_raw = _seg_modality(dataset) or ""
     else:
@@ -340,6 +400,14 @@ def build_body_parts(rows):
     present = set()
     for r in rows:
         present.update(r["anatomy_groups"])
+    # BODY_PART_GROUPS is hand-curated. A group that label_map_regroup starts emitting but that
+    # nobody added here would drop out of the explorer's body-part filter AND off the preview
+    # plate, while every count elsewhere still included it. Every other hole in this script is
+    # fatal; so is this one.
+    orphans = sorted(present - set(GROUP2BODY))
+    if orphans:
+        sys.exit(f"[explorer] anatomy group(s) with no body part: {orphans} — add them to "
+                 f"BODY_PART_GROUPS in {os.path.basename(__file__)}")
     out = {}
     for bp, gs in BODY_PART_GROUPS.items():
         kept = [g for g in gs if g in present]
@@ -358,10 +426,10 @@ def load_dataset_info(path):
     return out
 
 
-def emit_js(path, rows, body_parts, tasks, dataset_info):
+def emit_js(path, rows, body_parts, tasks, dataset_info, annotation_index, release_version):
     blob = {
-        "latest_version": LATEST_VERSION,
-        "versions": VERSIONS,
+        "release_version": release_version,
+        "annotation_index": annotation_index,
         "body_parts": body_parts,
         "dataset_info": dataset_info,
         "tasks": tasks,
@@ -370,7 +438,13 @@ def emit_js(path, rows, body_parts, tasks, dataset_info):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     header = (
         "// Auto-generated by script/visualization/export_explorer_data.py — DO NOT EDIT.\n"
-        "// Schema: window.MEDVISION_EXPLORER = { latest_version, versions,\n"
+        "// Schema: window.MEDVISION_EXPLORER = {\n"
+        "//   release_version — the repo release (MedVisionConfig's hardcoded version=); the value\n"
+        "//     MedVision_ACK_RELEASE must equal. NOT the newest annotation version.\n"
+        "//   annotation_index:{ <dataset>: { <plan kind>: [<annotation version>,...] } },\n"
+        "//     — the versions each config may be pinned to, and the ONLY ones the page offers:\n"
+        "//     a config's newest entry is its latest, so KiTS23 biometry tops out at 1.1.1 even\n"
+        "//     though release 1.2.0 exists. Below that newest, MedVision_ACK_RELEASE is required.\n"
         "//   body_parts:{ <body part>: [<anatomy group>,...] },\n"
         "//   dataset_info:{ <dataset>: {dataset_website,dataset_data[],license[],paper[]} },\n"
         "//   tasks:{ '<dataset>|<module>|<task_id>': {kind,image_description,image_folder,\n"
@@ -397,6 +471,8 @@ def main():
     ap.add_argument("--out", default=None, help="Output JS path (default <page_dir>/static/js/explorer-data.js).")
     ap.add_argument("--medvision_ds_src", default=DEFAULT_DS_SRC,
                     help="medvision_ds source checkout to read (shadows the installed copy).")
+    ap.add_argument("--medvision_py", default=None,
+                    help="MedVision.py holding _ANNOTATION_INDEX (default <medvision_ds_src>/../MedVision.py).")
     args = ap.parse_args()
 
     if args.medvision_ds_src:
@@ -406,6 +482,12 @@ def main():
     if args.medvision_ds_src and not medvision_ds.__file__.startswith(args.medvision_ds_src):
         sys.exit(f"[explorer] medvision_ds resolved to {medvision_ds.__file__}, not {args.medvision_ds_src} "
                  "— refusing to export from a possibly stale installed copy.")
+
+    medvision_py = args.medvision_py or os.path.join(args.medvision_ds_src, "..", "MedVision.py")
+    annotation_index = load_annotation_index(medvision_py)
+    release_version = load_release_version(medvision_py)
+    print(f"[explorer] annotation index: {len(annotation_index)} datasets | release "
+          f"v{release_version} | from {os.path.normpath(medvision_py)}")
 
     rows, tasks, problems = build_rows(args.configs_csv)
 
@@ -421,6 +503,15 @@ def main():
     if missing_info:
         sys.exit(f"[explorer] no dataset_info for: {missing_info} — re-run script/misc/compile_dataset_info.py")
 
+    # Every shipped config must be resolvable by the same table the loader uses, or the page would
+    # offer a version selector with nothing valid in it.
+    missing_versions = sorted({
+        f"{r['dataset']}/{TASK_MODULE[r['task_type']]}" for r in rows
+        if not annotation_index.get(r["dataset"], {}).get(TASK_MODULE[r["task_type"]])
+    })
+    if missing_versions:
+        sys.exit(f"[explorer] _ANNOTATION_INDEX has no versions for: {missing_versions}")
+
     from collections import Counter
     by_type = Counter(r["task_type"] for r in rows)
     by_mod = Counter(r["modality"] for r in rows)
@@ -434,7 +525,7 @@ def main():
     print(f"[explorer] spot Kidney Tumor/Lesion@CT -> {_spot_check(rows, 'Kidney Tumor/Lesion', 'CT')}")
 
     out_path = args.out or os.path.join(args.page_dir, "static", "js", "explorer-data.js")
-    emit_js(out_path, rows, body_parts, tasks, dataset_info)
+    emit_js(out_path, rows, body_parts, tasks, dataset_info, annotation_index, release_version)
     size_kb = os.path.getsize(out_path) / 1024
     print(f"[explorer] wrote {out_path} ({size_kb:.1f} KB)")
 

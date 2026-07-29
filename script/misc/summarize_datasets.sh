@@ -5,38 +5,76 @@ set -euo pipefail
 # the live labels_map lookup via medvision_ds succeeds).
 # Writes dataset_files.jsonl, dataset_summary_{filtered,raw}.json, dataset_summary.csv, and
 # dataset_label_stats.csv.
+#
+# VERSIONING. PLAN_VERSION selects the annotation version to summarize, and every plan family
+# (segmentation / detection / biometry) resolves against it by the loader's CEILING rule: each
+# dataset contributes the newest plan published AT OR BEFORE it. Two consequences:
+#   * A dataset first published in a later release has no plan at or before an older PLAN_VERSION,
+#     so it is SKIPPED entirely (the run prints which ones) rather than listed with zeros.
+#   * Pinning an older version therefore reproduces that version's summary faithfully even when
+#     Datasets/ also holds newer datasets. Verified: PLAN_VERSION=1.1.1 over all 30 datasets
+#     reproduces the 22-dataset v1.1.1 summary exactly.
+# So this script is the ONLY one needed for any version -- there is no per-version variant.
 
 # Resolve the repo root from this script's location (<repo>/script/misc/<this>.sh).
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # Paths are overridable via the environment; defaults assume the standard layout.
 DATA_DIR="${DATA_DIR:-${REPO_ROOT}/Data}"
-# Dataset (biometry) version: selects which T/L plan is counted. Detection/segmentation ship v1.0.0
-# only, so only T/L differs across versions. Output dir is version-suffixed.
-PLAN_VERSION="${PLAN_VERSION:-1.1.1}"
+# Space-separated extra roots, each containing its own Datasets/. Set this when the collection is
+# split across directories (v1.2.0 was staged in a second root while --data_dir takes only one);
+# the roots are merged into one scannable tree via a symlink farm. Set to "" for a single root.
+# A listed root that does not exist is skipped with a warning rather than silently ignored — a
+# missing root would otherwise yield a short summary that looks complete.
+EXTRA_DATA_DIRS="${EXTRA_DATA_DIRS:-/mnt/vincent-pvc-rwm/MedVision-data}"
+PLAN_VERSION="${PLAN_VERSION:-1.2.0}"
 OUT_DIR="${OUT_DIR:-${REPO_ROOT}/dataset-info/datasets_summary_v${PLAN_VERSION}}"
 # Optional: reuse version-invariant Box/segmentation/inventory from this existing summary dir and
 # recompute only biometry — skips the multi-GB detection scan (fast version regen).
 REUSE_FROM="${REUSE_FROM:-}"
+# Where the merged symlink farm is built when EXTRA_DATA_DIRS is set (rebuilt each run).
+MERGED_ROOT="${MERGED_ROOT:-${TMPDIR:-/tmp}/medvision-data-merged}"
 
-ARGS=(--data_dir "${DATA_DIR}" --out_dir "${OUT_DIR}" --plan_version "${PLAN_VERSION}")
+SCAN_DIR="${DATA_DIR}"
+if [ -n "${EXTRA_DATA_DIRS}" ]; then
+  # Top-level symlinks only; the tree underneath is real, which os.walk / os.listdir+isdir follow.
+  rm -rf "${MERGED_ROOT}"
+  mkdir -p "${MERGED_ROOT}/Datasets"
+  for root in "${DATA_DIR}" ${EXTRA_DATA_DIRS}; do
+    if [ ! -d "${root}/Datasets" ]; then
+      echo "warning: no Datasets/ under ${root} -- skipping this root" >&2
+      continue
+    fi
+    for d in "${root}"/Datasets/*/; do
+      [ -d "$d" ] || continue
+      ln -sfn "${d%/}" "${MERGED_ROOT}/Datasets/$(basename "${d%/}")"
+    done
+  done
+  SCAN_DIR="${MERGED_ROOT}"
+  echo "merged $(ls "${MERGED_ROOT}/Datasets" | wc -l) datasets -> ${MERGED_ROOT}/Datasets"
+fi
+
+ARGS=(--data_dir "${SCAN_DIR}" --out_dir "${OUT_DIR}" --plan_version "${PLAN_VERSION}")
 [ -n "${REUSE_FROM}" ] && ARGS+=(--reuse_from "${REUSE_FROM}")
 
 python -m medvision_bm.utils.summarize_datasets "${ARGS[@]}" "$@"
 
-# The scan always writes dataset_summary_{filtered,raw}.json (filtered = v1.0.0-filtered
+# The scan always writes dataset_summary_{filtered,raw}.json (filtered = the loader-filtered
 # benchmark counts; raw = the same 3 tasks counted unfiltered).
 #
 # --- Variations (uncomment / adapt as needed) ---
-# Subset:   --datasets KiTS23,Ceph-Biometrics-400
-# Pin ds:   --plan_version 1.1.1   (biometry only; measurement sample set differs by version)
-# Fast:     --no_detection  skip the large detection plans (drops BoxSize; ~8.5 min vs ~30 min)
-# Figures:  --viz    also render dataset_summary.pdf (bar panels), dataset_summary_wordcloud.pdf
+# Older ver: PLAN_VERSION=1.1.1 bash script/misc/summarize_datasets.sh --viz
+#                    reproduces the 22-dataset v1.1.1 summary; the 8 v1.2.0 datasets are skipped.
+# One root:  EXTRA_DATA_DIRS= bash script/misc/summarize_datasets.sh
+#                    scan DATA_DIR only, no symlink farm.
+# Subset:    --datasets KiTS23,Ceph-Biometrics-400
+# Fast:      --no_detection  skip the large detection plans (drops BoxSize; ~8.5 min vs ~34 min)
+# Figures:   --viz    also render dataset_summary.pdf (bar panels), dataset_summary_wordcloud.pdf
 #                    (needs `pip install wordcloud` -- see the note on figure 2 below),
 #                    and the donut in filtered+raw x {2x1, 1x2, compact}:
 #                    dataset_summary_rings_{filtered,raw}_{2x1,1x2,compact}.pdf
 #                    (2x1/1x2 = the magnified small-dataset panel stacked / side-by-side)
-# Fig only: --viz_only  skip the scan; render all figures from the existing dataset_summary_filtered.json
+# Fig only:  --viz_only  skip the scan; render all figures from the existing dataset_summary_filtered.json
 #
 #
 # =============================== Output figures (--viz) ===============================

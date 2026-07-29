@@ -116,6 +116,7 @@ RANDOM_BOX_SIMULATIONS = 100
 # e.g., from medvision_ds.datasets.AbdomenAtlas__1_0__Mini import preprocess_detection, preprocess_segmentation
 DATASETS_NAME2PACKAGE = {
     "ACDC": "ACDC",
+    "AFIDs": "AFIDs",
     "AMOS22": "AMOS22",
     "AbdomenAtlas1.0Mini": "AbdomenAtlas__1_0__Mini",
     "AbdomenCT-1K": "AbdomenCT_1K",
@@ -124,18 +125,25 @@ DATASETS_NAME2PACKAGE = {
     "CAMUS": "CAMUS",
     "Ceph-Biometrics-400": "Ceph_Biometrics_400",
     "CrossMoDA": "CrossMoDA",
+    "DEEP-PSMA": "DEEP_PSMA",
     "FLARE22": "FLARE22",
     "FeTA24": "FeTA24",
     "HNTSMRG24": "HNTSMRG24",
     "ISLES24": "ISLES24",
     "KiPA22": "KiPA22",
     "KiTS23": "KiTS23",
+    "LIDC-IDRI": "LIDC_IDRI",
+    "LNQ2023": "LNQ2023",
+    "MAMA-MIA": "MAMA_MIA",
     "MSD": "MSD",
     "OAIZIB-CM": "OAIZIB_CM",
+    "PDDCA": "PDDCA",
+    "PI-CAI": "PICAI",
     "SKM-TEA": "SKM_TEA",
     "ToothFairy2": "ToothFairy2",
     "TopCoW24": "TopCoW24",
     "TotalSegmentator": "TotalSegmentator",
+    "VerSe": "VerSe",
     "autoPET-III": "autoPET_III",
 }
 # ----------------------------------------------------------------
@@ -246,6 +254,7 @@ label_map_regroup = {
     "right lung middle lobe": "Lung",
     "right lung upper lobe": "Lung",
     "lung cancer": "Lung Tumor/Lesion",
+    "lung nodule": "Lung Tumor/Lesion",
     # ───────────────────────────── ABDOMINAL ORGANS ────────────────
     # liver
     "liver": "Liver",
@@ -295,12 +304,23 @@ label_map_regroup = {
     "prostate": "Prostate",
     "peripheral zone of prostate": "Prostate",
     "transition zone of prostate": "Prostate",
+    "clinically significant prostate cancer lesion": "Prostate Tumor/Lesion",
+    # breast
+    "breast tumor": "Breast Tumor/Lesion",
     # ───────────────────────────── THROAT & AIRWAY ───────────────────
     # head & neck
     "cochlea": "Head-Neck",
     "trachea": "Head-Neck",
     "pharynx": "Head-Neck",
     "thyroid gland": "Head-Neck",
+    "left parotid gland": "Head-Neck",
+    "right parotid gland": "Head-Neck",
+    "left submandibular gland": "Head-Neck",
+    "right submandibular gland": "Head-Neck",
+    # optic apparatus (PDDCA organs at risk); the chiasm stays with the nerves it belongs to
+    "left optic nerve": "Head-Neck",
+    "right optic nerve": "Head-Neck",
+    "optic chiasm": "Head-Neck",
     "primary gross tumor volume (head & neck)": "Head-Neck Tumor/Lesion",
     "vestibular schwannoma": "Head-Neck Tumor/Lesion",
     # ───────────────────────────── MUSCULOSKELETAL ───────────────────
@@ -348,11 +368,13 @@ label_map_regroup = {
             "T10",
             "T11",
             "T12",
+            "T13",
             "L1",
             "L2",
             "L3",
             "L4",
             "L5",
+            "L6",
             "S1",
         )
     },
@@ -372,13 +394,17 @@ label_map_regroup = {
     "medial meniscus": "Knee Soft Tissue",
     # lymphatics
     "metastatic lymph node": "Metastatic Lymph Node",
+    "mediastinal lymph node": "Metastatic Lymph Node",
     # miscellaneous pathology (non-organ specific)
     "edema": "Miscellaneous Tumor/Lesion",
     "tumor": "Miscellaneous Tumor/Lesion",
     "cystic component": "Miscellaneous Tumor/Lesion",
+    # whole-body PET tumour burden — deliberately not tied to one organ
+    "total tumor burden": "Miscellaneous Tumor/Lesion",
     # dentistry
     "upper jawbone": "Jawbone",
     "lower jawbone": "Jawbone",
+    "mandible": "Jawbone",
     "left inferior alveolar canal": "Jawbone",
     "right inferior alveolar canal": "Jawbone",
     # teeth
@@ -753,6 +779,9 @@ CT_HU_windows_WL = {
     "Urinary System": HU_window_WL_map["soft_tissue"],
     "Uterus": HU_window_WL_map["soft_tissue"],
     "Prostate": HU_window_WL_map["soft_tissue"],
+    # PI-CAI and MAMA-MIA are MRI-only; the entries keep this table total over anatomy groups
+    "Prostate Tumor/Lesion": HU_window_WL_map["soft_tissue"],
+    "Breast Tumor/Lesion": HU_window_WL_map["soft_tissue"],
     "Head-Neck": HU_window_WL_map["soft_tissue"],
     "Head-Neck Tumor/Lesion": HU_window_WL_map["soft_tissue"],
     "Hip": HU_window_WL_map["bone"],

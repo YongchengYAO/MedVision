@@ -1,5 +1,5 @@
 {
-  "medvision_ds_version": "1.1.1",
+  "medvision_ds_version": "1.2.0",
   "datasets": {
     "ACDC": {
       "dataset": "ACDC",
@@ -21,6 +21,28 @@
       "_source_modules": [
         "detection",
         "segmentation"
+      ]
+    },
+    "AFIDs": {
+      "dataset": "AFIDs",
+      "dataset_website": "https://github.com/afids/afids-data",
+      "dataset_data": [
+        "https://openneuro.org/datasets/ds004470",
+        "https://openneuro.org/datasets/ds004471"
+      ],
+      "license": [
+        "CC BY 4.0"
+      ],
+      "paper": [
+        "https://doi.org/10.1038/s41597-024-04259-z"
+      ],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/AFIDs-Lite"
+      ],
+      "notes": [],
+      "has_segmentation": false,
+      "_source_modules": [
+        "biometry"
       ]
     },
     "AMOS22": {
@@ -196,6 +218,29 @@
         "segmentation"
       ]
     },
+    "DEEP-PSMA": {
+      "dataset": "DEEP-PSMA",
+      "dataset_website": "https://deep-psma.grand-challenge.org/",
+      "dataset_data": [
+        "https://zenodo.org/records/15281784"
+      ],
+      "license": [
+        "CC BY-NC 4.0"
+      ],
+      "paper": [
+        "https://doi.org/10.5281/zenodo.15281784"
+      ],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/DEEP-PSMA-Lite"
+      ],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "biometry",
+        "detection",
+        "segmentation"
+      ]
+    },
     "FLARE22": {
       "dataset": "FLARE22",
       "dataset_website": "https://flare22.grand-challenge.org",
@@ -339,6 +384,76 @@
         "segmentation"
       ]
     },
+    "LIDC-IDRI": {
+      "dataset": "LIDC-IDRI",
+      "dataset_website": "https://www.cancerimagingarchive.net/collection/lidc-idri/",
+      "dataset_data": [
+        "https://www.cancerimagingarchive.net/collection/lidc-idri/"
+      ],
+      "license": [
+        "CC BY 3.0"
+      ],
+      "paper": [
+        "https://doi.org/10.1118/1.3528204"
+      ],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/LIDC-IDRI-Lite"
+      ],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "biometry",
+        "detection",
+        "segmentation"
+      ]
+    },
+    "LNQ2023": {
+      "dataset": "LNQ2023",
+      "dataset_website": "https://lnq2023.grand-challenge.org/",
+      "dataset_data": [
+        "https://www.cancerimagingarchive.net/collection/mediastinal-lymph-node-seg/"
+      ],
+      "license": [
+        "CC BY 4.0"
+      ],
+      "paper": [
+        "https://doi.org/10.7937/QVAZ-JA09"
+      ],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/LNQ2023-Lite"
+      ],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "biometry",
+        "detection",
+        "segmentation"
+      ]
+    },
+    "MAMA-MIA": {
+      "dataset": "MAMA-MIA",
+      "dataset_website": "https://github.com/LidiaGarrucho/MAMA-MIA",
+      "dataset_data": [
+        "https://www.synapse.org/Synapse:syn60868042"
+      ],
+      "license": [
+        "CC BY-NC 4.0"
+      ],
+      "paper": [
+        "https://doi.org/10.1038/s41597-025-04707-4",
+        "https://arxiv.org/abs/2603.01250"
+      ],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/MAMA-MIA-Lite"
+      ],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "biometry",
+        "detection",
+        "segmentation"
+      ]
+    },
     "MSD": {
       "dataset": "MSD",
       "dataset_website": "http://medicaldecathlon.com/dataaws/",
@@ -378,6 +493,57 @@
       "notes": [],
       "has_segmentation": true,
       "_source_modules": [
+        "detection",
+        "segmentation"
+      ]
+    },
+    "PDDCA": {
+      "dataset": "PDDCA",
+      "dataset_website": "http://www.imagenglab.com/newsite/pddca/",
+      "dataset_data": [
+        "https://www.imagenglab.com/data/pddca/PDDCA-1.4.1_part1.zip",
+        "https://www.imagenglab.com/data/pddca/PDDCA-1.4.1_part2.zip",
+        "https://www.imagenglab.com/data/pddca/PDDCA-1.4.1_part3.zip"
+      ],
+      "license": [
+        "N/A (public domain)",
+        "CC BY 3.0"
+      ],
+      "paper": [
+        "https://doi.org/10.1002/mp.12197"
+      ],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/PDDCA-Lite"
+      ],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "biometry",
+        "detection",
+        "segmentation"
+      ]
+    },
+    "PI-CAI": {
+      "dataset": "PI-CAI",
+      "dataset_website": "https://pi-cai.grand-challenge.org/",
+      "dataset_data": [
+        "https://zenodo.org/records/6624726",
+        "https://github.com/DIAGNijmegen/picai_labels"
+      ],
+      "license": [
+        "CC BY-NC 4.0"
+      ],
+      "paper": [
+        "https://doi.org/10.5281/zenodo.6667655",
+        "https://doi.org/10.1101/2025.05.13.25327456"
+      ],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/PI-CAI-Lite"
+      ],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "biometry",
         "detection",
         "segmentation"
       ]
@@ -475,6 +641,30 @@
       "notes": [],
       "has_segmentation": true,
       "_source_modules": [
+        "detection",
+        "segmentation"
+      ]
+    },
+    "VerSe": {
+      "dataset": "VerSe",
+      "dataset_website": "https://github.com/anjany/verse",
+      "dataset_data": [
+        "https://s3.bonescreen.de/public/VerSe-complete/",
+        "https://github.com/anjany/verse"
+      ],
+      "license": [
+        "CC BY-SA 4.0"
+      ],
+      "paper": [
+        "https://doi.org/10.1016/j.media.2021.102166"
+      ],
+      "hf_data": [
+        "https://huggingface.co/datasets/YongchengYAO/VerSe-Lite"
+      ],
+      "notes": [],
+      "has_segmentation": true,
+      "_source_modules": [
+        "biometry",
         "detection",
         "segmentation"
       ]

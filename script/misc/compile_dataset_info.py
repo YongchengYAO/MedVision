@@ -192,17 +192,22 @@ def collect_dataset_info():
 
 
 def readme_hf_star(readme_path):
-    """Datasets the README's Dataset table marks as redistributed by us ("HF*" in Data Source).
+    """Read the README's Dataset table -> (marked "HF*" in Data Source, listed at all).
 
     That table is the authority for what we redistribute; this reads it so the compiled hf_data can
     be cross-checked against it instead of trusting a proxy signal like "has a download_fast.py".
     Returns None if the table cannot be found, so a moved README degrades to a warning, not a crash.
+
+    The second set matters because the two ways the table can disagree with the code are not the
+    same defect. A dataset the table LISTS without "HF*" while a mirror resolves is a genuine
+    contradiction. A dataset the table does not list at all is only out of date — which is the
+    normal state right after a release adds datasets, and must not block the export.
     """
     # The table uses display names; map the ones that differ from the dataset keys.
     alias = {"Ceph-Bio-400": "Ceph-Biometrics-400", "AbdomenAtlas": "AbdomenAtlas1.0Mini"}
     if not os.path.exists(readme_path):
         return None
-    star = set()
+    star, listed = set(), set()
     with open(readme_path) as fh:
         for line in fh:
             if not line.startswith("|"):
@@ -210,9 +215,11 @@ def readme_hf_star(readme_path):
             cells = [c.strip() for c in line.strip().strip("|").split("|")]
             if len(cells) < 6 or not cells[0] or cells[0].startswith(("-", "**", "Dataset")):
                 continue
+            name = alias.get(cells[0], cells[0])
+            listed.add(name)
             if "HF*" in cells[5]:
-                star.add(alias.get(cells[0], cells[0]))
-    return star or None
+                star.add(name)
+    return (star, listed) if star else None
 
 
 def check_url(url):
@@ -296,19 +303,24 @@ def main():
     print(f"compiled dataset_info for {len(info)} datasets")
 
     # Cross-check hf_data against the README's "HF*" column — the authority for what we redistribute.
-    star = readme_hf_star(os.path.join(args.medvision_ds_src or "", "..", "README.md"))
-    if star is None:
+    table = readme_hf_star(os.path.join(args.medvision_ds_src or "", "..", "README.md"))
+    if table is None:
         print("WARNING: could not read the README Dataset table — hf_data left unchecked")
     else:
+        star, listed = table
         have = {k for k, v in info.items() if v.get("hf_data")}
         missing = sorted(star - have)
-        extra = sorted(have - star - set(HF_EXTRA))
-        print(f"hf_data: {len(have)} datasets | README marks {len(star)} as HF* | "
-              f"extra by design: {sorted(HF_EXTRA)}")
+        extra = sorted((have & listed) - star - set(HF_EXTRA))
+        unlisted = sorted(have - listed)
+        print(f"hf_data: {len(have)} datasets | README lists {len(listed)}, marks {len(star)} "
+              f"as HF* | extra by design: {sorted(HF_EXTRA)}")
         if missing:
             problems.append(f"README marks {missing} as HF* but no hf_data link was resolved")
         if extra:
-            problems.append(f"hf_data links for {extra}, which the README does not mark HF*")
+            problems.append(f"hf_data links for {extra}, which the README lists without HF*")
+        if unlisted:
+            print(f"WARNING: hf_data links for {unlisted}, absent from the README Dataset table "
+                  "— the table has not been extended for these datasets yet")
 
     if problems:
         print("\nPROBLEMS:")
