@@ -70,6 +70,14 @@ Note that the data-loading code (`medvision_ds`) is a **separate** package — i
 python -m medvision_bm.benchmark.install_medvision_ds --data_dir ./Data
 ```
 
+That gives you the base package, which is all you need to load data — the loader downloads each dataset's preprocessed release from Hugging Face. Only if you rebuild a dataset from its *original* sources (the `download_raw.py` scripts) do you also need the `raw` extra, which adds `pydicom`, `pydicom-seg` and `pylidc`:
+
+```bash
+pip install "medvision_ds[raw]"
+```
+
+Those stay out of the base install because `pydicom-seg` requires `numpy<2` and would clash with the numpy 2.x stack the benchmark environments pin.
+
 Clone the repo if you plan to run evaluations or fine-tuning (the launcher scripts and task lists ship in the repository, not the package).
 
 📚 Full reference: [Installation](https://medvision.readthedocs.io/en/latest/getting-started/installation.html)

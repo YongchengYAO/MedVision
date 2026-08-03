@@ -70,11 +70,23 @@ pip show medvision_ds
 
 ## Dataset codebase and environment setup
 
-`medvision_bm` (the benchmark/training code) is separate from `medvision_ds` (the data-loading code that fetches raw images and builds the dataset). Installing the package does not pull in `medvision_ds`, so install it explicitly. The one required flag is `--data_dir`, the folder where datasets and the loader source will live:
+`medvision_bm` (the benchmark/training code) is separate from `medvision_ds` (the data-loading code that downloads the imaging data and builds the dataset). Installing the package does not pull in `medvision_ds`, so install it explicitly. The one required flag is `--data_dir`, the folder where datasets and the loader source will live:
 
 ```bash
 python -m medvision_bm.benchmark.install_medvision_ds --data_dir ./Data
 ```
+
+:::{note}
+This installs the base `medvision_ds`, which is everything benchmarking and training need — the loader downloads each dataset's preprocessed release from Hugging Face.
+
+Rebuilding a dataset from its *original* sources is a separate path. Those are the `download_raw.py` scripts under `medvision_ds/datasets/`, and they need the `raw` extra:
+
+```bash
+pip install "medvision_ds[raw]"
+```
+
+It adds `pydicom`, `pydicom-seg` and `pylidc`. They are not in the base install because `pydicom-seg` requires `numpy<2`, which cannot be satisfied alongside the numpy 2.x stack the evaluation environments pin. Running a raw script without the extra fails immediately with a message naming this command.
+:::
 
 If you want the full dependency stack in one command — the vendored `lmms_eval`, `medvision_ds`, a CUDA toolkit, vLLM, and any extra requirements file — use `env_setup` instead. It requires both a requirements file (`-r`/`--requirement`) and `--data_dir`:
 

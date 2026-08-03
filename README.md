@@ -67,6 +67,11 @@ MedVision benchmarks **19 vision–language models** — open-weight general-pur
 
 # 🔥 News
 
+- [Aug 3, 2026] 🚀 Release **MedVision** dataset v1.2.1 [[release-v1.2.1]](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.2.1.md)
+  - ⚠️ **Corrects MAMA-MIA and PI-CAI, whose v1.2.0 annotations were recorded in the source orientation** instead of RAS+ — the loader reoriented the images at load time without renumbering the coordinates. Their v1.2.0 annotations are **withdrawn**. If you have used either dataset, [clear that cache once](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.2.1.md#do-i-need-to-do-anything).
+  - **No other dataset is affected** — the other 28 resolve to exactly the same annotation files as at v1.2.0.
+  - New: [`scripts/gen-annotations/`](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/scripts/gen-annotations/README.md) rebuilds the preprocessed images and annotations of any dataset from its original source, and the annotation version is now an explicit `--annotation_version` input rather than a side effect of the installed package version -- For the record only, you never use it to load data.
+
 - [Jul 28, 2026] 🚀 Release **MedVision** dataset v1.2.0 [[release-v1.2.0]](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.2.0.md)
   - Highlight: 8 new datasets (130 configs) — AFIDs, DEEP-PSMA, LIDC-IDRI, LNQ2023, MAMA-MIA, PDDCA, PI-CAI, VerSe.
   - **No existing annotation changed.** Annotation versions now resolve per dataset: the version you set is a *ceiling*, and each dataset loads the newest annotation it published at or before it. Pinning `'1.1.1'` or older keeps working for every pre-existing dataset (check [Annotation Version Control](https://medvision-vlm.github.io/explorer.html)).
