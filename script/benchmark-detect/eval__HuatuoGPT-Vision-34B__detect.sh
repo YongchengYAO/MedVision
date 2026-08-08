@@ -28,6 +28,15 @@ sample_limit=1000
 # Stop string.
 stop_string='</answer>'
 
+# Decoding config. max_new_tokens replaces the upstream HuatuoChatbot default of
+# 512, which truncated CoT responses (64% of this model's non-answers ended
+# mid-word). The decoding METHOD defaults to the model's upstream recipe
+# (do_sample=True, temperature=0.2); uncomment do_sample/temperature below and
+# their lines in the invocation to switch, e.g. do_sample=false for greedy.
+max_new_tokens=4096
+# do_sample=false
+# temperature=0
+
 # Install medvision_bm: build the wheel on node-local disk (NOT the shared CephFS
 # tree). setuptools build_py caches created dirs in a process-global memo, and on
 # CephFS a build subdir can transiently vanish (async delete/recreate lag or an
@@ -60,6 +69,9 @@ export PYTHONPATH="${dir_third_party}/HuatuoGPT-Vision:$PYTHONPATH"
 # --env_setup_only \
 # --skip_env_setup \
 # --skip_update_status \
+# Optional decoding overrides (with their variables above):
+# --do_sample $do_sample \
+# --temperature $temperature \
 
 python -m medvision_bm.benchmark.eval__huatuogpt_vision \
     --model_hf_id $model_hf_id \
@@ -70,7 +82,8 @@ python -m medvision_bm.benchmark.eval__huatuogpt_vision \
     --tasks_list_json_path $tasks_list_json_path \
     --task_status_json_path $task_status_json_path \
     --batch_size_per_gpu $batch_size_per_gpu \
-    --stop_strings $stop_strings \
+    --stop_strings "$stop_string" \
+    --max_new_tokens $max_new_tokens \
     --sample_limit $sample_limit
 
 conda deactivate

@@ -127,6 +127,36 @@ def parse_args():
             "Passed to the model as stop sequences for all tasks."
         ),
     )
+    parser.add_argument(
+        "--max_new_tokens",
+        default=None,
+        type=int,
+        help=(
+            "Decode budget. Default None keeps the wrapper's default (4096). "
+            "The upstream HuatuoChatbot default of 512 truncated CoT responses."
+        ),
+    )
+    parser.add_argument(
+        "--do_sample",
+        default=None,
+        choices=["true", "false"],
+        help=(
+            "Decoding-mode switch. Default None keeps the model's upstream "
+            "sampling recipe (do_sample=True, temperature=0.2); 'false' switches "
+            "to greedy decoding. Passed as a model-arg because request-level "
+            "gen_kwargs carry an injected do_sample=False default that the "
+            "wrapper must ignore."
+        ),
+    )
+    parser.add_argument(
+        "--temperature",
+        default=None,
+        type=float,
+        help=(
+            "Sampling temperature. Default None keeps the upstream 0.2. "
+            "A value <= 0 means greedy decoding (matches --do_sample false)."
+        ),
+    )
     # resource-specific arguments
     parser.add_argument(
         "--batch_size_per_gpu",
@@ -281,6 +311,16 @@ def main():
             model_args += (
                 f",stop_strings={json.dumps(args.stop_strings, separators=(',', ':'))}"
             )
+
+        # Decoding model-args: only forwarded when explicitly set, so the
+        # wrapper's defaults (4096-token budget, upstream sampling recipe)
+        # apply untouched otherwise.
+        if args.max_new_tokens is not None:
+            model_args += f",max_new_tokens={args.max_new_tokens}"
+        if args.do_sample is not None:
+            model_args += f",do_sample={args.do_sample}"
+        if args.temperature is not None:
+            model_args += f",temperature={args.temperature}"
 
         parsed_sample_indices = None
         if args.sample_indices is not None:
