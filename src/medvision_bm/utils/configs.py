@@ -136,6 +136,7 @@ DATASETS_NAME2PACKAGE = {
     "LNQ2023": "LNQ2023",
     "MAMA-MIA": "MAMA_MIA",
     "MSD": "MSD",
+    "MSWAL": "MSWAL",
     "OAIZIB-CM": "OAIZIB_CM",
     "PDDCA": "PDDCA",
     "PI-CAI": "PICAI",
@@ -465,6 +466,15 @@ label_map_regroup = {
     "pulmonary vein": "Vein",
     "left maxillary sinus": "Head-Neck",  # no sinus-specific group; Head-Neck is closest
     "right maxillary sinus": "Head-Neck",
+    # ── v1.3.0: labels introduced by MSWAL (mirrors medvision_ds LABEL_MAP_REGROUP) ──
+    # Without these four the labels resolve to UNMAPPED, which the anatomy panels drop
+    # (_ANATOMY_EXCLUDE) — MSWAL would then be counted in full in the per-dataset donut but
+    # only partially in "by anatomy". "pancreas cancer"/"kidney cyst" were already here under
+    # different spellings; these are the names MSWAL's plan actually uses.
+    "gallstone": "Gallbladder",
+    "kidney stone": "Kidney Tumor/Lesion",
+    "liver cyst": "Liver Tumor/Lesion",
+    "pancreatic cancer": "Pancreas Tumor/Lesion",
 }
 
 

@@ -65,25 +65,32 @@ MedVision benchmarks **19 vision–language models** — open-weight general-pur
 
 <br/>
 
+
 # 🔥 News
+- [Aug 9, 2026] 🚀 Release **MedVision** dataset v1.3.0 [[release-v1.3.0]](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.3.0.md)
+  - New dataset: MSWAL (484 abdominal CT cases; tumor/lesion labels: liver tumour, kidney tumour, pancreatic cancer, liver cyst, and kidney cyst).
 
 - [Aug 3, 2026] 🚀 Release **MedVision** dataset v1.2.1 [[release-v1.2.1]](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.2.1.md)
   - ⚠️ **Corrects MAMA-MIA and PI-CAI, whose v1.2.0 annotations were recorded in the source orientation** instead of RAS+ — the loader reoriented the images at load time without renumbering the coordinates. Their v1.2.0 annotations are **withdrawn**. If you have used either dataset, [clear that cache once](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.2.1.md#do-i-need-to-do-anything).
   - **No other dataset is affected** — the other 28 resolve to exactly the same annotation files as at v1.2.0.
-  - New: [`scripts/gen-annotations/`](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/scripts/gen-annotations/README.md) rebuilds the preprocessed images and annotations of any dataset from its original source, and the annotation version is now an explicit `--annotation_version` input rather than a side effect of the installed package version -- For the record only, you never use it to load data.
+  - New: [`scripts/gen-annotations/`](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/scripts/gen-annotations/README.md) rebuilds the preprocessed images and annotations of any dataset from its original source -- For the record only, you never use it to load data.
 
 - [Jul 28, 2026] 🚀 Release **MedVision** dataset v1.2.0 [[release-v1.2.0]](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.2.0.md)
   - Highlight: 8 new datasets (130 configs) — AFIDs, DEEP-PSMA, LIDC-IDRI, LNQ2023, MAMA-MIA, PDDCA, PI-CAI, VerSe.
   - **No existing annotation changed.** Annotation versions now resolve per dataset: the version you set is a *ceiling*, and each dataset loads the newest annotation it published at or before it. Pinning `'1.1.1'` or older keeps working for every pre-existing dataset (check [Annotation Version Control](https://medvision-vlm.github.io/explorer.html)).
   - ⚠️ **Fixes a stale-cache defect present in all earlier versions.** The cache key used the version you *requested* rather than the annotation actually loaded, so `load_dataset` could silently return previously cached rows after the annotations changed — which really happened, to the v1.1.0 T/L train/test split. See [Fixed: cached data could be stale](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.2.0.md#fixed-cached-data-could-be-stale) for who is affected and how to clear it. The data root is now part of the key too, which matters only if your HuggingFace cache is not already co-located with it. Because the cache key changed, **existing Arrow caches rebuild once** on next use (reads the annotation file, no re-download)
+
 - [Jul 21, 2026] Updated [leaderboard](https://medvision-vlm.github.io/) and [data explorer](https://medvision-vlm.github.io/explorer.html) 
+
 - [Jul 4, 2026] Released the benchmarking/fine-tuning codebase `medvision_bm` v1.1.1 — [release notes](https://github.com/YongchengYAO/MedVision/blob/master/docs/codebase-release/release-v1.1.1.md)
   - 📚 New [documentation site](https://medvision.readthedocs.io/en/latest/index.html) on Read the Docs: installation, dataset, benchmarking, and fine-tuning guides plus the full CLI and Python API reference.
+
 - [Jun 29, 2026] 🚀 Released the **MedVision** dataset (`medvision_ds`) v1.1.1 — [release notes](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.1.md)
   - **Highlight**: corrected T/L ellipse fit — fixes a transposed in-plane voxel-spacing bug (wrong axis lengths and major/minor labelling on anisotropic slices, e.g. sagittal/coronal); ~22% fewer T/L samples on anisotropic data, isotropic data (e.g., axial slices) essentially unchanged
   - **Backward compatibility**: The codebase `medvision_ds` will be automatically updated to the latest (v1.1.1). `MedVision_PLANNER_VERSION='latest'` now resolves to `'1.1.1'`; pin `'1.1.0'` or `'1.0.0'` for earlier annotations.
   - ⚠️ New env var `MedVision_ACK_RELEASE`: required **only** when you pin an older version (`MedVision_PLANNER_VERSION` below the latest) — **set it to the latest version (`1.1.1`) to acknowledge you have read this release note and unblock loading legacy data**. 
   - Always set `MedVision_FORCE_INSTALL_CODE='True'` to receive notification of future releases. See [Environment Variables](https://huggingface.co/datasets/YongchengYAO/MedVision#environment-variables).
+
 - [Jun 9, 2026] Released [MedVision-V0](https://huggingface.co/collections/YongchengYAO/medvision-v0), [RFT code](https://github.com/YongchengYAO/verl/tree/medvision-rl), [preprint v2](https://arxiv.org/abs/2511.18676), [project page](https://medvision-vlm.github.io/) with interactive case viewer. 
 
 <details>

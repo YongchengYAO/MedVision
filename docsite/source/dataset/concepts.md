@@ -59,18 +59,36 @@ Every sample, regardless of type, also carries the geometry needed to interpret 
 
 ## Multi-instance vs single-instance annotations
 
-A benchmark sample is a *(2D slice, target)* pair, counted **per target, not per instance**: several boxes or clusters of the same target on one slice still count as a single annotation. What differs between the two annotation sets is whether the per-sample quality/size filters are applied:
+A benchmark sample is a *(2D slice, target)* pair, counted **per target, not per instance**: several boxes or clusters of the same target on one slice still count as a single annotation. What differs between the two annotation sets is whether the loader's per-sample quality/size filters are applied:
 
-- **Multi-instance** (unfiltered) — every target carrying ≥ 1 annotation is kept, however many instances it has on the slice and whatever their size.
-- **Single-instance** (filtered) — a target is kept only when it is a single, large-enough instance. The per-task drop rules are:
+- **Multi-instance** (unfiltered) — every recorded sample is kept, however many instances it has on the slice and whatever their size.
+- **Single-instance** (filtered) — a sample is kept only when its target is a single, large-enough instance. The per-task drop rules are:
 
 | Benchmark task | Single-instance drops the sample when… |
 |---|---|
-| **Box** — detection | the slice has **more than one** box for the target (`len(boxes) > 1`), **or** a box is **< 10 px** on any side |
-| **T/L** — tumor / lesion size | the target has **more than one** cluster on the slice (`n_clusters > 1`; `len(biometric_profile) > 1` on the v1.0.0 fallback) |
+| **Box** — detection | the slice has **more than one** box for the target (`len(bounding_boxes) > 1`), **or** its only box is **< 10 px** on either side |
+| **T/L** — tumor / lesion size | the target mask has **more than one** connected component on the slice (`n_total_clusters > 1`) — counting **all** components, including ones too small to have been measured (see the note below); v1.0.0 plans lack `n_total_clusters`, so there the fallback is more than one *measured* component (`len(biometric_profile) > 1`) |
 | **A/D** — biometrics (angle / distance) | *never dropped* — every angle and distance sample is kept (the loader only splits them by `metric_type`) |
 
-Because filtering only ever removes samples, every single-instance target is also a multi-instance one: **single-instance ⊆ multi-instance**. The default loader returns the single-instance set; to load the unfiltered set, see [Loading unfiltered (multi-instance) samples](loading.md#loading-unfiltered-multi-instance-samples). Per-version counts for both sets are tabulated in [Dataset versions & statistics](statistics.md#benchmark-annotations-by-version).
+:::{note}
+**T/L has a second, earlier filter that affects both sets.** When the T/L annotations are generated, an ellipse is fitted to each connected component of the target mask on a slice — but components smaller than a **cluster-size threshold** are skipped and never measured: **20 pixels** for every T/L dataset except **LIDC-IDRI**, which uses **10 pixels**. Two consequences:
+
+- A slice whose components are **all** below the threshold is not recorded at all — it appears in **neither** the multi-instance nor the single-instance set.
+- A slice with one measured lesion plus a tiny sub-threshold satellite **is** recorded (with the satellite unmeasured), but is still dropped from the single-instance set, because `n_total_clusters` counts every component, measured or not.
+
+So the multi-instance set contains every *recorded* sample — not every mask component: sub-threshold components carry no measurement in either set.
+:::
+
+:::{note}
+**Why LIDC-IDRI's threshold (10 px) is safe to use.** Oncological imaging has a standard definition of what counts as a "measurable" lesion: RECIST 1.1 requires a lesion to reach at least 10 mm in longest diameter on axial CT to be scored at all. This isn't an arbitrary cutoff — it reflects a lesion needing to span at least twice a typical CT slice thickness before its extent can be reliably read off the image. Anything smaller is classified non-measurable and excluded from tumor response assessment. An annotation pipeline that discards small mask fragments before measuring them should be checked against exactly this line: does it ever discard something a radiologist would have called measurable? For LIDC-IDRI, the answer is no:
+
+- **The geometry rules it out by construction.** A discarded component is at most 9 pixels. Even in the most favorable (compact, roughly square) case, that's about a 3-pixel side — reaching 10 mm would require a pixel size of over 3 mm, far coarser than anything in this dataset.
+- **The dataset's actual resolution is nowhere near that coarse.** In-plane pixel spacing across all 1,013 scans ranges from about 0.46 to 0.98 mm, roughly 3–7x finer than the pitch that would be needed for a dropped fragment to reach the measurable threshold.
+- **A direct measurement confirms it, with no shape assumptions needed.** Re-running the same connected-component labeling the pipeline uses and measuring every fragment it discards — nearly 30,000 of them across all cases and viewing planes — shows none reaches a 10 mm equivalent diameter. The largest is well under half that size.
+- **What gets dropped on the clinically relevant view is smaller still.** On axial slices — the plane RECIST measurements are actually taken on — the largest discarded fragment is under 6 mm, comfortably below the 10 mm floor. The handful of larger-looking fragments only appear when measuring diagonally across reformatted (sagittal/coronal) views, where they're thin partial-volume slivers rather than lesion cross-sections — exactly the kind of view RECIST's slice-thickness rule is designed to exclude from measurement in the first place.
+:::
+
+Because the load-time filter only ever removes samples, every single-instance sample is also a multi-instance one: **single-instance ⊆ multi-instance**. The default loader returns the single-instance set; to load the unfiltered set, see [Loading unfiltered (multi-instance) samples](loading.md#loading-unfiltered-multi-instance-samples). Per-version counts for both sets are tabulated in [Dataset versions & statistics](statistics.md#benchmark-annotations-by-version).
 
 :::{warning}
 Single-instance (filtered) is the set to use for leaderboard comparison. The multi-instance set is not — MedVision-V0's SFT/RFT training is not optimized for multi-instance detection and measurement.
