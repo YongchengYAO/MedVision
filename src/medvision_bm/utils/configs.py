@@ -471,10 +471,18 @@ label_map_regroup = {
     # (_ANATOMY_EXCLUDE) — MSWAL would then be counted in full in the per-dataset donut but
     # only partially in "by anatomy". "pancreas cancer"/"kidney cyst" were already here under
     # different spellings; these are the names MSWAL's plan actually uses.
-    "gallstone": "Gallbladder",
-    "kidney stone": "Kidney Tumor/Lesion",
+    # A calculus is neither a neoplasm nor the organ containing it, so the stones get their
+    # own group rather than a Tumor/Lesion or organ one. "Calculus" carries the BONE window:
+    # stones are calcium at 200-1000+ HU, which the 400/40 soft-tissue window clips to a flat
+    # white blob. Not "Others" either — that group is the guard's opt-out from HU windowing
+    # altogether, so it would fall back to percentile normalization.
+    "gallstone": "Calculus",
+    "kidney stone": "Calculus",
     "liver cyst": "Liver Tumor/Lesion",
     "pancreatic cancer": "Pancreas Tumor/Lesion",
+    # ── canonical form emitted by label_map_rename; kept alongside the raw plan label so a
+    # regroup lookup succeeds whichever name it is handed (nothing regroups post-rename today) ──
+    "prostate cancer lesion": "Prostate Tumor/Lesion",
 }
 
 
@@ -516,6 +524,7 @@ label_map_rename = {
     "left iliac vein": "left iliac vein",
     "right iliac vein": "right iliac vein",
     "renal vein": "renal vein",
+    "pulmonary vein": "pulmonary vein",
     # ───────────────────────────── BRAIN ─────────────────────────────
     # brain structures
     "brain": "brain",
@@ -560,6 +569,7 @@ label_map_rename = {
     "right lung middle lobe": "right lung middle lobe",
     "right lung upper lobe": "right lung upper lobe",
     "lung cancer": "lung cancer",
+    "lung nodule": "lung nodule",  # NOT "lung cancer": LIDC-IDRI nodules include benign
     # ───────────────────────────── ABDOMINAL ORGANS ────────────────
     # liver
     "liver": "liver",
@@ -567,6 +577,7 @@ label_map_rename = {
     "liver cancer": "liver tumor",
     "liver tumor": "liver tumor",
     "liver tumour": "liver tumor",
+    "liver cyst": "liver cyst",  # NOT "liver tumor": a cyst is not a neoplasm
     # kidneys
     "kidney": "kidney",
     "right kidney": "right kidney",
@@ -575,12 +586,15 @@ label_map_rename = {
     "left kidney cyst": "left kidney cyst",
     "right kidney cyst": "right kidney cyst",
     "kidney tumor": "kidney tumor",
+    "kidney stone": "kidney stone",  # NOT a neoplasm; regrouped to "Calculus"
     # pancreas
     "pancreas": "pancreas",
     "pancreas cancer": "pancreas cancer",
+    "pancreatic cancer": "pancreatic cancer",
     # gallbladder
     "gall bladder": "gallbladder",
     "gallbladder": "gallbladder",
+    "gallstone": "gallstone",  # NOT "gallbladder": the content, not the organ
     # spleen
     "spleen": "spleen",
     # adrenal glands
@@ -609,8 +623,11 @@ label_map_rename = {
     "prostate": "prostate",
     "peripheral zone of prostate": "prostate",
     "transition zone of prostate": "prostate",
+    "clinically significant prostate cancer lesion": "prostate cancer lesion",
     # ambiguous
     "prostate/uterus": "prostate/uterus",
+    # breast
+    "breast tumor": "breast tumor",
     # ───────────────────────────── THROAT & AIRWAY ───────────────────
     # head & neck
     "vestibular schwannoma": "vestibular schwannoma",  # this is a tumor
@@ -619,6 +636,15 @@ label_map_rename = {
     "pharynx": "pharynx",
     "thyroid gland": "thyroid gland",
     "primary gross tumor volume (head & neck)": "head & neck tumor",
+    "left optic nerve": "left optic nerve",
+    "right optic nerve": "right optic nerve",
+    "optic chiasm": "optic chiasm",
+    "left parotid gland": "left parotid gland",
+    "right parotid gland": "right parotid gland",
+    "left submandibular gland": "left submandibular gland",
+    "right submandibular gland": "right submandibular gland",
+    "left maxillary sinus": "left maxillary sinus",
+    "right maxillary sinus": "right maxillary sinus",
     # ───────────────────────────── MUSCULOSKELETAL ───────────────────
     # hip
     "left hip": "left hip",
@@ -668,11 +694,13 @@ label_map_rename = {
             "T10",
             "T11",
             "T12",
+            "T13",  # transitional variant, VerSe
             "L1",
             "L2",
             "L3",
             "L4",
             "L5",
+            "L6",  # transitional variant, VerSe
             "S1",
         )
     },
@@ -692,13 +720,19 @@ label_map_rename = {
     "medial meniscus": "medial meniscus",
     # lymphatics
     "metastatic lymph node": "metastatic lymph node",
+    # NOT "metastatic lymph node": mediastinal names a LOCATION (everyone has these nodes),
+    # metastatic names a PATHOLOGY. LNQ2023 ships the anatomical name; renaming would assert
+    # a diagnosis the annotation does not make.
+    "mediastinal lymph node": "mediastinal lymph node",
     # miscellaneous pathology (non-organ specific)
     "edema": "miscellaneous tumor/lesion",
     "tumor": "miscellaneous tumor/lesion",
     "cystic component": "miscellaneous tumor/lesion",
+    "total tumor burden": "miscellaneous tumor/lesion",
     # dentistry
     "upper jawbone": "upper jawbone",
     "lower jawbone": "lower jawbone",
+    "mandible": "mandible",
     "left inferior alveolar canal": "left inferior alveolar canal",
     "right inferior alveolar canal": "right inferior alveolar canal",
     # teeth
@@ -803,6 +837,9 @@ CT_HU_windows_WL = {
     "Miscellaneous Tumor/Lesion": HU_window_WL_map["soft_tissue"],
     "Jawbone": HU_window_WL_map["bone"],
     "Tooth": HU_window_WL_map["bone"],
+    # Calculi are calcium, 200-1000+ HU — the bone window keeps their internal detail,
+    # where the soft-tissue window would clip them to a flat white blob.
+    "Calculus": HU_window_WL_map["bone"],
 }
 
 
