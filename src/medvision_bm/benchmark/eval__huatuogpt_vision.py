@@ -129,10 +129,10 @@ def parse_args():
     )
     parser.add_argument(
         "--max_new_tokens",
-        default=None,
+        default=4096,
         type=int,
         help=(
-            "Decode budget. Default None keeps the wrapper's default (4096). "
+            "Decode budget. Default 4096."
             "The upstream HuatuoChatbot default of 512 truncated CoT responses."
         ),
     )

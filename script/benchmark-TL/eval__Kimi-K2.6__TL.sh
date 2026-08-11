@@ -15,6 +15,8 @@ benchmark_dir="/root/Documents/MedVision"
 data_dir="${benchmark_dir}/Data"
 model_name="Kimi-K2.6"
 batch_size=1
+# Set output token limit (thinking + output share this budget)
+max_tokens=16000
 
 # API provider and model code
 # - moonshot (direct): https://platform.moonshot.ai/docs ; key MOONSHOT_API_KEY,
@@ -83,6 +85,7 @@ python -m medvision_bm.benchmark.eval__kimi \
     --api_provider $api_provider \
     --kimi_model_code $kimi_model_code \
     --model_name $model_name \
+    --max_tokens $max_tokens \
     --results_dir $result_dir \
     --data_dir $data_dir \
     --tasks_list_json_path $tasks_list_json_path \
@@ -101,6 +104,7 @@ python -m medvision_bm.benchmark.eval__kimi \
 # --api_provider $api_provider \
 # --kimi_model_code $kimi_model_code \
 # --model_name $model_name \
+# --max_tokens $max_tokens \
 # --results_dir $result_dir \
 # --data_dir $data_dir \
 # --tasks_list_json_path $tasks_list_json_path \

@@ -52,6 +52,9 @@ flock "${lockfile}" python -m pip install --force-reinstall "${built_wheel}"
 export MedVision_PLANNER_VERSION='1.0.0'
 export MedVision_ACK_RELEASE='1.1.1'
 
+# Set output token limit (default to 4096)
+max_new_tokens=4096
+
 # Run
 # Add these arguments for debugging:
 # --env_setup_only \
@@ -68,6 +71,7 @@ python -m medvision_bm.benchmark.eval__llava_med \
     --task_status_json_path $task_status_json_path \
     --batch_size_per_gpu $batch_size_per_gpu \
     --stop_strings $stop_strings \
+    --max_new_tokens $max_new_tokens \
     --sample_limit $sample_limit
 
 conda deactivate

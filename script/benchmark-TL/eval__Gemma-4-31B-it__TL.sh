@@ -60,6 +60,9 @@ flock "${lockfile}" python -m pip install --force-reinstall "${built_wheel}"
 export MedVision_PLANNER_VERSION='1.0.0'
 export MedVision_ACK_RELEASE='1.1.1'
 
+# Set output token limit (default to 4096)
+max_new_tokens=4096
+
 # (Method 1) Manually install requirements before running the eval script (more robust)
 # ---
 # python -m medvision_bm.benchmark.install_medvision_ds --data_dir "${data_dir}"
@@ -79,6 +82,7 @@ export MedVision_ACK_RELEASE='1.1.1'
 # --sample_limit $sample_limit \
 # --max_model_len $max_model_len \
 # --no-enable_thinking \
+# --max_new_tokens $max_new_tokens \
 # --stop_strings "$stop_string"
 # ---
 
@@ -100,6 +104,7 @@ python -m medvision_bm.benchmark.eval__gemma4 \
     --sample_limit $sample_limit \
     --max_model_len $max_model_len \
     --no-enable_thinking \
+    --max_new_tokens $max_new_tokens \
     --stop_strings "$stop_string"
 # ---
 

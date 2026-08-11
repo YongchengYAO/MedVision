@@ -1,4 +1,4 @@
-ENV_NAME="eval-medvision-v0"
+ENV_NAME="eval-medgemma"
 
 # Only create the env if it doesn't already exist
 source activate base
@@ -13,11 +13,9 @@ conda activate "${ENV_NAME}"
 # Set paths and configs
 benchmark_dir="/root/Documents/MedVision"
 data_dir="${benchmark_dir}/Data"
-model_hf_id="YongchengYAO/MedVision-V0-7B"
-model_name="MedVision-V0-7B"
+model_hf_id="google/medgemma-4b-it"
+model_name="MedGemma-4b-it"
 batch_size_per_gpu=10
-gpu_memory_utilization=0.9
-reshape_image_hw="512x512"
 
 # Other configs (safe to leave as is)
 task_tag="MedVision-detect-CoT"
@@ -54,11 +52,15 @@ max_new_tokens=4096
 
 # (Method 1) Manually install requirements before running the eval script (more robust)
 # ---
+# - use requirements_*.txt
+# - install medvision_ds and vendored_lmms_eval, since they are not included in the requirements file
+# - use '--skip_env_setup' to skip re-installing packages
+# ---
 python -m medvision_bm.benchmark.install_medvision_ds --data_dir "${data_dir}"
-python -m medvision_bm.benchmark.install_vendored_lmms_eval --lmms_eval_opt_deps medvision_v0
-pip install -r "${benchmark_dir}/requirements/requirements_eval_medvision-v0.txt" --no-deps
+python -m medvision_bm.benchmark.install_vendored_lmms_eval
+pip install -r "${benchmark_dir}/requirements/requirements_eval_medgemma.txt" --no-deps
 
-python -m medvision_bm.benchmark.eval__medvision-model-rft \
+python -m medvision_bm.benchmark.eval__medgemma \
     --skip_env_setup \
     --model_hf_id $model_hf_id \
     --model_name $model_name \
@@ -67,11 +69,8 @@ python -m medvision_bm.benchmark.eval__medvision-model-rft \
     --tasks_list_json_path $tasks_list_json_path \
     --task_status_json_path $task_status_json_path \
     --batch_size_per_gpu $batch_size_per_gpu \
-    --gpu_memory_utilization $gpu_memory_utilization \
     --max_new_tokens $max_new_tokens \
-    --sample_limit $sample_limit \
-    --reshape_image_hw $reshape_image_hw \
-    --use_system_prompt
+    --sample_limit $sample_limit
 # ---
 
 # # (Method 2) Automatically install requirements in the eval script (simpler, but may incur package version conflicts or bugs introduced by new versions of packages)
@@ -79,7 +78,7 @@ python -m medvision_bm.benchmark.eval__medvision-model-rft \
 # # --env_setup_only \
 # # --skip_env_setup \
 # # --skip_update_status \
-# python -m medvision_bm.benchmark.eval__medvision-model-rft \
+# python -m  medvision_bm.benchmark.eval__medgemma \
 # --model_hf_id $model_hf_id \
 # --model_name $model_name \
 # --results_dir $result_dir \
@@ -87,11 +86,8 @@ python -m medvision_bm.benchmark.eval__medvision-model-rft \
 # --tasks_list_json_path $tasks_list_json_path \
 # --task_status_json_path $task_status_json_path \
 # --batch_size_per_gpu $batch_size_per_gpu \
-# --gpu_memory_utilization $gpu_memory_utilization \
 # --max_new_tokens $max_new_tokens \
 # --sample_limit $sample_limit \
-# --reshape_image_hw $reshape_image_hw \
-# --use_system_prompt
 
 conda deactivate
 # conda remove -n $ENV_NAME --all -y

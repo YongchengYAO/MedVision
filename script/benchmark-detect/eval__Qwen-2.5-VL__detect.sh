@@ -47,7 +47,9 @@ flock "${lockfile}" python -m pip install --force-reinstall "${built_wheel}"
 
 # Use MedVision dataset v1.0.0
 export MedVision_PLANNER_VERSION='1.0.0'
-export MedVision_ACK_RELEASE='1.1.1'
+
+# Set output token limit (default to 4096)
+max_new_tokens=4096
 
 # (Method 1) Manually install requirements before running the eval script (more robust)
 # ---
@@ -65,6 +67,7 @@ python -m medvision_bm.benchmark.eval__qwen2_5_vl \
     --task_status_json_path $task_status_json_path \
     --batch_size_per_gpu $batch_size_per_gpu \
     --gpu_memory_utilization $gpu_memory_utilization \
+    --max_new_tokens $max_new_tokens \
     --sample_limit $sample_limit
 # ---
 
@@ -82,6 +85,7 @@ python -m medvision_bm.benchmark.eval__qwen2_5_vl \
 # --task_status_json_path $task_status_json_path \
 # --batch_size_per_gpu $batch_size_per_gpu \
 # --gpu_memory_utilization $gpu_memory_utilization \
+# --max_new_tokens $max_new_tokens \
 # --sample_limit $sample_limit \
 
 conda deactivate

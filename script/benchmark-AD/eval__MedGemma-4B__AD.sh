@@ -18,9 +18,9 @@ model_name="MedGemma-4b-it"
 batch_size_per_gpu=10
 
 # Other configs (safe to leave as is)
-task_tag="MedVision-detect-CoT"
+task_tag="MedVision-AD-CoT"
 result_dir="${benchmark_dir}/Results/${task_tag}"
-tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-detect-CoT.json"
+tasks_list_json_path="${benchmark_dir}/tasks_list/tasks_MedVision-AD-CoT.json"
 task_status_json_path="${benchmark_dir}/completed_tasks/completed_tasks_${task_tag}.json"
 sample_limit=1000
 
@@ -46,7 +46,9 @@ flock "${lockfile}" python -m pip install --force-reinstall "${built_wheel}"
 
 # Use MedVision dataset v1.0.0
 export MedVision_PLANNER_VERSION='1.0.0'
-export MedVision_ACK_RELEASE='1.1.1'
+
+# Set output token limit (default to 4096)
+max_new_tokens=4096
 
 # (Method 1) Manually install requirements before running the eval script (more robust)
 # ---
@@ -67,6 +69,7 @@ python -m medvision_bm.benchmark.eval__medgemma \
     --tasks_list_json_path $tasks_list_json_path \
     --task_status_json_path $task_status_json_path \
     --batch_size_per_gpu $batch_size_per_gpu \
+    --max_new_tokens $max_new_tokens \
     --sample_limit $sample_limit
 # ---
 
@@ -83,6 +86,7 @@ python -m medvision_bm.benchmark.eval__medgemma \
 # --tasks_list_json_path $tasks_list_json_path \
 # --task_status_json_path $task_status_json_path \
 # --batch_size_per_gpu $batch_size_per_gpu \
+# --max_new_tokens $max_new_tokens \
 # --sample_limit $sample_limit \
 
 conda deactivate

@@ -47,10 +47,12 @@ flock "${lockfile}" python -m pip install --force-reinstall "${built_wheel}"
 
 # Use MedVision dataset v1.0.0
 export MedVision_PLANNER_VERSION='1.0.0'
-export MedVision_ACK_RELEASE='1.1.1'
+
+# Set output token limit (default to 4096)
+max_new_tokens=4096
 
 # Export PYTHONPATH to include HealthGPT directories for proper imports
-export PYTHONPATH="${dir_third_party}/HealthGPT:$PYTHONPATH"
+export PYTHONPATH="${dir_third_party}/HealthGPT:${PYTHONPATH:-}"
 
 # Run
 # Add these arguments for debugging:
@@ -67,6 +69,7 @@ python -m medvision_bm.benchmark.eval__healthgpt \
     --tasks_list_json_path $tasks_list_json_path \
     --task_status_json_path $task_status_json_path \
     --batch_size_per_gpu $batch_size_per_gpu \
+    --max_new_tokens $max_new_tokens \
     --sample_limit $sample_limit
 
 conda deactivate

@@ -13,9 +13,9 @@ conda activate "${ENV_NAME}"
 # Set paths and configs
 benchmark_dir="/root/Documents/MedVision"
 data_dir="${benchmark_dir}/Data"
-model_hf_id="google/medgemma-4b-it"
-model_name="MedGemma-4b-it"
-batch_size_per_gpu=10
+model_hf_id="google/medgemma-27b-it"
+model_name="MedGemma-27b-it"
+batch_size_per_gpu=2 # eval__medgemma runs data-parallel (full 54.9GB replica per GPU), so KV for 10 concurrent 16K-token sequences would not fit 80GB
 
 # Other configs (safe to leave as is)
 task_tag="MedVision-AD-CoT"
@@ -46,7 +46,9 @@ flock "${lockfile}" python -m pip install --force-reinstall "${built_wheel}"
 
 # Use MedVision dataset v1.0.0
 export MedVision_PLANNER_VERSION='1.0.0'
-export MedVision_ACK_RELEASE='1.1.1'
+
+# Set output token limit (default to 4096)
+max_new_tokens=16000
 
 # (Method 1) Manually install requirements before running the eval script (more robust)
 # ---
@@ -67,6 +69,7 @@ python -m medvision_bm.benchmark.eval__medgemma \
     --tasks_list_json_path $tasks_list_json_path \
     --task_status_json_path $task_status_json_path \
     --batch_size_per_gpu $batch_size_per_gpu \
+    --max_new_tokens $max_new_tokens \
     --sample_limit $sample_limit
 # ---
 
@@ -83,6 +86,7 @@ python -m medvision_bm.benchmark.eval__medgemma \
 # --tasks_list_json_path $tasks_list_json_path \
 # --task_status_json_path $task_status_json_path \
 # --batch_size_per_gpu $batch_size_per_gpu \
+# --max_new_tokens $max_new_tokens \
 # --sample_limit $sample_limit \
 
 conda deactivate

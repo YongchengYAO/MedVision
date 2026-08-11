@@ -62,7 +62,7 @@ export MedVision_PLANNER_VERSION='1.0.0'
 export MedVision_ACK_RELEASE='1.1.1'
 
 # Important: Fix module import failure in distributed subprocess
-export PYTHONPATH="${dir_third_party}/HuatuoGPT-Vision:$PYTHONPATH"
+export PYTHONPATH="${dir_third_party}/HuatuoGPT-Vision:${PYTHONPATH:-}"
 
 # Run
 # Add these arguments for debugging:

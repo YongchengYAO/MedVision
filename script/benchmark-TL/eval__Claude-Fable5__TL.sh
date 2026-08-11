@@ -15,6 +15,8 @@ benchmark_dir="/root/Documents/MedVision"
 data_dir="${benchmark_dir}/Data"
 model_name="Claude-Fable-5"
 batch_size=1
+# Set output token limit (thinking + output share this budget)
+max_tokens=16000
 
 # API provider and model code
 # - anthropic (direct): https://platform.claude.com/docs/en/about-claude/models/overview
@@ -84,6 +86,7 @@ python -m medvision_bm.benchmark.eval__claude \
     --api_provider $api_provider \
     --anthropic_model_code $anthropic_model_code \
     --model_name $model_name \
+    --max_tokens $max_tokens \
     --results_dir $result_dir \
     --data_dir $data_dir \
     --tasks_list_json_path $tasks_list_json_path \
@@ -102,6 +105,7 @@ python -m medvision_bm.benchmark.eval__claude \
 # --api_provider $api_provider \
 # --anthropic_model_code $anthropic_model_code \
 # --model_name $model_name \
+# --max_tokens $max_tokens \
 # --results_dir $result_dir \
 # --data_dir $data_dir \
 # --tasks_list_json_path $tasks_list_json_path \

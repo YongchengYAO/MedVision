@@ -15,6 +15,8 @@ benchmark_dir="/root/Documents/MedVision"
 data_dir="${benchmark_dir}/Data"
 model_name="Gemini-3.1-Pro"
 batch_size=1
+# Set output token limit (thinking + output share this budget)
+max_tokens=16000
 
 # API provider and model code
 # - google (direct): https://ai.google.dev/gemini-api/docs/models
@@ -76,7 +78,6 @@ flock "${lockfile}" python -m pip install --force-reinstall "${built_wheel}"
 
 # Use MedVision dataset v1.0.0
 export MedVision_PLANNER_VERSION='1.0.0'
-export MedVision_ACK_RELEASE='1.1.1'
 
 # (Method 1) Manually install requirements before running the eval script (more robust)
 # ---
@@ -89,6 +90,7 @@ python -m medvision_bm.benchmark.eval__gemini \
     --api_provider $api_provider \
     --google_model_code $google_model_code \
     --model_name $model_name \
+    --max_tokens $max_tokens \
     --results_dir $result_dir \
     --data_dir $data_dir \
     --tasks_list_json_path $tasks_list_json_path \
@@ -107,6 +109,7 @@ python -m medvision_bm.benchmark.eval__gemini \
 # --api_provider $api_provider \
 # --google_model_code $google_model_code \
 # --model_name $model_name \
+# --max_tokens $max_tokens \
 # --results_dir $result_dir \
 # --data_dir $data_dir \
 # --tasks_list_json_path $tasks_list_json_path \
