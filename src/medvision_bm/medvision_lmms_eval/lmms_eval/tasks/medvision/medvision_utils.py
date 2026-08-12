@@ -25,6 +25,7 @@ from medvision_bm.sft.sft_prompts import (
 )
 from medvision_bm.sft.sft_utils import normalize_img
 from medvision_bm.utils.configs import AD_NEAR_ZERO_GT_THRESHOLD, DATASETS_NAME2PACKAGE
+from medvision_bm.utils.parse_utils import extract_last_k_nums_within_answer_tag
 
 # NOTE:
 # For all tasks in the MedVision-Bench, we use these units for tasks:
@@ -3191,13 +3192,15 @@ def parser_last_2_nums(text):
 
 
 def parser_last_k_nums(text, k):
-    # Find all numbers in the text
-    numbers = _find_nums(text)
+    """Return the last k numbers inside the <answer></answer> block, comma-separated.
 
-    # Return the last k numbers
-    if len(numbers) < k:
-        return ""
-    return ",".join(numbers[-k:])
+    Delegates to the canonical extractor used by the post-eval parser
+    (benchmark/parse_outputs.py) so eval-time metrics and re-parsed metrics
+    agree. Numbers outside the answer tag (e.g. in <think> reasoning or in
+    text trailing </answer>) are ignored, and a response with no answer tag
+    yields "" (scored as a failure).
+    """
+    return extract_last_k_nums_within_answer_tag(text, k)
 
 
 # ============================================================================
