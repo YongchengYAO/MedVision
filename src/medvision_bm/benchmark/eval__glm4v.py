@@ -329,6 +329,21 @@ def main():
     os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "fork"
     os.environ["ACCELERATE_USE_CPU"] = "true"
 
+    # NOTE: Opt out of the dataset loader's load-time reinstall of medvision_ds, which would
+    # break this stack. At dataset-load time the loader runs `pip install .` on the medvision_ds
+    # source unless MedVision_FORCE_INSTALL_CODE is explicitly "false" -- it defaults to TRUE
+    # when unset, and setup_env_hf_medvision_ds() sets it to "true". That reinstall applies
+    # medvision_ds's own huggingface_hub==0.36.0 pin, silently downgrading huggingface_hub
+    # mid-run (pip output is swallowed by capture_output=True). The running process keeps its
+    # already-imported transformers, but every process started afterwards -- a spawned vLLM
+    # worker, or the next task's lmms_eval -- dies with "ImportError: cannot import name
+    # 'is_offline_mode' from 'huggingface_hub'": GLM-4.6V needs transformers 5.x, which needs
+    # huggingface_hub>=1.5.0. Nothing is lost: the latest medvision_ds is installed on every
+    # run by install_medvision_ds() above (or by the launcher's own install step), and crucially
+    # BEFORE the requirements re-pin huggingface_hub. Must be set AFTER the block above, since
+    # install_medvision_ds() re-sets this flag to "true" on its way out.
+    os.environ["MedVision_FORCE_INSTALL_CODE"] = "false"
+
     tasks = load_tasks(tasks_list_json_path)
 
     for task in tasks:
