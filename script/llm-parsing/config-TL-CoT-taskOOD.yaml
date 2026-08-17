@@ -1,0 +1,6 @@
+# Config for TL radar plot: baseline vs SFT vs SFT-RFT (task-OOD split)
+
+model_display_name:
+  "Qwen2.5VL-7B-ds1.1.1": "Qwen2.5-VL (7B)"
+  "Qwen2.5VL-7B-SFT-ds1.1.1": "Qwen2.5-VL (7B, SFT)"
+  "MedVision-V0-7B-ds1.1.1": "Qwen2.5-VL (7B, SFT-RFT)"

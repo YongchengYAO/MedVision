@@ -1,0 +1,100 @@
+# Dependencies of the CPU stages (2, 3, 4), shared by EVERY judge reader.
+# Installed by setup_judge_env.sh into whichever venv it builds.
+#
+# Why a separate file. These have nothing to do with which model does the reading:
+# the driver runs Stage 1 (GPU) and Stages 2-4 (CPU) under the SAME `PYTHON`, and
+# Stages 2-4 import `medvision_bm` so that judge-parsed samples are scored by the
+# same code that produced the published numbers. That chain is identical for every
+# reader, so a copy per reader would be two copies of one fact.
+#
+# Why the list is this long. Stage 3 imports the task summarizers, which import
+# `medvision_utils`, which imports `lmms_eval.tasks`, whose `__init__` imports
+# `lmms_eval.utils` -- the whole evaluation harness. Measured 2026-08-15: the CPU
+# stages load 90 third-party top-level modules. Nothing in Stage 1 touches them, so
+# a judge env without them builds cleanly, passes verification, runs a thirteen-hour
+# GPU sweep and dies on Stage 2/3 -- which is why run_llm_parsing.sh now probes the
+# real summarizer import before the sweep instead of after it.
+#
+# WHY NOT JUST INSTALL lmms_eval's OWN DEPENDENCIES. Its pyproject.toml declares
+# `torch>=2.1.0,<2.8`. The judge environment runs torch 2.10.0
+# (gemma-4), so installing that dependency set would DOWNGRADE torch and break vLLM
+# -- trading a missing-module error for an ABI crash. This list is therefore the
+# MEASURED import set, not the declared one, and deliberately contains no
+# torch/transformers/vllm pin.
+#
+# Regenerate after changing what Stages 2-4 import:
+#   python -c "import sys; before=set(sys.modules); \
+#              import medvision_bm.benchmark.summarize_TL_task; \
+#              print(sorted({m.split('.')[0] for m in set(sys.modules)-before}))"
+# run under an interpreter that HAS the eval stack, then diff against the judge env.
+#
+# Unpinned on purpose: none of these interact with the vllm/transformers pins the
+# reader environments fight over, so a version constraint here would add a thing to
+# resolve without buying anything.
+
+# --- the direct imports -------------------------------------------------
+# medvision_bm.utils.data_utils does `from datasets import load_dataset` at package
+# import time, so ANY medvision_bm import needs it.
+datasets
+# The task summarizers read NIfTI voxel geometry (physical pixel size, used for the
+# nMAE denominator).
+nibabel
+
+# --- pulled in by lmms_eval.utils, which Stage 3 cannot avoid -----------
+pytz
+loguru
+sqlitedict
+evaluate
+sacrebleu
+scikit-learn
+scipy
+numexpr
+pandas
+tenacity
+portalocker
+lxml
+tabulate
+zstandard
+
+# --- media/codec extras the harness imports at module scope -------------
+av
+soundfile
+
+# --- medvision_ds benchmark plans, imported LAZILY at run time -----------
+# Not reachable by importing the summarizers, which is why they were missed twice:
+# parse_utils.get_targetLabel_imgModality_from_biometry_benchmark_plan resolves a
+# per-dataset plan module with importlib.import_module WHILE processing records, so
+# the dependency only materialises partway through Stage 3 -- and then arrives
+# wrapped as `ValueError: Error loading benchmark plan for <dataset>`, which reads
+# like corrupt data rather than a missing package.
+#
+# All 17 plan modules import medvision_ds.utils.{benchmark_planner,preprocess_utils};
+# these are what those two reach and the judge envs lacked. The rest of
+# medvision_ds's dependencies (gdown, py7zr, pydicom, synapseclient, ...) belong to
+# dataset DOWNLOAD scripts that Stage 3 never touches, and are deliberately absent.
+matplotlib
+SimpleITK
+pynrrd
+
+# --- transitive, listed explicitly ---------------------------------------
+# Named rather than left to the resolver because this file exists to end a series
+# of one-module-at-a-time discoveries, each of which cost a pipeline run. Listing a
+# package pip would have pulled anyway is free; omitting one is not.
+Brotli
+brotlicffi
+chardet
+colorama
+importlib_metadata
+joblib
+multiprocess
+pyarrow
+PySocks
+python-dateutil
+pyzstd
+six
+threadpoolctl
+wcwidth
+xxhash
+zipp
+backports.tarfile
+backports.zstd

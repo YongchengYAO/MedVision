@@ -1,0 +1,33 @@
+# Judge environment for the gemma-4-31b reader, PHASE 1 of 2. Install with
+#   bash script/llm-parsing/setup_judge_env.sh --judge gemma-4-31b
+# which then applies requirements-gemma-4-31b-post.txt in a second pip pass.
+#
+# A SEPARATE environment from requirements.txt, and it has to be. That file pins
+# transformers==4.57.6 because vLLM 0.11 breaks on the 5.x line; Gemma-4's config
+# declares transformers_version 5.5.0.dev0 and no 4.x release can load it. There is
+# no version satisfying both readers, so they get one venv each.
+#
+# WHY THE OVERRIDES ARE NOT IN THIS FILE. pip resolves one requirements file as a
+# single constraint set, so a pin that CONTRADICTS an installed package's metadata
+# cannot be expressed here -- it is not merely discouraged, it is unsatisfiable and
+# pip exits with ResolutionImpossible before downloading anything:
+#
+#   vllm 0.19.0 requires transformers<5,>=4.56.0   (vLLM issue #39216)
+#   torch 2.10.0 requires nvidia-nccl-cu12==2.27.x (an exact pin)
+#
+# Both of those must be overridden for Gemma-4 to run, and an override only works
+# as a LATER pip invocation, where pip reports the conflict against the installed
+# set as a warning and installs anyway. That is exactly how the evaluation path
+# does it (eval__gemma4.install_transformers_for_gemma4, called after install_vllm),
+# and it is why the second file exists. Do not move those pins back in here.
+#
+# Policy otherwise: list only what pip gets WRONG if left alone. vllm pins torch
+# itself.
+
+vllm==0.19.0
+
+# Not needed by Stage 1 -- vLLM loads the weights itself. Pinned because the CPU
+# stages (2-4) run under this SAME interpreter and reach it transitively, and an
+# env that builds and verifies cleanly but dies on Stage 2 costs a full sweep to
+# discover.
+accelerate>=1.0

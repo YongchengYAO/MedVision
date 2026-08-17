@@ -31,12 +31,30 @@ from medvision_bm.utils.configs import (
     TUMOR_LESION_GROUP_KEYS,
 )
 from medvision_bm.utils.parse_utils import (
+    assert_resps_key,
     cal_metrics_detection_task,
     convert_numpy_to_python,
     get_labelsMap_imgModality_from_seg_benchmark_plan,
     get_subfolders,
     group_by_anatomy_modality_slice,
 )
+
+
+def _parsed_dir_suffix(parsed_dirname):
+    """Filename qualifier for a non-default parsed directory.
+
+    Task-level reports land in ``task_dir`` and their names do not otherwise
+    depend on which parsed directory was read, so summarizing a judge-parsed run
+    would silently overwrite the published report. This qualifier keeps them
+    apart. It is empty for the default, so existing filenames never change.
+
+    Args:
+        parsed_dirname: Per-model subdirectory that was read.
+
+    Returns:
+        str: ``""`` for ``"parsed"``, else ``"__{parsed_dirname}"``.
+    """
+    return "" if parsed_dirname == "parsed" else f"__{parsed_dirname}"
 
 
 def _initialize_metric_counters_detection_task():
@@ -397,6 +415,7 @@ def group_anatomy_vs_tumor_lesion(model_path, limit=None):
 def process_jsonl_file_detection_task(
     jsonl_path,
     limit=None,
+    resps_key="filtered_resps",
 ):
     """
     Parse a JSONL results file and extract detection task data.
@@ -436,7 +455,12 @@ def process_jsonl_file_detection_task(
                 doc = data.get("doc", {})
                 slice_dim = doc.get("slice_dim")
                 task_id = int(doc.get("taskID"))
-                filtered_resps = data.get("filtered_resps")
+                if resps_key not in data:
+                    raise KeyError(
+                        f"{jsonl_path}: doc_id={data.get('doc_id')} has no "
+                        f"{resps_key!r}; this directory mixes record schemas."
+                    )
+                filtered_resps = data.get(resps_key)
                 target = data.get("target")
 
                 # Get label
@@ -479,6 +503,8 @@ def process_parsed_file_in_model_folder(
     model_dir,
     limit=None,
     processes=None,
+    parsed_dirname="parsed",
+    resps_key="filtered_resps",
 ):
     """
     Process all JSONL files in a model's parsed folder and generate summary metrics.
@@ -495,9 +521,12 @@ def process_parsed_file_in_model_folder(
         model_dir: Path to the model folder
         limit: Maximum number of samples to process per file (None = all)
         processes: Number of worker processes to use (None = single process)
+        parsed_dirname: Per-model subdirectory to read parsed records from.
+            Defaults to "parsed" (the published pipeline). A judge-parsed
+            run passes e.g. "parsed-llm-limit100".
     """
     # Find parsed JSONL files
-    parsed_files_dir = os.path.join(model_dir, "parsed")
+    parsed_files_dir = os.path.join(model_dir, parsed_dirname)
 
     # # [Option 1] Early exit if parsed directory does not exist
     # assert os.path.exists(
@@ -515,24 +544,36 @@ def process_parsed_file_in_model_folder(
         if not ("_proc_acc" in os.path.basename(f) or "_eq_acc" in os.path.basename(f))
     ]
 
+    # Probe one record before doing any work: the per-record guard treats a
+    # missing key as "skip this sample", so a wrong --resps_key would silently
+    # produce a report listing zero models -- and exit 0.
+    assert_resps_key(parsed_files_dir, jsonl_files, resps_key)
+
     # Collect all data from the parsed JSONL files
     all_data = []
 
     if processes and processes > 1:
         print(f"Using {processes} processes for parsing JSONL files...")
-        func = partial(process_jsonl_file_detection_task, limit=limit)
+        func = partial(
+            process_jsonl_file_detection_task, limit=limit, resps_key=resps_key
+        )
         with multiprocessing.Pool(processes) as pool:
             results = pool.map(func, jsonl_files)
         for res in results:
             all_data.extend(res)
     else:
         for jsonl_file in jsonl_files:
-            file_data = process_jsonl_file_detection_task(jsonl_file, limit)
+            file_data = process_jsonl_file_detection_task(
+                jsonl_file, limit, resps_key=resps_key
+            )
             all_data.extend(file_data)
 
     # Early exit if no valid data found
     if not all_data:
-        print(f"No valid data found in {parsed_files_dir}, skipping...")
+        print(
+            f"No valid data found in {parsed_files_dir} "
+            f"({len(jsonl_files)} file(s), resps_key={resps_key!r}), skipping..."
+        )
         return
 
     # Group by anatomy-modality-slice combinations
@@ -572,7 +613,13 @@ def process_parsed_file_in_model_folder(
     group_anatomy_vs_tumor_lesion(parsed_files_dir, limit)
 
 
-def print_summary_metrics(task_dir, limit=None, skip_model_wo_parsed_files=False):
+def print_summary_metrics(
+    task_dir,
+    limit=None,
+    skip_model_wo_parsed_files=False,
+    parsed_dirname="parsed",
+    models=None,
+):
     """
     Print and save summary metrics for all models in a task directory.
 
@@ -588,10 +635,13 @@ def print_summary_metrics(task_dir, limit=None, skip_model_wo_parsed_files=False
         skip_model_wo_parsed_files: If True, skip models without parsed folders
     """
     # Get list of model folders within task_dir
-    model_dirs = get_subfolders(task_dir)
+    model_dirs = get_subfolders(task_dir, models=models)
 
     # Prepare output file path
-    output_filename = f"summary_detection_task{'_limit' + str(limit) if limit is not None else ''}.txt"
+    output_filename = (
+        f"summary_detection_task{'_limit' + str(limit) if limit is not None else ''}"
+        f"{_parsed_dir_suffix(parsed_dirname)}.txt"
+    )
     output_file_path = os.path.join(task_dir, output_filename)
 
     # Collect all output lines
@@ -610,7 +660,7 @@ def print_summary_metrics(task_dir, limit=None, skip_model_wo_parsed_files=False
     all_model_metrics = {}
 
     for model_dir in model_dirs:
-        parsed_dir = os.path.join(model_dir, "parsed")
+        parsed_dir = os.path.join(model_dir, parsed_dirname)
 
         # Skip models without parsed results if requested
         if skip_model_wo_parsed_files and not os.path.exists(parsed_dir):
@@ -676,6 +726,11 @@ def print_summary_metrics(task_dir, limit=None, skip_model_wo_parsed_files=False
         if limit is None
         else f"{SUMMARY_FILENAME_ALL_MODELS_DETECT_METRICS.removesuffix('.json')}_limit{limit}.json"
     )
+    summary_filename = (
+        summary_filename.removesuffix(".json")
+        + _parsed_dir_suffix(parsed_dirname)
+        + ".json"
+    )
     summary_path = os.path.join(task_dir, summary_filename)
     with open(summary_path, "w") as f:
         json.dump(convert_numpy_to_python(all_model_metrics), f, indent=2)
@@ -692,7 +747,13 @@ def print_summary_metrics(task_dir, limit=None, skip_model_wo_parsed_files=False
 
 
 def _process_task_directory(
-    task_dir, limit, skip_model_wo_parsed_files=False, processes=None
+    task_dir,
+    limit,
+    skip_model_wo_parsed_files=False,
+    processes=None,
+    parsed_dirname="parsed",
+    resps_key="filtered_resps",
+    models=None,
 ):
     """
     Process all model directories within a task directory.
@@ -706,9 +767,15 @@ def _process_task_directory(
         limit: Maximum samples to process per file (None = all)
         skip_model_wo_parsed_files: Skip models without parsed folders
         processes: Number of worker processes to use
+        parsed_dirname: Per-model subdirectory to read parsed records from.
+            Defaults to "parsed" (the published pipeline). A judge-parsed
+            run passes e.g. "parsed-llm-limit100".
+        models: Optional list of model-directory basenames to restrict this run
+            to (the roster). ``None`` processes every directory under
+            ``task_dir``, which is the historical behaviour.
     """
     # Get list of model folders within task_dir
-    model_dirs = get_subfolders(task_dir)
+    model_dirs = get_subfolders(task_dir, models=models)
 
     # NOTE: Exclude random_detection folder
     model_dirs = [d for d in model_dirs if os.path.basename(d) != "random_detection"]
@@ -722,19 +789,31 @@ def _process_task_directory(
     # Process each model directory
     for model_dir in model_dirs:
         # Skip models without parsed results if requested
-        parsed_files_dir = os.path.join(model_dir, "parsed")
+        parsed_files_dir = os.path.join(model_dir, parsed_dirname)
         if skip_model_wo_parsed_files and not os.path.exists(parsed_files_dir):
             print(f"\nSkipping model directory (no parsed folder): {model_dir}")
             continue
 
         print(f"\nProcessing model directory: {model_dir}")
-        process_parsed_file_in_model_folder(model_dir, limit, processes=processes)
+        process_parsed_file_in_model_folder(
+            model_dir,
+            limit,
+            processes=processes,
+            parsed_dirname=parsed_dirname,
+            resps_key=resps_key,
+        )
 
     # Print summary metrics at the end
-    print_summary_metrics(task_dir, limit, skip_model_wo_parsed_files)
+    print_summary_metrics(
+        task_dir, limit, skip_model_wo_parsed_files, parsed_dirname=parsed_dirname,
+        models=models,
+    )
 
 
-def _process_single_model_directory(model_dir, limit, processes=None):
+def _process_single_model_directory(
+    model_dir, limit, processes=None, parsed_dirname="parsed",
+    resps_key="filtered_resps",
+):
     """
     Process a single model directory.
 
@@ -742,9 +821,14 @@ def _process_single_model_directory(model_dir, limit, processes=None):
         model_dir: Path to the model directory
         limit: Maximum number of samples to process per file
         processes: Number of worker processes to use
+        parsed_dirname: Per-model subdirectory to read parsed records from.
+            Defaults to "parsed" (the published pipeline). A judge-parsed
+            run passes e.g. "parsed-llm-limit100".
     """
     print(f"\nProcessing model directory: {model_dir}")
-    process_parsed_file_in_model_folder(model_dir, limit, processes=processes)
+    process_parsed_file_in_model_folder(
+        model_dir, limit, processes=processes, parsed_dirname=parsed_dirname
+    )
 
 
 def main(**kwargs):
@@ -770,21 +854,36 @@ def main(**kwargs):
     model_dir = kwargs.get("model_dir")
     limit = kwargs.get("limit")
     skip_model_wo_parsed_files = kwargs.get("skip_model_wo_parsed_files", False)
+    models = kwargs.get("models")
     processes = kwargs.get("processes")
+    parsed_dirname = kwargs.get("parsed_dirname") or "parsed"
+    resps_key = kwargs.get("resps_key") or "filtered_resps"
 
     if task_dir is not None:
         print(
             f"Using task_dir: {task_dir}\nModel directories within this folder will be looped over."
         )
         _process_task_directory(
-            task_dir, limit, skip_model_wo_parsed_files, processes=processes
+            task_dir,
+            limit,
+            skip_model_wo_parsed_files,
+            processes=processes,
+            parsed_dirname=parsed_dirname,
+            resps_key=resps_key,
+            models=models,
         )
 
     elif model_dir is not None:
         print(
             f"Using model_dir: {model_dir}\nProcessing all JSONL files within this directory."
         )
-        _process_single_model_directory(model_dir, limit, processes=processes)
+        _process_single_model_directory(
+            model_dir,
+            limit,
+            processes=processes,
+            parsed_dirname=parsed_dirname,
+            resps_key=resps_key,
+        )
 
     else:
         raise ValueError("Either 'task_dir' or 'model_dir' must be provided.")
@@ -821,9 +920,44 @@ def parse_args():
         help="Limit the number of samples to process per JSONL file. If not set, processes all samples.",
     )
     parser.add_argument(
+        "--parsed_dirname",
+        type=str,
+        default="parsed",
+        help=(
+            "Per-model subdirectory to read parsed records from. Default 'parsed' "
+            "(the published pipeline). Use e.g. 'parsed-llm-limit100' to summarize "
+            "LLM-judge-parsed records; task-level reports are then written with a "
+            "'__<parsed_dirname>' qualifier so published reports are never overwritten."
+        ),
+    )
+    parser.add_argument(
+        "--resps_key",
+        type=str,
+        default="filtered_resps",
+        help=(
+            "Record key holding the parsed prediction. Default 'filtered_resps' "
+            "(the published pipeline). Pass 'LLM_filtered_resps' when reading an "
+            "llm-parsed*/ directory: those records have the strict key REMOVED, so "
+            "forgetting this flag aborts rather than silently reporting on nothing."
+        ),
+    )
+    parser.add_argument(
         "--skip_model_wo_parsed_files",
         action="store_true",
         help="Skip model directories that don't have a 'parsed' folder. Only valid with --task_dir.",
+    )
+    parser.add_argument(
+        "--models",
+        nargs="+",
+        default=None,
+        help=(
+            "Restrict to these model-directory basenames (the roster). Default: "
+            "every directory under --task_dir. A results tree holds far more model "
+            "directories than any one study reports on -- superseded bugfix "
+            "variants, training checkpoints, baselines -- so an unfiltered run "
+            "reports on models the study never included, and one malformed record "
+            "in any of them aborts the whole run."
+        ),
     )
     parser.add_argument(
         "--processes",

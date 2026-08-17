@@ -1,0 +1,43 @@
+# Judge environment for the gemma-4-31b reader, PHASE 2 of 2 -- the OVERRIDES.
+#
+# Applied by setup_judge_env.sh in its own pip invocation, after
+# requirements-gemma-4-31b.txt. Every pin here deliberately contradicts the
+# metadata of a package installed in phase 1, which is precisely why it cannot
+# live in that file: pip resolves one requirements file as a single constraint
+# set, so a contradiction there is ResolutionImpossible and nothing installs.
+# Across two invocations, pip compares against the already-installed set instead,
+# prints its "dependency resolver does not currently take into account all the
+# packages that are installed" notice, and proceeds.
+#
+# EXPECT A BLOCK OF RED. Forcing transformers past an upper bound makes EVERY
+# installed package carrying that bound complain, not only the one being
+# overridden. Measured on this stack (2026-08-15), pip reports four:
+#
+#   vllm 0.19.0            requires transformers<5,>=4.56.0
+#   xgrammar 0.2.4         requires transformers<5,>=4.38.0
+#   compressed-tensors     requires transformers<5.0.0
+#   torch 2.10.0           requires nvidia-nccl-cu12==2.27.5
+#
+# ...and then "Successfully installed ... transformers-5.10.2", exit 0. All four
+# are DECLARED bounds -- claims by package authors -- not observed failures, and
+# the validated eval stack (requirements/requirements_eval_gemma4.txt) ships the
+# same combination and runs: it carries compressed-tensors==0.14.0.1 and
+# nvidia-nccl-cu12==2.28.7 against transformers 5.10.2, exactly as here.
+#
+# Verified 2026-08-15 in the built venv: compressed-tensors, vllm and xgrammar all
+# import cleanly under transformers 5.10.2. setup_judge_env.sh now performs that
+# check itself after this pass -- it enumerates every package declaring
+# transformers<5, imports each, and fails only if one genuinely breaks. So the red
+# block needs no human adjudication; read the verification output instead.
+
+# Gemma-4's config declares transformers_version 5.5.0.dev0; no 4.x release can
+# read it. vLLM 0.19.0 still declares transformers<5 (vLLM issue #39216), so this
+# is an override by construction. Version matches the validated eval stack in
+# requirements/requirements_eval_gemma4.txt -- prefer changing both together.
+transformers==5.10.2
+
+# torch 2.10.0 (which vllm 0.19.0 pins) calls ncclCommShrink, which does not exist
+# in the nvidia-nccl-cu12 release torch's own metadata pins with `==`. Leaving it
+# alone gives an undefined-symbol crash at vLLM import -- not a resolver error, so
+# nothing warns. Same override the eval stack carries.
+nvidia-nccl-cu12==2.28.7

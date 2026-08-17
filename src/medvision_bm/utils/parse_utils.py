@@ -14,6 +14,7 @@ against ground truth, including:
 
 import ast
 import importlib
+import json
 import os
 import re
 from collections import defaultdict
@@ -27,20 +28,96 @@ from medvision_bm.utils.configs import DATASETS_NAME2PACKAGE
 _NUM_RE = re.compile(r"[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:[eE][-+]?\d+)?")
 
 
-def get_subfolders(task_dir):
+def get_subfolders(task_dir, models=None):
     """Return the paths of all immediate subdirectories of a directory.
 
     Args:
         task_dir: Directory to scan for subfolders.
+        models: Optional iterable of directory BASENAMES to keep. ``None`` (the
+            default) returns every subdirectory, which is the historical behaviour
+            and what every existing caller gets.
+
+            A results tree holds far more model directories than any one study
+            reports on -- superseded ``_bugfix-*`` variants, training checkpoints,
+            baselines like ``random_detection``. Measured 2026-08-15: 57 dirs under
+            MedVision-TL-v2-CoT against an 18-model roster. Filtering here rather
+            than at each call site is deliberate: a summarizer enumerates model dirs
+            twice, once to process and once to aggregate, and two filters that
+            disagree would produce a report covering a different set than was
+            actually processed -- with nothing anywhere saying so.
 
     Returns:
-        list[str]: Path of each immediate subdirectory (typically one per model).
+        list[str]: Path of each immediate subdirectory (typically one per model),
+        restricted to ``models`` when given.
     """
     model_dirs = []
     for entry in os.scandir(task_dir):
         if entry.is_dir():
             model_dirs.append(entry.path)
+    if models is not None:
+        want = set(models)
+        model_dirs = [p for p in model_dirs if os.path.basename(p) in want]
     return model_dirs
+
+
+def assert_resps_key(parsed_files_dir, jsonl_files, resps_key):
+    """Abort if the requested prediction key is absent from the records.
+
+    Every summarizer guards each record with ``... and filtered_resps is not None
+    and ...``, so pointing one at a directory whose records use a different key
+    drops EVERY record with no exception raised. The observed failure modes are
+    both silent and both wrong:
+
+    - ``summarize_detection_task`` finds no metrics file for the model, skips it,
+      and writes a report listing zero models -- exiting 0.
+    - ``summarize_TL_task`` / ``summarize_AD_task`` either raise a confusing
+      ``FileNotFoundError`` or, on a re-run, cheerfully re-report the metrics file
+      a previous run left behind.
+
+    ``llm-parsed*/`` records carry ``LLM_filtered_resps`` and have the strict key
+    removed, so this is reachable by simply forgetting ``--resps_key``. One record
+    is probed before any file is read, making that mistake cost a millisecond
+    instead of an hour and a wrong table.
+
+    Presence is tested with ``in`` rather than ``.get(...) is not None``: "key
+    absent" (the forgotten flag) and "key present but null" (a legitimate, if
+    unused, data state) are different situations and only the first is an error.
+
+    Args:
+        parsed_files_dir: Directory being summarized, for the message.
+        jsonl_files: Sample JSONL paths about to be read.
+        resps_key: The record key the caller intends to read.
+
+    Raises:
+        SystemExit: If the first readable record lacks ``resps_key``.
+    """
+    for path in jsonl_files:
+        with open(path, "r") as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if resps_key in record:
+                    return
+                present = sorted(
+                    k for k in record if "resps" in k or "filtered" in k
+                )
+                raise SystemExit(
+                    f"\n[FATAL] {os.path.basename(path)} has no {resps_key!r} key.\n"
+                    f"  directory   : {parsed_files_dir}\n"
+                    f"  --resps_key : {resps_key!r}\n"
+                    f"  keys present: {present}\n\n"
+                    f"  llm-parsed*/ records carry 'LLM_filtered_resps' and have the\n"
+                    f"  strict 'filtered_resps' key REMOVED. Add:\n"
+                    f"      --resps_key LLM_filtered_resps\n"
+                    f"  (or drop --parsed_dirname to summarize the published parsed/).\n"
+                )
+        # The first file with any readable record settles it; a directory that
+        # mixes schemas is caught per-record by the summarizers themselves.
+        return
 
 
 def load_nifti_2d(img_path, slice_dim, slice_idx):
