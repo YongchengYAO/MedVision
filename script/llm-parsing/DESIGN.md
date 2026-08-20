@@ -176,11 +176,12 @@ misread.
 - **R4 · drift gate.** Stage 0 replays `extract_last_k_nums_within_answer_tag`
   (D1, a deliberate duplicate of `parse_utils`) on every row and compares to the
   stored `filtered_resps`. `n_stored_mismatch > 0` ⇒ `[GATE FAIL]`, exit 1.
-  Current: 0 / 496,296. `test-1` asserts duplicate ≡ original on the real corpus.
+  Current: 0 / 522,868. `test-1` asserts duplicate ≡ original on the real corpus.
 - **R5 · reference set.** `judge_stats.judge_validity` measures judge–regex
-  agreement over the regex's own successes — 33,854 TL / 27,355 AD / 387,910
-  Detection rows, a large and near-perfect reference. Measured agreement:
-  99.78% / 99.96% / 99.94%. This is why 100% of the corpus is judged, not only
+  agreement over the regex's own successes — 38,322 TL / 31,360 AD / 403,878
+  Detection rows, a large and near-perfect reference. Measured agreement
+  (2026-08-20, current reader): 99.932% / 99.987% / 98.872%; Detection is the
+  outlier and §13 says why. This is why 100% of the corpus is judged, not only
   the failures — the agreement measurement is free.
 
 Duplicated-from-`medvision_bm` primitives that MUST stay byte-equivalent:
@@ -311,6 +312,14 @@ Step output is **persisted, never scored**.
    `assistantfinal` (`_PLAIN_FINAL_MARKER`; 1,972 of 2,000 production rows) while
    the documented `<|channel|>final<|message|>` appears in 0. Both handled,
    **last** marker wins, text with neither passes through.
+
+   *Provenance:* that 1,972/2,000 count is the **retired** reader's, which emitted
+   harmony channels; `gemma-4-31B-it` is not known to. The step is kept because
+   text with neither marker passes through untouched, so it costs nothing and
+   removing it would silently break any future harmony-emitting reader. Its rate
+   under the current reader is unmeasured — `raw` is stored only on invalid rows,
+   and none of the 42 such rows on disk contains the marker, which is far too
+   small and too biased a sample to conclude from.
 2. **Candidate scan** (`iter_json_object_candidates`, driven by
    `parse_judge_json`). Walks *every* balanced `{...}` group — one scan per
    opening brace, bounded by `_MAX_CANDIDATE_STARTS=64` /
@@ -429,9 +438,10 @@ exactly the population a bigger budget would have to rescue):
 
 Reading: what reaches a cap is overwhelmingly **degenerate repetition** — `0000…`,
 `999…`, `It's 12? It's 12?…`, `1040320 * 0.58 =` repeated — which no budget fixes,
-because the loop has no natural end. Across the whole 496,296-response corpus only
-**~109 non-loop rows** ever sat at a cap, and every one of them was capped at 512
-or 3072, not 4096. Detection's genuine requirement is p99 = 435 tokens, so 4096 is
+because the loop has no natural end. Across the whole corpus as it stood on
+2026-08-12 (496,296 responses; 522,868 since the 2026-08-19 merge, and the census
+has not been re-run on the additions) only **~109 non-loop rows** ever sat at a
+cap, and every one of them was capped at 512 or 3072, not 4096. Detection's genuine requirement is p99 = 435 tokens, so 4096 is
 ~9× the working distribution. Raising above 4096 would buy nothing but longer
 loops, and costs a full fingerprint rebuild (§9). **Keep 4096.**
 
@@ -483,11 +493,13 @@ What remains is **numerical** non-determinism, amplified by architecture:
    should drift materially less. That is a prediction from architecture, NOT a
    measurement — the flip rates quoted in this section were all measured on the
    retired reader and must not be restated as properties of the current one.
-2. **No batch-invariant kernels.** vLLM 0.11.0 as installed ships no
-   batch-invariance module and no such env switch (checked). Reduction order in
+2. **Kernels are not batch-invariant by default.** Reduction order in
    matmul/attention depends on batch shape, and V1 chunked prefill + CUDA-graph
    capture make the batch shape depend on what else was in flight — i.e. on shard
-   layout, chunk boundaries and arrival order, none of which are pinned.
+   layout, chunk boundaries and arrival order, none of which are pinned. vLLM
+   0.11.0 (the retired reader's engine) shipped no batch-invariance module and no
+   env switch at all. **The pinned `vllm==0.19.0` does** — see the mitigation
+   note below; it is off unless asked for, so the default path is still this one.
 3. **`enable_prefix_caching=True`.** Whether a row's shared system-prefix KV is
    recomputed or reused depends on batch order and eviction, and the two paths are
    not bitwise equal — so identical input can take numerically different paths.
@@ -507,12 +519,43 @@ Mitigations, in order of cost: keep a generous budget; pin shard count and
 a determinism-critical arm — slower, not a proof of bitwise equality, and **not
 exposed by any flag**: `enable_prefix_caching=True` is hardcoded in
 `run_judge_vllm.run_gpu` and there is no `--enforce_eager`, so this one means
-editing that function rather than passing an option; accept
-that bitwise reproducibility needs batch-invariant kernels this vLLM does not
-have. Operationally unchanged: never compare judge-invalid rates across pods, and
+editing that function rather than passing an option.
+
+**The real fix now exists in the pinned engine (verified 2026-08-20).** The claim
+that used to close this paragraph — "bitwise reproducibility needs batch-invariant
+kernels this vLLM does not have" — was true of 0.11.0 and is **false for
+`vllm==0.19.0`**, which ships
+`vllm/model_executor/layers/batch_invariant.py`, declares `VLLM_BATCH_INVARIANT`
+in `vllm/envs.py`, and calls `init_batch_invariance()` from
+`vllm/v1/worker/gpu_worker.py`. Enabling it is not a one-line change:
+
+- it raises `RuntimeError` unless the attention backend is FLASH_ATTN or
+  TRITON_ATTN (MLA variants only warn, and are not invariant between prefill and
+  decode). `run_gpu` pins **no** backend, so vLLM auto-selects and this surfaces
+  as a worker-init crash rather than a config error;
+- it forces deterministic NCCL — `NCCL_ALGO=allreduce:tree`, `NCCL_PROTO=Simple`,
+  `NCCL_MIN_NCHANNELS=NCCL_MAX_NCHANNELS=1`, `NCCL_NTHREADS=1`, NVLS/CollNet/P2P-net
+  off — which this reader feels directly because it runs `tensor_parallel = 2`;
+- it disables fast paths: `VLLM_USE_AOT_COMPILE=0`,
+  `CUBLAS_WORKSPACE_CONFIG=:4096:8`, TF32 off.
+
+Throughput cost is expected to be material and is **unmeasured**. It does NOT
+invalidate the queues — `prompt_fingerprint` hashes the prompt and `max_tokens`
+only, never engine settings (§9) — but it does require a re-judge to produce a new
+`judge-out`. Treat it as what makes a determinism-critical arm possible, not as a
+production default.
+
+Operationally unchanged: never compare judge-invalid rates across pods, and
 never credit a re-run's recovery to a code change without a same-raw A/B
 (`reparse_judge_out.py`) or a same-day control arm. (A 2,000-row roster-ordered
 probe suggested 82.9% — roster order is model-biased; do not quote it.)
+
+**The current corpus cannot measure this (2026-08-20).** The 12.8% figure came
+from rows appended twice by a repair pass. Re-running that join over the current
+reader's three judge-outs finds **zero** duplicate `(qid, prompt_fp)` rows in all
+three tasks — no repair pass has been appended, so the natural A/B experiment has
+no samples and the current reader's flip rate cannot be obtained from disk at all.
+It needs a GPU run. Full analysis: `docs/LLM-Judge-Reproducibility.md`.
 
 **Hardware.** `gemma-4-31B-it` ships plain bf16, ~62 GB of weights, so there is no
 checkpoint preparation step and no per-pod dtype choice — vLLM fetches it on first
@@ -568,12 +611,14 @@ accumulates. Stage 2 then collapses everything: `load_judge_index` keys by
 record. Verified over the whole corpus 2026-08-12: **0 duplicated `doc_id`s in
 774 files, 0 row-count mismatches against `parsed/`, 0 mode/SR/prediction
 inconsistencies, 0 orphan files, and llm-parsed coverage exactly equal to the
-18-model roster on every task** (the 81 other model directories under `Results/`
-are the superseded checkpoints roster gating exists to skip).
+roster on every task** (the other model directories under `Results/` are the
+superseded checkpoints roster gating exists to skip). That sweep predates the
+2026-08-19 fullSFT merge, which took the roster 18 → 19 models and the corpus to
+522,868 responses; it has not been re-run at the new size.
 
 | gate | stage | behaviour |
 |---|---|---|
-| replayed parser ≡ stored `filtered_resps` | 0 | abort; 496,296/496,296 |
+| replayed parser ≡ stored `filtered_resps` | 0 | abort; 522,868/522,868 (19-model roster; 496,296 before the 2026-08-19 fullSFT merge) |
 | roster counts 46,379 / 39,140 / 437,349 (19 models since 2026-08-19; the paper's 18-model totals were 43,938 / 37,080 / 415,278) | 0 | abort on mismatch (skipped under `--limit`, and for a non-default `--task_dir` — the counts describe the main trees only, so an OOD split prints `[gate n/a]` instead) |
 | every roster model has `parsed/` (no glob fallback) | 0 | abort — a fallback-discovered model once burned 100% of its GPU time |
 | `gate_valid_rate` ≥ `--min_valid_rate` (0.95) over first 200 buffered rows | 1 | abort **writing nothing**; repair queues must pass a low/0 rate |
@@ -591,11 +636,49 @@ distinct `cache_key`; repeats filled from cache and marked `+cached`.
 
 ---
 
-## 13. MEASURED SNAPSHOT (18-model roster, 496,296 responses)
+## 13. MEASURED SNAPSHOT (19-model roster, 522,868 responses)
 
-Read from the current `summary_judge_task__llm-parsed.txt` reports and the Stage 0
-baselines on 2026-08-12 — i.e. **after** the §8 echo fix, which is why AD moved
-0.1pp from the 2026-08-07 figures.
+Read from the `summary_judge_task__llm-parsed_gemma-4-31b.txt` reports on
+2026-08-20 (written 2026-08-20 00:04–00:11, i.e. after the 2026-08-19 fullSFT
+merge), plus the residual judge-invalid counts read directly from the three
+`judge-out_<task>_gemma-4-31b.jsonl` files. **This is the current reader**; the
+retired reader's snapshot is kept below because it is what the paper quotes.
+
+| | TL | AD | Detection |
+|---|--:|--:|--:|
+| responses | 46,379 | 39,140 | 437,349 |
+| strict-parsed | 38,322 | 31,360 | 403,878 |
+| SR strict regex | 82.6% | 80.1% | 92.3% |
+| SR format-robust | 94.8% | 94.2% | 98.5% |
+| ΔSR | +12.2 | +14.1 | +6.2 |
+| recovered (`conclusion_off_format`) | 5,642 | 5,513 | 27,034 |
+| `no_conclusion` | 2,135 | 2,242 | 3,430 |
+| `undetermined` | 280 | 25 | 3,007 |
+| judge-invalid (residual, last-wins) | 6 | 16 | 20 |
+| judge–regex agreement on regex successes | 99.932% | 99.987% | 98.872% |
+| span-verify rejections | 284 (0.61%) | 10 (0.03%) | 3,352 (0.77%) |
+
+Internally consistent: `(strict-parsed + recovered) / responses` reproduces
+SR format-robust on all three tasks, and 19 × 2,441 = 46,379 confirms the report
+is roster-scoped (it excludes the superseded
+`HuatuoGPT-Vision-34B_bugfix-2eb7706-wStopStrings` rows that sit in the TL tree,
+which is why the TL judge-out file holds 48,820 rows against 46,379 here).
+
+**Open item — Detection agreement is the outlier.** 98.872%, roughly a point below
+TL and AD, and Detection carries 3,007 `undetermined` against TL's 280 and AD's 25.
+The span-verification census points at one cause: **2,977 of Detection's 3,352
+rejections (88.8%) are `arity_mismatch:2!=4`** — the judge quoting a span holding
+two numbers for a four-number box. The verifier is doing its job (an answer it
+cannot point at is discarded, not trusted), so this costs recoveries, not
+correctness. It is a reader-behaviour difference that has not been diagnosed.
+
+Extreme cases, current reader: Llama-3.2-11B TL 14.5% strict → 97.9%
+format-robust (+83.4), and Qwen2.5-VL-32B TL 16.4% → 99.9% (+83.4).
+
+### 13.1 Retired reader (historical — the paper's figures)
+
+18-model roster, 496,296 responses, read 2026-08-12 — i.e. **after** the §8 echo
+fix, which is why AD moved 0.1pp from the 2026-08-07 figures.
 
 | | TL | AD | Detection |
 |---|--:|--:|--:|
@@ -613,11 +696,14 @@ baselines on 2026-08-12 — i.e. **after** the §8 echo fix, which is why AD mov
 The AD deltas from the pre-fix snapshot (SR 90.2→90.1, `undetermined` 114→173) are
 exactly the 59 AD echo rows §8 reclassified; TL's 692→693 is its 1 row.
 
-Extreme case: Llama-3.2-11B TL 14.5% strict → 97.9% format-robust. Total
-`undetermined` fell 10,653 → 1,891 across the 2026-08-07 fixes with zero
+Total `undetermined` fell 10,653 → 1,891 across the 2026-08-07 fixes with zero
 regressions on a record-level diff of all 496,296 rows (every mode transition
 exits `undetermined`; no resolved answer changed), then rose to **1,951** when §8
 reclassified the 63 echo rows — the one intended increase.
+
+**Do not diff the two tables row-by-row.** They differ by reader, by roster and by
+corpus at once — §10 rule: judge-invalid rates are comparable only within one
+machine and one checkpoint.
 
 Attribution caveat for low-SR models: `conclusion_off_format` ⇒ format broke;
 `no_conclusion` + responses piled at the token cap ⇒ budget broke the model;
@@ -744,7 +830,8 @@ Four things make a reader swap safe, and three of them fail silently if broken.
 
 **1. The registered reader's names do not move.** `out_suffix` produces
 `judge-out_<task>_gemma-4-31b.jsonl` and `llm-parsed_gemma-4-31b/`, which is what
-the 109 output directories on disk are called. Changing it orphans the corpus in
+the output directories on disk are called (2026-08-20: 70 under the main trees,
+139 counting `-limit100` and archived variants). Changing it orphans the corpus in
 one edit — Stage 2 would write a new tree beside the old one and Stage 3 would
 report on whichever it was pointed at, with no error anywhere. Pinned by test-11.
 

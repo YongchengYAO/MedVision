@@ -213,6 +213,7 @@ local
 **/dev
 **/dev_*
 dev-*
+dataset-info/.all_tasks_counts_cache.json
 # Generated CDA reports: one per parsed source, and the LLM-judge pass writes a
 # folder (hence a report) per judge model, so this has to be a glob.
 script/analyze/clinical-decision-analysis/CDA_REPORT*.md

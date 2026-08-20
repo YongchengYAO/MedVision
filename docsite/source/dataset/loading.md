@@ -72,6 +72,25 @@ This bypasses the per-sample quality/size filters and returns every planner samp
 Do not use multi-instance annotations to compare models on the leaderboard: the current MedVision-V0 SFT/RFT training is not optimized for multi-instance detection and measurement tasks.
 :::
 
+## QC figures are opt-in
+
+Every annotation is published alongside a per-slice QC figure. Nothing in the loader reads them and no benchmark task needs them, but they are roughly **99% of the annotation payload** — 298 GB of PNG against 3 GB of annotation. Until v1.4.0 they shipped inside `Datasets/<dataset>.zip`, which pushed `BraTS24.zip` to 72.6 GB and `MSD.zip` to 51.4 GB, past Hugging Face's 50 GB per-file limit — a hard publish failure, not just a slow download. Since v1.4.0 they ship separately, and downloading them is opt-in:
+
+```bash
+export MedVision_DOWNLOAD_QC_FIGURES="True"   # default: "False"
+```
+
+The figures arrive as `Datasets/<dataset>_fig.zip`, or `Datasets/<dataset>_fig.partNN.zip` where a single archive would again clear 50 GB. The archives carry the same arcnames the figures had inside the dataset archive, so restoring them puts every figure back at exactly the path it occupied before v1.4.0 — nothing is relocated afterwards.
+
+Six details are worth knowing:
+
+- **The flag is honoured on every load, not only on a first build.** Setting it on a machine whose annotations are already present still fetches the figures, rather than silently doing nothing because the dataset took the "already downloaded" path.
+- **Only the figures are fetched when the data is already there.** The flag never re-triggers the image, landmark or planner download. Whether those are fetched remains the dataset-download step's own decision, so on a machine that already holds a dataset, turning the flag on costs the figure archives and nothing else.
+- **Figure state is tracked per annotation version, not as a yes/no.** The download tracker records `"qc_figures_<dataset>": "1.4.0"` — the biometry annotation version those figures belong to. Figures are generated with the biometry plans and their directories carry that version (`Landmarks-Label2-fig-v1.4.0`), so "do I have the current figures?" is a version comparison. A release that regenerates a dataset's biometry raises its version and its figures are re-fetched; a release that does not touch the dataset leaves the version alone and nothing is re-pulled. Keying on the release version instead would invalidate every figure set on every release.
+- **Figures already on disk are not re-downloaded.** When the tracker holds no usable version, the directory is read instead and the version found there is written back. This is what covers an install made before v1.4.0: it already holds every figure — they arrived inside `Datasets/<dataset>.zip` — but ran no figure download to record it, so on the tracker alone every one of those machines would re-pull the entire set to overwrite files already in place. Five datasets (AFIDs, Ceph-Biometrics-400, FeTA24, PDDCA, VerSe) predate the versioned directory names; for them presence is the only on-disk signal, and the tracker entry is what still lets a later release invalidate them.
+- **Roughly half the datasets publish no figures at all.** The attempt is recorded either way, so a figure-less dataset does not re-query the Hub on every load. If figures are published for it later, `MedVision_FORCE_DOWNLOAD_DATA=True` is the way back — and it is also what forces figures already on disk to be fetched again.
+- **Multi-part archives are independent zips**, not `zip -s` volumes, so they extract in any order and a missing shard costs only its own figures.
+
 ## Batch download: the `download_datasets` CLI
 
 To fetch many datasets ahead of time (data downloading and building is slow), use the CLI instead of scripting `load_dataset()` calls by hand:

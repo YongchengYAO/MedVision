@@ -109,10 +109,11 @@ The dataset loader and the benchmark drivers read their configuration from the e
 | Variable | Required? | Purpose | Values |
 | :-- | :-- | :-- | :-- |
 | `MedVision_DATA_DIR` | Yes | Root folder for datasets and the working tree; the full dataset is roughly 1 TB. | Absolute or relative path |
-| `MedVision_PLANNER_VERSION` | Yes | Selects which annotation version the loader builds. | `latest` (= `1.1.1`), `1.1.1`, `1.1.0`, `1.0.0` |
-| `MedVision_ACK_RELEASE` | Only when pinning below latest | Acknowledges you have read the release note before loading legacy annotations. | `1.1.1` |
+| `MedVision_PLANNER_VERSION` | Yes | Selects which annotation version the loader builds. | `latest` (= `1.4.0`), or any published version `1.0.0`–`1.4.0` |
+| `MedVision_ACK_RELEASE` | Only when pinning below latest | Acknowledges you have read the release note before loading legacy annotations. | `1.4.0` |
 | `MedVision_FORCE_INSTALL_CODE` | No | Reinstall `medvision_ds` to the latest on load (keeps you notified of new releases). | `True` (default) / `False` |
 | `MedVision_FORCE_DOWNLOAD_DATA` | No | Force re-download of raw images and annotations. | `False` (default) / `True` |
+| `MedVision_DOWNLOAD_QC_FIGURES` | No | Also fetch the per-slice QC figures, which ship in their own archives and are not needed to load any config. Never re-triggers the image/landmark/planner download; figures already on disk are skipped, and re-fetched only when the dataset's biometry annotations are regenerated. | `False` (default) / `True` |
 | `MEDVISION_RESP_CACHE` | No | Per-sample response cache that makes an interrupted evaluation resumable; set to `0` to disable and reproduce the plain no-cache behaviour. | enabled by default / `0` = off |
 | `HF_TOKEN` | Restricted data only | Hugging Face access token, so the loader can read your own private repo holding restricted data. | Token string |
 | `SYNAPSE_TOKEN` | Restricted data only | Synapse authentication token for Synapse-hosted source datasets (e.g. FeTA24). | Token string |
@@ -120,7 +121,7 @@ The dataset loader and the benchmark drivers read their configuration from the e
 | `MedVision_ToothFairy2_HF_ID` | Restricted data only | Your own private Hugging Face repo holding the ToothFairy2 data you prepared. | `<user>/<repo>` |
 
 :::{warning}
-`MedVision_ACK_RELEASE=1.1.1` is required **only** when you pin `MedVision_PLANNER_VERSION` to a version below the latest (`1.1.0` or `1.0.0`). It confirms you have read the release note explaining what changed — most importantly the corrected tumour/lesion ellipse fit in `1.1.1`. When you run with `latest` (or `1.1.1`) you do not need to set it.
+`MedVision_ACK_RELEASE=1.4.0` is required **only** when you pin `MedVision_PLANNER_VERSION` below the newest version published *for the dataset you are loading*. It confirms you have read the release note explaining what changed — most importantly the regenerated tumour/lesion measurements in `1.4.0`. When you run with `latest` (or `1.4.0`) you do not need to set it, and because `1.4.0` changed only the T/L annotations, Angle/Distance and detection workloads load older pins without it.
 :::
 
 Three source datasets (FeTA24, SKM-TEA, ToothFairy2) cannot be redistributed, so you apply for access from the data owner and — for SKM-TEA and ToothFairy2 — host the data you prepared in your own private Hugging Face repo. Only set the restricted variables above if a subtask you are running touches one of those datasets; everything else downloads without credentials. See [Restricted source datasets](../dataset/loading.md#restricted-source-datasets) for the full procedure.

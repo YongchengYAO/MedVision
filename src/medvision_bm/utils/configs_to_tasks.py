@@ -23,9 +23,11 @@ def config_to_task(config, cot):
     return task
 
 
-def count_samples(config, split, streaming):
+def count_samples(config, split, streaming, dataset_path="YongchengYAO/MedVision"):
+    # ``dataset_path`` can point at a local checkout of the dataset repo, which is the
+    # only way to count a config that has been added to MedVision.py but not yet pushed.
     ds = load_dataset(
-        "YongchengYAO/MedVision",
+        dataset_path,
         name=config,
         split=split,
         trust_remote_code=True,

@@ -36,9 +36,9 @@ sd_hide_title: true
 MedVision measures whether vision–language models (VLMs) can read *quantities* off a
 medical image — the size of a tumour in millimetres, the coordinates of a bounding
 box, the angle between two anatomical landmarks — rather than only naming what they
-see. It ships a large annotated dataset (30 source datasets across CT, MRI, PET,
-ultrasound and X-ray — 32.7K 3D images, 11.9M annotated 2D slices, and 24.7M
-single-instance / 46.7M multi-instance annotations), a reproducible benchmark
+see. It ships a large annotated dataset (v1.4.0: 31 source datasets across CT, MRI,
+PET, ultrasound and X-ray — 33.2K 3D images, 12.0M annotated 2D slices, and
+25.7M single-instance / 50.5M multi-instance annotations), a reproducible benchmark
 harness, and post-training recipes (SFT, RFT/RL, chain-of-thought, LoRA).
 
 The `medvision_bm` package is the codebase behind the benchmark. This site documents
