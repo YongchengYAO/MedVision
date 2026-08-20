@@ -600,6 +600,24 @@ _MODALITY_COLORS = {
 _ANATOMY_EXCLUDE = {"UNMAPPED"}
 _ANATOMY_CMAP = "Blues"
 
+# The 3 benchmark tasks (``annotations_by_task`` keys) in fixed display order, shared by the
+# two per-task panels so a row is the same task across the filtered/raw pair. Colours are a
+# fixed one-hue teal ramp, darkest = largest task (echoing the anatomy panels'
+# darkest-=-largest shading), reused from neither the modality palette nor the anatomy Blues
+# ramp. A size-ordered ramp, not a categorical trio: it passes the ordinal checks (monotone
+# OKLCH L 0.48->0.66, adjacent step dL >= 0.069, lightest step 2.9:1 on white) rather than the
+# categorical CVD gate -- task identity is carried by the y labels, never by colour alone.
+_TASK_LABELS = {
+    "BoxSize": "Detection",
+    "TumorLesionSize": "Tumor/Lesion (T/L)",
+    "BiometricsFromLandmarks": "Angle/Distance (A/D)",
+}
+_TASK_COLORS = {
+    "Detection": "#05668D",
+    "Tumor/Lesion (T/L)": "#028090",
+    "Angle/Distance (A/D)": "#00A896",
+}
+
 
 # Tokens dropped when splitting anatomy label names for the wordcloud (articles, sides,
 # position words, ordinals) — mirrors the reference plot_labels_wordcloud.py stopword list.
@@ -673,16 +691,24 @@ def _barh_panel(ax, data, title, *, order=None, exclude=None, color_of=None, sha
 
 
 def viz_summary(all_stats, out_path):
-    """Render the 5 collection-level distributions as one compact figure.
+    """Render the 7 collection-level distributions as one compact figure.
 
     Row 1 (2 panels): images-by-modality and 2D-slices-by-modality.
-    Row 2 (3 narrower panels): volumes-by-anatomy, then the two annotation views of the same
+    Row 2 (2 panels): benchmark sample size per task -- Detection (BoxSize), Tumor/Lesion
+    biometry (TumorLesionSize), Angle/Distance biometry (BiometricsFromLandmarks) -- as
+    single-instance (``annotations_by_task``, loader-filtered) and multi-instance
+    (``annotations_by_task_raw``, unfiltered -- a SUPERSET of the left panel, never its
+    complement; A/D has no filter, so its bars match). Fixed ``_TASK_LABELS`` order on both
+    panels, so a row is the same task across the pair; a task absent from the summary (e.g.
+    BoxSize under ``--no_detection``) still renders as a zero-length bar.
+    Row 3 (3 narrower panels): volumes-by-anatomy, then the two annotation views of the same
     anatomy groups -- single-instance (``boxsize_by_anatomy``, the v1.0.0-filtered benchmark
     BoxSize count) and multi-instance (``2D-slices_by_anatomy``, the unfiltered per-(slice,label)
     count). Each anatomy panel sorts by its OWN values descending, so the row order differs
     between panels -- read each panel's own y labels rather than comparing across a row. Bars are
     log-scaled with exact value labels (counts span ~3 orders of magnitude). Saved as a
-    transparent vector PDF via ``save_fig_capped`` (project figure convention).
+    transparent vector PDF via ``save_fig_capped`` (project figure convention), plus ``.svg``
+    and ``_whitebg.svg`` twins for README / webpage embedding.
     """
     import matplotlib
 
@@ -704,18 +730,27 @@ def viz_summary(all_stats, out_path):
         ("# Single-instance Annotations per Anatomy", anat_single),
         ("# Multi-instance Annotations per Anatomy", anat_multi),
     ]
+    # Per-task pair: the same nested single/multi semantics as the anatomy pair, in benchmark
+    # units throughout. Dicts may lack a task (or be absent on pre-benchmark summaries) -- the
+    # panel builder below fills every _TASK_LABELS row, zero-length bar included.
+    task_panels = [
+        ("# Single-instance Annotations per Task", all_stats.get("annotations_by_task") or {}),
+        ("# Multi-instance Annotations per Task", all_stats.get("annotations_by_task_raw") or {}),
+    ]
     n_mod = max(len(all_stats["images_by_modality"]), len(all_stats["2D-slices_by_modality"]), 1)
+    n_task = len(_TASK_LABELS)
     n_anat = max(len({k for _, d in anat_panels for k in d} - _ANATOMY_EXCLUDE), 1)
-    fig_h = 1.2 + n_mod * 0.30 + n_anat * 0.22  # scale height to the taller (anatomy) row
+    fig_h = 1.2 + (n_mod + n_task) * 0.30 + n_anat * 0.22  # scale height to the taller rows
     fig = plt.figure(figsize=(15, fig_h))
-    # nested grid: row 1 keeps 2 half-width panels, row 2 holds 3 narrower ones (own wspace, since
-    # each anatomy panel must still clear its y-tick label column)
+    # nested grid: rows 1-2 keep 2 half-width panels each, row 3 holds 3 narrower ones (own
+    # wspace, since each anatomy panel must still clear its y-tick label column)
     outer = fig.add_gridspec(
-        2, 1, height_ratios=[n_mod, n_anat], hspace=0.30,
+        3, 1, height_ratios=[n_mod, n_task, n_anat], hspace=0.30,
         left=0.13, right=0.98, top=0.92, bottom=0.05,
     )
     gs_mod = outer[0].subgridspec(1, 2, wspace=0.34)
-    gs_anat = outer[1].subgridspec(1, 3, wspace=0.52)
+    gs_task = outer[1].subgridspec(1, 2, wspace=0.34)
+    gs_anat = outer[2].subgridspec(1, 3, wspace=0.52)
 
     def mod_color(c):
         return _MODALITY_COLORS.get(c, "#888888")
@@ -726,12 +761,24 @@ def viz_summary(all_stats, out_path):
                 "# 3D Images by Modality", order=mod_order, color_of=mod_color)
     _barh_panel(fig.add_subplot(gs_mod[0, 1]), all_stats["2D-slices_by_modality"],
                 "# 2D Slices by Modality", order=mod_order, color_of=mod_color)
+    for i, (title, by_task) in enumerate(task_panels):
+        # fixed _TASK_LABELS order (a row = the same task in both panels), missing tasks at 0
+        data = {label: by_task.get(key, 0) for key, label in _TASK_LABELS.items()}
+        _barh_panel(fig.add_subplot(gs_task[0, i]), data, title,
+                    order=list(_TASK_LABELS.values()),
+                    color_of=lambda c: _TASK_COLORS.get(c, "#888888"))
     for i, (title, data) in enumerate(anat_panels):
         # no `order=`: each anatomy panel sorts by its OWN values, descending
         _barh_panel(fig.add_subplot(gs_anat[0, i]), data, title,
                     exclude=_ANATOMY_EXCLUDE, shade=_ANATOMY_CMAP)
 
     save_fig_capped(out_path, fig=fig, bbox_inches="tight", transparent=True)
+    # SVG twins for inline README + webpage embedding (browsers can't render PDF in <img>).
+    # The canonical .svg stays transparent; only the _whitebg twin is opaque, for dark backdrops.
+    svg = os.path.splitext(out_path)[0] + ".svg"
+    save_fig_capped(svg, fig=fig, bbox_inches="tight", transparent=True)
+    save_fig_capped(os.path.splitext(svg)[0] + "_whitebg.svg", fig=fig,
+                    bbox_inches="tight", transparent=False, facecolor="white", edgecolor="white")
     plt.close(fig)
 
 
@@ -1244,7 +1291,8 @@ def main():
                              "faster (~8.5 min) and low-memory, but n_benchmark_annotations then omits "
                              "BoxSize. Default: BoxSize is counted (loads large detection plans).")
     parser.add_argument("--viz", action="store_true",
-                        help="Also render dataset_summary.pdf (bar panels), "
+                        help="Also render dataset_summary.pdf (bar panels, incl. sample size "
+                             "per task: detection / T/L / A/D), "
                              "dataset_summary_wordcloud.pdf (anatomy word cloud; needs `pip install "
                              "wordcloud` -- NOT a declared dependency, and the figure is silently "
                              "skipped with a warning when it is missing), and the 2-ring donut in "

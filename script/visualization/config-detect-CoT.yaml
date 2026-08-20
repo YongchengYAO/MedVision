@@ -11,7 +11,7 @@ model_display_name:
   "InternVL3-38B": "InternVL3 (38B)"
   "lingshu-medical-mllm__Lingshu-32B": "Lingshu (32B)"
   "llava-onevision-qwen2-72b-ov-hf": "LLaVA-OneVision (72B)"
-  "Llama-3.2-11B-Vision-Instruct": "Llama-3.2-Vision (11B)"
+  "Llama-3.2-11B-Vision-Instruct-Budget16k": "Llama-3.2-Vision (11B)"
   "MedDr__BF16": "MedDr (40B)"
   "google__medgemma-4b-it": "MedGemma (4B)"
   "medgemma-27b-it": "MedGemma (27B)"

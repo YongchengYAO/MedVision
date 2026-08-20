@@ -690,6 +690,13 @@ def _draw_ad_overlay_on_ax(ax, doc, proc_acc):
 # ── Sample data helpers ────────────────────────────────────────────────────────
 
 
+def _sample_resps(sample):
+    """Prediction text list: strict-parse rows carry "filtered_resps"; llm-parsed
+    rows carry "LLM_filtered_resps" instead (never both — the judge pipeline
+    removes the strict key when it writes a record)."""
+    return sample.get("filtered_resps") or sample.get("LLM_filtered_resps") or []
+
+
 def _parse_prediction(filtered_resps):
     text = (filtered_resps[0] if filtered_resps else "") or ""
     nums = [s.replace(",", "") for s in _NUM_RE.findall(text)]
@@ -704,7 +711,7 @@ def _parse_prediction(filtered_resps):
 def _build_metrics_tokens(sample, proc_acc, eq_acc=None):
     """Return a token list for the metrics section with prediction value bold+colored."""
     target = float(sample["target"])
-    pred = _parse_prediction(sample.get("filtered_resps", []))
+    pred = _parse_prediction(_sample_resps(sample))
 
     metric_type = (proc_acc or {}).get("metric_type") or sample["doc"][
         "biometric_profile"
@@ -971,7 +978,15 @@ def main():
     parser.add_argument(
         "--model_dir",
         default=None,
-        help="Model results folder; loops all *.jsonl in {model_dir}/parsed/.",
+        help="Model results folder; loops all *.jsonl in {model_dir}/{parsed_dirname}/.",
+    )
+    parser.add_argument(
+        "--parsed_dirname",
+        default="parsed",
+        help=(
+            "Per-model subdirectory to read parsed records from, e.g. "
+            "llm-parsed_gemma-4-31b (--model_dir mode only). Default: parsed."
+        ),
     )
     parser.add_argument("--output_dir", required=True)
     parser.add_argument("--proc_acc_jsonl", default=None)
@@ -1014,8 +1029,8 @@ def main():
     os.makedirs(args.output_dir, exist_ok=True)
 
     if args.model_dir:
-        # ── Batch mode: loop all JSONL files in {model_dir}/parsed/ ──────────
-        parsed_dir = os.path.join(args.model_dir, "parsed")
+        # ── Batch mode: loop all JSONL files in {model_dir}/{parsed_dirname}/ ─
+        parsed_dir = os.path.join(args.model_dir, args.parsed_dirname)
         if not os.path.isdir(parsed_dir):
             raise FileNotFoundError(f"Parsed directory not found: {parsed_dir}")
         all_jsonls = sorted(glob.glob(os.path.join(parsed_dir, "*.jsonl")))

@@ -20,6 +20,7 @@ FIG_DIR="${FIG_DIR:-$MEDVISION_DIR/Figures}"
 PDF_IMAGE_DPI="${PDF_IMAGE_DPI:-100}"
 
 # RFT model folder names (differ by task: detection subfigures use the _CoT suffix)
+# (Both are CoT-prompted, these are legacy internal model name)
 RFT_MODEL="MedVision__fullRFT__qwen25vl-7b-fullSFT__AD-TL-D__512x512__PRxAnswer_s250"
 RFT_MODEL_DETECT="MedVision__fullRFT__qwen25vl-7b-fullSFT__AD-TL-D__512x512__PRxAnswer_s250_CoT"
 

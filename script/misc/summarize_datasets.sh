@@ -21,40 +21,13 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # Paths are overridable via the environment; defaults assume the standard layout.
 DATA_DIR="${DATA_DIR:-${REPO_ROOT}/Data}"
-# Space-separated extra roots, each containing its own Datasets/. Set this when the collection is
-# split across directories (v1.2.0 was staged in a second root while --data_dir takes only one);
-# the roots are merged into one scannable tree via a symlink farm. Set to "" for a single root.
-# A listed root that does not exist is skipped with a warning rather than silently ignored — a
-# missing root would otherwise yield a short summary that looks complete.
-EXTRA_DATA_DIRS="${EXTRA_DATA_DIRS:-/mnt/vincent-pvc-rwm/MedVision-data}"
 PLAN_VERSION="${PLAN_VERSION:-1.2.0}"
 OUT_DIR="${OUT_DIR:-${REPO_ROOT}/dataset-info/datasets_summary_v${PLAN_VERSION}}"
 # Optional: reuse version-invariant Box/segmentation/inventory from this existing summary dir and
 # recompute only biometry — skips the multi-GB detection scan (fast version regen).
 REUSE_FROM="${REUSE_FROM:-}"
-# Where the merged symlink farm is built when EXTRA_DATA_DIRS is set (rebuilt each run).
-MERGED_ROOT="${MERGED_ROOT:-${TMPDIR:-/tmp}/medvision-data-merged}"
 
-SCAN_DIR="${DATA_DIR}"
-if [ -n "${EXTRA_DATA_DIRS}" ]; then
-  # Top-level symlinks only; the tree underneath is real, which os.walk / os.listdir+isdir follow.
-  rm -rf "${MERGED_ROOT}"
-  mkdir -p "${MERGED_ROOT}/Datasets"
-  for root in "${DATA_DIR}" ${EXTRA_DATA_DIRS}; do
-    if [ ! -d "${root}/Datasets" ]; then
-      echo "warning: no Datasets/ under ${root} -- skipping this root" >&2
-      continue
-    fi
-    for d in "${root}"/Datasets/*/; do
-      [ -d "$d" ] || continue
-      ln -sfn "${d%/}" "${MERGED_ROOT}/Datasets/$(basename "${d%/}")"
-    done
-  done
-  SCAN_DIR="${MERGED_ROOT}"
-  echo "merged $(ls "${MERGED_ROOT}/Datasets" | wc -l) datasets -> ${MERGED_ROOT}/Datasets"
-fi
-
-ARGS=(--data_dir "${SCAN_DIR}" --out_dir "${OUT_DIR}" --plan_version "${PLAN_VERSION}")
+ARGS=(--data_dir "${DATA_DIR}" --out_dir "${OUT_DIR}" --plan_version "${PLAN_VERSION}")
 [ -n "${REUSE_FROM}" ] && ARGS+=(--reuse_from "${REUSE_FROM}")
 
 python -m medvision_bm.utils.summarize_datasets "${ARGS[@]}" "$@"
@@ -65,11 +38,10 @@ python -m medvision_bm.utils.summarize_datasets "${ARGS[@]}" "$@"
 # --- Variations (uncomment / adapt as needed) ---
 # Older ver: PLAN_VERSION=1.1.1 bash script/misc/summarize_datasets.sh --viz
 #                    reproduces the 22-dataset v1.1.1 summary; the 8 v1.2.0 datasets are skipped.
-# One root:  EXTRA_DATA_DIRS= bash script/misc/summarize_datasets.sh
-#                    scan DATA_DIR only, no symlink farm.
 # Subset:    --datasets KiTS23,Ceph-Biometrics-400
 # Fast:      --no_detection  skip the large detection plans (drops BoxSize; ~8.5 min vs ~34 min)
-# Figures:   --viz    also render dataset_summary.pdf (bar panels), dataset_summary_wordcloud.pdf
+# Figures:   --viz    also render dataset_summary.pdf (bar panels, incl. sample size per task),
+#                    dataset_summary_wordcloud.pdf
 #                    (needs `pip install wordcloud` -- see the note on figure 2 below),
 #                    and the donut in filtered+raw x {2x1, 1x2, compact}:
 #                    dataset_summary_rings_{filtered,raw}_{2x1,1x2,compact}.pdf
@@ -81,63 +53,81 @@ python -m medvision_bm.utils.summarize_datasets "${ARGS[@]}" "$@"
 # Rendered by render_figures() in medvision_bm/utils/summarize_datasets.py. All are transparent
 # vector PDFs written through save_fig_capped (project figure convention).
 #
-# --- 1. dataset_summary.pdf -- 5 horizontal bar panels, 2 + 3 (collection-level "__all__") ---
-# Row 1 holds the 2 modality panels at half width; row 2 holds the 3 anatomy panels at one-third
-# width. Log-scaled x-axis with exact value labels (counts span ~3 orders of magnitude).
+# --- 1. dataset_summary.pdf -- 7 horizontal bar panels, 2 + 2 + 3 (collection-level "__all__") ---
+# Also emits dataset_summary.svg and dataset_summary_whitebg.svg (README / webpage embedding;
+# neither GitHub nor a browser <img> can render PDF, and the white-background twin serves
+# dark backdrops -- the canonical .svg stays transparent). Same figure, three containers.
+# Row 1 holds the 2 modality panels at half width; row 2 the 2 per-task panels at half width;
+# row 3 holds the 3 anatomy panels at one-third width. Log-scaled x-axis with exact value labels
+# (counts span ~3 orders of magnitude).
 # Subfigures, in reading order:
 #   (1) row1-left   "# 3D Images by Modality"   <- images_by_modality
 #                   One count per 3D volume. Fixed modality order/colour across (1) and (2).
 #   (2) row1-right  "# 2D Slices by Modality"   <- 2D-slices_by_modality
 #                   2D slices SUMMED over all three planes (x/y/z), so one volume is counted
 #                   three times -- once per slicing direction.
-#   (3) row2-left   "# 3D Images by Anatomy"    <- volumes_by_anatomy
+#   (3) row2-left   "# Single-instance Annotations per Task"    <- annotations_by_task
+#                   Benchmark sample size per task -- Detection (BoxSize), Tumor/Lesion biometry
+#                   (TumorLesionSize), Angle/Distance biometry (BiometricsFromLandmarks) -- after
+#                   the loader filters. FIXED row order and per-task colour (a one-hue teal
+#                   ramp, darkest = largest task, reused from neither the modality palette nor
+#                   the anatomy Blues ramp) shared with (4), so a row is the same task across
+#                   the pair (unlike the anatomy panels below, which each sort by their own
+#                   values).
+#   (4) row2-right  "# Multi-instance Annotations per Task"     <- annotations_by_task_raw
+#                   The same tasks unfiltered. The (6)/(7) nesting caveat applies unchanged:
+#                   (4) is an INCLUSIVE ">= 1 instance" SUPERSET of (3), never its complement.
+#                   The T/L filter is a single-cluster rule like the BoxSize one, and A/D has no
+#                   filter at all (raw == filtered), so the A/D bar is identical in (3) and (4)
+#                   by construction.
+#   (5) row3-left   "# 3D Images by Anatomy"    <- volumes_by_anatomy
 #                   A volume counts once per anatomy group it contains (a whole-abdomen CT adds
 #                   to Liver, Kidney, Spleen, ... simultaneously). Because a volume is counted in
 #                   every group it touches, the bars SUM TO MORE than the unique-image count
 #                   (99,008 vs 29,031 at ds v1.0.0 = 3.41 groups per volume on average); read the
 #                   bars individually, never as a partition.
-#   (4) row2-mid    "# Single-instance Annotations per Anatomy"  <- boxsize_by_anatomy
+#   (6) row3-mid    "# Single-instance Annotations per Anatomy"  <- boxsize_by_anatomy
 #                   The v1.0.0-FILTERED benchmark BoxSize count (24,236,327) -- i.e. the samples
 #                   the loader actually emits. A (case, slice, label) item is kept only when it
 #                   forms exactly ONE connected component whose box is >= 10 px in both
 #                   dimensions, so multi-component and tiny structures are dropped outright.
-#   (5) row2-right  "# Multi-instance Annotations per Anatomy"   <- boxsize_by_anatomy_raw
+#   (7) row3-right  "# Multi-instance Annotations per Anatomy"   <- boxsize_by_anatomy_raw
 #                   The UNFILTERED count (45,274,250): every (case, slice, label) item carrying
 #                   ONE OR MORE instances, with no cluster-count and no size filter.
 #
-#                   >>> "MULTI-INSTANCE" IS INCLUSIVE: it means ">= 1 instance", so panel (5) is
-#                   >>> a strict SUPERSET of panel (4), NOT its complement. The panels are nested
-#                   >>> by design -- (4) is 53.5% of (5) (24,236,327 of 45,274,250), contained
+#                   >>> "MULTI-INSTANCE" IS INCLUSIVE: it means ">= 1 instance", so panel (7) is
+#                   >>> a strict SUPERSET of panel (6), NOT its complement. The panels are nested
+#                   >>> by design -- (6) is 53.5% of (7) (24,236,327 of 45,274,250), contained
 #                   >>> entirely within it, verified with 0 containment violations across all 36
 #                   >>> anatomy groups and all 22 datasets. They do NOT partition the total, so
 #                   >>> never add them or read them as disjoint classes.
 #
-#                   Two further properties of (5) worth knowing:
+#                   Two further properties of (7) worth knowing:
 #                     * It is a per-(slice,label) count, not an instance count: a label split into
 #                       N connected components on one slice contributes 1, not N. "Multi-instance"
 #                       describes which slices are ADMITTED, not how components are tallied.
-#                     * (5) minus (4) is not purely multi-component: the panel-(4) filter is a
+#                     * (7) minus (6) is not purely multi-component: the panel-(6) filter is a
 #                       conjunction (one cluster AND >= 10 px), so a single-instance box that is
-#                       merely too small also sits only in (5). The shipped JSONs do not record
+#                       merely too small also sits only in (7). The shipped JSONs do not record
 #                       the two rejection causes separately, so that 21,037,923 delta cannot be
 #                       attributed to multiplicity alone.
-#                   Panel (5) reads boxsize_by_anatomy_raw (DETECTION plan), deliberately not the
+#                   Panel (7) reads boxsize_by_anatomy_raw (DETECTION plan), deliberately not the
 #                   seg-derived 2D-slices_by_anatomy: the two are byte-identical on the current
 #                   data but that is a coincidence, and _bench_anatomy() carries the same guard
 #                   against silently mixing seg-annotation counts into benchmark units.
-#   Row order in (3)/(4)/(5): each panel sorts by its OWN values, DESCENDING (largest at top), so
+#   Row order in (5)/(6)/(7): each panel sorts by its OWN values, DESCENDING (largest at top), so
 #   the anatomy order differs between the three panels -- read each panel's own y labels; a given
 #   row index is NOT the same anatomy across panels.
-#   Caveats that apply to (4) and (5) alike:
+#   Caveats that apply to (6) and (7) alike:
 #     * MULTI-label per slice: liver + spleen + pancreas on one slice adds 3.
 #     * A coarse group can gain >1 from a single slice when several fine labels map into it
 #       (e.g. left kidney + right kidney -> Kidney; Rib aggregates 25 fine labels, Spleen 1) --
 #       so bar height is NOT comparable across groups of differing label granularity.
 #     * Summed over the 3 planes, like panel (2).
 #   All three anatomy panels drop the "UNMAPPED" group (_ANATOMY_EXCLUDE; currently empty).
-#   Under --no_detection both detection keys are empty, so panels (4) AND (5) render as all-zero
-#   columns -- honest (no detection scan => no box annotations) rather than silently substituting
-#   the segmentation-derived count.
+#   Under --no_detection both detection keys are empty, so panels (6) AND (7) render as all-zero
+#   columns and the Detection rows of (3)/(4) as zero-length bars -- honest (no detection scan
+#   => no box annotations) rather than silently substituting the segmentation-derived count.
 #
 # --- 2. dataset_summary_wordcloud.pdf -- single panel, no subfigures ---
 # Anatomy label names tokenized (split on whitespace and '/', lowercased, articles/sides/ordinals

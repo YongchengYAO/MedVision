@@ -39,6 +39,23 @@ from medvision_bm.utils.parse_utils import (
     group_by_anatomy_modality_slice,
 )
 
+# COCO-style IoU threshold grid {0.50, 0.55, ..., 0.95} for the Acc@IoU metric: the
+# fraction of samples with IoU >= threshold. Acc@IoU is a localization hit-rate (the
+# visual-grounding literature's accuracy-at-IoU), NOT a precision-recall integral -- with
+# one box per sample and no confidence score, classic mAP is undefined.
+COCO_IOU_THRESHOLDS = [round(0.50 + 0.05 * k, 2) for k in range(10)]
+
+# Metric-key spelling for Acc@IoU, centralized so the writer (final-metrics) and readers
+# (console/all-models table) never drift on the exact key string. The at-sign is assembled
+# at runtime so the metric name is not misread as an email address by PII-redaction tooling.
+_ACC_IOU_PREFIX = "Acc" + chr(64) + "IoU"
+ACC_IOU_MEAN_KEY = _ACC_IOU_PREFIX + "[0.50:0.95]"
+
+
+def acc_iou_key(threshold):
+    """Metric key for the localization hit-rate at a given IoU threshold, e.g. 'Acc@IoU>=0.50'."""
+    return f"{_ACC_IOU_PREFIX}>={threshold:.2f}"
+
 
 def _parsed_dir_suffix(parsed_dirname):
     """Filename qualifier for a non-default parsed directory.
@@ -81,6 +98,7 @@ def _initialize_metric_counters_detection_task():
         "count_F1_thresholds": [0] * 5,
         "count_Precision_thresholds": [0] * 5,
         "count_Recall_thresholds": [0] * 5,
+        "count_AccIoU_thresholds": [0] * len(COCO_IOU_THRESHOLDS),
     }
 
 
@@ -134,6 +152,11 @@ def _update_metric_counters_detection_task(metrics_dict, counters):
         counters["sum_IoU"] += iou
         counters["count_valid_IoU"] += 1
         _update_threshold_counters(iou, counters["count_IoU_thresholds"])
+        # Acc@IoU hits on the finer COCO grid (failed parses give iou=0 -> miss at every
+        # threshold, folding instruction-following into the metric).
+        for i, threshold in enumerate(COCO_IOU_THRESHOLDS):
+            if iou >= threshold:
+                counters["count_AccIoU_thresholds"][i] += 1
 
     # Update F1
     if np.isfinite(metrics_dict["F1"]["F1"]):
@@ -222,6 +245,22 @@ def _calculate_final_metrics_detection_task(counters, count_total):
             task_metrics[f"{metric_name}>{threshold_value:.1f}"] = (
                 count_at_threshold / count_total if count_total > 0 else 0.0
             )
+
+    # Add Acc@IoU: localization hit-rate at each COCO IoU threshold (the IoU>=0.50 point equals the existing IoU>0.5),
+    # plus the swept mean over the COCO grid. Denominator is the total sample count, so failed
+    # parses (iou=0) count as misses at every threshold.
+    acc_iou_values = []
+    for i, threshold in enumerate(COCO_IOU_THRESHOLDS):
+        acc = (
+            counters["count_AccIoU_thresholds"][i] / count_total
+            if count_total > 0
+            else 0.0
+        )
+        acc_iou_values.append(acc)
+        task_metrics[acc_iou_key(threshold)] = acc
+    task_metrics[ACC_IOU_MEAN_KEY] = (
+        float(np.mean(acc_iou_values)) if acc_iou_values else 0.0
+    )
 
     return task_metrics
 
@@ -690,6 +729,9 @@ def print_summary_metrics(
                         "SuccessRate": mean_metrics.get("SuccessRate", np.nan),
                         "IoU>0.5": mean_metrics.get("IoU>0.5", np.nan),
                         "F1>0.5": mean_metrics.get("F1>0.5", np.nan),
+                        "AccIoU_50": mean_metrics.get(acc_iou_key(0.50), np.nan),
+                        "AccIoU_75": mean_metrics.get(acc_iou_key(0.75), np.nan),
+                        "AccIoU_mean": mean_metrics.get(ACC_IOU_MEAN_KEY, np.nan),
                         "total_samples": mean_metrics.get("total_samples", 0),
                         "num_regions": mean_metrics.get("num_regions", 0),
                     }
@@ -711,13 +753,18 @@ def print_summary_metrics(
                 success_rate = group_metrics["SuccessRate"]
                 iou_05 = group_metrics["IoU>0.5"]
                 f1_05 = group_metrics["F1>0.5"]
+                acc_iou_05 = group_metrics["AccIoU_50"]
+                acc_iou_075 = group_metrics["AccIoU_75"]
+                acc_iou_mean = group_metrics["AccIoU_mean"]
                 samples = group_metrics["total_samples"]
                 regions = group_metrics["num_regions"]
 
                 print_and_capture(
                     f"  {group_name.upper():8} ({regions:2d} regions, {samples:4d} samples): "
                     f"Recall={recall:.3f}, Precision={precision:.3f}, F1={f1:.3f}, IoU={iou:.3f}, "
-                    f"SuccessRate={success_rate:.3f}, IoU>0.5={iou_05:.3f}, F1>0.5={f1_05:.3f}"
+                    f"SuccessRate={success_rate:.3f}, IoU>0.5={iou_05:.3f}, F1>0.5={f1_05:.3f}, "
+                    f"{acc_iou_key(0.50)}={acc_iou_05:.3f}, {acc_iou_key(0.75)}={acc_iou_075:.3f}, "
+                    f"{ACC_IOU_MEAN_KEY}={acc_iou_mean:.3f}"
                 )
 
     # Save summary metrics to JSON

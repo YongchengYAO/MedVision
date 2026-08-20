@@ -7,14 +7,19 @@
 # Override defaults via environment variables:
 #   RESULTS_DIR=<path>    Root results directory (default: <MEDVISION_DIR>/Results)
 #   FIG_DIR=<path>        Output directory for figures (default: <MEDVISION_DIR>/Figures)
+#   PARSED_DIRNAME=<name> Per-model parsed-records folder (default: llm-parsed_gemma-4-31b;
+#                         use PARSED_DIRNAME=parsed for the strict-parse records; non-default
+#                         sources suffix every figure name with __${PARSED_DIRNAME})
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MEDVISION_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 RESULTS_DIR="${RESULTS_DIR:-$MEDVISION_DIR/Results}"
 FIG_DIR="${FIG_DIR:-$MEDVISION_DIR/Figures}"
+PARSED_DIRNAME="${PARSED_DIRNAME:-llm-parsed_gemma-4-31b}"
 
 # Verbose model names for violin overlays
+# (Both are CoT-prompted, these are legacy internal model name)
 VERBOSE_DETECT="MedVision__fullRFT__qwen25vl-7b-fullSFT__AD-TL-D__512x512__PRxAnswer_s250_CoT"
 VERBOSE_AD_TL="MedVision__fullRFT__qwen25vl-7b-fullSFT__AD-TL-D__512x512__PRxAnswer_s250"
 
@@ -22,6 +27,7 @@ VERBOSE_AD_TL="MedVision__fullRFT__qwen25vl-7b-fullSFT__AD-TL-D__512x512__PRxAns
 
 # Detection, all models, 3 metrics
 python "$SCRIPT_DIR/viz_radar.py" \
+    --parsed_dirname "$PARSED_DIRNAME" \
     --task_type Detection \
     --config_yaml "$SCRIPT_DIR/config-detect-CoT.yaml" \
     --task_dir "$RESULTS_DIR/MedVision-detect-v2" \
@@ -36,6 +42,7 @@ python "$SCRIPT_DIR/viz_radar.py" \
 
 # AD-CoT, all models
 python "$SCRIPT_DIR/viz_radar.py" \
+    --parsed_dirname "$PARSED_DIRNAME" \
     --task_type AD \
     --config_yaml "$SCRIPT_DIR/config-AD-CoT.yaml" \
     --task_dir "$RESULTS_DIR/MedVision-AD-v2-CoT" \
@@ -50,6 +57,7 @@ python "$SCRIPT_DIR/viz_radar.py" \
 
 # TL-CoT, all models
 python "$SCRIPT_DIR/viz_radar.py" \
+    --parsed_dirname "$PARSED_DIRNAME" \
     --task_type TL \
     --config_yaml "$SCRIPT_DIR/config-TL-CoT.yaml" \
     --task_dir "$RESULTS_DIR/MedVision-TL-v2-CoT" \

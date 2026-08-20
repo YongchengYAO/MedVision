@@ -12,6 +12,9 @@
 #   TASK_DIR=<path>              Directory containing model subdirectories
 #
 # Optional:
+#   PARSED_DIRNAME=<name>        Per-model parsed-records folder (default: llm-parsed_gemma-4-31b;
+#                                use PARSED_DIRNAME=parsed for the strict-parse records; non-default
+#                                sources suffix the figure name with __${PARSED_DIRNAME})
 #   FIG_DIR=<path>               Output directory for figures (default: <MEDVISION_DIR>/Figures)
 #   FIG_NAME=<name>              Output filename (default: radar_<TASK_TYPE>.pdf)
 #   METRICS_LIST=<list>          Space-separated metric names (default: "Precision F1")
@@ -36,6 +39,7 @@ MEDVISION_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TASK_TYPE="${TASK_TYPE:-}"
 CONFIG_YAML="${CONFIG_YAML:-}"
 TASK_DIR="${TASK_DIR:-}"
+PARSED_DIRNAME="${PARSED_DIRNAME:-llm-parsed_gemma-4-31b}"
 FIG_DIR="${FIG_DIR:-$MEDVISION_DIR/Figures}"
 FIG_NAME="${FIG_NAME:-}"
 METRICS_LIST="${METRICS_LIST:-}"
@@ -85,6 +89,7 @@ python "$SCRIPT_DIR/viz_radar.py" \
     --task_type "$TASK_TYPE" \
     --config_yaml "$CONFIG_YAML" \
     --task_dir "$TASK_DIR" \
+    --parsed_dirname "$PARSED_DIRNAME" \
     --fig_dir "$FIG_DIR" \
     --fig_name "$FIG_NAME" \
     "${METRICS_ARG[@]}" \

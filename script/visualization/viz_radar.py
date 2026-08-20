@@ -319,6 +319,13 @@ def _reconstruct_tl_label(doc):
     return f"{new_label} @ {modality} ({slicetype})"
 
 
+def _parsed_dir_suffix(parsed_dirname):
+    """Mirror of the summarizers' output naming: ``""`` for ``"parsed"``, else
+    ``"__{parsed_dirname}"``. Applied to the output figure stem so figures from a
+    non-default source (e.g. llm-parsed_gemma-4-31b) cannot overwrite published ones."""
+    return "" if parsed_dirname == "parsed" else f"__{parsed_dirname}"
+
+
 def load_per_sample_values(parsed_dir, metric_name, common_labels, task_type="AD"):
     """Load per-sample metric values for a single model, used to draw violin plots.
 
@@ -722,7 +729,8 @@ def _boxplot_model_label(name, sr):
 
 
 def plot_angle_mae_boxplot(
-    task_dir, models, model_display_name, angle_labels, out_stem, formats=("pdf",)
+    task_dir, models, model_display_name, angle_labels, out_stem, formats=("pdf",),
+    parsed_dirname="parsed",
 ):
     """Save a box plot of per-sample angle MAE (degrees), one box per model.
 
@@ -749,7 +757,7 @@ def plot_angle_mae_boxplot(
     palette = model_palette(len(models))
     recs = []
     for i, model in enumerate(models):
-        parsed_dir = os.path.join(task_dir, model, "parsed")
+        parsed_dir = os.path.join(task_dir, model, parsed_dirname)
         if not os.path.isdir(parsed_dir):
             continue
         by_label = load_per_sample_values(
@@ -1049,6 +1057,7 @@ def plot_metrics_multi_model(
     label_col=None,
     legend_col=None,
     formats=("pdf",),
+    parsed_dirname="parsed",
 ):
     """Plot radar charts for metrics across all models.
 
@@ -1063,6 +1072,9 @@ def plot_metrics_multi_model(
         verbose_model: Optional model name or list of model names whose
             per-sample distributions are overlaid as violin plots on each spoke.
         show_label_name: When True, add a label number-to-name mapping panel.
+        parsed_dirname: Per-model subdirectory to read summaries/samples from
+            (e.g. ``llm-parsed_gemma-4-31b``). Non-default sources also suffix
+            the output figure stem with ``__{parsed_dirname}``.
     """
     Path(fig_dir).mkdir(exist_ok=True, parents=True)
 
@@ -1084,13 +1096,17 @@ def plot_metrics_multi_model(
     elif task_type == "TL":
         from medvision_bm.utils.configs import SUMMARY_FILENAME_TL_METRICS
 
-        json_filename = SUMMARY_FILENAME_TL_METRICS.replace(".json", "_filtered.json")
+        # Only the TL summarizer stamps its per-model summary JSON with the source
+        # suffix; AD/Detection write unsuffixed names inside the source folder.
+        json_filename = SUMMARY_FILENAME_TL_METRICS.replace(
+            ".json", f"_filtered{_parsed_dir_suffix(parsed_dirname)}.json"
+        )
     else:
         raise ValueError(f"Unsupported task_type: {task_type}")
 
     model_data = {}
     for model in models:
-        parsed_json_dir = os.path.join(task_dir, model, "parsed")
+        parsed_json_dir = os.path.join(task_dir, model, parsed_dirname)
         if not os.path.isdir(parsed_json_dir):
             raise ValueError(f"Parsed directory not found: {parsed_json_dir}")
         json_file = os.path.join(parsed_json_dir, json_filename)
@@ -1156,7 +1172,7 @@ def plot_metrics_multi_model(
             )
             for verbose_model_name in verbose_models:
                 verbose_parsed_dir = os.path.join(
-                    task_dir, verbose_model_name, "parsed"
+                    task_dir, verbose_model_name, parsed_dirname
                 )
                 verbose_samples_by_metric[metric][verbose_model_name] = (
                     load_per_sample_values(
@@ -1386,7 +1402,10 @@ def plot_metrics_multi_model(
             clip_on=False,
         )
 
-    stem = os.path.splitext(os.path.join(fig_dir, fig_name))[0]
+    stem = (
+        os.path.splitext(os.path.join(fig_dir, fig_name))[0]
+        + _parsed_dir_suffix(parsed_dirname)
+    )
     for fmt in formats:
         save_fig_capped(f"{stem}.{fmt}", bbox_inches="tight", transparent=True)
     output_file = f"{stem}.{formats[0]}"
@@ -1406,6 +1425,7 @@ def plot_metrics_multi_model(
             angle_labels,
             f"{stem}_angle-MAE-box",
             formats=formats,
+            parsed_dirname=parsed_dirname,
         )
 
 
@@ -1437,7 +1457,17 @@ def main():
         "--task_dir",
         type=str,
         required=True,
-        help="Directory containing model folders (each with a parsed/ subdirectory).",
+        help="Directory containing model folders (each with a {parsed_dirname} subdirectory).",
+    )
+    parser.add_argument(
+        "--parsed_dirname",
+        type=str,
+        default="parsed",
+        help=(
+            "Per-model subdirectory to read summaries/samples from, e.g. "
+            "llm-parsed_gemma-4-31b. Non-default sources suffix the output "
+            "figure name with __{parsed_dirname}. Default: parsed."
+        ),
     )
     parser.add_argument(
         "--fig_name",
@@ -1526,6 +1556,7 @@ def main():
         label_col=args.label_col,
         legend_col=args.legend_col,
         formats=formats,
+        parsed_dirname=args.parsed_dirname,
     )
 
 

@@ -526,7 +526,7 @@ def _draw_detection_overlay_on_ax(ax, doc, sample):
         ax.add_patch(mpatches.Rectangle((d0min, d1min), d0max - d0min, d1max - d1min, linewidth=4, edgecolor=C_GT_BOX, facecolor="none", linestyle="--", zorder=2))
 
     # Predicted bbox
-    pred_str = (sample.get("filtered_resps") or [""])[0]
+    pred_str = (_sample_resps(sample) or [""])[0]
     pred_bbox = _parse_bbox(pred_str)
     if pred_bbox:
         d0min, d1min, d0max, d1max = _bbox_to_dim01(pred_bbox, H, W)
@@ -543,12 +543,19 @@ def _draw_detection_overlay_on_ax(ax, doc, sample):
 # ── Sample data helpers ────────────────────────────────────────────────────────
 
 
+def _sample_resps(sample):
+    """Prediction text list: strict-parse rows carry "filtered_resps"; llm-parsed
+    rows carry "LLM_filtered_resps" instead (never both — the judge pipeline
+    removes the strict key when it writes a record)."""
+    return sample.get("filtered_resps") or sample.get("LLM_filtered_resps") or []
+
+
 def _build_metrics_tokens(sample):
     """Return token list for the metrics section."""
     raw_target = sample.get("target", "[]")
     gt_bbox = json.loads(raw_target) if isinstance(raw_target, str) else raw_target
 
-    pred_str = (sample.get("filtered_resps") or [""])[0]
+    pred_str = (_sample_resps(sample) or [""])[0]
     pred_bbox = _parse_bbox(pred_str)
 
     iou = sample.get("avgIoU", {}).get("IoU")
@@ -802,7 +809,15 @@ def main():
     parser.add_argument(
         "--model_dir",
         default=None,
-        help="Model results folder; loops all *.jsonl in {model_dir}/parsed/.",
+        help="Model results folder; loops all *.jsonl in {model_dir}/{parsed_dirname}/.",
+    )
+    parser.add_argument(
+        "--parsed_dirname",
+        default="parsed",
+        help=(
+            "Per-model subdirectory to read parsed records from, e.g. "
+            "llm-parsed_gemma-4-31b (--model_dir mode only). Default: parsed."
+        ),
     )
     parser.add_argument("--output_dir", required=True)
     parser.add_argument(
@@ -844,8 +859,8 @@ def main():
     os.makedirs(args.output_dir, exist_ok=True)
 
     if args.model_dir:
-        # ── Batch mode: loop all JSONL files in {model_dir}/parsed/ ──────────
-        parsed_dir = os.path.join(args.model_dir, "parsed")
+        # ── Batch mode: loop all JSONL files in {model_dir}/{parsed_dirname}/ ─
+        parsed_dir = os.path.join(args.model_dir, args.parsed_dirname)
         if not os.path.isdir(parsed_dir):
             raise FileNotFoundError(f"Parsed directory not found: {parsed_dir}")
         all_jsonls = sorted(glob.glob(os.path.join(parsed_dir, "*.jsonl")))
