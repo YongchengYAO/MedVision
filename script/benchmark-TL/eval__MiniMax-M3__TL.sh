@@ -133,7 +133,7 @@ flock "${lockfile}" python -m pip install --force-reinstall "${built_wheel}"
 
 # Use MedVision dataset v1.0.0
 export MedVision_PLANNER_VERSION='1.0.0'
-export MedVision_ACK_RELEASE='1.1.1'
+export MedVision_ACK_RELEASE='1.4.0'
 
 # Eval args shared by the setup-only and run passes (defined once to avoid drift).
 common_args=(

@@ -127,3 +127,14 @@ unfiltered run. This flag exists only on `summarize_TL_task`.
 Omitting `--removed_samples_dir` for T/L silently includes the multi-cluster samples and yields numbers
 that do not line up with the [paper](https://arxiv.org/abs/2511.18676).
 :::
+
+## Beyond the published numbers
+
+Two follow-on analyses build directly on the `parsed/` records this page produces:
+
+- [LLM-judge output parsing](llm-judge-parsing.md) re-reads every raw response with a second,
+  LLM-based reader so answers written outside the `<answer>` tags are recovered — separating
+  *can't measure* from *didn't follow the output format*.
+- [Clinical Decision Agreement](clinical-decision-agreement.md) pushes each parsed measurement
+  through published clinical cutoffs (tumour staging, skeletal classification) and asks whether
+  the model's error would change the clinical decision.

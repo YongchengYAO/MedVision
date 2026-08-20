@@ -14,7 +14,7 @@ setup), then point MedVision at your data and pin the dataset planner version:
 
 ```bash
 export MedVision_DATA_DIR=/path/to/MedVision/Data
-export MedVision_PLANNER_VERSION=1.1.1
+export MedVision_PLANNER_VERSION=1.4.0
 ```
 
 `MedVision_DATA_DIR` tells the loader where the datasets live, and
@@ -22,7 +22,7 @@ export MedVision_PLANNER_VERSION=1.1.1
 dataset release so results are reproducible.
 
 :::{note}
-`MedVision_ACK_RELEASE=1.1.1` is only required when you pin
+`MedVision_ACK_RELEASE=1.4.0` is only required when you pin
 `MedVision_PLANNER_VERSION` *below* the latest release. Pinning the latest, as
 above, needs no acknowledgement variable.
 :::

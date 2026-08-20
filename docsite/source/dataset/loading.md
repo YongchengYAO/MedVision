@@ -42,18 +42,20 @@ Requesting any single config pulls the raw imaging data for that source dataset 
 
 | Value | Resolves to |
 |-------|-------------|
-| `latest` | the newest release (currently `1.1.1`) |
-| a pinned version — `1.1.1`, `1.1.0`, or `1.0.0` | that exact annotation release |
+| `latest` | the newest release (currently `1.4.0`) |
+| a pinned version — `1.0.0` through `1.4.0` | that exact annotation release |
 
 Different planner versions can change the exact set and framing of samples, so keep this value fixed across a benchmark to stay reproducible.
 
 :::{warning}
-Pinning **below** the latest version additionally requires `MedVision_ACK_RELEASE`. Set it to the current latest (`1.1.1`) to acknowledge you have read the release note; without it, loading legacy data is blocked.
+Pinning **below** the latest version additionally requires `MedVision_ACK_RELEASE`. Set it to the current latest (`1.4.0`) to acknowledge you have read the [release note](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.4.0.md); without it, loading legacy data is blocked.
 
 ```bash
 export MedVision_PLANNER_VERSION='1.1.0'
-export MedVision_ACK_RELEASE='1.1.1'
+export MedVision_ACK_RELEASE='1.4.0'
 ```
+
+Because v1.4.0 changed only the Tumour/Lesion-size annotations, only the 12 T/L datasets enforce this gate; Angle/Distance and detection workloads load older pins without it.
 :::
 
 ## Loading unfiltered (multi-instance) samples

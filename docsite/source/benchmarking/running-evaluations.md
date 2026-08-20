@@ -16,10 +16,10 @@ Open-weight and API launchers share the same shape. Reading one top-to-bottom is
 
    ```bash
    export MedVision_PLANNER_VERSION='1.0.0'
-   export MedVision_ACK_RELEASE='1.1.1'
+   export MedVision_ACK_RELEASE='1.4.0'
    ```
 
-   `MedVision_PLANNER_VERSION` selects which released version of the dataset planner (i.e., annotations) the run evaluates. `MedVision_ACK_RELEASE` is a required acknowledgement whenever you pin the planner below the latest release. See [dataset concepts](../dataset/concepts.md) for what these control.
+   `MedVision_PLANNER_VERSION` selects which released version of the dataset planner (i.e., annotations) the run evaluates. `MedVision_ACK_RELEASE` is a required acknowledgement whenever you pin the planner below the latest release — its value is always the *current latest* (`1.4.0`), whatever version you pin. See [dataset concepts](../dataset/concepts.md) for what these control.
 
 4. **Install runtime dependencies.** Three helper entry points do this:
 

@@ -67,6 +67,9 @@ MedVision benchmarks **19 vision–language models** — open-weight general-pur
 
 
 # 🔥 News
+- [Aug 19, 2026] 🚀 Release **MedVision** dataset v1.4.0 [[release-v1.4.0]](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.4.0.md)
+  - Regenerate Tumor-Lesion-Size annotations for all 12 tumour/lesion datasets: multi-instance annotations 75K --> 3.8M 
+
 - [Aug 9, 2026] 🚀 Release **MedVision** dataset v1.3.0 [[release-v1.3.0]](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.3.0.md)
   - New dataset: MSWAL (484 abdominal CT cases; tumor/lesion labels: liver tumour, kidney tumour, pancreatic cancer, liver cyst, and kidney cyst).
 
@@ -584,7 +587,19 @@ Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`]
       -p 32
       ```
 
-- **[File structure]** after steps 1-3
+4. (Recommended) LLM-judge parsing — the format-robust second pass
+
+      The regex parser in step 2 only accepts answers written inside `<answer>…</answer>`, so a response that states a correct answer in any other form (`\boxed{…}`, `**Answer:** …`, plain prose) is scored as a miss — mixing *"the model can't measure"* with *"the model didn't follow the output format"*. The [LLM-judge pipeline](https://github.com/YongchengYAO/MedVision/tree/master/script/llm-parsing) re-reads every response with a judge model whose only job is to find and quote the answer, wherever it was written. **Regex parsing (steps 2–3) and LLM-judge parsing together are the complete parsing scheme — run both**: the diff between the two reports is how much of a model's apparent failure was formatting.
+
+      > Command (one command runs the whole pipeline — work-list building, judging, span verification, metrics, and reports; resumable):
+      >
+      > bash script/llm-parsing/run_llm_parsing.sh
+
+      - The judge never sees the image or the ground truth, and it can never revise an answer the regex already found. Every recovered number is re-read from a sentence quoted out of the original response, so a number the model never wrote cannot enter the results.
+      - The metrics are computed by the same step-3 summarizers, pointed at the re-parsed records.
+      - **The file structure after LLM parsing is different from steps 2–3**: everything is written *next to* the regex-parsed files, never over them — a sibling `llm-parsed_<judge>/` folder beside each model's `parsed/`, and task-level reports carrying a `__llm-parsed_<judge>` suffix (`<judge>` is the judge-model key, default `gemma-4-31b`). See the file-structure block below.
+
+- **[File structure]** after steps 1-4
 
   ```text
   ├── MedVision
@@ -601,12 +616,20 @@ Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`]
   │   │   │   │   │   ├── *.jsonl                     # <== [step 2] parsed model outputs
   │   │   │   │   │   ├── *.json                      # <== [step 2] parsed summary file
   │   │   │   │   │   ├── summary_*                   # <== [step 3] mean metrics, values
+  │   │   │   │   ├── llm-parsed_<judge>              # <== [step 4] format-robust re-parse; parsed/ is never touched
+  │   │   │   │   │   ├── *.jsonl                     #        re-parsed records: outcome label + quoted answer span
+  │   │   │   │   │   ├── summary_*                   #        mean metrics, values (same summarizer as step 3)
+  │   │   │   │   │   ├── summary_metrics_judge_Task.json    # per-model failure decomposition
   │   │   │   │   ├── response_cache                  # <== [step 1] per-sample resume cache (auto; MEDVISION_RESP_CACHE=0 to disable)
   │   │   │   │   │   ├── *_rank*.jsonl               #        one line per finished sample, written as produced
   │   │   │   │   ├── *.jsonl                         # <== [step 1] model outputs
   │   │   │   │   ├── *.json                          # <== [step 1] summary file
   │   │   │   ├── ...
   │   │   │   ├── summary_detection_task.txt          # <== [step 3] summary
+  │   │   │   ├── judge-queue_Detection.jsonl         # <== [step 4] work list, one row per response
+  │   │   │   ├── judge-out_Detection_<judge>.jsonl   # <== [step 4] the judge's raw answers
+  │   │   │   ├── summary_detection_task__llm-parsed_<judge>.txt  # <== [step 4] format-robust summary (diff against summary_detection_task.txt)
+  │   │   │   ├── summary_judge_task__llm-parsed_<judge>.txt      # <== [step 4] wrong-format vs. no-answer breakdown + judge validity
   │   │   ├── MedVision-TL
   │   │   │   ├── ...
   │   │   │   ├── summary_TL_task.txt                 # <== [step 3] summary

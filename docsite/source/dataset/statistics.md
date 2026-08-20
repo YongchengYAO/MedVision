@@ -1,11 +1,11 @@
 # Dataset versions & statistics
 
-Every MedVision annotation is produced by a versioned *planner* (`1.0.0`, `1.1.0`, `1.1.1`, `1.2.0`), and the exact set of benchmark samples depends on which planner version you load. This page collects the version guidance, the per-subtask index files, and the aggregate per-dataset statistics you need to know which numbers apply to your run.
+Every MedVision annotation is produced by a versioned *planner* (`1.0.0` through `1.4.0`), and the exact set of benchmark samples depends on which planner version you load. This page collects the version guidance, the per-subtask index files, and the aggregate per-dataset statistics you need to know which numbers apply to your run.
 
 For what a *sample* actually is (and why several instances of a target on one slice count once), see [Dataset concepts](concepts.md#multi-instance-vs-single-instance-annotations). For the env var that toggles the sample filter, see [Loading data](loading.md#loading-unfiltered-multi-instance-samples).
 
 :::{important}
-**Leaderboard results use annotation v1.0.0.** All published leaderboard numbers are computed on the **v1.0.0** annotations, with ambiguous cases (multi-instance targets) removed during metric calculation as a workaround. For new studies we recommend the **latest** annotation version (currently **v1.2.0**), which is what `MedVision_PLANNER_VERSION=latest` resolves to.
+**Leaderboard results use annotation v1.0.0.** All published leaderboard numbers are computed on the **v1.0.0** annotations, with ambiguous cases (multi-instance targets) removed during metric calculation as a workaround. For new studies we recommend the **latest** annotation version (currently **v1.4.0**), which is what `MedVision_PLANNER_VERSION=latest` resolves to.
 :::
 
 ## Subtasks map to dataset subsets
@@ -66,7 +66,39 @@ The **Seg. annotations** column counts segmentation-mask (`MaskSize`) annotation
 
 ## Benchmark annotations by version
 
-The three quantitative tasks — **Box** (detection), **T/L** (tumor/lesion size), and **A/D** (biometrics) — contribute the benchmark-annotation counts. Only **T/L** annotations have ever been regenerated (in `1.1.0` and `1.1.1`); **Box** and **A/D** are byte-identical in every release. A total can therefore move for either of two reasons: a T/L correction, or a release adding datasets. Each row below sums over the datasets its release contained — 30 for `1.2.0`, 22 for the others:
+The three quantitative tasks — **Box** (detection), **T/L** (tumor/lesion size), and **A/D** (biometrics) — contribute the benchmark-annotation counts. Only **T/L** annotations have ever been regenerated — most recently in `1.4.0`, which regenerates all 12 T/L datasets (see below) — while **Box** and **A/D** are byte-identical in every release. A total can therefore move for either of two reasons: a T/L regeneration, or a release adding datasets.
+
+### v1.4.0: regenerated T/L annotations
+
+**v1.4.0 regenerates the Tumor-Lesion-Size annotations of all 12 T/L datasets.** Clusters are now selected by a physical size floor in millimetres — `max(2.0 mm, 2 × the coarser in-plane spacing)` of the measured plane — instead of a raw pixel count, a gate that silently discarded rotated ellipses is removed, and the ellipse fit is guarded against degenerate results (the method is described under [Dataset concepts](concepts.md#multi-instance-vs-single-instance-annotations)). Published T/L landmarks grow from **75,840 to 3,801,540 (50×)**; every other task and every previously published annotation file is unchanged. Full details are in the [v1.4.0 release note](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.4.0.md).
+
+Landmarks across all three planes, previous published version → v1.4.0:
+
+| Dataset | From | Landmarks | Factor |
+| --- | --- | ---: | ---: |
+| DEEP-PSMA | 1.2.0 | 753 → 156,439 | 208× |
+| LNQ2023 | 1.2.0 | 238 → 37,898 | 159× |
+| autoPET-III | 1.1.1 | 3,118 → 488,375 | 157× |
+| LIDC-IDRI | 1.2.0 | 515 → 59,179 | 115× |
+| MAMA-MIA | 1.2.1 | 5,071 → 369,419 | 73× |
+| PI-CAI | 1.2.1 | 409 → 28,324 | 69× |
+| BraTS24 | 1.1.1 | 26,198 → 1,645,550 | 63× |
+| MSD | 1.1.1 | 12,914 → 712,247 | 55× |
+| HNTSMRG24 | 1.1.1 | 3,188 → 69,093 | 22× |
+| MSWAL | 1.3.0 | 12,260 → 145,136 | 12× |
+| KiTS23 | 1.1.1 | 8,034 → 76,016 | 9.5× |
+| KiPA22 | 1.1.1 | 3,142 → 13,864 | 4.4× |
+| **Total** | | **75,840 → 3,801,540** | **50×** |
+
+The loader still discards multi-cluster slices, so published sample counts grow by less than the raw landmark counts above.
+
+:::{warning}
+**The train/test split moved on six datasets.** Case counts per split are unchanged, but *which* cases land on each side changes for HNTSMRG24 (47%), KiPA22 (43%), KiTS23 (43%), MSD (42%), autoPET-III (41%) and BraTS24 (41%) — their earlier splits were force-aligned to v1.0.0, and v1.4.0 is their first natural seeded split. Do not compare a v1.4.0 test-set metric against a pre-1.4.0 one on those six datasets, and re-derive any cached split.
+:::
+
+### Per-version annotation counts
+
+Each row below sums over the datasets its release contained — 30 for `1.2.0`, 22 for the others. The tabulated summaries currently end at `1.2.0`; rows for the newer releases will be added when their summary artifacts are generated (`1.4.0` changes only the T/L counts):
 
 | Planner version | Single-instance (filtered) | Multi-instance (unfiltered) |
 |---|--:|--:|
