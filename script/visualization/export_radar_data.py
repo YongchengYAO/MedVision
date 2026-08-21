@@ -28,7 +28,8 @@ not here — this blob stores the ORIGINAL metric values so the hover tooltip ca
 Example
 -------
     PYTHONPATH=src python script/visualization/export_radar_data.py \
-        --page_dir /mnt/vincent-pvc-rwm/Github/medvision-vlm.github.io
+        --page_dir /mnt/vincent-pvc-rwm/Github/medvision-vlm.github.io \
+        --parsed_dirname llm-parsed_gemma-4-31b
 """
 import argparse
 import json
@@ -73,6 +74,7 @@ TASKS = {
         "task_dir": "MedVision-TL-v2-CoT",
         "config": "config-TL-CoT.yaml",
         "summary": SUMMARY_FILENAME_TL_METRICS.replace(".json", "_filtered.json"),
+        "suffix_summary": True,  # filtered summary gains __{parsed_dirname} (mirrors viz_radar)
         "min_samples": None,
         "split_ad": False,
         "metrics": [
@@ -96,6 +98,7 @@ TASKS = {
         "task_dir": "MedVision-TL-CoT-limit100",
         "config": "config-TL-pilot-CoT.yaml",
         "summary": "summary_metrics_TL_Task_filtered_limit100.json",
+        "pin_parsed": True,  # API pilot models have no LLM-judge records — always read parsed/
         "min_samples": None,
         "split_ad": False,
         "metrics": [
@@ -123,7 +126,7 @@ def _round(v):
     return round(f, 4)
 
 
-def _load_task_frames(task_dir, config_path, summary, metric_keys, min_samples, task_type):
+def _load_task_frames(task_dir, config_path, summary, metric_keys, min_samples, task_type, parsed_dirname):
     """Return ``(model_display_order, {display_name: {target: row}})`` for one task.
 
     Reads every model listed in the config's ``model_display_name`` map, extracts the requested
@@ -139,7 +142,7 @@ def _load_task_frames(task_dir, config_path, summary, metric_keys, min_samples, 
     extract = list(metric_keys) + ["SuccessRate"]
     order, frames = [], {}
     for model_key, display in display_map.items():
-        parsed_dir = os.path.join(task_dir, model_key, "parsed")
+        parsed_dir = os.path.join(task_dir, model_key, parsed_dirname)
         json_file = os.path.join(parsed_dir, summary)
         if not os.path.exists(json_file):
             sys.exit(f"[radar] missing summary for '{display}': {json_file}")
@@ -153,14 +156,18 @@ def _load_task_frames(task_dir, config_path, summary, metric_keys, min_samples, 
     return order, frames
 
 
-def build_task(spec, results_dir, task_type):
+def build_task(spec, results_dir, task_type, parsed_dirname):
     """Build one task's blob: metric list + spoke groups + per-model per-spoke values."""
     task_dir = os.path.join(results_dir, spec["task_dir"])
     config_path = os.path.join(SCRIPT_DIR, spec["config"])
     metric_keys = [m["key"] for m in spec["metrics"]]
 
+    dirname = "parsed" if spec.get("pin_parsed") else parsed_dirname
+    summary = spec["summary"]
+    if spec.get("suffix_summary"):
+        summary = summary.replace(".json", f"{viz_radar._parsed_dir_suffix(dirname)}.json")
     order, frames = _load_task_frames(
-        task_dir, config_path, spec["summary"], metric_keys, spec["min_samples"], task_type
+        task_dir, config_path, summary, metric_keys, spec["min_samples"], task_type, dirname
     )
 
     # Spokes = sorted intersection of targets across ALL models (faithful to viz_radar).
@@ -232,12 +239,21 @@ def main():
     ap.add_argument("--page_dir", required=True, help="Project page repo (medvision-vlm.github.io).")
     ap.add_argument("--results_dir", default=DEFAULT_RESULTS_DIR, help="MedVision Results/ directory.")
     ap.add_argument("--out", default=None, help="Output JS path (default <page_dir>/static/js/radar-data.js).")
+    ap.add_argument(
+        "--parsed_dirname",
+        default="parsed",
+        help=(
+            "Per-model subdirectory to read summaries from, e.g. llm-parsed_gemma-4-31b. "
+            "The TL filtered summary filename gains __{parsed_dirname} for non-default "
+            "sources (mirrors viz_radar); TL-Pilot always reads parsed/. Default: parsed."
+        ),
+    )
     args = ap.parse_args()
 
     task_types = {"Detection": "Detection", "TL": "TL", "AD": "AD", "TL-Pilot": "TL"}
     tasks, orders = {}, {}
     for task, spec in TASKS.items():
-        tasks[task], orders[task] = build_task(spec, args.results_dir, task_types[task])
+        tasks[task], orders[task] = build_task(spec, args.results_dir, task_types[task], args.parsed_dirname)
 
     # Model identity is the display name. The three full-benchmark tasks must share the same 18-model
     # set (assert it); the pilot deliberately compares a different, smaller set. So build the UNION,

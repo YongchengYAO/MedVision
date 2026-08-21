@@ -55,8 +55,8 @@
 #   TASKS         default "TL AD Detection"
 #   TASK_DIR_<task>    re-point one task at another Results tree (task = TL, AD
 #                 or Detection). ROSTER_YAML_<task> swaps its roster YAML in the
-#                 same move. How run_llm_parsing_ood.sh reuses this pipeline for
-#                 the OOD splits; unset means the main benchmark tree + the
+#                 same move. How the OOD splits reused this pipeline without a
+#                 second copy of it; unset means the main benchmark tree + the
 #                 paper roster, exactly as before.
 #   TP            GPUs ONE engine spans (tensor parallel), overriding the reader's
 #                 registry value. Default 1: with NUM_SHARDS=1 below, the whole
@@ -105,11 +105,11 @@ PROCS="${PROCS:-32}"
 # pre-set TP as JUDGE_TP. A ~62 GB reader on one 80 GB card keeps only ~10 GB
 # for KV cache, so this trades throughput for footprint; raise BOTH knobs for a
 # multi-GPU layout (TP=2 NUM_SHARDS=2 = four GPUs). Set here rather than in
-# run_judge so smoke, the sweep and the OOD driver all see one resolution.
+# run_judge so smoke, the sweep and re-pointed runs all see one resolution.
 TP="${TP:-1}"
 # GPU_NUM is the total-GPU spelling of the same layout: NUM_SHARDS derived as
 # GPU_NUM / TP. Resolved here, before the default below, so an explicit
-# NUM_SHARDS still wins and every consumer (smoke, sweep, OOD driver) sees one
+# NUM_SHARDS still wins and every consumer (smoke, sweep, re-pointed runs) sees one
 # answer. Divisibility is enforced rather than rounded: silently dropping the
 # remainder would leave paid-for cards idle while claiming to use them.
 if [ -z "${NUM_SHARDS:-}" ] && [ -n "${GPU_NUM:-}" ]; then
@@ -350,11 +350,11 @@ check_analysis_imports() {
   printf '  %s\n' "${remedy}"
 }
 
-# TASK_DIR_<task> re-points a task at a different Results tree -- how
-# run_llm_parsing_ood.sh reuses this whole pipeline for the OOD splits without a
-# second copy of it. Defaults are the main benchmark trees, as before. The same
-# variables are honoured by test-sweep.sh and unit-test/llm-parsing/test-8.py,
-# so every stage of one run resolves the same tree.
+# TASK_DIR_<task> re-points a task at a different Results tree -- how the OOD
+# splits reused this whole pipeline without a second copy of it. Defaults are
+# the main benchmark trees, as before. The same variables are honoured by
+# test-sweep.sh and unit-test/llm-parsing/test-8.py, so every stage of one run
+# resolves the same tree.
 task_dir() {
   case "$1" in
     TL)        echo "${TASK_DIR_TL:-Results/MedVision-TL-v2-CoT}" ;;
