@@ -70,50 +70,82 @@ MedVision benchmarks **19 vision–language models** — open-weight general-pur
 
 # 🔥 News
 - [Aug 19, 2026] 🚀 Release **MedVision** dataset v1.4.0 [[release-v1.4.0]](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.4.0.md)
+  <details>
+  <summary>Details (Click to expand)</summary>
+
   - Regenerate Tumor-Lesion-Size annotations for all 12 tumour/lesion datasets: multi-instance annotations 75K --> 3.8M 
 
+  </details>
+
 - [Aug 9, 2026] 🚀 Release **MedVision** dataset v1.3.0 [[release-v1.3.0]](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.3.0.md)
+  <details>
+  <summary>Details (Click to expand)</summary>
+
   - New dataset: MSWAL (484 abdominal CT cases; tumor/lesion labels: liver tumour, kidney tumour, pancreatic cancer, liver cyst, and kidney cyst).
 
+  </details>
+
 - [Aug 3, 2026] 🚀 Release **MedVision** dataset v1.2.1 [[release-v1.2.1]](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.2.1.md)
+  <details>
+  <summary>Details (Click to expand)</summary>
+
   - ⚠️ **Corrects MAMA-MIA and PI-CAI, whose v1.2.0 annotations were recorded in the source orientation** instead of RAS+ — the loader reoriented the images at load time without renumbering the coordinates. Their v1.2.0 annotations are **withdrawn**. If you have used either dataset, [clear that cache once](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.2.1.md#do-i-need-to-do-anything).
   - **No other dataset is affected** — the other 28 resolve to exactly the same annotation files as at v1.2.0.
   - New: [`scripts/gen-annotations/`](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/scripts/gen-annotations/README.md) rebuilds the preprocessed images and annotations of any dataset from its original source -- For the record only, you never use it to load data.
 
+  </details>
+
 - [Jul 28, 2026] 🚀 Release **MedVision** dataset v1.2.0 [[release-v1.2.0]](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.2.0.md)
+  <details>
+  <summary>Details (Click to expand)</summary>
+
   - Highlight: 8 new datasets (130 configs) — AFIDs, DEEP-PSMA, LIDC-IDRI, LNQ2023, MAMA-MIA, PDDCA, PI-CAI, VerSe.
   - **No existing annotation changed.** Annotation versions now resolve per dataset: the version you set is a *ceiling*, and each dataset loads the newest annotation it published at or before it. Pinning `'1.1.1'` or older keeps working for every pre-existing dataset (check [Annotation Version Control](https://medvision-vlm.github.io/explorer.html)).
   - ⚠️ **Fixes a stale-cache defect present in all earlier versions.** The cache key used the version you *requested* rather than the annotation actually loaded, so `load_dataset` could silently return previously cached rows after the annotations changed — which really happened, to the v1.1.0 T/L train/test split. See [Fixed: cached data could be stale](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.2.0.md#fixed-cached-data-could-be-stale) for who is affected and how to clear it. The data root is now part of the key too, which matters only if your HuggingFace cache is not already co-located with it. Because the cache key changed, **existing Arrow caches rebuild once** on next use (reads the annotation file, no re-download)
 
+  </details>
+
 - [Jul 21, 2026] Updated [leaderboard](https://medvision-vlm.github.io/) and [data explorer](https://medvision-vlm.github.io/explorer.html) 
 
 - [Jul 4, 2026] Released the benchmarking/fine-tuning codebase `medvision_bm` v1.1.1 — [release notes](https://github.com/YongchengYAO/MedVision/blob/master/docs/codebase-release/release-v1.1.1.md)
+  <details>
+  <summary>Details (Click to expand)</summary>
+
   - 📚 New [documentation site](https://medvision.readthedocs.io/en/latest/index.html) on Read the Docs: installation, dataset, benchmarking, and fine-tuning guides plus the full CLI and Python API reference.
 
+  </details>
+
 - [Jun 29, 2026] 🚀 Released the **MedVision** dataset (`medvision_ds`) v1.1.1 — [release notes](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.1.md)
+  <details>
+  <summary>Details (Click to expand)</summary>
+
   - **Highlight**: corrected T/L ellipse fit — fixes a transposed in-plane voxel-spacing bug (wrong axis lengths and major/minor labelling on anisotropic slices, e.g. sagittal/coronal); ~22% fewer T/L samples on anisotropic data, isotropic data (e.g., axial slices) essentially unchanged
   - **Backward compatibility**: The codebase `medvision_ds` will be automatically updated to the latest (v1.1.1). `MedVision_PLANNER_VERSION='latest'` now resolves to `'1.1.1'`; pin `'1.1.0'` or `'1.0.0'` for earlier annotations.
   - ⚠️ New env var `MedVision_ACK_RELEASE`: required **only** when you pin an older version (`MedVision_PLANNER_VERSION` below the latest) — **set it to the latest version (`1.1.1`) to acknowledge you have read this release note and unblock loading legacy data**. 
   - Always set `MedVision_FORCE_INSTALL_CODE='True'` to receive notification of future releases. See [Environment Variables](https://huggingface.co/datasets/YongchengYAO/MedVision#environment-variables).
 
-- [Jun 9, 2026] Released [MedVision-V0](https://huggingface.co/collections/YongchengYAO/medvision-v0), [RFT code](https://github.com/YongchengYAO/verl/tree/medvision-rl), [preprint v2](https://arxiv.org/abs/2511.18676), [project page](https://medvision-vlm.github.io/) with interactive case viewer. 
+  </details>
 
-<details>
-<summary>Older news (Click to expand)</summary>
+- [Jun 9, 2026] Released [MedVision-V0](https://huggingface.co/collections/YongchengYAO/medvision-v0), [RFT code](https://github.com/YongchengYAO/verl/tree/medvision-rl), [preprint v2](https://arxiv.org/abs/2511.18676), [project page](https://medvision-vlm.github.io/) with interactive case viewer. 
 
 - [May 15, 2026] Released the benchmarking/fine-tuning codebase `medvision_bm` v1.1.0 — [release notes](https://github.com/YongchengYAO/MedVision/blob/master/docs/codebase-release/release-v1.1.0.md)
 
 - [May 14, 2026] Released the **MedVision** dataset (`medvision_ds`) v1.1.0 — [release notes](https://github.com/YongchengYAO/MedVision/tree/master/docs/dataset-release/release-v1.1.0.md)
+  <details>
+  <summary>Details (Click to expand)</summary>
+
   - **Highlight**: new T/L sample filtering (with ambiguous cases removed), more T/L samples with a single small target (cluster size > 20)
   - **Backward compatibility**: The codebase `medvision_ds` will be automatically updated to the latest (v1.1.0). `MedVision_PLANNER_VERSION` is required (v1.1.0+) to specify the annotation data version. Setting `MedVision_PLANNER_VERSION='1.0.0'` will fall back to **MedVision** dataset v1.0.0.
   - 🧪 Test backward compatibility: 
   ```bash
   python unit-test/medvision-ds-planner-version/test_planner_switch_medvision_ds_v1.1.0.py --data_dir <local-data-folder>
   ```
-- [Dec 10, 2025] Added preprint, training code, docker images, released models, new tasks/models guide
-- [Oct 8, 2025] Released **MedVision** dataset v1.0.0
 
-</details>
+  </details>
+
+- [Dec 10, 2025] Added preprint, training code, docker images, released models, new tasks/models guide
+
+- [Oct 8, 2025] Released **MedVision** dataset v1.0.0
 
 <br/>
 
@@ -607,155 +639,111 @@ Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`]
 ### Steps
 1. The scripts in [`script/benchmark-*/`](https://github.com/YongchengYAO/MedVision/tree/master/script/) should be sufficient for dependency installation, data processing, and benchmarking
 
-     > Set these variables:
-     > - `benchmark_dir`: the working directory
-     > - `model_hf_id`: Hugging Face ID (`<user>/<model>`) of the tested model
-     > - `model_name`: user-defined identifier for the tested model, used as folder name in `Results/MedVision-*/`
-     > - resource-constrained configs, such as `batch_size_per_gpu`
+> [!TIP]
+> Set these variables:
+> - `benchmark_dir`: the working directory
+> - `model_hf_id`: Hugging Face ID (`<user>/<model>`) of the tested model
+> - `model_name`: user-defined identifier for the tested model, used as folder name in `Results/MedVision-*/`
+> - resource-constrained configs, such as `batch_size_per_gpu`
 
-     > **Crash-safe resume.** 
-     > 
-     > During evaluation each finished output is written immediately to `Results/MedVision-*/<model_name>/response_cache/<task>_rank<N>.jsonl`, so re-running an interrupted eval skips already-completed samples instead of regenerating them — only the in-flight sample is lost. The cache key includes a hash of the prompt, so editing a prompt/config automatically invalidates stale entries (no need to clear the folder). Set the environment variable `MEDVISION_RESP_CACHE=0` to disable this layer entirely and reproduce the original (no-cache) behavior.
+> [!NOTE]
+> **Crash-safe resume.** 
+> 
+> During evaluation each finished output is written immediately to `Results/MedVision-*/<model_name>/response_cache/<task>_rank<N>.jsonl`, so re-running an interrupted eval skips already-completed samples instead of regenerating them — only the in-flight sample is lost. The cache key includes a hash of the prompt, so editing a prompt/config automatically invalidates stale entries (no need to clear the folder). Set the environment variable `MEDVISION_RESP_CACHE=0` to disable this layer entirely and reproduce the original (no-cache) behavior.
 
 2. After evaluating all models in step 1, parse model outputs and calculate metrics (e.g., MRE, MAE, nMAE, IoU, F1, Precision, Recall, Success Rate). Base command:
 
-     > Command:
-     > python -m medvision_bm.benchmark.parse_outputs
-     > 
-     > Arguments:
-     > - `--task_type`: one of `["AD", "TL", "Detection"]`
-     > - `--task_dir`: task folder
-     > - `--model_dir`: model folder
-     > - `--limit`: limit sample size in the parsed files
-     > - `--skip_existing`: (store_true) skip parsed files
-     > - `--processes`, `-p`: number of processes
-     > - `--rm_old`: remove existing `parsed` folder for each model
+> [!TIP]
+> Command:
+> python -m medvision_bm.benchmark.parse_outputs
+> 
+> Arguments:
+> - `--task_type`: one of `["AD", "TL", "Detection"]`
+> - `--task_dir`: task folder
+> - `--model_dir`: model folder
+> - `--limit`: limit sample size in the parsed files
+> - `--skip_existing`: (store_true) skip parsed files
+> - `--processes`, `-p`: number of processes
+> - `--rm_old`: remove existing `parsed` folder for each model
 
-     Example 1 — parse all models for the T/L task:
+Example 1 — parse all models for the T/L task:
 
-     ```bash
-     python -m medvision_bm.benchmark.parse_outputs \
-     --task_type TL \
-     --task_dir Results/MedVision-TL \
-     -p 32
-     ```
+```bash
+python -m medvision_bm.benchmark.parse_outputs \
+--task_type TL \
+--task_dir Results/MedVision-TL \
+-p 32
+```
 
-     Example 2 — parse all models for the A/D task (remove existing `parsed` folder):
+Example 2 — parse all models for the A/D task (remove existing `parsed` folder):
 
-     ```bash
-     python -m medvision_bm.benchmark.parse_outputs \
-     --task_type AD \
-     --task_dir Results/MedVision-AD \
-     -p 32 \
-     --rm_old
-     ```
+```bash
+python -m medvision_bm.benchmark.parse_outputs \
+--task_type AD \
+--task_dir Results/MedVision-AD \
+-p 32 \
+--rm_old
+```
 
-     Example 3 — parse one model for the detection task and skip existing parsed files:
+Example 3 — parse one model for the detection task and skip existing parsed files:
 
-     ```bash
-     python -m medvision_bm.benchmark.parse_outputs \
-     --task_type Detection \
-     --model_dir Results/MedVision-detect/Qwen2.5-VL-32B-Instruct \
-     --skip_existing \
-     -p 32
-     ```
+```bash
+python -m medvision_bm.benchmark.parse_outputs \
+--task_type Detection \
+--model_dir Results/MedVision-detect/Qwen2.5-VL-32B-Instruct \
+--skip_existing \
+-p 32
+```
 
 3. Summarize model performance for each task
-  
-      > If `medvision_ds` is missing, install with:
-      >
-      > python -m medvision_bm.benchmark.install_medvision_ds --data_dir <local-data-folder>
 
-      > Command:
-      >
-      > python -m medvision_bm.benchmark.summarize_{AD,TL,detection}_task
-      > 
-      > Arguments:
-      > - `--task_dir`: task folder
-      > - `--model_dir`: model folder
-      > - `--limit`: limit sample size in the parsed files
-      > - `--skip_model_wo_parsed_files`: skip model directories that don't have a `parsed` folder
-      > - `--processes`, `-p`: number of processes
-      > - `--removed_samples_dir`: (TL task only) root directory with per-dataset removed_samples JSON files, used to filter ambiguous cases
+> [!TIP]
+> If `medvision_ds` is missing, install with:
+>
+> python -m medvision_bm.benchmark.install_medvision_ds --data_dir <local-data-folder>
 
-      Example 1 — summarize all models for the A/D task:
+> [!TIP]
+> Command:
+>
+> python -m medvision_bm.benchmark.summarize_{AD,TL,detection}_task
+> 
+> Arguments:
+> - `--task_dir`: task folder
+> - `--model_dir`: model folder
+> - `--limit`: limit sample size in the parsed files
+> - `--skip_model_wo_parsed_files`: skip model directories that don't have a `parsed` folder
+> - `--processes`, `-p`: number of processes
+> - `--removed_samples_dir`: (TL task only) root directory with per-dataset removed_samples JSON files, used to filter ambiguous cases
 
-      ```bash
-      python -m medvision_bm.benchmark.summarize_AD_task \
-      --task_dir Results/MedVision-AD \
-      -p 32
-      ```
+Example 1 — summarize all models for the A/D task:
 
-      Example 2 — summarize all models for the T/L task:
+```bash
+python -m medvision_bm.benchmark.summarize_AD_task \
+--task_dir Results/MedVision-AD \
+-p 32
+```
 
-      ```bash
-      python -m medvision_bm.benchmark.summarize_TL_task \
-      --task_dir Results/MedVision-TL \
-      --removed_samples_dir <local-data-folder>/Datasets \
-      -p 32
+Example 2 — summarize all models for the T/L task:
 
-      ```
+```bash
+python -m medvision_bm.benchmark.summarize_TL_task \
+--task_dir Results/MedVision-TL \
+--removed_samples_dir <local-data-folder>/Datasets \
+-p 32
 
-      Example 3 — summarize one model for the detection task:
+```
 
-      ```bash
-      python -m medvision_bm.benchmark.summarize_detection_task \
-      --model_dir Results/MedVision-detect/Qwen2.5-VL-32B-Instruct \
-      -p 32
-      ```
+Example 3 — summarize one model for the detection task:
+
+```bash
+python -m medvision_bm.benchmark.summarize_detection_task \
+--model_dir Results/MedVision-detect/Qwen2.5-VL-32B-Instruct \
+-p 32
+```
 
 4. (Recommended) LLM-judge parsing — the format-robust second pass
 
-      The regex parser in step 2 only accepts answers written inside `<answer>…</answer>`, so a response that states a correct answer in any other form (`\boxed{…}`, `**Answer:** …`, plain prose) is scored as a miss — mixing *"the model can't measure"* with *"the model didn't follow the output format"*. The [LLM-judge pipeline](https://github.com/YongchengYAO/MedVision/tree/master/script/llm-parsing) re-reads every response with a judge model whose only job is to find and quote the answer, wherever it was written. **Regex parsing (steps 2–3) and LLM-judge parsing together are the complete parsing scheme — run both**: the diff between the two reports is how much of a model's apparent failure was formatting.
-
-      Measured on the paper's 18-model roster: T/L success **77.0% → 89.7%**, A/D **73.8% → 90.1%**, Detection **93.4% → 98.4%**. Llama-3.2-Vision-11B's T/L success goes from 14.5% to 97.9% — almost all of its apparent failure was formatting.
-
-      > **Build the judge environment** (once per machine — the judge needs a newer vLLM than the evaluation code pins; the setup script prints the line to export):
-      >
-      > bash script/llm-parsing/setup_judge_env.sh
-      >
-      > export PYTHON=\<printed target\>/bin/python
-
-      > **Run the pipeline** — one driver for work-list building, judging, span verification, metrics and reports. Any working directory works; it re-roots itself to the repository, it is resumable (finished work is keyed by identity and skipped), and it stops at the first failed check:
-      >
-      > bash script/llm-parsing/run_llm_parsing.sh              # everything, in order
-      >
-      > bash script/llm-parsing/run_llm_parsing.sh --list       # show the steps, run nothing
-      >
-      > bash script/llm-parsing/run_llm_parsing.sh analyze      # just the CPU stages + reports
-      >
-      > bash script/llm-parsing/run_llm_parsing.sh --from full  # that step and everything after
-      >
-      > bash script/llm-parsing/run_llm_parsing.sh --help       # flags and environment knobs
-
-      The steps, in order (also printed by `--list`):
-
-      | step | what it does | cost |
-      |---|---|---|
-      | `prep` | move aside stale judge output, delete stale queues | destructive, seconds — the only step that asks for confirmation (`--yes` / `YES=1` answers it in advance; an unattended run without it **auto-declines**) |
-      | `stage0` | build the work queues; replay the strict parser as a gate | CPU, minutes |
-      | `smoke` | prove the judge returns the required schema | GPU, minutes |
-      | `pilot` | `PILOT_LIMIT` (100) rows per file, end to end + invariants | GPU, ~30 min |
-      | `full` | the judge over the whole roster, every task | GPU, ~13 h |
-      | `analyze` | verify, merge, reports, record invariants | CPU, ~1 h |
-
-      Rough cost on two H100s: a one-off ~62 GB model download, minutes of CPU preparation, about thirteen hours of GPU for the full sweep, an hour of CPU for the reports.
-
-      - The judge never sees the image or the ground truth, and it can never revise an answer the regex already found. Every recovered number is re-read from a sentence quoted out of the original response, so a number the model never wrote cannot enter the results.
-      - Every record is labelled with one of four outcomes: **answer in expected format** (the regex already had it), **answer in another format** (recovered and verified by the judge), **no answer stated**, or **undetermined** (the judge was unusable *and* the regex failed). "Undetermined" is the pipeline's own error rate — currently ~0.4% of responses — so the reported improvement is a floor, not a ceiling.
-      - The metrics are computed by the same step-3 summarizers, pointed at the re-parsed records.
-      - **Other Results trees** (the OOD splits, or a model added after a finished campaign) use the same driver re-pointed per task — there are no wrapper scripts. Choose the steps `stage0 full analyze`: `prep` would archive the very sweep being finished, and `smoke` is redundant once the judge has cleared the main sweep.
-
-        ```bash
-        TASKS="TL" \
-        TASK_DIR_TL=Results/MedVision-TL-v2-CoT-planeOOD \
-        ROSTER_YAML_TL=script/llm-parsing/config-TL-CoT-planeOOD.yaml \
-        PYTHON=<judge-env>/bin/python \
-        bash script/llm-parsing/run_llm_parsing.sh stage0 full analyze
-        ```
-
-      - **The file structure after LLM parsing is different from steps 2–3**: everything is written *next to* the regex-parsed files, never over them — a sibling `llm-parsed_<judge>/` folder beside each model's `parsed/`, and task-level reports carrying a `__llm-parsed_<judge>` suffix (`<judge>` is the judge-model key, default `gemma-4-31b`). See the file-structure block below.
-      - The judge's output is **not** bit-reproducible across GPU generations, so its own error rate is only comparable within one machine — release the saved `judge-out_*.jsonl`, not a re-run. Swap in a different judge with `--judge <key>` (`--judges` lists them) to check that a headline number is a property of the responses rather than of one reader's habits.
+The regex parser in step 2 only accepts answers written inside `<answer>…</answer>`, so a response that states a correct answer in any other form (`\boxed{…}`, `**Answer:** …`, plain prose) is scored as a miss — mixing *"the model can't measure"* with *"the model didn't follow the output format"*. The [LLM-judge pipeline](https://github.com/YongchengYAO/MedVision/tree/master/script/llm-parsing) re-reads every response with a judge model whose only job is to find and quote the answer, wherever it was written. **Regex parsing (steps 2–3) and LLM-judge parsing together are the complete parsing scheme — run both**: the diff between the two reports is how much of a model's apparent failure was formatting.
 
 - **[File structure]** after steps 1-4
 
@@ -810,7 +798,7 @@ Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`]
   - **Process accuracy** (`process-accuracy/analyze_process_accuracy_TL.py`, `process-accuracy/analyze_process_accuracy_AD.py`): step-by-step CoT accuracy for T/L (4 steps: major/minor axis endpoint norm-L2 → axis length MRE) and A/D (3 steps: landmark coordinate norm-L2 → scalar MRE), evaluated against ground truth.
   - **Equation accuracy** (`equation-accuracy/analyze_equation_accuracy_TL.py`, `equation-accuracy/analyze_equation_accuracy_AD.py`): arithmetic correctness independent of ground truth — extracts the equation the model wrote, evaluates it in Python, and computes MRE between that result and the model's own reported answer.
   - **Detection × target size** (`detection--target-size/run_analysis.sh`): detection metrics (F1, IoU, etc.) stratified by box-to-image ratio, revealing performance trends across small, medium, and large targets.
-  - **Clinical Decision Agreement (CDA)** (`clinical-decision-analysis/run_CDA_analysis.sh`): asks whether a measurement error would change the *clinical decision* — each prediction and its ground truth are pushed through a published cutoff table into a clinical category, and agreement is scored with Cohen's / weighted kappa. Re-reads existing `parsed/` records only: no re-inference, no GPU, seconds per model.
+  - **Clinical Decision Agreement (CDA)** (`clinical-decision-analysis/run_CDA_analysis.sh`): asks whether a measurement error would change the *clinical decision* — each prediction and its ground truth are pushed through a published cutoff table into a clinical category, and agreement is scored with Cohen's / weighted kappa. Re-reads existing `parsed/` records only: no re-inference, no GPU, seconds per model. Check the [CDA pipeline](https://github.com/YongchengYAO/MedVision/tree/master/script/analyze/clinical-decision-analysis).
 
 - **[Troubleshooting]** [here](https://github.com/YongchengYAO/MedVision/tree/master/docs/debug_env_setup.md)
 
@@ -823,16 +811,17 @@ Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`]
 
 - **[Script]** [`script/sft/train*.sh`](https://github.com/YongchengYAO/MedVision/tree/master/script/sft) handles dependency installation, data processing, and training.
 
-  > Set these variables in the script:
-  >
-  > - `benchmark_dir`: the working directory
-  > - `base_model_hf`: Hugging Face ID (`<user>/<model>`) of the base model, or the path to a local model folder.
-  > - `run_name`: an identifier for the current training
-  > - `merged_model_hf`: Hugging Face model name (`<model>`) of the merged model
-  > - resource-constrained configs, such as
-  >   - `per_device_train_batch_size`
-  >   - `gradient_accumulation_steps`
-  >   - `CUDA_VISIBLE_DEVICES=0,1,2,3` and `--num_processes=4`
+> [!TIP]
+> Set these variables in the script:
+>
+> - `benchmark_dir`: the working directory
+> - `base_model_hf`: Hugging Face ID (`<user>/<model>`) of the base model, or the path to a local model folder.
+> - `run_name`: an identifier for the current training
+> - `merged_model_hf`: Hugging Face model name (`<model>`) of the merged model
+> - resource-constrained configs, such as
+>   - `per_device_train_batch_size`
+>   - `gradient_accumulation_steps`
+>   - `CUDA_VISIBLE_DEVICES=0,1,2,3` and `--num_processes=4`
 
 - **[Blog]** [Supervised Fine-Tuning (SFT) for VLMs on Medical Image Data](https://huggingface.co/blog/YongchengYAO/medvision-sft-guide)
 
@@ -1022,6 +1011,18 @@ In `MedVision.py`, the class `MedVision(GeneratorBasedBuilder)` defines the feat
 <summary>Code block in `_generate_examples` (Click to expand)</summary>
 
   ```python
+  # Env var to disable per-sample quality filtering. When true, the size/cluster
+  # exclusion filters below are bypassed so every sample in the planner is returned.
+  # The distance/angle metric_type split (task partitioning) is always preserved.
+  disable_sample_filtering = (
+      os.environ.get("MedVision_DISABLE_SAMPLE_FILTERING", "False").lower()
+      == "true"
+  )
+  if disable_sample_filtering:
+      logger.info(
+          "MedVision_DISABLE_SAMPLE_FILTERING=true — quality/size sample filters bypassed"
+      )
+
   # Task type: Mask-Size
   if taskType == "Mask-Size":
       flatten_slice_profiles = (
@@ -1036,7 +1037,7 @@ In `MedVision.py`, the class `MedVision(GeneratorBasedBuilder)` defines the feat
       slice_profile_flattened = flatten_slice_profiles(biometricData, slice_dim)
       for idx, case in enumerate(slice_profile_flattened):
           # Skip cases with a mask size smaller than 200 pixels
-          if case["pixel_count"] < 200:
+          if not disable_sample_filtering and case["pixel_count"] < 200:
               continue
           else:
               yield idx, {
@@ -1073,10 +1074,10 @@ In `MedVision.py`, the class `MedVision(GeneratorBasedBuilder)` defines the feat
           )
           for idx, case in enumerate(slice_profile_flattened):
               # Skip cases with multiple bounding boxes in the same slice
-              if len(case["bounding_boxes"]) > 1:
+              if not disable_sample_filtering and len(case["bounding_boxes"]) > 1:
                   continue
               # Skip cases with a bounding box size smaller than 10 pixels in any dimension
-              elif (
+              elif not disable_sample_filtering and (
                   case["bounding_boxes"][0]["dimensions"][0] < 10
                   or case["bounding_boxes"][0]["dimensions"][1] < 10
               ):
@@ -1218,15 +1219,16 @@ In `MedVision.py`, the class `MedVision(GeneratorBasedBuilder)` defines the feat
               biometricData, slice_dim
           )
           for idx, case in enumerate(slice_profile_flattened):
-              n_total_clusters = case["n_total_clusters"]
-              if n_total_clusters is not None:
-                  # New JSON (v1.1.0+): filter on raw cluster count
-                  if n_total_clusters > 1:
-                      continue
-              else:
-                  # Old JSON (v1.0.0): fall back to above-threshold cluster count
-                  if len(case["biometric_profile"]) > 1:
-                      continue
+              if not disable_sample_filtering:
+                  n_total_clusters = case["n_total_clusters"]
+                  if n_total_clusters is not None:
+                      # New JSON (v1.1.0+): filter on raw cluster count
+                      if n_total_clusters > 1:
+                          continue
+                  else:
+                      # Old JSON (v1.0.0): fall back to above-threshold cluster count
+                      if len(case["biometric_profile"]) > 1:
+                          continue
               yield idx, {
                   "dataset_name": dataset_name,
                   "taskID": taskID,
@@ -1266,7 +1268,7 @@ There are a few ways to control the dataset loading and building behavior:
   - **[2]** `MedVision_FORCE_DOWNLOAD_DATA`: Set this environment variable to `True` to force re-downloading raw images and annotations.
   - **[3]** `.downloaded_datasets.json`: This tracker file records downloaded status. Removing a dataset's entry here will trigger a re-download of the raw data for that dataset.
   
-> ⚠️ 
+> [!TIP]
 > **How to properly update/redownload raw data?**
 >
 > If you need to update raw data (images, masks, landmarks) using [2] or [3], you **MUST ALSO** use [1] (`download_mode="force_redownload"`).
@@ -1442,12 +1444,13 @@ Since data downloading and processing take time, you can download datasets from 
 >
 > Set the variable to `True` and the figures are restored to **exactly** the paths they occupied before v1.4.0 — the archives carry the same arcnames, so nothing is relocated. Details worth knowing:
 > - The download is checked on **every** load, not only on a first build, so setting the flag on a machine whose annotations are already present still fetches the figures.
-> - **Only the figures are fetched when the data is already there.** The flag does not re-trigger the image, landmark or planner download: whether those are fetched stays step 3's decision, so on a machine that already holds a dataset, setting the flag costs the figure archives and nothing else.
-> - **Figure state is tracked per annotation version, not as a yes/no.** `.downloaded_datasets.json` records `"qc_figures_<dataset>": "1.4.0"` — the biometry annotation version the figures belong to, since figures are generated with the biometry plans and their directories carry that version (`Landmarks-Label2-fig-v1.4.0`). A release that regenerates a dataset's biometry raises the version, so its figures are re-fetched; a release that leaves the dataset alone does not, so nothing is re-pulled. Keying on the release version instead would invalidate all 295 GB on every release.
+> - **Only the figures are fetched when the data is already there.** The flag does not re-trigger the image, landmark or planner download: whether those are fetched stays step 3's (data loader's step 3) decision, so on a machine that already holds a dataset, setting the flag costs the figure archives and nothing else.
+> - **Figure state is tracked per annotation version, not as a yes/no.** `.downloaded_datasets.json` records `"qc_figures_<dataset>": "1.4.0"` — the biometry annotation version the figures belong to, since figures are generated with the biometry plans and their directories carry that version (`Landmarks-Label2-fig-v1.4.0`). A release that regenerates a dataset's biometry raises the version, so its figures are re-fetched; a release that leaves the dataset alone does not, so nothing is re-pulled.
 > - **Figures already on disk are not re-downloaded.** When the tracker has no usable version — an install made before v1.4.0 already holds every figure, since back then they came inside `Datasets/<dataset>.zip`, yet ran no figure download to record it — the directory itself is read instead, and the version found there is written back. Without that, every such machine would re-pull the full set to overwrite files already in place.
 > - Roughly half the datasets publish no figures at all; the attempt is recorded either way so a figure-less dataset does not re-query the Hub on every load. `MedVision_FORCE_DOWNLOAD_DATA=True` is the way to retry later, and it is also what forces figures already on disk to be fetched again.
 > - Shards are independent zips (not `zip -s` volumes), so they extract in any order and a missing one costs only its own figures.
 
+> [!TIP]
 > Command: 
 > 
 > `python -m medvision_bm.benchmark.download_datasets`
