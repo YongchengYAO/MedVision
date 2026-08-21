@@ -28,6 +28,9 @@ dependencies = [
 "Source" = "https://github.com/YongchengYAO/MedVision"
 "Data" = "https://huggingface.co/datasets/YongchengYAO/MedVision"
 
+[project.scripts]
+mvbm = "medvision_bm.cli:main"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 include-package-data = true
