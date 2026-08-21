@@ -8,9 +8,16 @@
 # Options:
 #   --config <yaml>              YAML mapping model folder → display name
 #                                (default: ${SCRIPT_DIR}/config-detect-boxImgRatio.yaml)
+#   --parsed_dirname <name>      Parsed-results subfolder to read inside each model
+#                                folder (default: llm-parsed_gemma-4-31b). Use
+#                                "parsed" for the regex parser's output.
 #   --out_dir <path>             Output directory for figures (default: <repo>/Figures)
 #   --limit <N>                  Limit samples per JSONL
-#   --skip_model_wo_parsed_files Skip models missing parsed/ (only with --task_dir)
+#   --skip_model_wo_parsed_files Skip models missing the parsed-results folder
+#                                (only with --task_dir). Recommended with the
+#                                llm-parsed default: not every model is re-parsed
+#                                by the LLM judge, and a missing folder is fatal
+#                                without this flag.
 #   --processes, -p <N>           Worker count for parsing
 
 set -euo pipefail
@@ -23,6 +30,7 @@ export PYTHONPATH="${REPO_DIR}/src${PYTHONPATH:+:${PYTHONPATH}}"
 TASK_DIR=""
 MODEL_DIR=""
 CONFIG="${SCRIPT_DIR}/config-detect-boxImgRatio.yaml"
+PARSED_DIRNAME="llm-parsed_gemma-4-31b"
 OUT_DIR="${REPO_DIR}/Figures"
 LIMIT=""
 SKIP_FLAG=""
@@ -40,6 +48,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --config)
             CONFIG="$2"
+            shift 2
+            ;;
+        --parsed_dirname)
+            PARSED_DIRNAME="$2"
             shift 2
             ;;
         --out_dir)
@@ -79,8 +91,8 @@ if [[ -n "${SKIP_FLAG}" && -z "${TASK_DIR}" ]]; then
 fi
 
 # ── Step 1: Parse results (+ random baseline when --task_dir) ─────────────────
-echo "[1/2] Parsing detection results"
-ANALYZE_ARGS=()
+echo "[1/2] Parsing detection results (source: ${PARSED_DIRNAME})"
+ANALYZE_ARGS=(--parsed_dirname "${PARSED_DIRNAME}")
 [[ -n "${TASK_DIR}" ]] && ANALYZE_ARGS+=(--task_dir "${TASK_DIR}")
 [[ -n "${MODEL_DIR}" ]] && ANALYZE_ARGS+=(--model_dir "${MODEL_DIR}")
 [[ -n "${LIMIT}" ]] && ANALYZE_ARGS+=(--limit "${LIMIT}")
@@ -90,7 +102,7 @@ ANALYZE_ARGS=()
 python -m medvision_bm.benchmark.analyze_detection_task_boxsize_vs_random \
     "${ANALYZE_ARGS[@]}"
 
-# ── Step 2: Remap config so viz resolves {model}/parsed paths ─────────────────
+# ── Step 2: Remap config so viz resolves {model}/<parsed_dirname> paths ───────
 echo ""
 echo "[2/2] Generating visualization"
 
@@ -112,7 +124,7 @@ for model, display in cfg["model_display_name"].items():
     if model == "random_detection":
         new_map[model] = display
     else:
-        new_map[f"{model}/parsed"] = display
+        new_map[f"{model}/${PARSED_DIRNAME}"] = display
 with open("${TMP_CONFIG}", "w") as f:
     yaml.dump({"model_display_name": new_map}, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
 PYEOF

@@ -357,8 +357,8 @@ def calculate_summary_metrics_per_anatomy_detection_task_for_randomModel(
     return summary_metrics
 
 
-def _find_boxcoordinate_jsonl_files(model_dir):
-    parsed_dir = os.path.join(model_dir, "parsed")
+def _find_boxcoordinate_jsonl_files(model_dir, parsed_dirname="parsed"):
+    parsed_dir = os.path.join(model_dir, parsed_dirname)
     all_jsonl = glob.glob(os.path.join(parsed_dir, "*.jsonl"))
     return [f for f in all_jsonl if "_BoxCoordinate_" in os.path.basename(f)]
 
@@ -636,12 +636,13 @@ def process_parsed_file_in_model_folder(
     model_dir,
     limit=None,
     processes=None,
+    parsed_dirname="parsed",
 ):
     """
     Process all JSONL files in a model's parsed folder and generate summary metrics.
 
     This function performs the complete pipeline:
-    1. Finds all JSONL files in model_dir/parsed/
+    1. Finds all JSONL files in model_dir/<parsed_dirname>/
     2. Parses each file to extract detection data
     3. Groups data by anatomy-modality-slice combinations
     4. Calculates summary metrics per group
@@ -652,13 +653,14 @@ def process_parsed_file_in_model_folder(
         model_dir: Path to the model folder
         limit: Maximum number of samples to process per file (None = all)
         processes (int, optional): Number of processes to use for parallel calculation.
+        parsed_dirname: Name of the parsed-results subfolder inside model_dir.
     """
     # Find parsed JSONL files
-    parsed_files_dir = os.path.join(model_dir, "parsed")
+    parsed_files_dir = os.path.join(model_dir, parsed_dirname)
     assert os.path.exists(
         parsed_files_dir
     ), f"Parsed files directory does not exist: {parsed_files_dir}"
-    jsonl_files = _find_boxcoordinate_jsonl_files(model_dir)
+    jsonl_files = _find_boxcoordinate_jsonl_files(model_dir, parsed_dirname)
 
     # Collect all data from the parsed JSONL files
     all_data = []
@@ -707,7 +709,11 @@ def process_parsed_file_in_model_folder(
 
 
 def _process_task_directory(
-    task_dir, limit, processes=None, skip_model_wo_parsed_files=False
+    task_dir,
+    limit,
+    processes=None,
+    skip_model_wo_parsed_files=False,
+    parsed_dirname="parsed",
 ):
     """
     Process all model directories within a task directory.
@@ -721,6 +727,7 @@ def _process_task_directory(
         limit: Maximum samples to process per file (None = all)
         processes (int, optional): Number of processes to use for parallel calculation
         skip_model_wo_parsed_files: Skip models without parsed folders
+        parsed_dirname: Name of the parsed-results subfolder inside each model folder
     """
     # Get list of model folders within task_dir
     model_dirs = get_subfolders(task_dir)
@@ -731,20 +738,39 @@ def _process_task_directory(
     # Process each model directory
     for model_dir in model_dirs:
         # Skip models without parsed results if requested
-        parsed_files_dir = os.path.join(model_dir, "parsed")
+        parsed_files_dir = os.path.join(model_dir, parsed_dirname)
         if skip_model_wo_parsed_files and not os.path.exists(parsed_files_dir):
             print(f"\nSkipping model directory (no parsed folder): {model_dir}")
             continue
 
         print(f"\nProcessing model directory: {model_dir}")
-        process_parsed_file_in_model_folder(model_dir, limit, processes=processes)
+        process_parsed_file_in_model_folder(
+            model_dir, limit, processes=processes, parsed_dirname=parsed_dirname
+        )
 
     print("\nGenerating random detection baseline...")
-    ref_model_parsed_dir = os.path.join(model_dirs[0], "parsed")
+    # The baseline reads ground truth only, so any model folder carrying the
+    # requested parsed-results subfolder works as the reference. Not every model
+    # is re-parsed by every parser, so pick the first one that actually has it.
+    ref_model_parsed_dir = next(
+        (
+            os.path.join(d, parsed_dirname)
+            for d in model_dirs
+            if os.path.isdir(os.path.join(d, parsed_dirname))
+        ),
+        None,
+    )
+    if ref_model_parsed_dir is None:
+        raise FileNotFoundError(
+            f"No model folder in {task_dir} contains a '{parsed_dirname}' subfolder; "
+            "cannot generate the random detection baseline."
+        )
     generate_random_detection_baseline(ref_model_parsed_dir, task_dir, limit)
 
 
-def _process_single_model_directory(model_dir, limit, processes=None):
+def _process_single_model_directory(
+    model_dir, limit, processes=None, parsed_dirname="parsed"
+):
     """
     Process a single model directory.
 
@@ -752,9 +778,12 @@ def _process_single_model_directory(model_dir, limit, processes=None):
         model_dir: Path to the model directory
         limit: Maximum number of samples to process per file
         processes (int, optional): Number of processes to use for parallel calculation
+        parsed_dirname: Name of the parsed-results subfolder inside model_dir
     """
     print(f"\nProcessing model directory: {model_dir}")
-    process_parsed_file_in_model_folder(model_dir, limit, processes=processes)
+    process_parsed_file_in_model_folder(
+        model_dir, limit, processes=processes, parsed_dirname=parsed_dirname
+    )
 
 
 def main(**kwargs):
@@ -769,6 +798,7 @@ def main(**kwargs):
         limit: Maximum number of samples to process per file
         skip_model_wo_parsed_files: Whether to skip model directories without parsed folders
         processes: Number of processes to use for parallel calculation
+        parsed_dirname: Name of the parsed-results subfolder inside each model folder
     """
     random.seed(SEED)
 
@@ -779,6 +809,7 @@ def main(**kwargs):
     limit = kwargs.get("limit")
     skip_model_wo_parsed_files = kwargs.get("skip_model_wo_parsed_files", False)
     processes = kwargs.get("processes")
+    parsed_dirname = kwargs.get("parsed_dirname") or "parsed"
 
     if task_dir is not None:
         print(
@@ -789,13 +820,16 @@ def main(**kwargs):
             limit,
             processes=processes,
             skip_model_wo_parsed_files=skip_model_wo_parsed_files,
+            parsed_dirname=parsed_dirname,
         )
 
     elif model_dir is not None:
         print(
             f"Using model_dir: {model_dir}\nProcessing all JSONL files within this directory."
         )
-        _process_single_model_directory(model_dir, limit, processes=processes)
+        _process_single_model_directory(
+            model_dir, limit, processes=processes, parsed_dirname=parsed_dirname
+        )
 
     elif ref_model_dir is not None:
         print(f"Generating random detection baseline from {ref_model_dir} → {out_dir}")
@@ -857,9 +891,20 @@ def parse_args():
         help="Limit the number of samples to process per JSONL file. If not set, processes all samples.",
     )
     parser.add_argument(
+        "--parsed_dirname",
+        type=str,
+        default="parsed",
+        help=(
+            "Name of the parsed-results subfolder to read inside each model directory "
+            "(e.g. 'parsed' for the regex parser, 'llm-parsed_gemma-4-31b' for the "
+            "LLM-judge re-parse). Ignored in --ref_model_dir mode, which takes the "
+            "folder path directly."
+        ),
+    )
+    parser.add_argument(
         "--skip_model_wo_parsed_files",
         action="store_true",
-        help="Skip model directories that don't have a 'parsed' folder. Only valid with --task_dir.",
+        help="Skip model directories that don't have a parsed-results folder. Only valid with --task_dir.",
     )
     parser.add_argument(
         "--processes",

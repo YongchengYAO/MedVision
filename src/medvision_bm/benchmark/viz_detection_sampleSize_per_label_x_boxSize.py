@@ -297,6 +297,13 @@ def plot_label_composition_and_metrics(
     return fig, axes
 
 
+def _parsed_dir_suffix(parsed_dirname):
+    """Mirror of the summarizers' output naming: ``""`` for ``"parsed"``, else
+    ``"__{parsed_dirname}"``. Applied to the output figure stem so figures from a
+    non-default source (e.g. llm-parsed_gemma-4-31b) cannot overwrite published ones."""
+    return "" if parsed_dirname == "parsed" else f"__{parsed_dirname}"
+
+
 def main(
     in_dir,
     out_dir,
@@ -304,6 +311,7 @@ def main(
     folders,
     use_label_level=True,
     formats=("pdf",),
+    parsed_dirname="parsed",
 ):
     if use_label_level:
         csv_filename = SUMMARY_FILENAME_PER_BOX_IMG_RATIO_FINELABEL_DETECT_MEAN_METRICS
@@ -313,19 +321,31 @@ def main(
             SUMMARY_FILENAME_PER_BOX_IMG_RATIO_GROUP_LABEL_DETECT_MEAN_METRICS
         )
         fig_filename = "fig_detection__metrics-boxSize__anatomyLevel"
+    fig_filename += _parsed_dir_suffix(parsed_dirname)
+
+    if not folders:
+        raise ValueError("No models listed under model_display_name in the config.")
 
     all_data = {}
+    missing = []
     for folder in folders:
-        csv_path = os.path.join(in_dir, folder, "parsed", csv_filename)
+        csv_path = os.path.join(in_dir, folder, parsed_dirname, csv_filename)
         if os.path.exists(csv_path):
             all_data[folder] = pd.read_csv(csv_path)
             print(f"Loaded data for {folder}")
         else:
-            print(f"Warning: File not found for {folder}: {csv_path}")
+            missing.append(csv_path)
 
-    if not all_data:
-        print("No data files found!")
-        return
+    # Fail loudly: with a source knob, a wrong parsed_dirname would otherwise skip
+    # every model and render nothing, which reads as "no data" not "wrong source".
+    if missing:
+        raise FileNotFoundError(
+            f"Missing per-label CSV for {len(missing)}/{len(folders)} configured "
+            f"models under '{parsed_dirname}'. Generate them first with:\n"
+            f"  python -m medvision_bm.benchmark.analyze_detection_task_boxsize "
+            f"--task_dir {in_dir} --parsed_dirname {parsed_dirname}\n"
+            "Missing:\n  " + "\n  ".join(missing)
+        )
 
     Path(out_dir).mkdir(exist_ok=True, parents=True)
     plot_label_composition_and_metrics(
@@ -350,7 +370,17 @@ if __name__ == "__main__":
     parser.add_argument(
         "--in_dir",
         required=True,
-        help="Directory containing model subfolders (each with a parsed/ subdirectory)",
+        help="Directory containing model subfolders (each with a {parsed_dirname}/ subdirectory)",
+    )
+    parser.add_argument(
+        "--parsed_dirname",
+        type=str,
+        default="parsed",
+        help=(
+            "Per-model subdirectory to read the per-label CSVs from, e.g. "
+            "llm-parsed_gemma-4-31b. Non-default sources suffix the output figure "
+            "name with __{parsed_dirname}. Default: parsed."
+        ),
     )
     parser.add_argument(
         "--out_dir",
@@ -395,4 +425,5 @@ if __name__ == "__main__":
         folders,
         use_label_level=use_label_level,
         formats=formats,
+        parsed_dirname=args.parsed_dirname,
     )
