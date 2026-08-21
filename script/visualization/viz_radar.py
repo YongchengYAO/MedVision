@@ -788,9 +788,6 @@ def plot_angle_mae_boxplot(
         [r["values"] for r in recs],
         patch_artist=True,
         showfliers=False,   # angle AE has a long tail; fliers would compress every box
-        showmeans=True,     # boxes are ORDERED by mean (= MAE); mark it so the sort key is visible
-        meanprops=dict(marker="D", markerfacecolor="#111111",
-                       markeredgecolor="none", markersize=4),
         widths=0.62,
         medianprops=dict(color="#222222", linewidth=2),
         whiskerprops=dict(color="#555555"),
