@@ -6,6 +6,8 @@
 
   # Dataset and Benchmark for *Quantitative* Medical Image Analysis
 
+  🎉 **Paper accepted @ EMNLP 2026 Main Conference** <picture><source media="(prefers-color-scheme: dark)" srcset="fig/emnlp2026-logo-dark.png"><img src="fig/emnlp2026-logo.png" height="22" alt="EMNLP 2026, Budapest" /></picture> 🎉
+
   | 🌏 [**Project**](https://medvision-vlm.github.io) | 🧑🏻‍💻 [**GitHub**](https://github.com/YongchengYAO/MedVision) | 📚 [**Docs**](https://medvision.readthedocs.io/en/latest/index.html) | 🩻 [**Dataset**](https://huggingface.co/datasets/YongchengYAO/MedVision) | 🔎 [**Data Explorer**](https://medvision-vlm.github.io/explorer.html) | 🐳 [**Docker**](https://hub.docker.com/r/vincentycyao/medvision/tags) | 🤗 [**Models**](https://huggingface.co/collections/YongchengYAO/medvision-v0) | 🚀 [**Demo**](https://huggingface.co/spaces/YongchengYAO/MedVision-V0-demo) | 📖 [**arXiv**](https://arxiv.org/abs/2511.18676) | 💼 [**LinkedIn**](https://www.linkedin.com/in/yongcheng-yao-379b44279) |
 
   🔎 Benchmarking VLMs for medical vision tasks: detection and measurement 📏

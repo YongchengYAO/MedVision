@@ -205,6 +205,7 @@ pyrightconfig.json
 # For MedVision
 Data
 Results
+Results-bak
 SFT
 RFT
 Figures
