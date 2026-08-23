@@ -718,7 +718,8 @@ def print_model_summaries(
 
     This function generates a comprehensive summary report that includes:
     1. Overall weighted averages across all anatomies/metrics
-    2. Group-level averages (FeTA-Distance, Ceph-Angle, Ceph-Distance)
+    2. Group-level averages (FeTA-Distance, Ceph-Angle, Ceph-Distance,
+       plus the cross-dataset aggregates Distance and Angle)
     3. Label-specific detailed metrics
 
     The output is both printed to console and saved to a text file.
@@ -1040,6 +1041,10 @@ def print_model_summaries(
             "FeTA-Distance": calculate_group_avg(feta_distance_labels),
             "Ceph-Angle": calculate_group_avg(ceph_angle_labels),
             "Ceph-Distance": calculate_group_avg(ceph_distance_labels),
+            # Cross-dataset aggregates by metric type, matching the "Distance"/"Angle"
+            # grouping that split_ad_labels() in script/visualization/viz_radar.py uses.
+            "Distance": calculate_group_avg(feta_distance_labels + ceph_distance_labels),
+            "Angle": calculate_group_avg(ceph_angle_labels),
         }
 
         # Group averages output

@@ -292,7 +292,8 @@ python -m medvision_bm.benchmark.parse_outputs \
 ### `summarize_AD_task`
 
 Aggregate Angle/Distance metrics (MAE, MRE, nMAE, SuccessRate) per model, grouped
-by anatomy (FeTA-Distance, Ceph-Angle, Ceph-Distance).
+by anatomy (FeTA-Distance, Ceph-Angle, Ceph-Distance) and by metric type across
+datasets (Distance, Angle).
 
 ```bash
 python -m medvision_bm.benchmark.summarize_AD_task --task_dir Results/AD -p 16

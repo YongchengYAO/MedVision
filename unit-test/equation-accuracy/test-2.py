@@ -14,8 +14,8 @@ def _load(script_path):
     spec.loader.exec_module(mod)
     return mod
 
-ad = _load(_ROOT / "script/dev_analyze/analyze_equation_accuracy_AD.py")
-tl = _load(_ROOT / "script/dev_analyze/analyze_equation_accuracy_TL.py")
+ad = _load(_ROOT / "script/analyze/equation-accuracy/analyze_equation_accuracy_AD.py")
+tl = _load(_ROOT / "script/analyze/equation-accuracy/analyze_equation_accuracy_TL.py")
 
 TOL = 1e-9
 

@@ -99,7 +99,8 @@ Shared flags across all three:
 **What each summarizer groups on:**
 
 - **A/D** groups by `dataset_metricType_metricKey` labels and also reports rolled-up group averages
-  (FeTA-Distance, Ceph-Angle, Ceph-Distance). Samples whose ground-truth value is below the near-zero
+  (FeTA-Distance, Ceph-Angle, Ceph-Distance), plus cross-dataset aggregates by metric type
+  (Distance = FeTA + Ceph, Angle). Samples whose ground-truth value is below the near-zero
   threshold (`0.1`) are dropped so relative error stays meaningful.
 - **T/L** groups by anatomy label crossed with imaging modality and slice plane, weighting per-label
   averages by sample count.

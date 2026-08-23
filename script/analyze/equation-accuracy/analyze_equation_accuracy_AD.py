@@ -549,8 +549,8 @@ def _print_model_summary_AD(model_dir, summary):
     _p("\nGroup averages:")
     _p(f"{'Group':<15} | {'Step3_eq_MRE':<14} | {'Valid':<8} | {'Samples':<8}")
     _p("-" * 53)
-    for gname in ("FeTA-Distance", "Ceph-Angle", "Ceph-Distance"):
-        ga = _calc_group_avg_AD(groups[gname])
+    for gname, glist in _group_rows_AD(groups):
+        ga = _calc_group_avg_AD(glist)
         _p(
             f"{gname:<15} | {ga['step3_avg_equation_MRE']:<14.4f} | {ga.get('n_valid', 0):<8} | {ga['n_samples']:<8}"
         )
@@ -604,6 +604,22 @@ def _calc_group_avg_AD(label_metrics_list):
     }
 
 
+def _group_rows_AD(groups):
+    """Ordered (display name, label list) rows, incl. cross-dataset aggregates.
+
+    The last two rows aggregate across datasets by metric type, matching the
+    "Distance"/"Angle" grouping that split_ad_labels() in
+    script/visualization/viz_radar.py uses.
+    """
+    return (
+        ("FeTA-Distance", groups["FeTA-Distance"]),
+        ("Ceph-Angle", groups["Ceph-Angle"]),
+        ("Ceph-Distance", groups["Ceph-Distance"]),
+        ("Distance", groups["FeTA-Distance"] + groups["Ceph-Distance"]),
+        ("Angle", groups["Ceph-Angle"]),
+    )
+
+
 def _print_cross_model_summaries_AD(task_dir):
     """Read per-model summary JSONs, print group/label tables, save summary TXT."""
     task_dir = Path(task_dir)
@@ -653,8 +669,8 @@ def _print_cross_model_summaries_AD(task_dir):
         _p("\nGroup averages:")
         _p(f"{'Group':<15} | {'Step3_eq_MRE':<14} | {'Valid':<8} | {'Samples':<8}")
         _p("-" * 53)
-        for gname in ("FeTA-Distance", "Ceph-Angle", "Ceph-Distance"):
-            ga = _calc_group_avg_AD(groups[gname])
+        for gname, glist in _group_rows_AD(groups):
+            ga = _calc_group_avg_AD(glist)
             _p(
                 f"{gname:<15} | {ga['step3_avg_equation_MRE']:<14.4f} | {ga.get('n_valid', 0):<8} | {ga['n_samples']:<8}"
             )

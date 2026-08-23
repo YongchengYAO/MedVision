@@ -841,6 +841,22 @@ def _calc_group_avg_AD(label_metrics_list):
     }
 
 
+def _group_rows_AD(groups):
+    """Ordered (display name, label list) rows, incl. cross-dataset aggregates.
+
+    The last two rows aggregate across datasets by metric type, matching the
+    "Distance"/"Angle" grouping that split_ad_labels() in
+    script/visualization/viz_radar.py uses.
+    """
+    return (
+        ("FeTA-Distance", groups["FeTA-Distance"]),
+        ("Ceph-Angle", groups["Ceph-Angle"]),
+        ("Ceph-Distance", groups["Ceph-Distance"]),
+        ("Distance", groups["FeTA-Distance"] + groups["Ceph-Distance"]),
+        ("Angle", groups["Ceph-Angle"]),
+    )
+
+
 def _print_model_summary_AD(model_dir, summary):
     """Write per-model process-accuracy summary TXT to model_dir."""
     model_dir = Path(model_dir)
@@ -895,8 +911,8 @@ def _print_model_summary_AD(model_dir, summary):
         f"{'Group':<15} | {'Step1_normL2':<10} | {'Step2_normL2':<10} | {'Step3_MRE':<10} | {'nMAE (step 3)':<14} | {'Valid':<7} | {'Samples':<8}"
     )
     _p("-" * 87)
-    for gname in ("FeTA-Distance", "Ceph-Angle", "Ceph-Distance"):
-        ga = _calc_group_avg_AD(groups[gname])
+    for gname, glist in _group_rows_AD(groups):
+        ga = _calc_group_avg_AD(glist)
         _p(
             f"{gname:<15} | "
             f"{ga['step1_avg_normL2']:<10.4f} | "
@@ -1003,8 +1019,8 @@ def _print_cross_model_summaries_AD(task_dir):
             f"{'Group':<15} | {'Step1_normL2':<10} | {'Step2_normL2':<10} | {'Step3_MRE':<10} | {'nMAE':<10} | {'Valid':<7} | {'Samples':<8}"
         )
         _p("-" * 83)
-        for gname in ("FeTA-Distance", "Ceph-Angle", "Ceph-Distance"):
-            ga = _calc_group_avg_AD(groups[gname])
+        for gname, glist in _group_rows_AD(groups):
+            ga = _calc_group_avg_AD(glist)
             _p(
                 f"{gname:<15} | "
                 f"{ga['step1_avg_normL2']:<10.4f} | "

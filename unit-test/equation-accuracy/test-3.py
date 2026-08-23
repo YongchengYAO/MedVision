@@ -15,7 +15,7 @@ def _load(script_path):
     spec.loader.exec_module(mod)
     return mod
 
-ad = _load(_ROOT / "script/dev_analyze/analyze_equation_accuracy_AD.py")
+ad = _load(_ROOT / "script/analyze/equation-accuracy/analyze_equation_accuracy_AD.py")
 
 # ---- Build synthetic solution strings ----
 
