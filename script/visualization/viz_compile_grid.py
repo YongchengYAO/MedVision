@@ -41,6 +41,7 @@ Usage:
         [--pdf_image_dpi N] \
         [--row_per_model N] \
         [--dir_model <model_folder_name>] \
+        [--dataset_order A,B,C] \
         [--seed N] \
         [--dataset_as_col [--dataset_as_col_num_panel N]] \
         [--dataset_as_row [--dataset_as_row_num_panel N] [--dataset_as_row_num_row_per_ds N]]
@@ -71,12 +72,16 @@ MODEL_NAME_MAP = {
 }
 
 
-def _select_samples(models, limit, input_format, rng):
+def _select_samples(models, limit, input_format, rng, dataset_order=None):
     """Return ordered list of (dataset, filename) with equal samples per dataset.
 
     Each dataset receives ceil(limit / n_datasets) samples, so total may exceed
     limit by up to n_datasets-1 when limit is not divisible by n_datasets.
     Samples from the same dataset are consecutive in the returned list.
+
+    ``dataset_order`` optionally overrides the default alphabetical dataset order;
+    listed datasets come first in the given order, any remaining ones follow
+    alphabetically. ``None`` keeps the alphabetical order unchanged.
     """
     datasets_per_model = {
         m.name: sorted([d.name for d in m.iterdir() if d.is_dir()]) for m in models
@@ -84,6 +89,9 @@ def _select_samples(models, limit, input_format, rng):
     common_datasets = sorted(
         set.intersection(*[set(v) for v in datasets_per_model.values()])
     )
+    if dataset_order:
+        first = [d for d in dataset_order if d in common_datasets]
+        common_datasets = first + [d for d in common_datasets if d not in first]
     n_datasets = len(common_datasets)
     if limit < n_datasets:
         raise ValueError(
@@ -157,7 +165,7 @@ def _draw_text(page, rect, text, fontsize, rotate=0):
         tw.write_text(page)
 
 
-def _model_label_elements(models, anchor_positions, show_model_label):
+def _model_label_elements(models, anchor_positions, show_model_label, fontsize=11):
     """Build rotated model-name text placements and inter-model separator y-fractions
     from per-model anchor bboxes (leftmost cell of each row). Returns
     (text_places, sep_fracs) where text_places = [(bbox, text, fontsize, rotate), ...]."""
@@ -169,7 +177,7 @@ def _model_label_elements(models, anchor_positions, show_model_label):
         if show_model_label:
             name = MODEL_NAME_MAP.get(model.name, model.name)
             bbox = (first.x0, last.y0, first.x1, first.y1)
-            text_places.append((bbox, name, 11, 90))
+            text_places.append((bbox, name, fontsize, 90))
         if i < n_models - 1:
             nxt = anchor_positions[i + 1][0]
             sep_fracs.append((last.y0 + nxt.y1) / 2)
@@ -325,7 +333,8 @@ def _group_by_dataset(samples):
 
 def _compile_figure(
     models, samples, row_per_model, output, output_formats, show_model_label=True,
-    input_format="pdf", pdf_image_dpi=None
+    input_format="pdf", pdf_image_dpi=None, model_label_fontsize=11,
+    hide_model_separator=False
 ):
     n_cols_img = math.ceil(len(samples) / row_per_model)
     n_models = len(models)
@@ -377,7 +386,14 @@ def _compile_figure(
 
         anchor_positions.append(model_anchors)
 
-    texts, seps = _model_label_elements(models, anchor_positions, show_model_label)
+    texts, seps = _model_label_elements(
+        models, anchor_positions, show_model_label, model_label_fontsize
+    )
+    if hide_model_separator:
+        # The rotated block labels already mark where one model block ends and the next begins,
+        # so the rules are redundant when the labels are large enough to read.
+        seps = []
+
     doc, subdocs = _build_page(fig_w, fig_h, img_places, texts, seps, input_format)
     plt.close(fig)
 
@@ -687,6 +703,26 @@ def main():
         help="If set, only plot rows for this model folder (path or folder name)",
     )
     parser.add_argument(
+        "--dataset_order",
+        default=None,
+        help="Comma-separated dataset (subfigure folder) names fixing row/column order; "
+        "listed ones come first in this order, the rest follow alphabetically. "
+        "Omit to keep the default alphabetical order.",
+    )
+    parser.add_argument(
+        "--model_label_fontsize",
+        type=float,
+        default=11,
+        help="Point size of the rotated model row-block labels (default 11). Default layout "
+        "mode only; --dataset_as_col/--dataset_as_row keep 11.",
+    )
+    parser.add_argument(
+        "--hide_model_separator",
+        action="store_true",
+        help="Omit the horizontal rules drawn between model row-blocks. Default layout mode "
+        "only; --dataset_as_col/--dataset_as_row keep theirs.",
+    )
+    parser.add_argument(
         "--seed",
         type=int,
         default=None,
@@ -755,7 +791,14 @@ def main():
 
     seed = args.seed if args.seed is not None else SEED
     rng = random.Random(seed)
-    samples = _select_samples(models, args.limit_subfigures, args.input_format, rng)
+    dataset_order = (
+        [d.strip() for d in args.dataset_order.split(",") if d.strip()]
+        if args.dataset_order
+        else None
+    )
+    samples = _select_samples(
+        models, args.limit_subfigures, args.input_format, rng, dataset_order
+    )
 
     if args.pdf_image_dpi and args.pdf_image_dpi > 0 and "pdf" not in args.output_format:
         import warnings
@@ -800,6 +843,8 @@ def main():
             show_model_label=show_model_label,
             input_format=args.input_format,
             pdf_image_dpi=args.pdf_image_dpi,
+            model_label_fontsize=args.model_label_fontsize,
+            hide_model_separator=args.hide_model_separator,
         )
 
 

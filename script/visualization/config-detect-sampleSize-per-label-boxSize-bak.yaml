@@ -1,5 +1,0 @@
-# Model folders to include (order determines plot legend order)
-model_display_name:
-  "MedVision__fullRFT__qwen25vl-7b-fullSFT__AD-TL-D__512x512__PRxAnswer_s250_CoT": "MedVision-V0 (7B)"
-  "Qwen2.5-VL-7B-Instruct": "Qwen2.5-VL (7B)"
-

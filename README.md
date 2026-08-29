@@ -791,6 +791,8 @@ The regex parser in step 2 only accepts answers written inside `<answer>…</ans
 
 - **[Analysis & Visualization]** (optional) Scripts in [`script/visualization`](https://github.com/YongchengYAO/MedVision/tree/master/script/visualization):
   - **Radar charts** (`viz_radar.sh`, `viz_radar_batch.sh`): cross-model comparison across metrics.
+  - **Per-model radar grids** (`viz_radar_grid.sh`): one row per model, six radars per row (Detection Recall/Precision/F1, A/D Angle/Distance MRE, T/L MRE), each spoke overlaid with that model's per-sample violin + box plots.
+  - **Leaderboard timeline** (`viz_benchmark_leaderboard_timeline.sh`): benchmark accuracy against model release date, one panel per task (Detection IoU, plus T/L, Distance and Angle as 1/MRE).
   - **Detection label × box-size** (`viz_detection_sampleSize_per_label_x_boxSize.sh`): detection metrics and sample distribution per label × box-to-image ratio group.
   - **A/D landmark overlays** (`viz_ad_landmarks.sh`): per-sample GT vs. predicted landmarks and lines.
   - **A/D response panels** (`viz_ad_responses.sh`): per-sample prompt/response/GT panels.
@@ -799,6 +801,9 @@ The regex parser in step 2 only accepts answers written inside `<answer>…</ans
   - **T/L ellipse fit: image vs. real space** (`viz_ellipse_fit_comparison.py`): overlay the T/L ellipse axes fit in image (pixel) space vs. real (physical) space on one coronal/sagittal slice, illustrating how anisotropic pixel spacing makes the two fits diverge (rendered with and without the physical aspect-ratio correction).
   - **Detection box overlays** (`viz_detection_boxes.sh`): per-sample GT vs. predicted bounding boxes.
   - **Detection response panels** (`viz_detection_responses.sh`): per-sample prompt/response/GT panels.
+  - **Ground-truth annotation figure** (`viz_gt_annotations.sh`): GT-only panels rendered straight from the on-disk benchmark plans (no model output, no HuggingFace build), compiled into one figure with a labelled row-block per task.
+  - **Plane-OOD sample grids** (`viz_planeOOD_samples.sh`): the same volume and target shown in the in-distribution axial plane and in both OOD planes (coronal, sagittal); Detection and T/L only, since A/D has no plane-OOD split.
+  - **Label clouds** (`viz_label_cloud.sh`): 2×2 target × modality label clouds contrasting each task's in-distribution roster against its target-OOD roster.
   - **Comparison grids** (`viz_compile_grid_batch.sh`): tile per-sample overlays across models.
 
 - **[Analysis]** (optional) Scripts in [`script/analyze`](https://github.com/YongchengYAO/MedVision/tree/master/script/analyze):
