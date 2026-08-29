@@ -334,14 +334,14 @@ Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`]
 
 </details>
 
-**Benchmark annotations by dataset version.** Single-instance (filtered) vs multi-instance (unfiltered) annotation counts for the three quantitative tasks — **Box** (detection) + **T/L** (tumor/lesion size) + **A/D** (biometrics). Only **T/L** annotations were ever regenerated — in v1.1.0, v1.1.1 and, most recently, **v1.4.0**, which rebuilt all 12 T/L datasets; **Box** and **A/D** are byte-identical in every release. A total therefore moves for one of two reasons: a T/L regeneration, or a release adding datasets (v1.2.0 added 8, v1.3.0 added MSWAL). Each block totals the datasets its release contained — 31 for v1.3.0/v1.4.0, 30 for v1.2.0, 22 for the rest:
+**Benchmark annotations by dataset version.** Each block below breaks the annotation counts down by dataset and by task — **Box** (detection), **T/L** (tumor/lesion size) and **A/D** (biometrics) — under both the **single-instance** (filtered) and **multi-instance** (unfiltered) views. Across releases, **Box** and **A/D** counts are byte-identical; **T/L** is the only task ever regenerated, in v1.1.0, v1.1.1 and most recently **v1.4.0**, which rebuilt all 12 T/L datasets. A total therefore moves for exactly two reasons: a T/L regeneration, or a release that adds datasets (v1.2.0 added 8, v1.3.0 added MSWAL). Each block totals only the datasets its own release shipped — 31 for v1.3.0 and v1.4.0, 30 for v1.2.0, 22 for the rest:
 
 <details>
 <summary> MedVision v1.4.0 (default) </summary>
 
 <br/>
 
-**T/L regenerated.** Clusters are now selected by a physical size floor in millimetres — `max(2.0 mm, 2 × the coarser in-plane spacing)` of the measured plane — instead of a raw pixel count; a gate that silently discarded rotated ellipses is removed; and the ellipse fit is guarded against degenerate results. Published T/L landmarks grow **75,840 → 3,801,540 (50×)**. Every other task and every previously published annotation file is unchanged. See the [v1.4.0 release note](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.4.0.md).
+**T/L regenerated.** Clusters are now selected by a physical size floor in millimetres — `max(2.0 mm, 2 × the coarser in-plane spacing)` of the measured plane — instead of a raw pixel count; a gate that silently discarded rotated ellipses is removed; and the ellipse fit is guarded against degenerate results. Published T/L landmarks grow **75,840 → 3,801,540 (50×)**. Every other task and every previously published annotation file is unchanged. See the [v1.4.0 release note](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.4.0.md) and the blog post ([MedVision v1.4.0: 50× More Tumor/Lesion Measurements and Their Annotation Recall](https://medvision-vlm.github.io/blog/tl-annotations-v140.html)).
 
 <table>
   <tr>
@@ -354,40 +354,47 @@ Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`]
   </tr>
 </table>
 
-| Dataset | Single-instance (Box / T/L / A/D) | Multi-instance (Box / T/L / A/D) |
-|---|--|--|
-| ACDC | 14,271 (Box 14,271) | 94,160 (Box 94,160) |
-| AFIDs | 432 (A/D 432) | 432 (A/D 432) |
-| AMOS22 | 666,532 (Box 666,532) | 1,215,776 (Box 1,215,776) |
-| AbdomenAtlas1.0Mini | 9,748,290 (Box 9,748,290) | 13,770,398 (Box 13,770,398) |
-| AbdomenCT-1K | 1,041,588 (Box 1,041,588) | 1,549,325 (Box 1,549,325) |
-| BCV15 | 68,543 (Box 68,543) | 125,870 (Box 125,870) |
-| BraTS24 | 1,542,863 (Box 1,115,524 · T/L 427,339) | 5,413,144 (Box 3,767,594 · T/L 1,645,550) |
-| CAMUS | 951,370 (Box 951,370) | 1,341,433 (Box 1,341,433) |
-| Ceph-Biometrics-400 | 7,600 (A/D 7,600) | 7,600 (A/D 7,600) |
-| CrossMoDA | 4,076 (Box 4,076) | 16,623 (Box 16,623) |
-| DEEP-PSMA | 12,919 (Box 2,179 · T/L 10,740) | 206,780 (Box 50,341 · T/L 156,439) |
-| FLARE22 | 104,211 (Box 104,211) | 152,954 (Box 152,954) |
-| FeTA24 | 49,412 (Box 49,087 · A/D 325) | 153,924 (Box 153,599 · A/D 325) |
-| HNTSMRG24 | 75,949 (Box 32,029 · T/L 43,920) | 131,517 (Box 62,424 · T/L 69,093) |
-| ISLES24 | 9,774 (Box 9,774) | 97,228 (Box 97,228) |
-| KiPA22 | 50,708 (Box 37,647 · T/L 13,061) | 88,554 (Box 74,690 · T/L 13,864) |
-| KiTS23 | 176,716 (Box 114,491 · T/L 62,225) | 367,566 (Box 291,550 · T/L 76,016) |
-| LIDC-IDRI | 53,867 (Box 10,379 · T/L 43,488) | 133,155 (Box 73,976 · T/L 59,179) |
-| LNQ2023 | 7,355 (Box 1,653 · T/L 5,702) | 63,229 (Box 25,331 · T/L 37,898) |
-| MAMA-MIA | 158,492 (Box 67,767 · T/L 90,725) | 583,827 (Box 214,408 · T/L 369,419) |
-| MSD | 393,215 (Box 277,451 · T/L 115,764) | 2,150,719 (Box 1,438,472 · T/L 712,247) |
-| MSWAL | 138,692 (Box 60,106 · T/L 78,586) | 270,262 (Box 125,126 · T/L 145,136) |
-| OAIZIB-CM | 648,048 (Box 648,048) | 922,989 (Box 922,989) |
-| PDDCA | 15,208 (Box 15,076 · A/D 132) | 37,251 (Box 37,119 · A/D 132) |
-| PI-CAI | 28,219 (Box 5,455 · T/L 22,764) | 71,181 (Box 42,857 · T/L 28,324) |
-| SKM-TEA | 262,338 (Box 262,338) | 475,828 (Box 475,828) |
-| ToothFairy2 | 1,413,979 (Box 1,413,979) | 2,131,223 (Box 2,131,223) |
-| TopCoW24 | 41,829 (Box 41,829) | 251,901 (Box 251,901) |
-| TotalSegmentator | 7,603,455 (Box 7,603,455) | 16,979,575 (Box 16,979,575) |
-| VerSe | 351,811 (Box 350,311 · A/D 1,500) | 876,396 (Box 874,896 · A/D 1,500) |
-| autoPET-III | 83,669 (Box 31,794 · T/L 51,875) | 849,013 (Box 360,638 · T/L 488,375) |
-| **Total (31)** | **25,725,431** | **50,529,833** |
+<table>
+  <thead>
+    <tr><th rowspan="2">Dataset</th><th colspan="3">Single-instance Annotation</th><th colspan="3">Multi-instance Annotation</th></tr>
+    <tr><th align="right">Box</th><th align="right">T/L</th><th align="right">A/D</th><th align="right">Box</th><th align="right">T/L</th><th align="right">A/D</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>ACDC</td><td align="right">14,271</td><td align="right">0</td><td align="right">0</td><td align="right">94,160</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>AFIDs</td><td align="right">0</td><td align="right">0</td><td align="right">432</td><td align="right">0</td><td align="right">0</td><td align="right">432</td></tr>
+    <tr><td>AMOS22</td><td align="right">666,532</td><td align="right">0</td><td align="right">0</td><td align="right">1,215,776</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>AbdomenAtlas1.0Mini</td><td align="right">9,748,290</td><td align="right">0</td><td align="right">0</td><td align="right">13,770,398</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>AbdomenCT-1K</td><td align="right">1,041,588</td><td align="right">0</td><td align="right">0</td><td align="right">1,549,325</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>BCV15</td><td align="right">68,543</td><td align="right">0</td><td align="right">0</td><td align="right">125,870</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>BraTS24</td><td align="right">1,115,524</td><td align="right">427,339</td><td align="right">0</td><td align="right">3,767,594</td><td align="right">1,645,550</td><td align="right">0</td></tr>
+    <tr><td>CAMUS</td><td align="right">951,370</td><td align="right">0</td><td align="right">0</td><td align="right">1,341,433</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>Ceph-Biometrics-400</td><td align="right">0</td><td align="right">0</td><td align="right">7,600</td><td align="right">0</td><td align="right">0</td><td align="right">7,600</td></tr>
+    <tr><td>CrossMoDA</td><td align="right">4,076</td><td align="right">0</td><td align="right">0</td><td align="right">16,623</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>DEEP-PSMA</td><td align="right">2,179</td><td align="right">10,740</td><td align="right">0</td><td align="right">50,341</td><td align="right">156,439</td><td align="right">0</td></tr>
+    <tr><td>FLARE22</td><td align="right">104,211</td><td align="right">0</td><td align="right">0</td><td align="right">152,954</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>FeTA24</td><td align="right">49,087</td><td align="right">0</td><td align="right">325</td><td align="right">153,599</td><td align="right">0</td><td align="right">325</td></tr>
+    <tr><td>HNTSMRG24</td><td align="right">32,029</td><td align="right">43,920</td><td align="right">0</td><td align="right">62,424</td><td align="right">69,093</td><td align="right">0</td></tr>
+    <tr><td>ISLES24</td><td align="right">9,774</td><td align="right">0</td><td align="right">0</td><td align="right">97,228</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>KiPA22</td><td align="right">37,647</td><td align="right">13,061</td><td align="right">0</td><td align="right">74,690</td><td align="right">13,864</td><td align="right">0</td></tr>
+    <tr><td>KiTS23</td><td align="right">114,491</td><td align="right">62,225</td><td align="right">0</td><td align="right">291,550</td><td align="right">76,016</td><td align="right">0</td></tr>
+    <tr><td>LIDC-IDRI</td><td align="right">10,379</td><td align="right">43,488</td><td align="right">0</td><td align="right">73,976</td><td align="right">59,179</td><td align="right">0</td></tr>
+    <tr><td>LNQ2023</td><td align="right">1,653</td><td align="right">5,702</td><td align="right">0</td><td align="right">25,331</td><td align="right">37,898</td><td align="right">0</td></tr>
+    <tr><td>MAMA-MIA</td><td align="right">67,767</td><td align="right">90,725</td><td align="right">0</td><td align="right">214,408</td><td align="right">369,419</td><td align="right">0</td></tr>
+    <tr><td>MSD</td><td align="right">277,451</td><td align="right">115,764</td><td align="right">0</td><td align="right">1,438,472</td><td align="right">712,247</td><td align="right">0</td></tr>
+    <tr><td>MSWAL</td><td align="right">60,106</td><td align="right">78,586</td><td align="right">0</td><td align="right">125,126</td><td align="right">145,136</td><td align="right">0</td></tr>
+    <tr><td>OAIZIB-CM</td><td align="right">648,048</td><td align="right">0</td><td align="right">0</td><td align="right">922,989</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>PDDCA</td><td align="right">15,076</td><td align="right">0</td><td align="right">132</td><td align="right">37,119</td><td align="right">0</td><td align="right">132</td></tr>
+    <tr><td>PI-CAI</td><td align="right">5,455</td><td align="right">22,764</td><td align="right">0</td><td align="right">42,857</td><td align="right">28,324</td><td align="right">0</td></tr>
+    <tr><td>SKM-TEA</td><td align="right">262,338</td><td align="right">0</td><td align="right">0</td><td align="right">475,828</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>ToothFairy2</td><td align="right">1,413,979</td><td align="right">0</td><td align="right">0</td><td align="right">2,131,223</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>TopCoW24</td><td align="right">41,829</td><td align="right">0</td><td align="right">0</td><td align="right">251,901</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>TotalSegmentator</td><td align="right">7,603,455</td><td align="right">0</td><td align="right">0</td><td align="right">16,979,575</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>VerSe</td><td align="right">350,311</td><td align="right">0</td><td align="right">1,500</td><td align="right">874,896</td><td align="right">0</td><td align="right">1,500</td></tr>
+    <tr><td>autoPET-III</td><td align="right">31,794</td><td align="right">51,875</td><td align="right">0</td><td align="right">360,638</td><td align="right">488,375</td><td align="right">0</td></tr>
+    <tr><td><b>Total (31)</b></td><td align="right"><b>24,749,253</b></td><td align="right"><b>966,189</b></td><td align="right"><b>9,989</b></td><td align="right"><b>46,718,304</b></td><td align="right"><b>3,801,540</b></td><td align="right"><b>9,989</b></td></tr>
+    <tr><td><b>Total (all tasks)</b></td><td align="right" colspan="3"><b>25,725,431</b></td><td align="right" colspan="3"><b>50,529,833</b></td></tr>
+  </tbody>
+</table>
 
 </details>
 
@@ -409,40 +416,47 @@ Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`]
   </tr>
 </table>
 
-| Dataset | Single-instance (Box / T/L / A/D) | Multi-instance (Box / T/L / A/D) |
-|---|--|--|
-| ACDC | 14,271 (Box 14,271) | 94,160 (Box 94,160) |
-| AFIDs | 432 (A/D 432) | 432 (A/D 432) |
-| AMOS22 | 666,532 (Box 666,532) | 1,215,776 (Box 1,215,776) |
-| AbdomenAtlas1.0Mini | 9,748,290 (Box 9,748,290) | 13,770,398 (Box 13,770,398) |
-| AbdomenCT-1K | 1,041,588 (Box 1,041,588) | 1,549,325 (Box 1,549,325) |
-| BCV15 | 68,543 (Box 68,543) | 125,870 (Box 125,870) |
-| BraTS24 | 1,131,404 (Box 1,115,524 · T/L 15,880) | 3,793,777 (Box 3,767,594 · T/L 26,183) |
-| CAMUS | 951,370 (Box 951,370) | 1,341,433 (Box 1,341,433) |
-| Ceph-Biometrics-400 | 7,600 (A/D 7,600) | 7,600 (A/D 7,600) |
-| CrossMoDA | 4,076 (Box 4,076) | 16,623 (Box 16,623) |
-| DEEP-PSMA | 2,273 (Box 2,179 · T/L 94) | 51,094 (Box 50,341 · T/L 753) |
-| FLARE22 | 104,211 (Box 104,211) | 152,954 (Box 152,954) |
-| FeTA24 | 49,412 (Box 49,087 · A/D 325) | 153,924 (Box 153,599 · A/D 325) |
-| HNTSMRG24 | 34,301 (Box 32,029 · T/L 2,272) | 65,612 (Box 62,424 · T/L 3,188) |
-| ISLES24 | 9,774 (Box 9,774) | 97,228 (Box 97,228) |
-| KiPA22 | 40,724 (Box 37,647 · T/L 3,077) | 77,832 (Box 74,690 · T/L 3,142) |
-| KiTS23 | 121,539 (Box 114,491 · T/L 7,048) | 299,584 (Box 291,550 · T/L 8,034) |
-| LIDC-IDRI | 10,796 (Box 10,379 · T/L 417) | 74,493 (Box 73,976 · T/L 517) |
-| LNQ2023 | 1,698 (Box 1,653 · T/L 45) | 25,569 (Box 25,331 · T/L 238) |
-| MAMA-MIA | 71,007 (Box 67,767 · T/L 3,240) | 219,479 (Box 214,408 · T/L 5,071) |
-| MSD | 283,577 (Box 277,451 · T/L 6,126) | 1,451,386 (Box 1,438,472 · T/L 12,914) |
-| MSWAL | 68,360 (Box 60,106 · T/L 8,254) | 137,386 (Box 125,126 · T/L 12,260) |
-| OAIZIB-CM | 648,048 (Box 648,048) | 922,989 (Box 922,989) |
-| PDDCA | 15,208 (Box 15,076 · A/D 132) | 37,251 (Box 37,119 · A/D 132) |
-| PI-CAI | 5,848 (Box 5,455 · T/L 393) | 43,266 (Box 42,857 · T/L 409) |
-| SKM-TEA | 262,338 (Box 262,338) | 475,828 (Box 475,828) |
-| ToothFairy2 | 1,413,979 (Box 1,413,979) | 2,131,223 (Box 2,131,223) |
-| TopCoW24 | 41,829 (Box 41,829) | 251,901 (Box 251,901) |
-| TotalSegmentator | 7,603,455 (Box 7,603,455) | 16,979,575 (Box 16,979,575) |
-| VerSe | 351,811 (Box 350,311 · A/D 1,500) | 876,396 (Box 874,896 · A/D 1,500) |
-| autoPET-III | 32,673 (Box 31,794 · T/L 879) | 363,756 (Box 360,638 · T/L 3,118) |
-| **Total (31)** | **24,806,967** | **46,804,120** |
+<table>
+  <thead>
+    <tr><th rowspan="2">Dataset</th><th colspan="3">Single-instance Annotation</th><th colspan="3">Multi-instance Annotation</th></tr>
+    <tr><th align="right">Box</th><th align="right">T/L</th><th align="right">A/D</th><th align="right">Box</th><th align="right">T/L</th><th align="right">A/D</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>ACDC</td><td align="right">14,271</td><td align="right">0</td><td align="right">0</td><td align="right">94,160</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>AFIDs</td><td align="right">0</td><td align="right">0</td><td align="right">432</td><td align="right">0</td><td align="right">0</td><td align="right">432</td></tr>
+    <tr><td>AMOS22</td><td align="right">666,532</td><td align="right">0</td><td align="right">0</td><td align="right">1,215,776</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>AbdomenAtlas1.0Mini</td><td align="right">9,748,290</td><td align="right">0</td><td align="right">0</td><td align="right">13,770,398</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>AbdomenCT-1K</td><td align="right">1,041,588</td><td align="right">0</td><td align="right">0</td><td align="right">1,549,325</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>BCV15</td><td align="right">68,543</td><td align="right">0</td><td align="right">0</td><td align="right">125,870</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>BraTS24</td><td align="right">1,115,524</td><td align="right">15,880</td><td align="right">0</td><td align="right">3,767,594</td><td align="right">26,183</td><td align="right">0</td></tr>
+    <tr><td>CAMUS</td><td align="right">951,370</td><td align="right">0</td><td align="right">0</td><td align="right">1,341,433</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>Ceph-Biometrics-400</td><td align="right">0</td><td align="right">0</td><td align="right">7,600</td><td align="right">0</td><td align="right">0</td><td align="right">7,600</td></tr>
+    <tr><td>CrossMoDA</td><td align="right">4,076</td><td align="right">0</td><td align="right">0</td><td align="right">16,623</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>DEEP-PSMA</td><td align="right">2,179</td><td align="right">94</td><td align="right">0</td><td align="right">50,341</td><td align="right">753</td><td align="right">0</td></tr>
+    <tr><td>FLARE22</td><td align="right">104,211</td><td align="right">0</td><td align="right">0</td><td align="right">152,954</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>FeTA24</td><td align="right">49,087</td><td align="right">0</td><td align="right">325</td><td align="right">153,599</td><td align="right">0</td><td align="right">325</td></tr>
+    <tr><td>HNTSMRG24</td><td align="right">32,029</td><td align="right">2,272</td><td align="right">0</td><td align="right">62,424</td><td align="right">3,188</td><td align="right">0</td></tr>
+    <tr><td>ISLES24</td><td align="right">9,774</td><td align="right">0</td><td align="right">0</td><td align="right">97,228</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>KiPA22</td><td align="right">37,647</td><td align="right">3,077</td><td align="right">0</td><td align="right">74,690</td><td align="right">3,142</td><td align="right">0</td></tr>
+    <tr><td>KiTS23</td><td align="right">114,491</td><td align="right">7,048</td><td align="right">0</td><td align="right">291,550</td><td align="right">8,034</td><td align="right">0</td></tr>
+    <tr><td>LIDC-IDRI</td><td align="right">10,379</td><td align="right">417</td><td align="right">0</td><td align="right">73,976</td><td align="right">517</td><td align="right">0</td></tr>
+    <tr><td>LNQ2023</td><td align="right">1,653</td><td align="right">45</td><td align="right">0</td><td align="right">25,331</td><td align="right">238</td><td align="right">0</td></tr>
+    <tr><td>MAMA-MIA</td><td align="right">67,767</td><td align="right">3,240</td><td align="right">0</td><td align="right">214,408</td><td align="right">5,071</td><td align="right">0</td></tr>
+    <tr><td>MSD</td><td align="right">277,451</td><td align="right">6,126</td><td align="right">0</td><td align="right">1,438,472</td><td align="right">12,914</td><td align="right">0</td></tr>
+    <tr><td>MSWAL</td><td align="right">60,106</td><td align="right">8,254</td><td align="right">0</td><td align="right">125,126</td><td align="right">12,260</td><td align="right">0</td></tr>
+    <tr><td>OAIZIB-CM</td><td align="right">648,048</td><td align="right">0</td><td align="right">0</td><td align="right">922,989</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>PDDCA</td><td align="right">15,076</td><td align="right">0</td><td align="right">132</td><td align="right">37,119</td><td align="right">0</td><td align="right">132</td></tr>
+    <tr><td>PI-CAI</td><td align="right">5,455</td><td align="right">393</td><td align="right">0</td><td align="right">42,857</td><td align="right">409</td><td align="right">0</td></tr>
+    <tr><td>SKM-TEA</td><td align="right">262,338</td><td align="right">0</td><td align="right">0</td><td align="right">475,828</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>ToothFairy2</td><td align="right">1,413,979</td><td align="right">0</td><td align="right">0</td><td align="right">2,131,223</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>TopCoW24</td><td align="right">41,829</td><td align="right">0</td><td align="right">0</td><td align="right">251,901</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>TotalSegmentator</td><td align="right">7,603,455</td><td align="right">0</td><td align="right">0</td><td align="right">16,979,575</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>VerSe</td><td align="right">350,311</td><td align="right">0</td><td align="right">1,500</td><td align="right">874,896</td><td align="right">0</td><td align="right">1,500</td></tr>
+    <tr><td>autoPET-III</td><td align="right">31,794</td><td align="right">879</td><td align="right">0</td><td align="right">360,638</td><td align="right">3,118</td><td align="right">0</td></tr>
+    <tr><td><b>Total (31)</b></td><td align="right"><b>24,749,253</b></td><td align="right"><b>47,725</b></td><td align="right"><b>9,989</b></td><td align="right"><b>46,718,304</b></td><td align="right"><b>75,827</b></td><td align="right"><b>9,989</b></td></tr>
+    <tr><td><b>Total (all tasks)</b></td><td align="right" colspan="3"><b>24,806,967</b></td><td align="right" colspan="3"><b>46,804,120</b></td></tr>
+  </tbody>
+</table>
 
 </details>
 
@@ -462,39 +476,46 @@ Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`]
   </tr>
 </table>
 
-| Dataset | Single-instance (Box / T/L / A/D) | Multi-instance (Box / T/L / A/D) |
-|---|--|--|
-| ACDC | 14,271 (Box 14,271) | 94,160 (Box 94,160) |
-| AFIDs | 432 (A/D 432) | 432 (A/D 432) |
-| AMOS22 | 666,532 (Box 666,532) | 1,215,776 (Box 1,215,776) |
-| AbdomenAtlas1.0Mini | 9,748,290 (Box 9,748,290) | 13,770,398 (Box 13,770,398) |
-| AbdomenCT-1K | 1,041,588 (Box 1,041,588) | 1,549,325 (Box 1,549,325) |
-| BCV15 | 68,543 (Box 68,543) | 125,870 (Box 125,870) |
-| BraTS24 | 1,131,404 (Box 1,115,524 · T/L 15,880) | 3,793,777 (Box 3,767,594 · T/L 26,183) |
-| CAMUS | 951,370 (Box 951,370) | 1,341,433 (Box 1,341,433) |
-| Ceph-Biometrics-400 | 7,600 (A/D 7,600) | 7,600 (A/D 7,600) |
-| CrossMoDA | 4,076 (Box 4,076) | 16,623 (Box 16,623) |
-| DEEP-PSMA | 2,273 (Box 2,179 · T/L 94) | 51,094 (Box 50,341 · T/L 753) |
-| FLARE22 | 104,211 (Box 104,211) | 152,954 (Box 152,954) |
-| FeTA24 | 49,412 (Box 49,087 · A/D 325) | 153,924 (Box 153,599 · A/D 325) |
-| HNTSMRG24 | 34,301 (Box 32,029 · T/L 2,272) | 65,612 (Box 62,424 · T/L 3,188) |
-| ISLES24 | 9,774 (Box 9,774) | 97,228 (Box 97,228) |
-| KiPA22 | 40,724 (Box 37,647 · T/L 3,077) | 77,832 (Box 74,690 · T/L 3,142) |
-| KiTS23 | 121,539 (Box 114,491 · T/L 7,048) | 299,584 (Box 291,550 · T/L 8,034) |
-| LIDC-IDRI | 10,796 (Box 10,379 · T/L 417) | 74,493 (Box 73,976 · T/L 517) |
-| LNQ2023 | 1,698 (Box 1,653 · T/L 45) | 25,569 (Box 25,331 · T/L 238) |
-| MAMA-MIA | 71,094 (Box 67,767 · T/L 3,327) | 219,525 (Box 214,408 · T/L 5,117) |
-| MSD | 283,577 (Box 277,451 · T/L 6,126) | 1,451,386 (Box 1,438,472 · T/L 12,914) |
-| OAIZIB-CM | 648,048 (Box 648,048) | 922,989 (Box 922,989) |
-| PDDCA | 15,208 (Box 15,076 · A/D 132) | 37,251 (Box 37,119 · A/D 132) |
-| PI-CAI | 5,850 (Box 5,455 · T/L 395) | 43,267 (Box 42,857 · T/L 410) |
-| SKM-TEA | 262,338 (Box 262,338) | 475,828 (Box 475,828) |
-| ToothFairy2 | 1,413,979 (Box 1,413,979) | 2,131,223 (Box 2,131,223) |
-| TopCoW24 | 41,829 (Box 41,829) | 251,901 (Box 251,901) |
-| TotalSegmentator | 7,603,455 (Box 7,603,455) | 16,979,575 (Box 16,979,575) |
-| VerSe | 351,811 (Box 350,311 · A/D 1,500) | 876,396 (Box 874,896 · A/D 1,500) |
-| autoPET-III | 32,673 (Box 31,794 · T/L 879) | 363,756 (Box 360,638 · T/L 3,118) |
-| **Total (30)** | **24,738,696** | **46,666,781** |
+<table>
+  <thead>
+    <tr><th rowspan="2">Dataset</th><th colspan="3">Single-instance Annotation</th><th colspan="3">Multi-instance Annotation</th></tr>
+    <tr><th align="right">Box</th><th align="right">T/L</th><th align="right">A/D</th><th align="right">Box</th><th align="right">T/L</th><th align="right">A/D</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>ACDC</td><td align="right">14,271</td><td align="right">0</td><td align="right">0</td><td align="right">94,160</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>AFIDs</td><td align="right">0</td><td align="right">0</td><td align="right">432</td><td align="right">0</td><td align="right">0</td><td align="right">432</td></tr>
+    <tr><td>AMOS22</td><td align="right">666,532</td><td align="right">0</td><td align="right">0</td><td align="right">1,215,776</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>AbdomenAtlas1.0Mini</td><td align="right">9,748,290</td><td align="right">0</td><td align="right">0</td><td align="right">13,770,398</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>AbdomenCT-1K</td><td align="right">1,041,588</td><td align="right">0</td><td align="right">0</td><td align="right">1,549,325</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>BCV15</td><td align="right">68,543</td><td align="right">0</td><td align="right">0</td><td align="right">125,870</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>BraTS24</td><td align="right">1,115,524</td><td align="right">15,880</td><td align="right">0</td><td align="right">3,767,594</td><td align="right">26,183</td><td align="right">0</td></tr>
+    <tr><td>CAMUS</td><td align="right">951,370</td><td align="right">0</td><td align="right">0</td><td align="right">1,341,433</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>Ceph-Biometrics-400</td><td align="right">0</td><td align="right">0</td><td align="right">7,600</td><td align="right">0</td><td align="right">0</td><td align="right">7,600</td></tr>
+    <tr><td>CrossMoDA</td><td align="right">4,076</td><td align="right">0</td><td align="right">0</td><td align="right">16,623</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>DEEP-PSMA</td><td align="right">2,179</td><td align="right">94</td><td align="right">0</td><td align="right">50,341</td><td align="right">753</td><td align="right">0</td></tr>
+    <tr><td>FLARE22</td><td align="right">104,211</td><td align="right">0</td><td align="right">0</td><td align="right">152,954</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>FeTA24</td><td align="right">49,087</td><td align="right">0</td><td align="right">325</td><td align="right">153,599</td><td align="right">0</td><td align="right">325</td></tr>
+    <tr><td>HNTSMRG24</td><td align="right">32,029</td><td align="right">2,272</td><td align="right">0</td><td align="right">62,424</td><td align="right">3,188</td><td align="right">0</td></tr>
+    <tr><td>ISLES24</td><td align="right">9,774</td><td align="right">0</td><td align="right">0</td><td align="right">97,228</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>KiPA22</td><td align="right">37,647</td><td align="right">3,077</td><td align="right">0</td><td align="right">74,690</td><td align="right">3,142</td><td align="right">0</td></tr>
+    <tr><td>KiTS23</td><td align="right">114,491</td><td align="right">7,048</td><td align="right">0</td><td align="right">291,550</td><td align="right">8,034</td><td align="right">0</td></tr>
+    <tr><td>LIDC-IDRI</td><td align="right">10,379</td><td align="right">417</td><td align="right">0</td><td align="right">73,976</td><td align="right">517</td><td align="right">0</td></tr>
+    <tr><td>LNQ2023</td><td align="right">1,653</td><td align="right">45</td><td align="right">0</td><td align="right">25,331</td><td align="right">238</td><td align="right">0</td></tr>
+    <tr><td>MAMA-MIA</td><td align="right">67,767</td><td align="right">3,327</td><td align="right">0</td><td align="right">214,408</td><td align="right">5,117</td><td align="right">0</td></tr>
+    <tr><td>MSD</td><td align="right">277,451</td><td align="right">6,126</td><td align="right">0</td><td align="right">1,438,472</td><td align="right">12,914</td><td align="right">0</td></tr>
+    <tr><td>OAIZIB-CM</td><td align="right">648,048</td><td align="right">0</td><td align="right">0</td><td align="right">922,989</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>PDDCA</td><td align="right">15,076</td><td align="right">0</td><td align="right">132</td><td align="right">37,119</td><td align="right">0</td><td align="right">132</td></tr>
+    <tr><td>PI-CAI</td><td align="right">5,455</td><td align="right">395</td><td align="right">0</td><td align="right">42,857</td><td align="right">410</td><td align="right">0</td></tr>
+    <tr><td>SKM-TEA</td><td align="right">262,338</td><td align="right">0</td><td align="right">0</td><td align="right">475,828</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>ToothFairy2</td><td align="right">1,413,979</td><td align="right">0</td><td align="right">0</td><td align="right">2,131,223</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>TopCoW24</td><td align="right">41,829</td><td align="right">0</td><td align="right">0</td><td align="right">251,901</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>TotalSegmentator</td><td align="right">7,603,455</td><td align="right">0</td><td align="right">0</td><td align="right">16,979,575</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>VerSe</td><td align="right">350,311</td><td align="right">0</td><td align="right">1,500</td><td align="right">874,896</td><td align="right">0</td><td align="right">1,500</td></tr>
+    <tr><td>autoPET-III</td><td align="right">31,794</td><td align="right">879</td><td align="right">0</td><td align="right">360,638</td><td align="right">3,118</td><td align="right">0</td></tr>
+    <tr><td><b>Total (30)</b></td><td align="right"><b>24,689,147</b></td><td align="right"><b>39,560</b></td><td align="right"><b>9,989</b></td><td align="right"><b>46,593,178</b></td><td align="right"><b>63,614</b></td><td align="right"><b>9,989</b></td></tr>
+    <tr><td><b>Total (all tasks)</b></td><td align="right" colspan="3"><b>24,738,696</b></td><td align="right" colspan="3"><b>46,666,781</b></td></tr>
+  </tbody>
+</table>
 
 </details>
 
@@ -514,31 +535,38 @@ Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`]
   </tr>
 </table>
 
-| Dataset | Single-instance (Box / T/L / A/D) | Multi-instance (Box / T/L / A/D) |
-|---|--|--|
-| ACDC | 14,271 (Box 14,271) | 94,160 (Box 94,160) |
-| AMOS22 | 666,532 (Box 666,532) | 1,215,776 (Box 1,215,776) |
-| AbdomenAtlas1.0Mini | 9,748,290 (Box 9,748,290) | 13,770,398 (Box 13,770,398) |
-| AbdomenCT-1K | 1,041,588 (Box 1,041,588) | 1,549,325 (Box 1,549,325) |
-| BCV15 | 68,543 (Box 68,543) | 125,870 (Box 125,870) |
-| BraTS24 | 1,131,404 (Box 1,115,524 · T/L 15,880) | 3,793,777 (Box 3,767,594 · T/L 26,183) |
-| CAMUS | 951,370 (Box 951,370) | 1,341,433 (Box 1,341,433) |
-| Ceph-Biometrics-400 | 7,600 (A/D 7,600) | 7,600 (A/D 7,600) |
-| CrossMoDA | 4,076 (Box 4,076) | 16,623 (Box 16,623) |
-| FLARE22 | 104,211 (Box 104,211) | 152,954 (Box 152,954) |
-| FeTA24 | 49,412 (Box 49,087 · A/D 325) | 153,924 (Box 153,599 · A/D 325) |
-| HNTSMRG24 | 34,301 (Box 32,029 · T/L 2,272) | 65,612 (Box 62,424 · T/L 3,188) |
-| ISLES24 | 9,774 (Box 9,774) | 97,228 (Box 97,228) |
-| KiPA22 | 40,724 (Box 37,647 · T/L 3,077) | 77,832 (Box 74,690 · T/L 3,142) |
-| KiTS23 | 121,539 (Box 114,491 · T/L 7,048) | 299,584 (Box 291,550 · T/L 8,034) |
-| MSD | 283,577 (Box 277,451 · T/L 6,126) | 1,451,386 (Box 1,438,472 · T/L 12,914) |
-| OAIZIB-CM | 648,048 (Box 648,048) | 922,989 (Box 922,989) |
-| SKM-TEA | 262,338 (Box 262,338) | 475,828 (Box 475,828) |
-| ToothFairy2 | 1,413,979 (Box 1,413,979) | 2,131,223 (Box 2,131,223) |
-| TopCoW24 | 41,829 (Box 41,829) | 251,901 (Box 251,901) |
-| TotalSegmentator | 7,603,455 (Box 7,603,455) | 16,979,575 (Box 16,979,575) |
-| autoPET-III | 32,673 (Box 31,794 · T/L 879) | 363,756 (Box 360,638 · T/L 3,118) |
-| **Total (22)** | **24,279,534** | **45,338,754** |
+<table>
+  <thead>
+    <tr><th rowspan="2">Dataset</th><th colspan="3">Single-instance Annotation</th><th colspan="3">Multi-instance Annotation</th></tr>
+    <tr><th align="right">Box</th><th align="right">T/L</th><th align="right">A/D</th><th align="right">Box</th><th align="right">T/L</th><th align="right">A/D</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>ACDC</td><td align="right">14,271</td><td align="right">0</td><td align="right">0</td><td align="right">94,160</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>AMOS22</td><td align="right">666,532</td><td align="right">0</td><td align="right">0</td><td align="right">1,215,776</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>AbdomenAtlas1.0Mini</td><td align="right">9,748,290</td><td align="right">0</td><td align="right">0</td><td align="right">13,770,398</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>AbdomenCT-1K</td><td align="right">1,041,588</td><td align="right">0</td><td align="right">0</td><td align="right">1,549,325</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>BCV15</td><td align="right">68,543</td><td align="right">0</td><td align="right">0</td><td align="right">125,870</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>BraTS24</td><td align="right">1,115,524</td><td align="right">15,880</td><td align="right">0</td><td align="right">3,767,594</td><td align="right">26,183</td><td align="right">0</td></tr>
+    <tr><td>CAMUS</td><td align="right">951,370</td><td align="right">0</td><td align="right">0</td><td align="right">1,341,433</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>Ceph-Biometrics-400</td><td align="right">0</td><td align="right">0</td><td align="right">7,600</td><td align="right">0</td><td align="right">0</td><td align="right">7,600</td></tr>
+    <tr><td>CrossMoDA</td><td align="right">4,076</td><td align="right">0</td><td align="right">0</td><td align="right">16,623</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>FLARE22</td><td align="right">104,211</td><td align="right">0</td><td align="right">0</td><td align="right">152,954</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>FeTA24</td><td align="right">49,087</td><td align="right">0</td><td align="right">325</td><td align="right">153,599</td><td align="right">0</td><td align="right">325</td></tr>
+    <tr><td>HNTSMRG24</td><td align="right">32,029</td><td align="right">2,272</td><td align="right">0</td><td align="right">62,424</td><td align="right">3,188</td><td align="right">0</td></tr>
+    <tr><td>ISLES24</td><td align="right">9,774</td><td align="right">0</td><td align="right">0</td><td align="right">97,228</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>KiPA22</td><td align="right">37,647</td><td align="right">3,077</td><td align="right">0</td><td align="right">74,690</td><td align="right">3,142</td><td align="right">0</td></tr>
+    <tr><td>KiTS23</td><td align="right">114,491</td><td align="right">7,048</td><td align="right">0</td><td align="right">291,550</td><td align="right">8,034</td><td align="right">0</td></tr>
+    <tr><td>MSD</td><td align="right">277,451</td><td align="right">6,126</td><td align="right">0</td><td align="right">1,438,472</td><td align="right">12,914</td><td align="right">0</td></tr>
+    <tr><td>OAIZIB-CM</td><td align="right">648,048</td><td align="right">0</td><td align="right">0</td><td align="right">922,989</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>SKM-TEA</td><td align="right">262,338</td><td align="right">0</td><td align="right">0</td><td align="right">475,828</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>ToothFairy2</td><td align="right">1,413,979</td><td align="right">0</td><td align="right">0</td><td align="right">2,131,223</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>TopCoW24</td><td align="right">41,829</td><td align="right">0</td><td align="right">0</td><td align="right">251,901</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>TotalSegmentator</td><td align="right">7,603,455</td><td align="right">0</td><td align="right">0</td><td align="right">16,979,575</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>autoPET-III</td><td align="right">31,794</td><td align="right">879</td><td align="right">0</td><td align="right">360,638</td><td align="right">3,118</td><td align="right">0</td></tr>
+    <tr><td><b>Total (22)</b></td><td align="right"><b>24,236,327</b></td><td align="right"><b>35,282</b></td><td align="right"><b>7,925</b></td><td align="right"><b>45,274,250</b></td><td align="right"><b>56,579</b></td><td align="right"><b>7,925</b></td></tr>
+    <tr><td><b>Total (all tasks)</b></td><td align="right" colspan="3"><b>24,279,534</b></td><td align="right" colspan="3"><b>45,338,754</b></td></tr>
+  </tbody>
+</table>
 
 </details>
 
@@ -558,31 +586,38 @@ Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`]
   </tr>
 </table>
 
-| Dataset | Single-instance (Box / T/L / A/D) | Multi-instance (Box / T/L / A/D) |
-|---|--|--|
-| ACDC | 14,271 (Box 14,271) | 94,160 (Box 94,160) |
-| AMOS22 | 666,532 (Box 666,532) | 1,215,776 (Box 1,215,776) |
-| AbdomenAtlas1.0Mini | 9,748,290 (Box 9,748,290) | 13,770,398 (Box 13,770,398) |
-| AbdomenCT-1K | 1,041,588 (Box 1,041,588) | 1,549,325 (Box 1,549,325) |
-| BCV15 | 68,543 (Box 68,543) | 125,870 (Box 125,870) |
-| BraTS24 | 1,134,663 (Box 1,115,524 · T/L 19,139) | 3,797,951 (Box 3,767,594 · T/L 30,357) |
-| CAMUS | 951,370 (Box 951,370) | 1,341,433 (Box 1,341,433) |
-| Ceph-Biometrics-400 | 7,600 (A/D 7,600) | 7,600 (A/D 7,600) |
-| CrossMoDA | 4,076 (Box 4,076) | 16,623 (Box 16,623) |
-| FLARE22 | 104,211 (Box 104,211) | 152,954 (Box 152,954) |
-| FeTA24 | 49,412 (Box 49,087 · A/D 325) | 153,924 (Box 153,599 · A/D 325) |
-| HNTSMRG24 | 35,158 (Box 32,029 · T/L 3,129) | 66,899 (Box 62,424 · T/L 4,475) |
-| ISLES24 | 9,774 (Box 9,774) | 97,228 (Box 97,228) |
-| KiPA22 | 40,724 (Box 37,647 · T/L 3,077) | 77,832 (Box 74,690 · T/L 3,142) |
-| KiTS23 | 126,962 (Box 114,491 · T/L 12,471) | 305,698 (Box 291,550 · T/L 14,148) |
-| MSD | 286,603 (Box 277,451 · T/L 9,152) | 1,455,092 (Box 1,438,472 · T/L 16,620) |
-| OAIZIB-CM | 648,048 (Box 648,048) | 922,989 (Box 922,989) |
-| SKM-TEA | 262,338 (Box 262,338) | 475,828 (Box 475,828) |
-| ToothFairy2 | 1,413,979 (Box 1,413,979) | 2,131,223 (Box 2,131,223) |
-| TopCoW24 | 41,829 (Box 41,829) | 251,901 (Box 251,901) |
-| TotalSegmentator | 7,603,455 (Box 7,603,455) | 16,979,575 (Box 16,979,575) |
-| autoPET-III | 33,040 (Box 31,794 · T/L 1,246) | 364,507 (Box 360,638 · T/L 3,869) |
-| **Total (22)** | **24,292,466** | **45,354,786** |
+<table>
+  <thead>
+    <tr><th rowspan="2">Dataset</th><th colspan="3">Single-instance Annotation</th><th colspan="3">Multi-instance Annotation</th></tr>
+    <tr><th align="right">Box</th><th align="right">T/L</th><th align="right">A/D</th><th align="right">Box</th><th align="right">T/L</th><th align="right">A/D</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>ACDC</td><td align="right">14,271</td><td align="right">0</td><td align="right">0</td><td align="right">94,160</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>AMOS22</td><td align="right">666,532</td><td align="right">0</td><td align="right">0</td><td align="right">1,215,776</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>AbdomenAtlas1.0Mini</td><td align="right">9,748,290</td><td align="right">0</td><td align="right">0</td><td align="right">13,770,398</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>AbdomenCT-1K</td><td align="right">1,041,588</td><td align="right">0</td><td align="right">0</td><td align="right">1,549,325</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>BCV15</td><td align="right">68,543</td><td align="right">0</td><td align="right">0</td><td align="right">125,870</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>BraTS24</td><td align="right">1,115,524</td><td align="right">19,139</td><td align="right">0</td><td align="right">3,767,594</td><td align="right">30,357</td><td align="right">0</td></tr>
+    <tr><td>CAMUS</td><td align="right">951,370</td><td align="right">0</td><td align="right">0</td><td align="right">1,341,433</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>Ceph-Biometrics-400</td><td align="right">0</td><td align="right">0</td><td align="right">7,600</td><td align="right">0</td><td align="right">0</td><td align="right">7,600</td></tr>
+    <tr><td>CrossMoDA</td><td align="right">4,076</td><td align="right">0</td><td align="right">0</td><td align="right">16,623</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>FLARE22</td><td align="right">104,211</td><td align="right">0</td><td align="right">0</td><td align="right">152,954</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>FeTA24</td><td align="right">49,087</td><td align="right">0</td><td align="right">325</td><td align="right">153,599</td><td align="right">0</td><td align="right">325</td></tr>
+    <tr><td>HNTSMRG24</td><td align="right">32,029</td><td align="right">3,129</td><td align="right">0</td><td align="right">62,424</td><td align="right">4,475</td><td align="right">0</td></tr>
+    <tr><td>ISLES24</td><td align="right">9,774</td><td align="right">0</td><td align="right">0</td><td align="right">97,228</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>KiPA22</td><td align="right">37,647</td><td align="right">3,077</td><td align="right">0</td><td align="right">74,690</td><td align="right">3,142</td><td align="right">0</td></tr>
+    <tr><td>KiTS23</td><td align="right">114,491</td><td align="right">12,471</td><td align="right">0</td><td align="right">291,550</td><td align="right">14,148</td><td align="right">0</td></tr>
+    <tr><td>MSD</td><td align="right">277,451</td><td align="right">9,152</td><td align="right">0</td><td align="right">1,438,472</td><td align="right">16,620</td><td align="right">0</td></tr>
+    <tr><td>OAIZIB-CM</td><td align="right">648,048</td><td align="right">0</td><td align="right">0</td><td align="right">922,989</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>SKM-TEA</td><td align="right">262,338</td><td align="right">0</td><td align="right">0</td><td align="right">475,828</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>ToothFairy2</td><td align="right">1,413,979</td><td align="right">0</td><td align="right">0</td><td align="right">2,131,223</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>TopCoW24</td><td align="right">41,829</td><td align="right">0</td><td align="right">0</td><td align="right">251,901</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>TotalSegmentator</td><td align="right">7,603,455</td><td align="right">0</td><td align="right">0</td><td align="right">16,979,575</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>autoPET-III</td><td align="right">31,794</td><td align="right">1,246</td><td align="right">0</td><td align="right">360,638</td><td align="right">3,869</td><td align="right">0</td></tr>
+    <tr><td><b>Total (22)</b></td><td align="right"><b>24,236,327</b></td><td align="right"><b>48,214</b></td><td align="right"><b>7,925</b></td><td align="right"><b>45,274,250</b></td><td align="right"><b>72,611</b></td><td align="right"><b>7,925</b></td></tr>
+    <tr><td><b>Total (all tasks)</b></td><td align="right" colspan="3"><b>24,292,466</b></td><td align="right" colspan="3"><b>45,354,786</b></td></tr>
+  </tbody>
+</table>
 
 </details>
 
@@ -602,31 +637,38 @@ Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`]
   </tr>
 </table>
 
-| Dataset | Single-instance (Box / T/L / A/D) | Multi-instance (Box / T/L / A/D) |
-|---|--|--|
-| ACDC | 14,271 (Box 14,271) | 94,160 (Box 94,160) |
-| AMOS22 | 666,532 (Box 666,532) | 1,215,776 (Box 1,215,776) |
-| AbdomenAtlas1.0Mini | 9,748,290 (Box 9,748,290) | 13,770,398 (Box 13,770,398) |
-| AbdomenCT-1K | 1,041,588 (Box 1,041,588) | 1,549,325 (Box 1,549,325) |
-| BCV15 | 68,543 (Box 68,543) | 125,870 (Box 125,870) |
-| BraTS24 | 1,126,595 (Box 1,115,524 · T/L 11,071) | 3,778,687 (Box 3,767,594 · T/L 11,093) |
-| CAMUS | 951,370 (Box 951,370) | 1,341,433 (Box 1,341,433) |
-| Ceph-Biometrics-400 | 7,600 (A/D 7,600) | 7,600 (A/D 7,600) |
-| CrossMoDA | 4,076 (Box 4,076) | 16,623 (Box 16,623) |
-| FLARE22 | 104,211 (Box 104,211) | 152,954 (Box 152,954) |
-| FeTA24 | 49,412 (Box 49,087 · A/D 325) | 153,924 (Box 153,599 · A/D 325) |
-| HNTSMRG24 | 33,421 (Box 32,029 · T/L 1,392) | 63,840 (Box 62,424 · T/L 1,416) |
-| ISLES24 | 9,774 (Box 9,774) | 97,228 (Box 97,228) |
-| KiPA22 | 40,742 (Box 37,647 · T/L 3,095) | 77,785 (Box 74,690 · T/L 3,095) |
-| KiTS23 | 122,975 (Box 114,491 · T/L 8,484) | 300,090 (Box 291,550 · T/L 8,540) |
-| MSD | 284,923 (Box 277,451 · T/L 7,472) | 1,446,146 (Box 1,438,472 · T/L 7,674) |
-| OAIZIB-CM | 648,048 (Box 648,048) | 922,989 (Box 922,989) |
-| SKM-TEA | 262,338 (Box 262,338) | 475,828 (Box 475,828) |
-| ToothFairy2 | 1,413,979 (Box 1,413,979) | 2,131,223 (Box 2,131,223) |
-| TopCoW24 | 41,829 (Box 41,829) | 251,901 (Box 251,901) |
-| TotalSegmentator | 7,603,455 (Box 7,603,455) | 16,979,575 (Box 16,979,575) |
-| autoPET-III | 32,529 (Box 31,794 · T/L 735) | 361,387 (Box 360,638 · T/L 749) |
-| **Total (22)** | **24,276,501** | **45,314,742** |
+<table>
+  <thead>
+    <tr><th rowspan="2">Dataset</th><th colspan="3">Single-instance Annotation</th><th colspan="3">Multi-instance Annotation</th></tr>
+    <tr><th align="right">Box</th><th align="right">T/L</th><th align="right">A/D</th><th align="right">Box</th><th align="right">T/L</th><th align="right">A/D</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>ACDC</td><td align="right">14,271</td><td align="right">0</td><td align="right">0</td><td align="right">94,160</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>AMOS22</td><td align="right">666,532</td><td align="right">0</td><td align="right">0</td><td align="right">1,215,776</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>AbdomenAtlas1.0Mini</td><td align="right">9,748,290</td><td align="right">0</td><td align="right">0</td><td align="right">13,770,398</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>AbdomenCT-1K</td><td align="right">1,041,588</td><td align="right">0</td><td align="right">0</td><td align="right">1,549,325</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>BCV15</td><td align="right">68,543</td><td align="right">0</td><td align="right">0</td><td align="right">125,870</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>BraTS24</td><td align="right">1,115,524</td><td align="right">11,071</td><td align="right">0</td><td align="right">3,767,594</td><td align="right">11,093</td><td align="right">0</td></tr>
+    <tr><td>CAMUS</td><td align="right">951,370</td><td align="right">0</td><td align="right">0</td><td align="right">1,341,433</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>Ceph-Biometrics-400</td><td align="right">0</td><td align="right">0</td><td align="right">7,600</td><td align="right">0</td><td align="right">0</td><td align="right">7,600</td></tr>
+    <tr><td>CrossMoDA</td><td align="right">4,076</td><td align="right">0</td><td align="right">0</td><td align="right">16,623</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>FLARE22</td><td align="right">104,211</td><td align="right">0</td><td align="right">0</td><td align="right">152,954</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>FeTA24</td><td align="right">49,087</td><td align="right">0</td><td align="right">325</td><td align="right">153,599</td><td align="right">0</td><td align="right">325</td></tr>
+    <tr><td>HNTSMRG24</td><td align="right">32,029</td><td align="right">1,392</td><td align="right">0</td><td align="right">62,424</td><td align="right">1,416</td><td align="right">0</td></tr>
+    <tr><td>ISLES24</td><td align="right">9,774</td><td align="right">0</td><td align="right">0</td><td align="right">97,228</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>KiPA22</td><td align="right">37,647</td><td align="right">3,095</td><td align="right">0</td><td align="right">74,690</td><td align="right">3,095</td><td align="right">0</td></tr>
+    <tr><td>KiTS23</td><td align="right">114,491</td><td align="right">8,484</td><td align="right">0</td><td align="right">291,550</td><td align="right">8,540</td><td align="right">0</td></tr>
+    <tr><td>MSD</td><td align="right">277,451</td><td align="right">7,472</td><td align="right">0</td><td align="right">1,438,472</td><td align="right">7,674</td><td align="right">0</td></tr>
+    <tr><td>OAIZIB-CM</td><td align="right">648,048</td><td align="right">0</td><td align="right">0</td><td align="right">922,989</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>SKM-TEA</td><td align="right">262,338</td><td align="right">0</td><td align="right">0</td><td align="right">475,828</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>ToothFairy2</td><td align="right">1,413,979</td><td align="right">0</td><td align="right">0</td><td align="right">2,131,223</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>TopCoW24</td><td align="right">41,829</td><td align="right">0</td><td align="right">0</td><td align="right">251,901</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>TotalSegmentator</td><td align="right">7,603,455</td><td align="right">0</td><td align="right">0</td><td align="right">16,979,575</td><td align="right">0</td><td align="right">0</td></tr>
+    <tr><td>autoPET-III</td><td align="right">31,794</td><td align="right">735</td><td align="right">0</td><td align="right">360,638</td><td align="right">749</td><td align="right">0</td></tr>
+    <tr><td><b>Total (22)</b></td><td align="right"><b>24,236,327</b></td><td align="right"><b>32,249</b></td><td align="right"><b>7,925</b></td><td align="right"><b>45,274,250</b></td><td align="right"><b>32,567</b></td><td align="right"><b>7,925</b></td></tr>
+    <tr><td><b>Total (all tasks)</b></td><td align="right" colspan="3"><b>24,276,501</b></td><td align="right" colspan="3"><b>45,314,742</b></td></tr>
+  </tbody>
+</table>
 
 </details>
 
