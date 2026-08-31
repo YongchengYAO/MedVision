@@ -15,8 +15,8 @@ Deliberately emits no timestamp. An unchanged analysis then regenerates a
 byte-identical file, so ``git diff`` shows real numeric movement rather than a
 churning date line.
 
-Run after summarize_CDA_task.py, analyze_CDA_renal_truelabel.py and
-cda_uncertainty.py -- run_CDA_analysis.sh does exactly that.
+Run after summarize_CDA_task.py and cda_uncertainty.py -- run_CDA_analysis.sh
+does exactly that.
 """
 
 import argparse
@@ -34,18 +34,12 @@ from cda_config import (
 )
 from cda_stats import load_model_display_map, resolve_model_dirs
 
-TRUELABEL_FILENAME = "summary_CDA_renal_truelabel.json"
-
-# Proxy order follows cda_config's declaration order -- the primary ANB proxy,
-# then its secondary companions, then the renal proxy. A proxy not listed here
-# falls back to first-appearance order.
+# Proxy order follows cda_config's declaration order -- the two cephalometric
+# proxies, then the renal proxy. A proxy not listed here falls back to
+# first-appearance order.
 PROXY_ORDER = [spec["name"] for spec in CDA_CEPH_ANGLE_PROXIES.values()] + [
     CDA_RENAL_TSTAGE["name"]
 ]
-
-# The organ-confined stratum is the primary true-label statistic: pT3/pT4 are
-# defined by tissue invasion, so no size-based rule can produce them.
-TRUELABEL_PRIMARY_PROXY = "renal T-stage vs pathologic (organ-confined pT1-pT2)"
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
@@ -130,8 +124,8 @@ def resolve_artifact_set(task_dir, want_filtered, src_sfx=""):
     )
 
 
-def load_track1(task_dir, config_yaml, suffix, parsed_dirname):
-    """Collect Track-1 ``overall`` metrics per proxy, in config model order.
+def load_metrics(task_dir, config_yaml, suffix, parsed_dirname):
+    """Collect ``overall`` metrics per proxy, in config model order.
 
     Returns ``(by_proxy, absent, datasets_by_proxy, n_models)`` where ``by_proxy``
     maps a proxy name to an ordered list of ``(display_name, metrics_entry)``.
@@ -161,23 +155,6 @@ def load_track1(task_dir, config_yaml, suffix, parsed_dirname):
     return by_proxy, absent, datasets, len(model_items)
 
 
-def load_track2(task_dir, config_yaml, suffix, parsed_dirname):
-    """Collect Track-2 per-model true-label results, in config model order."""
-    display_map = load_model_display_map(config_yaml)
-    model_items = resolve_model_dirs(task_dir, display_map)
-    filename = f"{TRUELABEL_FILENAME.removesuffix('.json')}{suffix}.json"
-
-    rows, absent = [], []
-    for model_dir, display in model_items:
-        path = os.path.join(model_dir, parsed_dirname, filename)
-        if not os.path.isfile(path):
-            absent.append(display)
-            continue
-        with open(path) as f:
-            rows.append((display, json.load(f)))
-    return rows, absent, len(model_items)
-
-
 def load_uncertainty(path):
     """Index uncertainty rows by ``(model, proxy)``; also return the run metadata."""
     if not os.path.isfile(path):
@@ -200,8 +177,8 @@ def _ordered_proxies(by_proxy):
     return ordered
 
 
-def track1_section(by_proxy, datasets, unc, absent, n_models):
-    """Per-proxy Track-1 leaderboards, one table each."""
+def agreement_section(by_proxy, datasets, unc, absent, n_models):
+    """Per-proxy leaderboards, one table each."""
     out = []
     for proxy in _ordered_proxies(by_proxy):
         entries = by_proxy[proxy]
@@ -238,89 +215,17 @@ def track1_section(by_proxy, datasets, unc, absent, n_models):
     return out
 
 
-def track2_section(rows, unc, absent, n_models):
-    """Track-2 leaderboard plus the per-model perfect-measurement references."""
-    out = []
-    lead, refs = [], []
-    for display, res in rows:
-        oc = res.get("organ_confined_pT1_pT2", {})
-        pred = oc.get("pred_vs_pathologic", {})
-        u = unc.get((display, TRUELABEL_PRIMARY_PROXY))
-        flag = " ⚠" if u and u.get("low_n") else ""
-        lead.append([
-            display,
-            _num(pred.get("weighted_kappa")),
-            _ci(u),
-            _pval(u.get("p_kappa_gt_zero")) if u else "—",
-            _num(pred.get("accuracy")),
-            _num(pred.get("accuracy_coverage_adjusted")),
-            f"{pred.get('n_parsed', 0)}{flag}",
-            str(pred.get("n_total", 0)),
-        ])
-        refs.append([
-            display,
-            _num(oc.get("pathologic3Dsize_vs_pathologic", {}).get("weighted_kappa")),
-            _num(oc.get("gt2Dslice_vs_pathologic", {}).get("weighted_kappa")),
-            str(oc.get("n_cases", 0)),
-        ])
-
-    out.append("\n### Organ-confined pT1–pT2 — prediction vs pathologic stage\n")
-    out += _table(
-        ["Model", "wκ", "95% CI", "p", "Acc", "AccCov", "Nparsed", "Ntotal"], lead
-    )
-
-    out.append(
-        "\n### Reference: how a perfect measurement scores on the same cases\n"
-    )
-    out.append(
-        "Both rows replace the model's prediction with a ground-truth size. "
-        "`GT 3D size` is a genuine ceiling for any size-based rule. `GT 2D slice` "
-        "is **not** a ceiling — max-over-slices under-estimates the 3D greatest "
-        "dimension, so a model that over-measures can beat it.\n"
-    )
-    # These references depend only on the joined case set, which comes from the
-    # clinical table rather than from the model, so they are normally identical
-    # for every model. Printing one row per model would read as N independent
-    # measurements of the ceiling. Collapse when they agree; fall back to the
-    # per-model table if a model ever joins a different set of cases.
-    if len({tuple(r[1:]) for r in refs}) == 1:
-        _, gt3d, gt2d, ncases = refs[0]
-        out += _table(
-            ["Reference", "wκ", "Ncases"],
-            [["GT 3D size → stage", gt3d, ncases],
-             ["GT 2D slice → stage", gt2d, ncases]],
-        )
-        out.append(
-            f"\n_Identical for all {len(refs)} models — the reference uses "
-            "ground-truth sizes on the same joined case set, so it does not "
-            "depend on the model._"
-        )
-    else:
-        out += _table(["Model", "GT 3D size wκ", "GT 2D slice wκ", "Ncases"], refs)
-
-    if absent:
-        out.append(
-            f"\n**Not reported** ({len(absent)} of {n_models} configured models had "
-            "no KiTS23 case joined to a pathologic stage): " + ", ".join(absent)
-        )
-    return out
-
-
 def build_report(args):
     src = source_suffix(args.parsed_dirname)
     ad_sfx, ad_note = resolve_artifact_set(args.ad_task_dir, args.filtered, src)
     tl_sfx, tl_note = resolve_artifact_set(args.tl_task_dir, args.filtered, src)
 
-    ad_by_proxy, ad_absent, ad_ds, ad_n = load_track1(
+    ad_by_proxy, ad_absent, ad_ds, ad_n = load_metrics(
         args.ad_task_dir, args.ad_config_yaml, ad_sfx, args.parsed_dirname
     )
-    tl_by_proxy, tl_absent, tl_ds, tl_n = load_track1(
+    tl_by_proxy, tl_absent, tl_ds, tl_n = load_metrics(
         args.tl_task_dir, args.tl_config_yaml, tl_sfx, args.parsed_dirname
     )
-    t2_rows, t2_absent, t2_n = load_track2(
-        args.tl_task_dir, args.tl_config_yaml, tl_sfx, args.parsed_dirname
-    )
-
     # Refuse to render a report in which nothing was found. Every model absent
     # produces a complete-looking document whose every row says "not reported" --
     # indistinguishable at a glance from a real result, and the likeliest cause is
@@ -342,14 +247,7 @@ def build_report(args):
     tl_unc, tl_meta = load_uncertainty(
         os.path.join(args.tl_task_dir, f"summary_CDA_uncertainty{src}{tl_sfx}.json")
     )
-    t2_unc, t2_meta = load_uncertainty(
-        os.path.join(
-            args.tl_task_dir,
-            f"summary_CDA_uncertainty_truelabel{src}{tl_sfx}.json",
-        )
-    )
-
-    boot = tl_meta or ad_meta or t2_meta
+    boot = tl_meta or ad_meta
     L = []
     L.append("# Clinical Decision Agreement — Results")
     L.append(
@@ -399,23 +297,14 @@ def build_report(args):
         "cohort's values sit to a cutoff. Compare models within a table."
     )
 
-    L.append("\n## Track 1 — self-consistent agreement\n")
+    L.append("\n## Decision agreement\n")
     L.append(
         "Category of the prediction vs category of the ground-truth measurement. "
         "Both sides pass through the same cutoff table, so any disagreement is "
         "caused by measurement error alone."
     )
-    L += track1_section(ad_by_proxy, ad_ds, ad_unc, ad_absent, ad_n)
-    L += track1_section(tl_by_proxy, tl_ds, tl_unc, tl_absent, tl_n)
-
-    L.append("\n## Track 2 — renal true-label (KiTS23 pathologic stage)\n")
-    L.append(
-        "Category of the prediction vs the pathologic T stage in the KiTS23 "
-        "clinical table — a real, non-imaging reference. Restricted to the "
-        "organ-confined pT1–pT2 stratum, where tumour size genuinely is the "
-        "staging axis."
-    )
-    L += track2_section(t2_rows, t2_unc, t2_absent, t2_n)
+    L += agreement_section(ad_by_proxy, ad_ds, ad_unc, ad_absent, ad_n)
+    L += agreement_section(tl_by_proxy, tl_ds, tl_unc, tl_absent, tl_n)
 
     L.append("\n## Regenerating this report\n")
     L.append("```bash")

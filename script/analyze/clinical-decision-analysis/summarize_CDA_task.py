@@ -11,8 +11,8 @@ This script reuses the already-parsed benchmark outputs (``parsed/*.jsonl``) —
 re-inference is performed. It supports two proxies (see ``cda_config.py`` for
 the cutoff tables and citations):
 
-- **ANB / SNA / SNB angle -> orthodontic skeletal class** (Ceph-Biometrics-400).
-  ANB is primary; SNA/SNB are secondary companions. (nominal)
+- **SNA / SNB angle -> maxillary / mandibular position** (Ceph-Biometrics-400).
+  (ordinal -> also reports quadratic-weighted kappa)
 - **Renal tumor greatest dimension -> AJCC 8th-ed T category** (KiTS23, KiPA22).
   (ordinal -> also reports quadratic-weighted kappa)
 
@@ -82,7 +82,7 @@ def _proxies_for_sample(file_kind, dataset_name, metric_key):
     """Return the list of ``(proxy_key, spec)`` a sample contributes to.
 
     - Angle samples map to a Ceph angle proxy only when their ``metric_key`` is a
-      recognized cephalometric angle (ANB/SNA/SNB).
+      recognized cephalometric angle (SNA/SNB).
     - T/L samples map to the renal T-stage proxy for renal-tumor datasets, and to
       no proxy otherwise.
     """
@@ -390,8 +390,8 @@ def print_model_summaries(
     was on disk and is written to ``<task_dir>/summary_CDA_task.txt``. A
     removed-samples-filtered run adds a ``_filtered`` marker.
     """
-    # Suffix order is "<_source><_filtered><_canonical><_limitN>", matching
-    # analyze_CDA_renal_truelabel.py and the paths run_CDA_analysis.sh echoes.
+    # Suffix order is "<_source><_filtered><_canonical><_limitN>", matching the
+    # paths run_CDA_analysis.sh echoes.
     # The source marker leads because it names where the numbers came from.
     limit_sfx = "_limit" + str(limit) if limit is not None else ""
     canon_sfx = "_canonical" if canonical else ""

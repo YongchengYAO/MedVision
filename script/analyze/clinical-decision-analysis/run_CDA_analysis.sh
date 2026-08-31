@@ -15,7 +15,6 @@ cfg_tl="$wd/config-TL-CoT.yaml"
 
 ad_dir="$benchmark_dir/Results/MedVision-AD-v2-CoT"
 tl_dir="$benchmark_dir/Results/MedVision-TL-v2-CoT"
-kits23_json="$benchmark_dir/Data/Datasets/KiTS23/kits23_clinical.json"
 
 echo "[CDA] benchmark_dir = $benchmark_dir"
 
@@ -63,26 +62,19 @@ if [ -n "$REMOVED_SAMPLES_DIR" ]; then
     echo "[CDA] filtering applies to the T/L task only (A/D has no mask clusters)"
 fi
 
-# Track 1 — self-consistent agreement (angle proxies live in the AD dir; the
-# renal proxy lives in the TL dir).
+# Decision agreement (angle proxies live in the AD dir; the renal proxy lives in
+# the TL dir).
 python "$wd/summarize_CDA_task.py" --task_dir "$ad_dir" --parsed_dirname "$CDA_PARSED_DIR" \
     --config_yaml "$cfg_ad" --skip_model_wo_parsed_files 2>&1 | tee "$wd/cda_summarize_AD-CoT${s}.log"
 python "$wd/summarize_CDA_task.py" --task_dir "$tl_dir" --parsed_dirname "$CDA_PARSED_DIR" \
     --config_yaml "$cfg_tl" --skip_model_wo_parsed_files "${REMOVED_ARGS[@]}" 2>&1 | tee "$wd/cda_summarize_TL-CoT${s}.log"
 
-# Track 2 — renal T-stage true-label validation vs KiTS23 pathologic stage.
-python "$wd/analyze_CDA_renal_truelabel.py" --task_dir "$tl_dir" --parsed_dirname "$CDA_PARSED_DIR" \
-    --kits23_json "$kits23_json" \
-    --config_yaml "$cfg_tl" "${REMOVED_ARGS[@]}" 2>&1 | tee "$wd/cda_renal_truelabel_TL-CoT${s}.log"
-
-# Uncertainty — clustered bootstrap 95% CIs + p-values. Must run AFTER the two
-# analysis scripts: it reads the per-sample categorizations they persist.
+# Uncertainty — clustered bootstrap 95% CIs + p-values. Must run AFTER the
+# analysis step above: it reads the per-sample categorizations it persists.
 python "$wd/cda_uncertainty.py" --task_dir "$ad_dir" --parsed_dirname "$CDA_PARSED_DIR" \
     --config_yaml "$cfg_ad" 2>&1 | tee "$wd/cda_uncertainty_AD-CoT${s}.log"
 python "$wd/cda_uncertainty.py" --task_dir "$tl_dir" --parsed_dirname "$CDA_PARSED_DIR" \
     --config_yaml "$cfg_tl" "${FILTERED_FLAG[@]}" 2>&1 | tee "$wd/cda_uncertainty_TL-CoT${s}.log"
-python "$wd/cda_uncertainty.py" --task_dir "$tl_dir" --truelabel --parsed_dirname "$CDA_PARSED_DIR" \
-    --config_yaml "$cfg_tl" "${FILTERED_FLAG[@]}" 2>&1 | tee "$wd/cda_uncertainty_truelabel_TL-CoT${s}.log"
 
 # Final report — the one artifact that lives beside the code instead of in the
 # gitignored Results/ tree, so the leaderboards survive a fresh clone.
@@ -100,7 +92,5 @@ echo "  $wd/CDA_REPORT${s}.md"
 echo "[CDA] Underlying canonical reports:"
 echo "  $ad_dir/summary_CDA_task${s}_canonical.txt"
 echo "  $tl_dir/summary_CDA_task${s}${f}_canonical.txt"
-echo "  $tl_dir/summary_CDA_renal_truelabel${s}${f}_canonical.txt"
 echo "  $ad_dir/summary_CDA_uncertainty${s}.json"
 echo "  $tl_dir/summary_CDA_uncertainty${s}${f}.json"
-echo "  $tl_dir/summary_CDA_uncertainty_truelabel${s}${f}.json"

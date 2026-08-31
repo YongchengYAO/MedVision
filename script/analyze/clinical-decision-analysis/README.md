@@ -71,43 +71,27 @@ repo is not enough to reproduce the numbers — you need those trees too.
 
 | Proxy | Data | Measurement becomes | Statistic |
 |---|---|---|---|
-| **ANB skeletal class** (primary) | Ceph-Biometrics-400 | Class I (≤ 4°) vs Class II (> 4°) | Cohen's κ |
-| SNA / SNB (secondary) | Ceph-Biometrics-400 | retrusive / normal / protrusive, around Steiner's 82°±2 and 80°±2 | weighted κ |
-| **Renal T category** | KiTS23, KiPA22 | T1a / T1b / T2a / T2b at 4, 7, 10 cm | weighted κ |
+| **SNA maxillary position** | Ceph-Biometrics-400 | retrusive / normal / protrusive, around Steiner's 82°±2 | weighted κ |
+| **SNB mandibular position** | Ceph-Biometrics-400 | retrusive / normal / protrusive, around Steiner's 80°±2 | weighted κ |
+| **AJCC renal T category** | KiTS23, KiPA22 | T1a / T1b / T2a / T2b at 4, 7, 10 cm | weighted κ |
 
 Sources: Steiner CC, *Am J Orthod* 1953; AJCC Cancer Staging Manual, 8th ed.,
 2017. The cutoff numbers live in `cda_config.py` — that file is the authority,
 this table is a summary of it.
 
-> **The ANB proxy is binary, not the usual three classes.** Textbook Steiner
-> analysis has a Class III (signed ANB < 0). The benchmark defines its angle as
+> **Angles are folded into [0°, 90°].** The benchmark defines its angle target as
 > `arccos(|A·B| / (‖A‖‖B‖))`, and that absolute value folds every angle into
-> [0°, 90°] — so a Class III patient at −3° is indistinguishable from a Class I
-> patient at +3°. Class III cannot be recovered and is not reported. Roughly a
-> third of the cohort is truly Class III and is absorbed into the two reported
-> classes, so read this proxy as "agreement on the 4° decision", not as a full
-> skeletal classification. The same fold means SNA/SNB above 90° are reflected
-> back below it. See DESIGN.md for the full consequence.
+> [0°, 90°], so an SNA or SNB above 90° is reflected back below it (a true SNA of
+> 94.4° is stored as 85.6°), which can move a subject across a band edge. See
+> DESIGN.md for the full consequence.
 
-## The two tracks
+## How agreement is measured
 
-**Track 1 — self-consistent.** Category of the *prediction* vs category of the
-*ground-truth measurement*. This isolates the model: both sides go through the
-same cutoff table, so any disagreement is caused by measurement error alone.
-Available for every proxy.
+Category of the *prediction* vs category of the *ground-truth measurement*. This
+isolates the model: both sides go through the same cutoff table, so any
+disagreement is caused by measurement error alone.
 
-**Track 2 — true-label.** Category of the prediction vs the **pathologic T
-stage** recorded in the KiTS23 clinical table — a real, non-imaging reference.
-Stronger evidence, but only KiTS23 ships pathologic stage, and pT3/pT4 are
-defined by tissue invasion rather than size, so no size-based rule can ever
-produce them. The report therefore gives you both the full 6-class picture and
-an organ-confined pT1–pT2 stratum where size genuinely is the staging axis, plus
-two reference rows showing how a *perfect* measurement scores — one from the
-true 3D size (a genuine ceiling for size-only rules) and one from the GT 2D
-slices (a reference only: max-over-slices under-estimates the 3D dimension, so a
-model that over-measures can beat it).
-
-Both tracks are followed by an uncertainty pass giving bootstrap 95% CIs and a
+The analysis is followed by an uncertainty pass giving bootstrap 95% CIs and a
 one-sided p-value for κ > 0. Both come from the same resampling pass, which
 draws whole imaging volumes rather than individual slices — for a tumour proxy
 the slices of one tumour are not independent observations.
@@ -123,9 +107,8 @@ gitignored, so run the pipeline to produce them:
 |---|---|
 | `CDA_REPORT.md` (this folder) | **the final report** — every leaderboard, plus provenance |
 | `CDA_REPORT_<source>.md` (this folder) | the same, one per LLM-judge re-parse |
-| `<task_dir>/summary_CDA_task_canonical.txt` | Track 1, per-proxy leaderboards + per-model detail |
-| `<task_dir>/summary_CDA_renal_truelabel_canonical.txt` | Track 2, including per-model confusion detail |
-| `<task_dir>/summary_CDA_uncertainty[_truelabel].json` | CIs and p-values |
+| `<task_dir>/summary_CDA_task_canonical.txt` | per-proxy leaderboards + per-model detail |
+| `<task_dir>/summary_CDA_uncertainty.json` | CIs and p-values |
 | `<model>/parsed/summary_metrics_CDA_Task.json` | that model's numbers, machine-readable |
 | `<model>/parsed/summary_values_CDA_Task.json` | one record per sample, for re-analysis |
 
@@ -157,46 +140,39 @@ Columns you will see:
 
 ### Before you quote a number
 
-- **κ is not comparable across proxies.** Both sides of a Track-1 comparison are
+- **κ is not comparable across proxies.** Both sides of the comparison are
   derived from the same continuous measurement, so agreement depends mostly on
   how close the cohort's values sit to a cutoff. A proxy whose cutoff falls in a
   dense part of the distribution will score lower for the same measurement
   accuracy. Compare models within a proxy, not proxies against each other.
-- **Check `Nparsed` and the majority class.** On the organ-confined renal
-  stratum, always answering "T1a" scores about 0.56 accuracy on its own. κ
-  corrects for that; raw accuracy does not.
+- **Check `Nparsed` and the majority class.** The renal categories are far from
+  uniform, so a constant answer already scores a substantial accuracy on its
+  own. κ corrects for that; raw accuracy does not.
 - **Small n.** Rows with a handful of parsed predictions still print a κ, a CI
   and a p-value — arithmetically valid, practically meaningless. The uncertainty
   report marks them `low_n` (fewer than 10 scored records) and tags the console
-  line `<- low n`; the Track-1 text report does not, so read `Nparsed` there.
+  line `<- low n`; the text report does not, so read `Nparsed` there.
 
 ## Running it yourself
 
 Each script runs directly — no `-m`, no package install. Run them **from the
-repo root**: `analyze_CDA_renal_truelabel.py` caches the KiTS23 clinical table at
-a CWD-relative default path, and the `$PWD` in `REMOVED_SAMPLES_DIR` resolves
-against it. (`run_CDA_analysis.sh` itself locates the repo from its own path, so
-only the arguments you pass it are CWD-sensitive.)
+repo root**: the `$PWD` in `REMOVED_SAMPLES_DIR` resolves against it.
+(`run_CDA_analysis.sh` itself locates the repo from its own path, so only the
+arguments you pass it are CWD-sensitive.)
 
 ```bash
 CDA=script/analyze/clinical-decision-analysis
 
-# Track 1 — one invocation per task directory, each with its own config
+# Agreement — one invocation per task directory, each with its own config
 python $CDA/summarize_CDA_task.py --task_dir Results/MedVision-AD-v2-CoT \
     --config_yaml $CDA/config-AD-CoT.yaml --skip_model_wo_parsed_files
 python $CDA/summarize_CDA_task.py --task_dir Results/MedVision-TL-v2-CoT \
     --config_yaml $CDA/config-TL-CoT.yaml --skip_model_wo_parsed_files
 
-# Track 2 — renal true-label (downloads + caches the KiTS23 clinical table)
-python $CDA/analyze_CDA_renal_truelabel.py --task_dir Results/MedVision-TL-v2-CoT \
-    --config_yaml $CDA/config-TL-CoT.yaml
-
-# Uncertainty — run last; it reads what the two tracks persist
+# Uncertainty — run after the step above; it reads what that step persists
 python $CDA/cda_uncertainty.py --task_dir Results/MedVision-AD-v2-CoT \
     --config_yaml $CDA/config-AD-CoT.yaml
 python $CDA/cda_uncertainty.py --task_dir Results/MedVision-TL-v2-CoT \
-    --config_yaml $CDA/config-TL-CoT.yaml
-python $CDA/cda_uncertainty.py --task_dir Results/MedVision-TL-v2-CoT --truelabel \
     --config_yaml $CDA/config-TL-CoT.yaml
 
 # Final report — run last; renders CDA_REPORT.md from what the steps above wrote
@@ -206,13 +182,13 @@ python $CDA/build_CDA_report.py \
     --out $CDA/CDA_REPORT.md
 ```
 
-Running the tracks by hand with `--removed_samples_dir`? Pass it to the **T/L**
-calls only, then add `--filtered` to the two T/L `cda_uncertainty.py` calls and
-to `build_CDA_report.py`, so they read the `_filtered` inputs the tracks just
-wrote. Neither does any filtering itself — they only need the marker.
+Running the steps by hand with `--removed_samples_dir`? Pass it to the **T/L**
+call only, then add `--filtered` to the T/L `cda_uncertainty.py` call and to
+`build_CDA_report.py`, so they read the `_filtered` inputs that step just wrote.
+Neither does any filtering itself — they only need the marker.
 
 To score an LLM-judge re-parse, add `--parsed_dirname llm-parsed_<judge>` to
-**all four** scripts and give `build_CDA_report.py` a different `--out`. The flag
+**all three** scripts and give `build_CDA_report.py` a different `--out`. The flag
 must match across them: each script reads what the previous one wrote. It also
 selects the row field holding the prediction (`LLM_filtered_resps` rather than
 `filtered_resps`), which is why a name matching no known prefix is rejected. A
@@ -244,9 +220,9 @@ so it removed nothing there while still writing a full set of `_filtered` files
 identical to the unfiltered ones.
 
 Drop `--config_yaml` to process every model subdirectory with plain folder names
-instead of the curated set the configs name. `summarize_CDA_task.py` and
-`analyze_CDA_renal_truelabel.py` also take `--model_dir` for a single model;
-`cda_uncertainty.py` does not — it always works over a task directory.
+instead of the curated set the configs name. `summarize_CDA_task.py` also takes
+`--model_dir` for a single model; `cda_uncertainty.py` does not — it always works
+over a task directory.
 
 ## Files
 
@@ -256,10 +232,9 @@ instead of the curated set the configs name. `summarize_CDA_task.py` and
 | `config-TL-CoT.yaml` | the same models and their folders in a T/L results dir |
 | `cda_config.py` | clinical cutoff tables |
 | `cda_stats.py` | categorisation, kappas, config loading |
-| `summarize_CDA_task.py` | Track 1 |
-| `analyze_CDA_renal_truelabel.py` | Track 2 |
+| `summarize_CDA_task.py` | per-sample categorisation and per-proxy agreement |
 | `cda_uncertainty.py` | clustered bootstrap CIs + p-values |
-| `build_CDA_report.py` | renders `CDA_REPORT.md` from what the three above persist |
+| `build_CDA_report.py` | renders `CDA_REPORT.md` from what the two above persist |
 | `run_CDA_analysis.sh` | runs all of the above in order |
 | `CDA_REPORT[_<source>].md` | **generated** — the final report, one per parsed source |
 | `DESIGN.md` | implementation details, invariants, known limitations |

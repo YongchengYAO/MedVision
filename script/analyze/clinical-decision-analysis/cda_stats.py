@@ -230,7 +230,7 @@ def categorize(value, cutoffs, labels, right_closed=True):
         right_closed: Boundary handling for a value exactly equal to a cutoff,
             either one bool for every cutoff or a per-cutoff list.
             ``True``  -> value falls in the LOWER category (advance only when
-            ``value > cutoff``; matches AJCC "<= x cm" and ANB "<= 4 deg" rules).
+            ``value > cutoff``; matches the AJCC "<= x cm" rule).
             ``False`` -> value falls in the UPPER category (advance when
             ``value >= cutoff``; for ">= x is the higher category" rules).
             A per-cutoff list is needed for a two-sided band such as Steiner's

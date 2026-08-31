@@ -14,18 +14,19 @@ cda_config.py   clinical cutoff tables + output filenames + parsed-source table
                 + seed.  Imports nothing local.
 cda_stats.py    categorize, kappas, config loading, model-dir resolution,
                 removed-samples filtering.  Imports nothing local.
-    ^                    ^                       ^
-summarize_CDA_task.py    analyze_CDA_renal_truelabel.py    cda_uncertainty.py
-    (Track 1)                  (Track 2)                    (reads both tracks' output)
-                    build_CDA_report.py   renders CDA_REPORT.md from what all
-                                          three persist; recomputes nothing.
-run_CDA_analysis.sh  drives all four, in order, for both task dirs.
+    ^                              ^
+summarize_CDA_task.py          cda_uncertainty.py
+  (per-sample categorisation     (re-reads the categorisations
+   and per-proxy agreement)       summarize_CDA_task.py persists)
+                    build_CDA_report.py   renders CDA_REPORT.md from what both
+                                          persist; recomputes nothing.
+run_CDA_analysis.sh  drives all three, in order, for both task dirs.
 ```
 
-Dependency direction is strictly one way. The four top-level scripts never
-import each other; anything they both need belongs in `cda_stats.py`. That rule
-is what keeps the two tracks from drifting apart — they previously carried
-near-identical copies of the model-directory resolution logic.
+Dependency direction is strictly one way. The top-level scripts never import
+each other; anything they both need belongs in `cda_stats.py`. That rule is what
+keeps them from drifting apart — they previously carried near-identical copies
+of the model-directory resolution logic.
 
 ## Input contract
 
@@ -36,7 +37,7 @@ parse). Fields used per row:
 | Field | Use |
 |---|---|
 | `doc.biometric_profile.metric_key` | selects the cephalometric proxy |
-| `doc.image_file` | case id (Track 2) and resampling cluster (uncertainty) |
+| `doc.image_file` | resampling cluster (uncertainty) |
 | `doc.slice_dim`, `doc.slice_idx` | passed through to the values JSON; part of the removed-samples key |
 | `doc.taskID` | removed-samples key only (note the spelling — see below) |
 | `target` | ground-truth measurement |
@@ -146,8 +147,8 @@ which argues for `max`, but `vals[0]` is the axis the MAE/MRE parser scores, so
 CDA stays measuring the same quantity as the rest of the benchmark. Measured
 cost of this choice: predictions are minor-axis-first in ~1–3% of samples and
 `max()` would change the assigned T category for **≤ 3 of 673** samples. If you
-switch to `max`, switch it in both `summarize_CDA_task._gt_pred_values` and
-`analyze_CDA_renal_truelabel._parse_major`, and say so in the report.
+switch to `max`, switch it in `summarize_CDA_task._gt_pred_values` and say so in
+the report.
 
 ### Removed-samples filtering (matching the T/L benchmark)
 
@@ -186,10 +187,8 @@ Three things to know:
   A/D calls no longer take the flag. Passing `--removed_samples_dir` against an
   A/D directory by hand will recreate them.
 
-Measured effect: renal Track 1 1,064 → 1,025 slices (KiTS23 673→640, KiPA22
-391→385); Track 2 joined cases 95 → 92, organ-confined 70 → 68. Track 2 is the
-more exposed of the two because it takes a per-case **max** over slices, so one
-excluded slice can set a whole case's `gt_max` and shift its stage.
+Measured effect: the renal proxy goes from 1,064 → 1,025 slices (KiTS23
+673→640, KiPA22 391→385).
 
 ## Proxy routing
 
@@ -212,7 +211,7 @@ aggregate twice: per proxy (`overall`) and per proxy × dataset, keyed
 
 - `True` — a value exactly on the cutoff falls in the **lower** category
   (advance only when `v > c`). Correct for one-sided rules: AJCC "≤ 4 cm is
-  T1a", ANB "≤ 4° is Class I".
+  T1a".
 - `False` — advance when `v >= c`; the value falls in the **upper** category.
 
 The per-cutoff list exists because a **two-sided band cannot be expressed with a
@@ -221,11 +220,10 @@ single flag**. Steiner's SNA norm is 82°±2, i.e. normal is the closed interval
 normal, the upper edge stays closed so 84.0 is also normal. With a single
 `True`, 80.0 was categorised as *retrusive*.
 
-This is not hypothetical. In the 360 Ceph-Biometrics-400 ground-truth angles,
+This is not hypothetical. In the Ceph-Biometrics-400 ground-truth angles,
 **2 sit exactly on a lower band edge** (SNA 80.0, SNB 78.0) and were
-mis-assigned; across 50 model folders, 10 parsed predictions land exactly on a
-cutoff (models like round numbers). KiTS23 also reports rounded pathologic sizes
-such as 4.0 cm, landing straight on the AJCC boundary.
+mis-assigned, and parsed predictions land exactly on a cutoff too (models like
+round numbers).
 
 **When adding a proxy, state the boundary direction per published rule.** It is
 a property of the rule, not a house convention.
@@ -292,39 +290,15 @@ the repo's authority for which run is canonical for which task.
 resolved list, so the set of models whose metrics are recomputed is exactly the
 set that appears in the report.
 
-## Track 2 specifics
-
-- Case id is `os.path.basename(image_file).split(".")[0]` — `case_00149.nii.gz`
-  → `case_00149`, which is the KiTS23 clinical table key.
-- Per-case aggregation takes the **max** major axis over the case's annotated
-  slices, as a stand-in for AJCC's 3D greatest dimension. Note the asymmetry
-  this creates: `pred_max` is a max over only the slices that *parsed*, so a
-  model with many parse failures maxes over fewer slices and is biased toward
-  smaller sizes (lower stage).
-- Clinical table is fetched from the public KiTS23 repo and cached at
-  `Data/Datasets/KiTS23/kits23_clinical.json`, **relative to the working
-  directory** — hence "run from the repo root". `--no_download` forces the cache.
-- `pathology_t_stage` values map through `KITS23_TSTAGE_MAP`; `"na"` and unknown
-  values become `None` and those cases are dropped from the join.
-- Three comparison rows per stratum: the model, the 2D-slice GT **reference**,
-  and the pathologic-3D-size **ceiling**. Only the last is a genuine ceiling for
-  size-only rules. The 2D-slice row is a reference: max-over-slices
-  under-estimates the 3D greatest dimension, so a model that over-measures can
-  beat it. Together they separate "loss from invasion-based staging" and "loss
-  from 2D slicing" from "loss from the model".
-- Strata: full 6-class (exposes that no size rule can ever emit pT3/pT4) and
-  organ-confined pT1–pT2 (where size is the staging axis and the comparison is
-  fair).
-
 ## Uncertainty: the resampling unit is the volume
 
-`cda_uncertainty.py` re-reads the per-sample categorisations the two tracks
-persist, so its CI and p-value describe exactly the number they annotate. It
-must run **after** both; with no input it raises rather than writing an
-empty-but-successful report.
+`cda_uncertainty.py` re-reads the per-sample categorisations
+`summarize_CDA_task.py` persists, so its CI and p-value describe exactly the
+number they annotate. It must run **after** it; with no input it raises rather
+than writing an empty-but-successful report.
 
-**Both procedures resample whole imaging volumes, not records.** Track 1 scores
-one record per annotated 2D slice, and a tumour contributes many slices —
+**The procedure resamples whole imaging volumes, not records.** A T/L proxy
+scores one record per annotated 2D slice, and a tumour contributes many slices —
 measured: **1,064 renal records from 121 volumes**, mean 8.8, max 64 from a
 single volume. Resampling records i.i.d. treats those 64 slices as 64
 independent facts. Measured effect on the renal proxy: the i.i.d. CI is
@@ -332,9 +306,8 @@ independent facts. Measured effect on the renal proxy: the i.i.d. CI is
 `[-0.215, +0.056]` (includes zero) — enough to flip a null result into an
 apparently significant one.
 
-The cluster id is `image_file` for Track 1 and `case_id` for Track 2, which is
-already one record per case. Cephalometric proxies are one record per subject,
-so clustering is a provable no-op there — every A/D row satisfies
+The cluster id is `image_file`. Cephalometric proxies are one record per
+subject, so clustering is a provable no-op there — every A/D row satisfies
 `n == n_clusters`, whatever that model's parse coverage happens to be.
 
 The p-value comes from **inverting that same bootstrap distribution**
@@ -387,18 +360,11 @@ Four rules keep it trustworthy:
   it falls back to unfiltered, and the provenance table states which sample set
   each task contributed. The fallback must never be silent.
 
-Two presentation choices worth keeping: the decision-flip column is dropped
-(it is exactly `1 − Acc`, so it carries no information), and the Track-2
-reference rows collapse to two lines when they are identical across models —
-which they are, because they depend only on the joined case set, not on the
-model. Emitting one identical row per model reads as N measurements of the
-ceiling when there is only one. The per-model table returns automatically if a
-model ever joins a different case set.
+One presentation choice worth keeping: the decision-flip column is dropped, as
+it is exactly `1 − Acc` and so carries no information.
 
 Verification when changing the renderer: the Markdown must agree with the `.txt`
 leaderboards, which are produced by a different code path from the same JSONs.
-Last checked — Track 1: 360 cells over 4 proxies, 0 mismatches; Track 2: 90
-cells over 18 models, 0 mismatches.
 
 ## Output schemas
 
@@ -416,16 +382,16 @@ pred_category, image_file, slice_dim, slice_idx`. This is the re-analysis
 surface; `cda_uncertainty.py` consumes it and `image_file` is what makes cluster
 resampling possible. Keep that field.
 
-`<task_dir>/summary_CDA_uncertainty[_truelabel].json` — run metadata
+`<task_dir>/summary_CDA_uncertainty.json` — run metadata
 (`n_boot`, `seed`, `ci_method`, `p_method`, `cluster_note`) plus `rows` of
 `{model, proxy, statistic, n, n_clusters, point_estimate, ci_lower, ci_upper,
 p_kappa_gt_zero, low_n, n_boot_valid}`. `low_n` is `n < MIN_INFORMATIVE_N` (10).
 
 `script/analyze/clinical-decision-analysis/CDA_REPORT[_<source>].md` — the
 final Markdown report: provenance (including which parsed source the numbers
-came from), a legend, one Track-1 table per proxy, the Track-2 leaderboard and
-its GT reference rows. Rendered by `build_CDA_report.py`; gitignored, and
-overwritten on every run of its own source.
+came from), a legend, and one table per proxy. Rendered by
+`build_CDA_report.py`; gitignored, and overwritten on every run of its own
+source.
 
 Task-level output filenames carry `_<source>` (non-default parsed source, e.g.
 `_llm-parsed-gemma-4-31b`) then
@@ -442,60 +408,35 @@ Real and unfixed. Anything quoting CDA numbers should carry these.
 1. **The benchmark angle is folded into [0°, 90°]** — not merely unsigned. The
    prompt defines the target as `arccos(|A·B| / (‖A‖‖B‖))`; the absolute value
    makes the stored value `min(θ, 180° − θ)`. Verified: the maximum stored value
-   across all 8 angle keys is exactly 90.0000, with none above. Consequences:
-   - Class III (signed ANB < 0) is unrecoverable, so the ANB proxy is binary.
-     Roughly a third of the cohort is truly Class III, and the folding is a
-     *reflection*, not a coarsening — some Class III subjects land in Class II,
-     the opposite of the truth.
-   - SNA/SNB above 90° reflect back below it (a true SNA of 94.4° stores as
-     85.6°), which can move a subject across a band edge.
-   - **Signed ANB is NOT recoverable as SNA − SNB from the shipped values.** On
-     the stored (folded) angles `||SNA − SNB| − ANB|` reaches **8.74°** and
-     exceeds 0.01° for 83 of 120 subjects; the identity holds only on unfolded
-     angles. An earlier version of this file claimed the opposite — that was
-     wrong, and any doc repeating it should be corrected.
-
-   Restoring a three-class ANB therefore means recomputing angles from the
-   landmark coordinates — a **new derived measurement**, not a re-categorisation
-   of an existing one. That changes CDA's contract ("re-scores existing parsed
-   outputs") and the paper's headline ANB number, so it is a proxy redefinition
-   for the maintainer to approve, not a bug fix.
-2. **Per-slice T staging.** Track 1 assigns an AJCC T category to each 2D
-   slice's in-plane major axis, but AJCC is defined on the tumour's greatest
+   across all 8 angle keys is exactly 90.0000, with none above. Consequence:
+   SNA/SNB above 90° reflect back below it (a true SNA of 94.4° stores as
+   85.6°), which can move a subject across a band edge. Recovering an unfolded
+   angle means recomputing it from the landmark coordinates — a **new derived
+   measurement**, not a re-categorisation of an existing one — which would
+   change CDA's contract ("re-scores existing parsed outputs"). That is a proxy
+   redefinition for the maintainer to approve, not a bug fix.
+2. **Per-slice T staging.** The renal proxy assigns an AJCC T category to each
+   2D slice's in-plane major axis, but AJCC is defined on the tumour's greatest
    dimension. **26.6% of renal slices carry a T category different from their
-   own tumour's max-over-slices category.** Track 2 aggregates per case and does
-   not have this problem; the Track-1 renal number is a measurement-sensitivity
-   statistic, not a staging accuracy.
-3. **No majority-class baseline.** Always answering "T1a" scores ≈0.557
-   accuracy on the organ-confined stratum. Accuracy columns carry no such
-   reference row; κ does correct for it, which is why κ is the headline.
+   own tumour's max-over-slices category.** The renal number is therefore a
+   measurement-sensitivity statistic, not a staging accuracy.
+3. **No majority-class baseline.** The renal categories are far from uniform, so
+   a constant answer already scores a substantial accuracy. Accuracy columns
+   carry no such reference row; κ does correct for it, which is why κ is the
+   headline.
 4. **Small-n rows are flagged, not suppressed.** A row with `n_parsed = 1` still
    emits κ, a zero-width 95% CI and `p = 1.0` — arithmetically correct,
    informationally empty. `cda_uncertainty.py` sets `low_n` (`n <
    MIN_INFORMATIVE_N`, 10) and marks the console line, deliberately rather than
    suppressing: κ *is* well defined there, and a threshold inside the stats layer
-   would impose an arbitrary policy on every caller. The Track-1 text report
-   carries no such flag, so check `Nparsed` when reading it.
+   would impose an arbitrary policy on every caller. The text report carries no
+   such flag, so check `Nparsed` when reading it.
 5. **One RNG seed** (`CDA_SEED = 1024`) is shared across every model and proxy,
    so equal-n rows are evaluated on identical resample draws. Fine for
    reproducibility, but the rows are not independent replicates.
 6. **κ is not comparable across proxies.** Both raters are deterministic
    functions of the same measurement, so κ depends on where the cutoff falls in
    the cohort's distribution. It is a model × cohort property.
-7. **`gt2Dslice_vs_pathologic` is a reference, not a bound.** It is one
-   particular estimator (max-over-slices of the GT major axis), not a maximum
-   over estimators, and a model that over-measures can beat it because
-   max-over-slices systematically *under*-estimates the 3D greatest dimension.
-   The report prose, README and this file now all call it a reference; only
-   `pathologic3Dsize_vs_pathologic` is a genuine ceiling for size-only rules.
-   The **JSON key is still `gt2Dslice_vs_pathologic`** — deliberately unchanged,
-   since it is neutral and downstream files already read it.
-8. **Track 2's per-case prediction is maxed over parsed slices only**, while GT
-   is maxed over all slices, and a case counts as measured if *any* single slice
-   parsed. A model that parses few slices maxes over fewer values and is biased
-   toward smaller sizes and lower stages. `AccCov` in the leaderboard is the
-   guard against reading such a row as skill.
-
 ## Invariants
 
 - Never import `medvision_bm` here, and keep `sklearn` out. `numpy` is the only

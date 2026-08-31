@@ -12,18 +12,17 @@ Each proxy spec is a dict with:
   - "right_closed": boundary handling used by ``cda_stats.categorize``, either one
         bool for every cutoff or a per-cutoff list.
         True  -> a value exactly on a cutoff falls in the *lower* category
-                 (used for AJCC "<= x cm" and ANB "<= 4 deg" style rules).
+                 (used for AJCC "<= x cm" style rules).
         False -> a value exactly on a cutoff falls in the *upper* category
                  (for ">= x is the higher category" style rules).
     The correct direction is a property of each published rule, not a global
     convention, so it is stated per proxy -- and, for a two-sided band, per
-    cutoff. A one-sided ">= x" rule (AJCC, ANB) is uniformly lower-closed; a
+    cutoff. A one-sided ">= x" rule (AJCC) is uniformly lower-closed; a
     norm +/- k band (SNA, SNB) is the closed interval [norm-k, norm+k], whose
     lower edge must open upward while its upper edge stays closed.
-    Exact-boundary hits are not hypothetical: 2 of the 360 Ceph-Biometrics-400
+    Exact-boundary hits are not hypothetical: 2 of the Ceph-Biometrics-400
     ground-truth angles sit exactly on a lower band edge (SNA 80.0, SNB 78.0),
-    models emit round numbers on the cutoffs too, and KiTS23 reports rounded
-    pathologic sizes (e.g. 4.0 cm) straight onto the AJCC boundary.
+    and models emit round numbers on the cutoffs too.
 """
 
 # Output filenames (written into each model's parsed-source folder).
@@ -117,38 +116,19 @@ def source_suffix(parsed_dirname):
 # folder stays self-contained.
 CDA_SEED = 1024
 
-# --- Proxy A: cephalometric angle -> orthodontic sagittal class (Ceph-Biometrics-400) ---
-# Keyed by biometric_profile.metric_key. ANB is the PRIMARY proxy; SNA/SNB are
-# secondary companions. Norms/thresholds: Steiner CC. Am J Orthod 1953;39:729-755.
+# --- Proxy A: cephalometric angle -> maxillary/mandibular position (Ceph-Biometrics-400) ---
+# Keyed by biometric_profile.metric_key. Norms/thresholds: Steiner CC.
+# Am J Orthod 1953;39:729-755.
 #
 # IMPORTANT (folded-angle limitation): the benchmark defines its angle target as
 # arccos(|A.B| / (||A|| ||B||)). The absolute value FOLDS every angle into
 # [0, 90] -- the stored value is min(theta, 180 - theta), not |signed theta|.
 # Verified: the max stored value over all 8 angle keys is exactly 90.0000, none
-# above. Consequences:
-#   * Steiner Class III requires *signed* ANB < 0 and cannot be recovered, so
-#     this proxy is the *binary* Class I (ANB <= 4 deg) vs Class II (> 4 deg)
-#     decision at the standard 4 deg cutoff. ~31% of subjects are truly Class III
-#     and are folded into I/II here -- as a REFLECTION, so some land in Class II,
-#     the opposite of the truth. (The 4 deg-only kappa equals the 3-class kappa
-#     exactly, since the Class III cell is empty.)
-#   * SNA/SNB above 90 deg reflect back below it (a true SNA of 94.4 stores as
-#     85.6), which can move a subject across a band edge.
-#   * Signed ANB is NOT recoverable as SNA - SNB from these values: on the stored
-#     angles | |SNA-SNB| - ANB | reaches 8.74 deg. The identity holds only on
-#     unfolded angles, i.e. only by recomputing from landmark coordinates.
+# above. Consequence: SNA/SNB above 90 deg reflect back below it (a true SNA of
+# 94.4 stores as 85.6), which can move a subject across a band edge.
 # See the doc's limitations section and DESIGN.md.
-CDA_CEPH_ANB_METRIC_KEY = "A-L_2_5-L_2_6"  # N-A x N-B angle (folded into [0,90])
 CDA_CEPH_ANGLE_PROXIES = {
-    # ANB (primary): binary Class I (<= 4 deg) vs Class II (> 4 deg).
-    "A-L_2_5-L_2_6": {
-        "name": "ANB skeletal class (I vs II)",
-        "cutoffs": [4.0],
-        "labels": ["Class I", "Class II"],
-        "ordinal": False,
-        "right_closed": True,
-    },
-    # SNA (secondary): maxillary A-P position, norm 82 deg +/- 2 -> normal = [80, 84].
+    # SNA: maxillary A-P position, norm 82 deg +/- 2 -> normal = [80, 84].
     # Per-cutoff boundaries: the band's lower edge opens upward (80.0 is normal,
     # not retrusive), its upper edge stays closed (84.0 is normal, not protrusive).
     "A-L_1_2-L_2_5": {
@@ -158,7 +138,7 @@ CDA_CEPH_ANGLE_PROXIES = {
         "ordinal": True,
         "right_closed": [False, True],
     },
-    # SNB (secondary): mandibular A-P position, norm 80 deg +/- 2 -> normal = [78, 82].
+    # SNB: mandibular A-P position, norm 80 deg +/- 2 -> normal = [78, 82].
     "A-L_1_2-L_2_6": {
         "name": "SNB mandibular position",
         "cutoffs": [78.0, 82.0],

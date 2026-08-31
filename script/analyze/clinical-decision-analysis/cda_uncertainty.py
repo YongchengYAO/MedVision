@@ -3,15 +3,12 @@
 Regenerates the **bootstrap 95% confidence intervals** and **p-values** reported
 alongside the CDA point estimates in ``docs/clinical-decision-agreement.md``.
 
-This script re-reads the per-sample categorizations already written by the two
-analysis scripts (it never re-runs inference and never re-derives categories):
+This script re-reads the per-sample categorizations already written by
+``summarize_CDA_task.py`` (it never re-runs inference and never re-derives
+categories): ``parsed/summary_values_CDA_Task.json`` — one record per sample
+with ``gt_category`` / ``pred_category``.
 
-  - Track 1 (self-consistent): ``parsed/summary_values_CDA_Task.json`` — one
-    record per sample with ``gt_category`` / ``pred_category``.
-  - Track 2 (renal true-label): ``parsed/summary_CDA_renal_truelabel.json`` —
-    the ``cases`` list, with ``true_stage`` / ``pred_cat`` per case.
-
-Both procedures operate on the same aligned (reference, prediction) label pairs
+The procedure operates on the same aligned (reference, prediction) label pairs
 that produce the point estimate, so the CI and the p-value describe exactly the
 number they annotate.
 
@@ -21,7 +18,7 @@ slices (KiTS23+KiPA22: 1,064 records from 121 volumes, up to 64 from one), so
 records are correlated. Resampling records i.i.d. would treat a tumor measured
 on 64 slices as 64 independent facts and understate the interval about
 five-fold -- enough to move the renal CI from excluding zero to including it.
-Both procedures therefore work on whole volumes. For the cephalometric proxies,
+The procedure therefore works on whole volumes. For the cephalometric proxies,
 which contribute one record per subject, this is identical to record-level
 resampling.
 
@@ -58,15 +55,10 @@ clears 0. Read the interval for the effect size and the p-value only as a
 convenience.
 
 Usage:
-    # Track 1 — all self-consistent proxies, the config's canonical models
     python cda_uncertainty.py --task_dir Results/MedVision-AD-v2-CoT \\
         --config_yaml config-AD-CoT.yaml
     python cda_uncertainty.py --task_dir Results/MedVision-TL-v2-CoT \\
         --config_yaml config-TL-CoT.yaml
-
-    # Track 2 — renal T-stage vs pathologic stage
-    python cda_uncertainty.py --task_dir Results/MedVision-TL-v2-CoT \\
-        --config_yaml config-TL-CoT.yaml --truelabel
 """
 
 import argparse
@@ -90,8 +82,6 @@ from cda_stats import (
     resolve_model_dirs,
     weighted_kappa,
 )
-
-TRUELABEL_FILENAME = "summary_CDA_renal_truelabel.json"
 
 # Rows below this many scored records are flagged "low_n". They are still
 # emitted -- kappa is well defined here and suppressing it inside the stats layer
@@ -185,7 +175,7 @@ def bootstrap_ci(gt, pred, labels, ordinal, n_boot, seed, groups=None, alpha=0.0
 
 
 def _pairs_selfconsistent(values_json):
-    """Yield (proxy_name, spec, gt_labels, pred_labels, groups) from a Track-1 values file.
+    """Yield (proxy_name, spec, gt_labels, pred_labels, groups) from a values file.
 
     ``groups`` is the imaging volume each record came from (``image_file``), the
     resampling cluster. A T/L proxy contributes many 2D slices per tumor, so its
@@ -210,35 +200,6 @@ def _pairs_selfconsistent(values_json):
         yield name, spec, gt, pred, groups
 
 
-def _pairs_truelabel(truelabel_json):
-    """Yield (stratum_name, spec, true_stages, pred_cats, groups) from a Track-2 file.
-
-    Track 2 is already aggregated to one record per case, so ``groups`` is the
-    case id and every cluster is a singleton.
-    """
-    with open(truelabel_json, "r") as f:
-        data = json.load(f)
-    cases = data.get("cases", [])
-    organ_confined = {"T1a", "T1b", "T2a", "T2b"}
-    strata = {
-        "renal T-stage vs pathologic (full 6-class)": cases,
-        "renal T-stage vs pathologic (organ-confined pT1-pT2)": [
-            c for c in cases if c.get("true_stage") in organ_confined
-        ],
-    }
-    for name, subset in strata.items():
-        scored = [c for c in subset if c.get("pred_cat") is not None]
-        gt = [c["true_stage"] for c in scored]
-        pred = [c["pred_cat"] for c in scored]
-        groups = [c.get("case_id") for c in scored]
-        # full 6-class needs the pT3/pT4 labels appended to the ordinal scale
-        labels = list(CDA_RENAL_TSTAGE["labels"])
-        if "full 6-class" in name:
-            labels = labels + ["T3", "T4"]
-        spec = {"labels": labels, "ordinal": True}
-        yield name, spec, gt, pred, groups
-
-
 def main():
     parser = argparse.ArgumentParser(
         description="Clustered bootstrap CIs and p-values for CDA agreement statistics."
@@ -249,11 +210,6 @@ def main():
         default=None,
         help="CDA config listing the models to analyze: config-AD-CoT.yaml for an "
         "A/D task dir, config-TL-CoT.yaml for a T/L one.",
-    )
-    parser.add_argument(
-        "--truelabel",
-        action="store_true",
-        help="Analyze the renal true-label track instead of the self-consistent track.",
     )
     parser.add_argument(
         "--filtered",
@@ -278,9 +234,8 @@ def main():
     model_items = resolve_model_dirs(args.task_dir, display_map)
 
     fmark = "_filtered" if args.filtered else ""
-    base = TRUELABEL_FILENAME if args.truelabel else SUMMARY_FILENAME_CDA_VALUES
-    filename = f"{base.removesuffix('.json')}{fmark}.json"
-    pair_fn = _pairs_truelabel if args.truelabel else _pairs_selfconsistent
+    filename = f"{SUMMARY_FILENAME_CDA_VALUES.removesuffix('.json')}{fmark}.json"
+    pair_fn = _pairs_selfconsistent
 
     rows = []
     without_input = []
@@ -321,13 +276,10 @@ def main():
     # input at all the output would be an empty-but-successful report, which is
     # indistinguishable from "the models genuinely have no eligible samples".
     if not rows:
-        producer = (
-            "analyze_CDA_renal_truelabel.py" if args.truelabel else "summarize_CDA_task.py"
-        )
         raise FileNotFoundError(
             f"No '{filename}' found under any model's {args.parsed_dirname}/ in "
-            f"{args.task_dir}. Run {producer} on this task directory first, with "
-            f"the same --parsed_dirname."
+            f"{args.task_dir}. Run summarize_CDA_task.py on this task directory "
+            f"first, with the same --parsed_dirname."
         )
     if without_input:
         print(
@@ -335,11 +287,7 @@ def main():
             f"excluded: {', '.join(without_input)}"
         )
 
-    suffix = (
-        ("_truelabel" if args.truelabel else "")
-        + source_suffix(args.parsed_dirname)
-        + fmark
-    )
+    suffix = source_suffix(args.parsed_dirname) + fmark
     out_json = os.path.join(args.task_dir, f"summary_CDA_uncertainty{suffix}.json")
     with open(out_json, "w") as f:
         json.dump(

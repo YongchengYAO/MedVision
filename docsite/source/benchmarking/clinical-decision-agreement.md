@@ -23,39 +23,28 @@ Nothing is re-run: CDA only reads the `parsed/*.jsonl` records that
 
 | Proxy | Data | Measurement becomes | Statistic |
 | --- | --- | --- | --- |
-| **ANB skeletal class** (primary) | Ceph-Biometrics-400 | Class I (≤ 4°) vs Class II (> 4°) | Cohen's κ |
-| SNA / SNB (secondary) | Ceph-Biometrics-400 | retrusive / normal / protrusive, around Steiner's 82°±2 and 80°±2 | weighted κ |
-| **Renal T category** | KiTS23, KiPA22 | T1a / T1b / T2a / T2b at 4, 7, 10 cm | weighted κ |
+| **SNA maxillary position** | Ceph-Biometrics-400 | retrusive / normal / protrusive, around Steiner's 82°±2 | weighted κ |
+| **SNB mandibular position** | Ceph-Biometrics-400 | retrusive / normal / protrusive, around Steiner's 80°±2 | weighted κ |
+| **AJCC renal T category** | KiTS23, KiPA22 | T1a / T1b / T2a / T2b at 4, 7, 10 cm | weighted κ |
 
 Cutoffs come from Steiner (*Am J Orthod*, 1953) and the AJCC Cancer Staging
 Manual, 8th ed. (2017). The authoritative numbers live in `cda_config.py`; the
 table above is a summary.
 
 :::{warning}
-**The ANB proxy is binary, not the textbook three classes.** The benchmark
-defines its angle as `arccos(|A·B| / (‖A‖‖B‖))`, and that absolute value folds
-every angle into [0°, 90°] — a Class III patient at −3° is indistinguishable
-from a Class I patient at +3°. Class III cannot be recovered and is not
-reported; read this proxy as "agreement on the 4° decision", not as a full
-skeletal classification.
+**Angles are folded into [0°, 90°].** The benchmark defines its angle target as
+`arccos(|A·B| / (‖A‖‖B‖))`, and that absolute value folds every angle into
+[0°, 90°], so an SNA or SNB above 90° is reflected back below it (a true SNA of
+94.4° is stored as 85.6°). That can move a subject across a band edge.
 :::
 
-## The two tracks
+## How agreement is measured
 
-**Track 1 — self-consistent.** Category of the *prediction* vs category of the
-*ground-truth measurement*. Both sides go through the same cutoff table, so any
-disagreement is caused by measurement error alone. Available for every proxy.
+Category of the *prediction* vs category of the *ground-truth measurement*. Both
+sides go through the same cutoff table, so any disagreement is
+[caused by measurement error alone]{.mv-accent}.
 
-**Track 2 — renal true-label.** Category of the prediction vs the
-[pathologic T stage]{.mv-accent} recorded in the KiTS23 clinical table — a real,
-non-imaging reference. Stronger evidence, but only KiTS23 ships pathologic
-stage, and pT3/pT4 are defined by tissue invasion rather than size, so no
-size-based rule can ever produce them. The report therefore gives both the full
-6-class picture and an organ-confined pT1–pT2 stratum where size genuinely is
-the staging axis, plus two reference rows showing how a *perfect* measurement
-scores (from the true 3D size, and from the GT 2D slices).
-
-Both tracks are followed by an uncertainty pass: bootstrap 95% confidence
+The analysis is followed by an uncertainty pass: bootstrap 95% confidence
 intervals and a one-sided p-value for κ > 0. The bootstrap resamples
 [whole imaging volumes, not slices]{.mv-accent} — the 1,064 renal records come
 from 121 volumes, and slices of one tumour are not independent observations. An
@@ -69,7 +58,7 @@ From the repo root:
 REMOVED_SAMPLES_DIR=$PWD/Data/Datasets bash script/analyze/clinical-decision-analysis/run_CDA_analysis.sh
 ```
 
-That runs both tracks, the uncertainty pass and the report over the canonical
+That runs the analysis, the uncertainty pass and the report over the canonical
 result directories. The headline output is `CDA_REPORT.md` in the script's
 folder — every leaderboard, with confidence intervals, in one Markdown file.
 All CDA outputs are generated, never checked in; the pipeline reads `Results/`
@@ -104,8 +93,7 @@ prefix is rejected outright rather than guessed at. Outputs carry the source in
 their filenames (`CDA_REPORT_llm-parsed-gemma-4-31b.md` beside `CDA_REPORT.md`),
 so runs never overwrite each other.
 
-The individual scripts (`summarize_CDA_task.py` for Track 1,
-`analyze_CDA_renal_truelabel.py` for Track 2, `cda_uncertainty.py`,
+The individual scripts (`summarize_CDA_task.py`, `cda_uncertainty.py`,
 `build_CDA_report.py`) can also be run one at a time — see
 [the suite's README](https://github.com/YongchengYAO/MedVision/blob/master/script/analyze/clinical-decision-analysis/README.md)
 for the per-script invocations and the flag pairings they require.
@@ -131,18 +119,18 @@ report leaves out. Columns you will see:
 
 Before quoting a number:
 
-- **κ is not comparable across proxies.** Track-1 agreement depends mostly on
+- **κ is not comparable across proxies.** Agreement depends mostly on
   how close the cohort's values sit to a cutoff, so a proxy whose cutoff falls
   in a dense part of the distribution scores lower for the same measurement
   accuracy. Compare models within a proxy, never proxies against each other.
-- **Check `Nparsed` and the majority class.** On the organ-confined renal
-  stratum, always answering "T1a" already scores ≈ 0.56 accuracy; κ corrects
-  for that, raw accuracy does not.
+- **Check `Nparsed` and the majority class.** The renal categories are far from
+  uniform, so a constant answer already scores a substantial accuracy; κ
+  corrects for that, raw accuracy does not.
 - **Small n.** Rows with under 10 scored records still print a κ, a CI and a
   p-value — arithmetically valid, practically meaningless. The uncertainty
-  report marks them `low_n`; the Track-1 text report does not, so read
+  report marks them `low_n`; the text report does not, so read
   `Nparsed` there.
-- **Track-1 renal staging is per-slice, not per-tumour** — each scored record is
+- **Renal staging is per-slice, not per-tumour** — each scored record is
   one 2D slice's measurement pushed through the staging table.
 
 ## Further reading
