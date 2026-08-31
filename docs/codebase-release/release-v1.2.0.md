@@ -1,0 +1,94 @@
+## Release v1.2.0
+
+---
+### Bug Fixes in Model Evaluation
+
+- HuatuoGPT-Vision was capped at 512 output tokens by its own library, cutting answers off mid-sentence — 64% of its failed answers ended that way. The cap is now ours, and defaults to 4096 (09206a2)
+- Every launch script now states its output length instead of relying on a default: 4096 for the 48 open-weight scripts, raised to 16000 for GLM-4.6V, MedGemma-27B and Llama-3.2-Vision, which were running out of room (83e3187)
+- GLM-4.6V runs reinstalled the dataset package mid-run, which downgraded a shared library and broke every process started afterwards. It no longer reinstalls during a run (d38d49b)
+- During evaluation, answers are now read only from inside the `<answer>` tags, matching the parser used after a run. Published leaderboard numbers are unaffected (1b812f5)
+- Gallstones and kidney stones were shown in the soft-tissue CT window, which washed them out to flat white; they now use the bone window. Also filled in 22 missing label names across 10 datasets, six of which would have crashed on their first summary (7aecd9e)
+- GPT models now use 512×512 images on all three tasks, matching Claude, Gemini and Kimi (41bbf75)
+- Fixed conflicting package requirements for Llama-3.2-Vision (d5eb86a)
+
+---
+### LLM-Assisted Answer Parsing
+
+Scores are computed only over answers the pattern matcher can read, and it fails on 23% of T/L answers, 26% of A/D, and 6.6% of Detection — up to 91% for one model. A second reader now re-reads every answer, so "the model formatted its answer badly" can be told apart from "the model measured badly".
+
+- New `script/llm-parsing`: build a queue of answers, re-read them on GPU, check the results, report. Resumable, and driven by one script (2f20f64)
+- The reader only extracts numbers. It never sees the correct answer or the image, and is never asked whether a value is right. Every number it returns must be findable in the original answer, so it cannot invent one (2f20f64)
+- Each queue records a fingerprint of the prompt that built it, so editing the prompt invalidates the queue instead of quietly mixing two versions. Each reader writes to its own folder (2f20f64)
+- The existing summary scripts can now read either the pattern-matched or the LLM-read answers, so both appear side by side (2f20f64)
+- 10 tests, plus a written record that the reader does not give identical output twice — even with identical settings and greedy decoding, only 12.8% of answers match run to run. The saved output is therefore the record, not something to regenerate (2f20f64, be2ab7e)
+
+---
+### Clinical Decision Agreement (CDA)
+
+Measurement error is only interesting if it changes what a clinician would decide. CDA turns each measurement into a clinical category and asks whether the model lands in the same one as the ground truth.
+
+- New `script/analyze/clinical-decision-analysis`. It re-uses answers already produced — no GPU, no re-running models (8ded43a)
+- Three tasks, matching the paper: **SNA** and **SNB** jaw position (normal, set back, or forward, against Steiner's 82°±2 and 80°±2 ranges) and **kidney tumour staging** (T1a–T2b at 4, 7 and 10 cm). Both the prediction and the ground truth go through the same cutoff table, so any disagreement comes from measurement error alone (8ded43a, 2beef50)
+- Scope stops at those three. A jaw-relationship (ANB) task was dropped because the benchmark stores angles folded into 0–90°, which makes Class III impossible to recover. A second scoring track against KiTS23 pathology reports was dropped because it mixes measurement error with genuine differences between scans and pathology (2beef50)
+- Confidence intervals resample whole scans rather than individual slices. The 1,064 kidney records come from only 121 scans, and treating slices as independent made the interval five times too narrow — enough to turn a null result into an apparently real one (8ded43a)
+- Reports regenerate identically when nothing has changed, so a difference in the file means a difference in the numbers (8ded43a, 2beef50)
+
+---
+### New Evaluation Code
+
+- A tool-use evaluation script for Qwen2.5-VL: the model writes code, the code is run, and the model finishes its answer with the result. Output matches the normal format, so the rest of the pipeline is unchanged (6b46435)
+- MedGemma launch scripts split into 4B and 27B versions; the 27B runs at a smaller batch size because each GPU holds a full 55 GB copy (83e3187)
+- HuatuoGPT-Vision launch scripts gained output-length and sampling options (09206a2)
+
+---
+### New Metrics
+
+- Detection now reports accuracy at IoU thresholds from 0.50 to 0.95, plus their average, using the COCO grid. Unreadable answers count as misses (825344c)
+- A/D summaries gained combined **Distance** and **Angle** rows spanning datasets, named the same way the charts name them (286f632)
+
+---
+### New Figures and Analysis
+
+- Five new figure scripts: ground-truth annotations, out-of-plane examples, label clouds by target and modality, a grid of per-model charts, and accuracy against model release date (53dc231)
+- Four matching scripts that export the same numbers to the project website, each reusing its figure's own colours and thresholds so the page and the PDFs cannot disagree (53dc231)
+- Figure and chart scripts can now read either the pattern-matched or LLM-read answers, and mark their filenames when they use the latter so published figures are never overwritten (825344c, 71639bd, b2eba4a)
+- Chart colours moved into one shared file instead of four private copies; added a box plot of angle error, which shows the spread a single average hides (1df0ffe, b5eeb7f)
+- Figures are now assembled as vectors rather than images, and each script chooses PDF or PNG based on its content (9ce7f0a)
+
+---
+### Dataset v1.2.0–v1.4.0 Support
+
+- Annotation versions now resolve by one rule: use the newest version published at or before the version you pinned. The old rule could silently mix versions across tasks in the same run (9fff178)
+- Added the 8 datasets from v1.2.0, then MSWAL (v1.3.0), then the rebuilt tumour-size annotations of v1.4.0, which grew from 75K to 3.8M (9fff178, 66d3dc0, b46d00e, be2ab7e)
+- New tools to count and summarise the datasets, and to rebuild the per-task sample lists from the loader itself rather than from checked-in lists that no longer load (bff6fb3, 9ce7f0a, be2ab7e)
+
+---
+### Fine-Tuning (SFT)
+
+- Gemma models can now be trained on the answer only, rather than on the prompt as well, matching how the Qwen models train (3e61b56)
+- Full fine-tuning of 27–31B models now works: resuming from a checkpoint no longer runs out of memory, and new launch scripts cover both 4×80GB and 4×140GB machines (3e61b56)
+- A set of memory switches, all off by default so existing runs are unchanged (86775d0)
+
+---
+### Setup and Install
+
+- New `mvbm install mvds -d <dir>` shortcut for installing the dataset package (46fe873)
+- Docker images rebuilt: caches cleaned, GPU libraries dropped from the API-only images, and pinned requirement files used everywhere (f43c020)
+- Fixed the Docker images installing an old copy of the package instead of the freshly cloned one (8140465, 9fc6231)
+
+---
+### Other Fixes
+
+- Repointed five tests at the folder their scripts moved to (286f632)
+- Restored a missing data file the box-size figure needs, and made it fail loudly rather than draw nothing (71639bd)
+- A dataset missing from the README is now a warning, not an error, so adding datasets does not block the export (9fff178)
+- Corrected the GLM-4.6V parameter counts to 106B and 9B (c7d08e3, 53dc231)
+- Fixed a variable expansion bug in one setup script (41bbf75); ignore backup and generated report folders (999f4ae, b46d00e)
+
+---
+### Documentation
+
+- New documentation pages for LLM-assisted parsing and CDA; version pins updated from 1.1.1 to 1.4.0; headline counts now 31 datasets, 33.2K 3D images, 25.7M single- and 50.5M multi-instance annotations (b46d00e, be2ab7e)
+- README: EMNLP 2026 acceptance badge, a new parsing step in the pipeline, the leaderboard's 18-model scope, and an explanation of single- vs multi-instance annotations (999f4ae, b46d00e, b5eeb7f, bff6fb3)
+- Rewrote the dataset and fine-tuning tutorials; added notes on output-token budgets and the v1.3.0/v1.4.0 dataset releases (1df0ffe, 3e61b56, be2ab7e, 66d3dc0)
+- Added a readme for `tasks_list/`, refreshed the dataset tables, and routine documentation updates (82102ef, 3b391dc, f7b3970, 809cc3e, 83e140b, e58ae35, 36704bd, 4ae1954, d41d618)

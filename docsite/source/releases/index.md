@@ -14,6 +14,7 @@ Versioned docs start at **v1.1.1**; releases before that predate this documentat
 ```{toctree}
 :maxdepth: 1
 
+v1.2.0
 v1.1.1
 ```
 
@@ -21,6 +22,7 @@ v1.1.1
 
 | Version | Highlights |
 | --- | --- |
+| [v1.2.0](v1.2.0.md) | LLM-as-Judge output parsing, the Clinical Decision Agreement (CDA) analysis suite, key model-evaluation bugfixes (decode budgets, mid-run reinstall, answer-tag parsing), COCO-grid Acc@IoU and A/D group rows, the Qwen2.5-VL tool-use eval driver, and dataset v1.2.0–v1.4.0 integration. |
 | [v1.1.1](v1.1.1.md) | API-model evaluators (Claude, Gemini, GPT, Kimi), GLM-4.6V/Gemma-4/Qwen3-VL wrappers, F1/Precision/Recall + nMAE, dataset v1.1.1 integration, the resumable output cache, and this documentation site. |
 
 Older codebase changes (v1.1.0 and earlier) are recorded in

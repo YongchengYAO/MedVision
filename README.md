@@ -71,6 +71,18 @@ The live **open leaderboard** (per-task score tables + a **frontier API-model pi
 
 
 # 🔥 News
+- [Aug 31, 2026] Released the benchmarking/fine-tuning codebase `medvision_bm` v1.2.0 — [release notes](https://github.com/YongchengYAO/MedVision/blob/master/docs/codebase-release/release-v1.2.0.md)
+  <details>
+  <summary>Details (Click to expand)</summary>
+
+  - 🧑‍⚖️ New [LLM-as-Judge output parsing](https://github.com/YongchengYAO/MedVision/tree/master/script/llm-parsing): a second, independent reading of every benchmark response, so format-following failure is separable from measurement failure.
+  - 🩺 New [Clinical Decision Agreement (CDA) analysis](https://github.com/YongchengYAO/MedVision/tree/master/script/analyze/clinical-decision-analysis): re-scores existing outputs into clinical categories (SNA/SNB position bands, AJCC kidney tumor staging) and reports Cohen's and weighted kappa.
+  - 🐛 Key evaluation bugfixes: HuatuoGPT-Vision's decoding config never reached `generate()` (512-token CoT truncation); explicit output-token budgets on every launcher; GLM-4.6V no longer reinstalls `medvision_ds` mid-run.
+  - 📏 New metrics: COCO-grid Acc@IoU for Detection, cross-dataset Distance and Angle group rows for A/D.
+  - Dataset v1.2.0–v1.4.0 integration with ceiling-based plan resolution.
+
+  </details>
+
 - [Aug 19, 2026] 🚀 Release **MedVision** dataset v1.4.0 [[release-v1.4.0]](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.4.0.md)
   <details>
   <summary>Details (Click to expand)</summary>
