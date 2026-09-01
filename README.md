@@ -917,6 +917,15 @@ RL fine-tuning uses the verl framework. MedVision provides **parquet dataset bui
 
 <br/>
 
+# 🧪 Ablation: Segmentation Specialist
+
+How far does a segmentation foundation model get on MedVision's quantitative tasks? The ablation in [`script/ablation/biomedparse`](script/ablation/biomedparse) runs [BiomedParse v2](https://github.com/microsoft/BiomedParse) on the Detection and Tumor/Lesion-size test sets — bounding boxes and ellipse axes are derived from its predicted masks and scored with the same metrics as the VLMs:
+
+- **Track A — evaluate**: the off-the-shelf pretrained model
+- **Track B — fine-tune**: fine-tuned on the same 110K detection samples as MedVision-V0's SFT stage, then re-evaluated on both tasks
+
+See the folder's [README](script/ablation/biomedparse/README.md) for setup (`setup.sh`), the two launcher tracks, and the smoke tests.
+
 # 📚 New Tasks/Models Guide
 
 > 📚 **Read the Docs:** [Adding a new model](https://medvision.readthedocs.io/en/latest/extending/add-a-model.html) · [Adding a new task](https://medvision.readthedocs.io/en/latest/extending/add-a-task.html)

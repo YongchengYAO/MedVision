@@ -1,0 +1,11 @@
+# Populated by setup.sh / the pipeline — never committed
+third_party/
+data/
+models/
+figures/
+smoke_test/
+scripts/_env.local.sh
+*.log
+__pycache__/
+
+results/
