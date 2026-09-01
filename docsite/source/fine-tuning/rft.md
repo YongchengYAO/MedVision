@@ -89,15 +89,32 @@ So a CoT rollout looks like:
 
 ## How the reward is composed
 
-The reward lives entirely on the verl fork; here it is enough to know its shape and what data feeds it. Conceptually it sums three parts:
+The reward lives entirely on the verl fork (`verl/utils/reward_score/medvision_rewards/`); here it is enough to know its shape and what data feeds it. Each rollout is scored by up to three components in [0, 1]. The two accuracy components map an error *e* to a reward with ρ(*e*) = exp(−*e*), so an exact prediction earns 1 and an unparseable value earns 0:
 
-1. **Format reward** — did the rollout produce a well-formed `<think>`/`<answer>` (and, for CoT, `<step-k-*>`) structure that can be parsed at all.
-2. **Process reward** — how close each intermediate step is to ground truth. The CoT builders populate `extra_info` with the true intermediate coordinates so this can be scored: landmark pairs (`landmark_P1_wh`…`landmark_P4_wh`) for T/L, the two points or two lines for A/D, and the box corners for detection.
-3. **Answer reward** — the final metric against `ground_truth`.
+1. **Format reward** — the soft variant (default) combines a reasoning-structure score for the `<think>` / `<step-k-*>` blocks (weight 0.8) with a binary check of the final `<answer>` (weight 0.2); the binary variant uses the answer check alone. Detection, which has no CoT steps, always uses the binary check.
+2. **Process reward** (T/L and A/D only) — the mean over the CoT steps of ρ(step error). Localization steps are scored by the displacement of their worst-localized point in relative coordinates (divided by √2), measurement steps by their relative error. The CoT builders populate `extra_info` with the true intermediate values so this can be scored: landmark pairs (`landmark_P1_wh`…`landmark_P4_wh`) for T/L, and the line endpoints or points for A/D.
+3. **Answer reward** — ρ of the mean relative error of the final values (T/L, A/D), or of the overlap error (1 − CIoU)/2 of the predicted box (detection).
+
+For T/L and A/D the components are combined **multiplicatively** by default, `r = r_format + r_process * r_answer`, so the final-answer credit is conditional on an accurate reasoning chain; detection has no process reward and reduces to `r = r_format + r_answer`. The paper's reward-design ablation uses the additive alternative `r = r_format + r_process + r_answer`. All of this is one entry point on the fork, `medvision_general.compute_score`, configured through `custom_reward_function.reward_kwargs` (`format_reward`, `composition`); the fork's [`REWARDS.md`](https://github.com/YongchengYAO/verl/blob/medvision-rl/REWARDS.md) documents the options and the CLI overrides.
 
 Each row also stamps a `data_source` / `ability` that routes it to the right reward function: `medvision-tl` for tumour/lesion size, `medvision-ad` (further split into `medvision-angle` / `medvision-distance` by metric type) for angle-distance, and `medvision-detection` for detection.
 
-For the exact field contracts and the formatter functions that emit them, see the API reference for [`rft.verl.verl_utils`](../reference/api/verl_utils.md). For the GRPO configuration and the reward implementations, follow the [verl fork](https://github.com/YongchengYAO/verl/tree/medvision-rl).
+## Multi-task RFT: task mixing and curriculum learning
+
+MedVision-V0 is trained with three sequential RFT stages (A/D → T/L → detection). The fork also implements the paper's single-stage **multi-task RFT** over the 121K mixture, with two additions:
+
+- **Temperature-scaled task mixing** (`verl/utils/dataset/temperature_sampler.py`): a task with *N* samples is drawn with probability proportional to *N*^(1/*T*), sampling with replacement; *T* = 8 gives roughly 42 % / 29 % / 29 % of draws to detection / T/L / A/D instead of the natural 91 % / 4.5 % / 4.5 %.
+- **Epoch-level curriculum learning** (`verl/utils/dataset/curriculum.py`): samples the policy reliably solves — EMA answer error below the benchmark's own threshold (MRE < 0.1; overlap error < 0.25, i.e. IoU > 0.5, for detection) — are moved to a per-task easy pool, with a retention mix-in, rotating audits, hysteresis-guarded demotion and a per-task floor. The algorithm, its configuration, and the mapping from the paper's symbols to config options are documented in [`CURRICULUM_FILTERING.md`](https://github.com/YongchengYAO/verl/blob/medvision-rl/CURRICULUM_FILTERING.md).
+
+## Recipes on the fork
+
+| Recipe (`examples/grpo_trainer/`) | Setting in the paper |
+| --- | --- |
+| `train__rft-sequential__1-AD.sh`, `…__2-TL.sh`, `…__3-detection.sh` (run in order, each from the previous stage's checkpoint) | MedVision-V0: sequential A/D → T/L → detection RFT |
+| `train__rft-multitask.sh` | multi-task RFT ablation (task mixing + curriculum) |
+| `train__rft-multitask__additive-reward.sh` | additive-reward ablation |
+
+Each recipe takes the dataset directory from `DATASET_ROOT` and the base model from either `BASE_MODEL_PATH` (a local checkpoint) or `BASE_MODEL_HF` (a Hub id, downloaded locally before training). For the exact field contracts and the formatter functions that emit them, see the API reference for [`rft.verl.verl_utils`](../reference/api/verl_utils.md).
 
 ## After training
 

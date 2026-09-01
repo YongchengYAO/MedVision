@@ -910,7 +910,11 @@ RL fine-tuning uses the verl framework. MedVision provides **parquet dataset bui
   - `build_parquet_ds__verl__D110k-AD5.5k-TL5.5k__512x512.sh`: all 3 tasks combined (121K train / 200 val)
   - `build_parquet_ds__verl__D1000k-AD0k-TL0k__512x512__checkpointed.sh`: Detection task only, large scale (1M train / 500 val); uses the checkpointed builder
 
-- **[RFT]** RL fine-tuning in [https://github.com/YongchengYAO/verl/tree/medvision-rl](https://github.com/YongchengYAO/verl/tree/medvision-rl)
+- **[RFT]** RL fine-tuning (GRPO) runs in our verl fork, branch [`medvision-rl`](https://github.com/YongchengYAO/verl/tree/medvision-rl), which implements the RFT stage of the paper:
+  - **Rewards** (`verl/utils/reward_score/medvision_rewards/`): format, process (per-CoT-step landmark / measurement accuracy) and answer rewards with the `exp(-error)` mapping; CIoU overlap reward for detection; multiplicative composition `r = r_format + r_process * r_answer` (default) and the additive ablation `r = r_format + r_process + r_answer`; options and CLI overrides in [`REWARDS.md`](https://github.com/YongchengYAO/verl/blob/medvision-rl/REWARDS.md).
+  - **Temperature-scaled task mixing** (`verl/utils/dataset/temperature_sampler.py`): task probability proportional to `count^(1/T)` to rebalance the 110K / 5.5K / 5.5K multi-task mixture (T=8).
+  - **Epoch-level curriculum learning** (`verl/utils/dataset/curriculum.py`, [`CURRICULUM_FILTERING.md`](https://github.com/YongchengYAO/verl/blob/medvision-rl/CURRICULUM_FILTERING.md)): per-task easy / hard pools, EMA-gated promotion of solved samples, retention mix-in, rotating audits with hysteresis-guarded demotion, and a per-task floor.
+  - **Recipes** (`examples/grpo_trainer/`): sequential A/D → T/L → detection RFT (`train__rft-sequential__{1-AD,2-TL,3-detection}.sh`; MedVision-V0) and single-stage multi-task RFT with curriculum (`train__rft-multitask.sh`; additive-reward twin `train__rft-multitask__additive-reward.sh`); each script takes `DATASET_ROOT` plus either `BASE_MODEL_PATH` (a local checkpoint) or `BASE_MODEL_HF` (a Hub id, downloaded locally before training).
 
 - **[Evaluation]** Evaluate the trained model with `eval__MedVision-V0-7B__detect.sh` (in `script/benchmark-*/`).
 

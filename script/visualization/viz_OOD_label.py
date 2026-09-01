@@ -397,7 +397,7 @@ def main():
     parser.add_argument("--tl_indist", required=True)
     parser.add_argument("--tl_ood", required=True)
     parser.add_argument("--fig_dir", required=True)
-    parser.add_argument("--fig_name", default="fig_label_cloud.pdf")
+    parser.add_argument("--fig_name", default="fig_OOD_label.pdf")
     parser.add_argument("--cell_width", type=float, default=8.0)
     parser.add_argument("--cell_height", type=float, default=8.0)
     parser.add_argument("--tl_cell_height", type=float, default=2.6)

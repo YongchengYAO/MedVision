@@ -31,7 +31,7 @@ MEDVISION_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 PYTHON="${PYTHON:-python}"
 TASKS_DIR="${TASKS_DIR:-$MEDVISION_DIR/tasks_list}"
 FIG_DIR="${FIG_DIR:-$MEDVISION_DIR/Figures}"
-FIG_NAME="${FIG_NAME:-fig_label_cloud.pdf}"
+FIG_NAME="${FIG_NAME:-fig_OOD_label.pdf}"
 CELL_WIDTH="${CELL_WIDTH:-8}"
 CELL_HEIGHT="${CELL_HEIGHT:-8}"
 TL_CELL_HEIGHT="${TL_CELL_HEIGHT:-2.6}"
@@ -45,7 +45,7 @@ if ! "$PYTHON" -c "import medvision_bm.utils.plot_utils, medvision_ds" >/dev/nul
     exit 1
 fi
 
-"$PYTHON" "$SCRIPT_DIR/viz_label_cloud.py" \
+"$PYTHON" "$SCRIPT_DIR/viz_OOD_label.py" \
     --detect_indist "$TASKS_DIR/tasks_MedVision-detect-CoT.json" \
     --detect_ood "$TASKS_DIR/OOD/tasks_MedVision-detect-CoT-taskOOD.json" \
     --tl_indist "$TASKS_DIR/tasks_MedVision-TL__train_SFT.json" \
