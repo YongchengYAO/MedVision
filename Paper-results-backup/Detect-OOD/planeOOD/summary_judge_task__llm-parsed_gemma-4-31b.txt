@@ -1,0 +1,55 @@
+========== JUDGE REPORT: Detection ==========
+task_dir       : Results/MedVision-detect-v2-CoT-planeOOD
+parsed_dirname : llm-parsed_gemma-4-31b
+limit          : None
+
+FAILURE DECOMPOSITION -- what the strict parser's failures actually were
+model                                        SR strict  SR judge     dSR  fmt-fail  non-answer
+----------------------------------------------------------------------------------------------
+Qwen2.5-VL-7B-Instruct                           74.2%     74.2%   +0.0        11      11,329
+MedVision__fullSFT__Qwen2.5VL-7B__D110k-AD5     100.0%    100.0%   +0.0         0           0
+MedVision__fullRFT__qwen25vl-7b-fullSFT__AD     100.0%    100.0%   +0.0         0           0
+----------------------------------------------------------------------------------------------
+TOTAL                                            91.3%     91.3%   +0.0        11      11,329
+
+ANSWER MODE -- the four categories LLM_judge_answer_mode assigns
+(the two conclusion_* modes count as a successful answer; the rest do not.
+ no-concl does not distinguish 'ran out of room' from 'declined' -- that
+ needs the generation config, so the judge is not asked to guess it)
+model                                         in-format  off-format  no-concl   undet
+-------------------------------------------------------------------------------------
+Qwen2.5-VL-7B-Instruct                           32,593          11    11,329       0
+MedVision__fullSFT__Qwen2.5VL-7B__D110k-AD5      42,931           0         0       2
+MedVision__fullRFT__qwen25vl-7b-fullSFT__AD      42,931           0         0       2
+-------------------------------------------------------------------------------------
+TOTAL                                           118,455          11    11,329       4
+
+JUDGE VALIDITY -- agreement with the strict parser on ITS successes
+(the strict parser is near-perfect on the rows it accepts, so this is a
+ real reliability check; it is free only because we judge 100% of rows)
+(agree% is over n_ref; invalid% and unverif% are over ALL records)
+model                                           n_ref    agree   agree%  invalid%  unverif%
+-----------------------------------------------------------------------------------------
+Qwen2.5-VL-7B-Instruct                         32,593   32,593  100.00%     0.00%     0.00%
+MedVision__fullSFT__Qwen2.5VL-7B__D110k-AD5    42,931   42,931  100.00%     0.00%     0.00%
+MedVision__fullRFT__qwen25vl-7b-fullSFT__AD    42,931   42,931  100.00%     0.00%     0.00%
+-----------------------------------------------------------------------------------------
+TOTAL                                         118,455  118,455 100.000%
+
+SPAN VERIFICATION -- answers the judge asserted but could not point at
+(the judge quotes; the benchmark's own _NUM_RE re-derives the numbers from
+ that quote. A mismatch means the answer is DISCARDED rather than trusted,
+ which is what makes a hallucinated digit structurally impossible)
+rejection reason                                 count     share
+----------------------------------------------------------------
+arity_mismatch:2!=4                                  2     50.0%
+arity_mismatch:3!=4                                  2     50.0%
+----------------------------------------------------------------
+TOTAL rejected                                       4     0.00% of records
+
+RESPONSE LENGTH -- recovered vs originally-parsed (survivorship check)
+(strict failures are systematically longer; if recovered rows are much
+ longer, format-robust error is computed over a harder subset)
+model                                         parsed mean  recovered mean
+-------------------------------------------------------------------------
+Qwen2.5-VL-7B-Instruct                                568             363

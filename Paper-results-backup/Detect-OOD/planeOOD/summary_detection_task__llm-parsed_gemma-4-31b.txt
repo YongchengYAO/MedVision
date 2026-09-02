@@ -1,0 +1,23 @@
+
+================================================================================
+SUMMARY METRICS: Recall, Precision, and F1
+================================================================================
+
+Model: MedVision__fullRFT__qwen25vl-7b-fullSFT__AD-TL-D__512x512__PRxAnswer_s250
+--------------------------------------------------------------------------------
+  ANATOMY  (25 regions, 25625 samples): Recall=0.493, Precision=0.547, F1=0.495, IoU=0.443, SuccessRate=1.000, IoU>0.5=0.475, F1>0.5=0.518, Acc@IoU>=0.50=0.475, Acc@IoU>=0.75=0.383, Acc@IoU[0.50:0.95]=0.356
+  T/L      (16 regions, 15223 samples): Recall=0.357, Precision=0.488, F1=0.366, IoU=0.289, SuccessRate=1.000, IoU>0.5=0.281, F1>0.5=0.389, Acc@IoU>=0.50=0.281, Acc@IoU>=0.75=0.121, Acc@IoU[0.50:0.95]=0.138
+
+Model: MedVision__fullSFT__Qwen2.5VL-7B__D110k-AD5k-TL5k__CoT__512x512__v2
+--------------------------------------------------------------------------
+  ANATOMY  (25 regions, 25625 samples): Recall=0.485, Precision=0.557, F1=0.490, IoU=0.437, SuccessRate=1.000, IoU>0.5=0.474, F1>0.5=0.516, Acc@IoU>=0.50=0.474, Acc@IoU>=0.75=0.376, Acc@IoU[0.50:0.95]=0.346
+  T/L      (16 regions, 15223 samples): Recall=0.301, Precision=0.438, F1=0.307, IoU=0.239, SuccessRate=1.000, IoU>0.5=0.229, F1>0.5=0.322, Acc@IoU>=0.50=0.229, Acc@IoU>=0.75=0.089, Acc@IoU[0.50:0.95]=0.107
+
+Model: Qwen2.5-VL-7B-Instruct
+-----------------------------
+  ANATOMY  (25 regions, 25625 samples): Recall=0.326, Precision=0.091, F1=0.116, IoU=0.075, SuccessRate=0.729, IoU>0.5=0.027, F1>0.5=0.060, Acc@IoU>=0.50=0.027, Acc@IoU>=0.75=0.004, Acc@IoU[0.50:0.95]=0.009
+  T/L      (16 regions, 15223 samples): Recall=0.438, Precision=0.052, F1=0.083, IoU=0.049, SuccessRate=0.732, IoU>0.5=0.005, F1>0.5=0.021, Acc@IoU>=0.50=0.005, Acc@IoU>=0.75=0.000, Acc@IoU[0.50:0.95]=0.001
+
+================================================================================
+Summary metrics saved to: Results/MedVision-detect-v2-CoT-planeOOD/summary_metrics_all_models_detect_Task__llm-parsed_gemma-4-31b.json
+================================================================================

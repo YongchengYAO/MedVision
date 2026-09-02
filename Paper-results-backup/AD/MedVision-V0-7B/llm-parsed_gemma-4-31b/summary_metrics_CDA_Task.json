@@ -1,0 +1,122 @@
+{
+  "overall": {
+    "SNB mandibular position": {
+      "name": "SNB mandibular position",
+      "ordinal": true,
+      "accuracy": 0.48333333333333334,
+      "cohen_kappa": 0.22701298701298703,
+      "confusion": {
+        "retrusive mandible": {
+          "retrusive mandible": 18,
+          "normal mandible": 17,
+          "protrusive mandible": 0
+        },
+        "normal mandible": {
+          "retrusive mandible": 11,
+          "normal mandible": 19,
+          "protrusive mandible": 10
+        },
+        "protrusive mandible": {
+          "retrusive mandible": 7,
+          "normal mandible": 17,
+          "protrusive mandible": 21
+        }
+      },
+      "flip_rate": 0.5166666666666666,
+      "n_parsed": 120,
+      "n_total": 120,
+      "accuracy_coverage_adjusted": 0.48333333333333334,
+      "flip_rate_coverage_adjusted": 0.5166666666666666,
+      "weighted_kappa": 0.43855693348365266
+    },
+    "SNA maxillary position": {
+      "name": "SNA maxillary position",
+      "ordinal": true,
+      "accuracy": 0.4583333333333333,
+      "cohen_kappa": 0.18341708542713564,
+      "confusion": {
+        "retrusive maxilla": {
+          "retrusive maxilla": 19,
+          "normal maxilla": 12,
+          "protrusive maxilla": 3
+        },
+        "normal maxilla": {
+          "retrusive maxilla": 16,
+          "normal maxilla": 20,
+          "protrusive maxilla": 12
+        },
+        "protrusive maxilla": {
+          "retrusive maxilla": 8,
+          "normal maxilla": 14,
+          "protrusive maxilla": 16
+        }
+      },
+      "flip_rate": 0.5416666666666667,
+      "n_parsed": 120,
+      "n_total": 120,
+      "accuracy_coverage_adjusted": 0.4583333333333333,
+      "flip_rate_coverage_adjusted": 0.5416666666666667,
+      "weighted_kappa": 0.33242506811989103
+    }
+  },
+  "by_dataset": {
+    "SNB mandibular position @ Ceph-Biometrics-400": {
+      "name": "SNB mandibular position",
+      "ordinal": true,
+      "accuracy": 0.48333333333333334,
+      "cohen_kappa": 0.22701298701298703,
+      "confusion": {
+        "retrusive mandible": {
+          "retrusive mandible": 18,
+          "normal mandible": 17,
+          "protrusive mandible": 0
+        },
+        "normal mandible": {
+          "retrusive mandible": 11,
+          "normal mandible": 19,
+          "protrusive mandible": 10
+        },
+        "protrusive mandible": {
+          "retrusive mandible": 7,
+          "normal mandible": 17,
+          "protrusive mandible": 21
+        }
+      },
+      "flip_rate": 0.5166666666666666,
+      "n_parsed": 120,
+      "n_total": 120,
+      "accuracy_coverage_adjusted": 0.48333333333333334,
+      "flip_rate_coverage_adjusted": 0.5166666666666666,
+      "weighted_kappa": 0.43855693348365266
+    },
+    "SNA maxillary position @ Ceph-Biometrics-400": {
+      "name": "SNA maxillary position",
+      "ordinal": true,
+      "accuracy": 0.4583333333333333,
+      "cohen_kappa": 0.18341708542713564,
+      "confusion": {
+        "retrusive maxilla": {
+          "retrusive maxilla": 19,
+          "normal maxilla": 12,
+          "protrusive maxilla": 3
+        },
+        "normal maxilla": {
+          "retrusive maxilla": 16,
+          "normal maxilla": 20,
+          "protrusive maxilla": 12
+        },
+        "protrusive maxilla": {
+          "retrusive maxilla": 8,
+          "normal maxilla": 14,
+          "protrusive maxilla": 16
+        }
+      },
+      "flip_rate": 0.5416666666666667,
+      "n_parsed": 120,
+      "n_total": 120,
+      "accuracy_coverage_adjusted": 0.4583333333333333,
+      "flip_rate_coverage_adjusted": 0.5416666666666667,
+      "weighted_kappa": 0.33242506811989103
+    }
+  }
+}

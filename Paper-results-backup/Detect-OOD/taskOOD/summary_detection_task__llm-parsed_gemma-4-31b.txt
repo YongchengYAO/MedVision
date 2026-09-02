@@ -1,0 +1,23 @@
+
+================================================================================
+SUMMARY METRICS: Recall, Precision, and F1
+================================================================================
+
+Model: MedVision__fullRFT__qwen25vl-7b-fullSFT__AD-TL-D__512x512__PRxAnswer_s250
+--------------------------------------------------------------------------------
+  ANATOMY  (27 regions, 5577 samples): Recall=0.348, Precision=0.470, F1=0.360, IoU=0.312, SuccessRate=0.988, IoU>0.5=0.317, F1>0.5=0.357, Acc@IoU>=0.50=0.317, Acc@IoU>=0.75=0.254, Acc@IoU[0.50:0.95]=0.233
+  T/L      ( 3 regions, 7340 samples): Recall=0.474, Precision=0.515, F1=0.455, IoU=0.380, SuccessRate=0.999, IoU>0.5=0.417, F1>0.5=0.495, Acc@IoU>=0.50=0.417, Acc@IoU>=0.75=0.231, Acc@IoU[0.50:0.95]=0.235
+
+Model: MedVision__fullSFT__Qwen2.5VL-7B__D110k-AD5k-TL5k__CoT__512x512__v2
+--------------------------------------------------------------------------
+  ANATOMY  (27 regions, 5577 samples): Recall=0.313, Precision=0.447, F1=0.329, IoU=0.285, SuccessRate=0.986, IoU>0.5=0.295, F1>0.5=0.328, Acc@IoU>=0.50=0.295, Acc@IoU>=0.75=0.234, Acc@IoU[0.50:0.95]=0.212
+  T/L      ( 3 regions, 7340 samples): Recall=0.406, Precision=0.500, F1=0.402, IoU=0.327, SuccessRate=0.998, IoU>0.5=0.354, F1>0.5=0.440, Acc@IoU>=0.50=0.354, Acc@IoU>=0.75=0.160, Acc@IoU[0.50:0.95]=0.179
+
+Model: Qwen2.5-VL-7B-Instruct
+-----------------------------
+  ANATOMY  (27 regions, 5577 samples): Recall=0.215, Precision=0.056, F1=0.073, IoU=0.047, SuccessRate=0.623, IoU>0.5=0.012, F1>0.5=0.043, Acc@IoU>=0.50=0.012, Acc@IoU>=0.75=0.000, Acc@IoU[0.50:0.95]=0.002
+  T/L      ( 3 regions, 7340 samples): Recall=0.341, Precision=0.026, F1=0.044, IoU=0.025, SuccessRate=0.447, IoU>0.5=0.001, F1>0.5=0.004, Acc@IoU>=0.50=0.001, Acc@IoU>=0.75=0.000, Acc@IoU[0.50:0.95]=0.000
+
+================================================================================
+Summary metrics saved to: Results/MedVision-detect-v2-CoT-taskOOD/summary_metrics_all_models_detect_Task__llm-parsed_gemma-4-31b.json
+================================================================================

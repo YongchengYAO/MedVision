@@ -1,0 +1,69 @@
+{
+  "failure_decomposition": {
+    "n_samples": 2060,
+    "n_strict_parsed": 2059,
+    "n_judge_parsed": 2059,
+    "n_strict_failed": 1,
+    "n_format_failure": 0,
+    "n_genuine_non_answer": 1,
+    "success_rate_strict": 0.9995145631067961,
+    "success_rate_judge": 0.9995145631067961,
+    "delta_success_rate": 0.0,
+    "format_failure_share": 0.0,
+    "non_answer_rate": 0.0004854368932038835,
+    "n_no_conclusion": 1,
+    "n_undetermined": 0,
+    "no_conclusion_rate": 0.0004854368932038835,
+    "undetermined_rate": 0.0,
+    "by_mode": {
+      "conclusion_in_format": 2059,
+      "conclusion_off_format": 0,
+      "no_conclusion": 1,
+      "undetermined": 0
+    }
+  },
+  "judge_validity": {
+    "n_reference": 2059,
+    "n_agree": 2059,
+    "agreement_rate": 1.0,
+    "n_value_disagreement": 0,
+    "n_no_value_disagreement": 0,
+    "no_value_disagreement_reasons": {},
+    "judge_invalid_rate": 0.0,
+    "span_unverified_rate": 0.0,
+    "judge_missing_rate": 0.0,
+    "n_span_rejected": 0,
+    "span_rejection_reasons": {},
+    "disagreement_examples": []
+  },
+  "step_extraction_coverage": {
+    "n_eligible": 2060,
+    "all_steps_extracted_rate": 0.9995145631067961,
+    "any_step_extracted_rate": 1.0,
+    "per_step_rate": {
+      "angle:1": 1.0,
+      "angle:2": 1.0,
+      "angle:3": 0.9989583333333333,
+      "distance:1": 1.0,
+      "distance:2": 1.0,
+      "distance:3": 1.0
+    }
+  },
+  "response_length": {
+    "originally_parsed": {
+      "n": 2059,
+      "mean": 1544.8824672170956,
+      "median": 1279.0
+    },
+    "judge_recovered": {
+      "n": 0,
+      "mean": NaN,
+      "median": NaN
+    },
+    "parsed_quantiles": [
+      1184.0,
+      1279.0,
+      1933.0
+    ]
+  }
+}

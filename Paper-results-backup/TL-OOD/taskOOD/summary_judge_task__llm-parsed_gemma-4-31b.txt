@@ -1,0 +1,63 @@
+========== JUDGE REPORT: TL ==========
+task_dir       : Results/MedVision-TL-v2-CoT-taskOOD
+parsed_dirname : llm-parsed_gemma-4-31b
+limit          : None
+
+FAILURE DECOMPOSITION -- what the strict parser's failures actually were
+model                                        SR strict  SR judge     dSR  fmt-fail  non-answer
+----------------------------------------------------------------------------------------------
+Qwen2.5VL-7B-ds1.1.1                             98.2%     99.2%   +1.0         8           4
+Qwen2.5VL-7B-SFT-ds1.1.1                        100.0%    100.0%   +0.0         0           0
+MedVision-V0-7B-ds1.1.1                         100.0%    100.0%   +0.0         0           0
+----------------------------------------------------------------------------------------------
+TOTAL                                            99.4%     99.7%   +0.3         8           4
+
+ANSWER MODE -- the four categories LLM_judge_answer_mode assigns
+(the two conclusion_* modes count as a successful answer; the rest do not.
+ no-concl does not distinguish 'ran out of room' from 'declined' -- that
+ needs the generation config, so the judge is not asked to guess it)
+model                                         in-format  off-format  no-concl   undet
+-------------------------------------------------------------------------------------
+Qwen2.5VL-7B-ds1.1.1                                750           8         4       2
+Qwen2.5VL-7B-SFT-ds1.1.1                            764           0         0       0
+MedVision-V0-7B-ds1.1.1                             764           0         0       0
+-------------------------------------------------------------------------------------
+TOTAL                                             2,278           8         4       2
+
+JUDGE VALIDITY -- agreement with the strict parser on ITS successes
+(the strict parser is near-perfect on the rows it accepts, so this is a
+ real reliability check; it is free only because we judge 100% of rows)
+(agree% is over n_ref; invalid% and unverif% are over ALL records)
+model                                           n_ref    agree   agree%  invalid%  unverif%
+-----------------------------------------------------------------------------------------
+Qwen2.5VL-7B-ds1.1.1                              750      739   98.53%     0.00%     1.70%
+Qwen2.5VL-7B-SFT-ds1.1.1                          764      763   99.87%     0.00%     0.13%
+MedVision-V0-7B-ds1.1.1                           764      764  100.00%     0.00%     0.00%
+-----------------------------------------------------------------------------------------
+TOTAL                                           2,278    2,266  99.473%
+
+SPAN VERIFICATION -- answers the judge asserted but could not point at
+(the judge quotes; the benchmark's own _NUM_RE re-derives the numbers from
+ that quote. A mismatch means the answer is DISCARDED rather than trusted,
+ which is what makes a hallucinated digit structurally impossible)
+rejection reason                                 count     share
+----------------------------------------------------------------
+values_not_in_span                                  14    100.0%
+----------------------------------------------------------------
+TOTAL rejected                                      14     0.61% of records
+
+JOB B EXTRACTION COVERAGE -- how often the judge located each step
+(extraction diagnostic, NOT a model score; step values are persisted
+ in LLM_judge_steps for downstream use)
+model                                         eligible  all steps  any step
+---------------------------------------------------------------------------
+Qwen2.5VL-7B-ds1.1.1                               764      91.4%     98.6%
+Qwen2.5VL-7B-SFT-ds1.1.1                           764     100.0%    100.0%
+MedVision-V0-7B-ds1.1.1                            764     100.0%    100.0%
+
+RESPONSE LENGTH -- recovered vs originally-parsed (survivorship check)
+(strict failures are systematically longer; if recovered rows are much
+ longer, format-robust error is computed over a harder subset)
+model                                         parsed mean  recovered mean
+-------------------------------------------------------------------------
+Qwen2.5VL-7B-ds1.1.1                                1,369           3,707

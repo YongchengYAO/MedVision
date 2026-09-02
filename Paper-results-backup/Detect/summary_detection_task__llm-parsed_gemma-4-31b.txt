@@ -1,0 +1,103 @@
+
+================================================================================
+SUMMARY METRICS: Recall, Precision, and F1
+================================================================================
+
+Model: medgemma-27b-it
+----------------------
+  ANATOMY  (18 regions, 13421 samples): Recall=0.572, Precision=0.157, F1=0.191, IoU=0.129, SuccessRate=0.986, IoU>0.5=0.066, F1>0.5=0.153, Acc@IoU>=0.50=0.066, Acc@IoU>=0.75=0.004, Acc@IoU[0.50:0.95]=0.018
+  T/L      ( 8 regions, 8533 samples): Recall=0.541, Precision=0.046, F1=0.075, IoU=0.043, SuccessRate=0.970, IoU>0.5=0.001, F1>0.5=0.010, Acc@IoU>=0.50=0.001, Acc@IoU>=0.75=0.000, Acc@IoU[0.50:0.95]=0.000
+
+Model: Qwen2.5-VL-32B-Instruct
+------------------------------
+  ANATOMY  (18 regions, 13421 samples): Recall=0.448, Precision=0.149, F1=0.184, IoU=0.125, SuccessRate=1.000, IoU>0.5=0.063, F1>0.5=0.149, Acc@IoU>=0.50=0.063, Acc@IoU>=0.75=0.006, Acc@IoU[0.50:0.95]=0.018
+  T/L      ( 8 regions, 8533 samples): Recall=0.385, Precision=0.057, F1=0.077, IoU=0.047, SuccessRate=1.000, IoU>0.5=0.006, F1>0.5=0.023, Acc@IoU>=0.50=0.006, Acc@IoU>=0.75=0.001, Acc@IoU[0.50:0.95]=0.002
+
+Model: GLM-4.6V-Flash
+---------------------
+  ANATOMY  (18 regions, 13421 samples): Recall=0.226, Precision=0.176, F1=0.152, IoU=0.098, SuccessRate=1.000, IoU>0.5=0.025, F1>0.5=0.093, Acc@IoU>=0.50=0.025, Acc@IoU>=0.75=0.001, Acc@IoU[0.50:0.95]=0.005
+  T/L      ( 8 regions, 8533 samples): Recall=0.262, Precision=0.061, F1=0.075, IoU=0.047, SuccessRate=1.000, IoU>0.5=0.010, F1>0.5=0.038, Acc@IoU>=0.50=0.010, Acc@IoU>=0.75=0.000, Acc@IoU[0.50:0.95]=0.002
+
+Model: gemma-3-27b-it
+---------------------
+  ANATOMY  (18 regions, 13421 samples): Recall=0.371, Precision=0.124, F1=0.149, IoU=0.101, SuccessRate=1.000, IoU>0.5=0.046, F1>0.5=0.123, Acc@IoU>=0.50=0.046, Acc@IoU>=0.75=0.004, Acc@IoU[0.50:0.95]=0.013
+  T/L      ( 8 regions, 8533 samples): Recall=0.343, Precision=0.043, F1=0.061, IoU=0.036, SuccessRate=1.000, IoU>0.5=0.003, F1>0.5=0.014, Acc@IoU>=0.50=0.003, Acc@IoU>=0.75=0.000, Acc@IoU[0.50:0.95]=0.000
+
+Model: llava-onevision-qwen2-72b-ov-hf
+--------------------------------------
+  ANATOMY  (18 regions, 13421 samples): Recall=0.349, Precision=0.190, F1=0.181, IoU=0.118, SuccessRate=1.000, IoU>0.5=0.024, F1>0.5=0.132, Acc@IoU>=0.50=0.024, Acc@IoU>=0.75=0.001, Acc@IoU[0.50:0.95]=0.004
+  T/L      ( 8 regions, 8533 samples): Recall=0.341, Precision=0.063, F1=0.084, IoU=0.050, SuccessRate=1.000, IoU>0.5=0.004, F1>0.5=0.025, Acc@IoU>=0.50=0.004, Acc@IoU>=0.75=0.000, Acc@IoU[0.50:0.95]=0.001
+
+Model: MedDr__BF16
+------------------
+  ANATOMY  (18 regions, 13421 samples): Recall=0.536, Precision=0.111, F1=0.146, IoU=0.097, SuccessRate=0.968, IoU>0.5=0.042, F1>0.5=0.103, Acc@IoU>=0.50=0.042, Acc@IoU>=0.75=0.004, Acc@IoU[0.50:0.95]=0.011
+  T/L      ( 8 regions, 8533 samples): Recall=0.634, Precision=0.037, F1=0.062, IoU=0.035, SuccessRate=0.987, IoU>0.5=0.001, F1>0.5=0.006, Acc@IoU>=0.50=0.001, Acc@IoU>=0.75=0.000, Acc@IoU[0.50:0.95]=0.000
+
+Model: HealthGPT-L14
+--------------------
+  ANATOMY  (18 regions, 13421 samples): Recall=0.296, Precision=0.207, F1=0.160, IoU=0.102, SuccessRate=0.987, IoU>0.5=0.018, F1>0.5=0.092, Acc@IoU>=0.50=0.018, Acc@IoU>=0.75=0.000, Acc@IoU[0.50:0.95]=0.004
+  T/L      ( 8 regions, 8533 samples): Recall=0.292, Precision=0.070, F1=0.084, IoU=0.051, SuccessRate=0.978, IoU>0.5=0.005, F1>0.5=0.031, Acc@IoU>=0.50=0.005, Acc@IoU>=0.75=0.000, Acc@IoU[0.50:0.95]=0.001
+
+Model: gemma-4-31B-it
+---------------------
+  ANATOMY  (18 regions, 13421 samples): Recall=0.348, Precision=0.207, F1=0.226, IoU=0.167, SuccessRate=0.985, IoU>0.5=0.135, F1>0.5=0.212, Acc@IoU>=0.50=0.135, Acc@IoU>=0.75=0.043, Acc@IoU[0.50:0.95]=0.058
+  T/L      ( 8 regions, 8533 samples): Recall=0.436, Precision=0.146, F1=0.181, IoU=0.127, SuccessRate=0.995, IoU>0.5=0.084, F1>0.5=0.162, Acc@IoU>=0.50=0.084, Acc@IoU>=0.75=0.011, Acc@IoU[0.50:0.95]=0.027
+
+Model: google__medgemma-4b-it
+-----------------------------
+  ANATOMY  (18 regions, 13421 samples): Recall=0.687, Precision=0.147, F1=0.186, IoU=0.124, SuccessRate=0.989, IoU>0.5=0.064, F1>0.5=0.143, Acc@IoU>=0.50=0.064, Acc@IoU>=0.75=0.002, Acc@IoU[0.50:0.95]=0.015
+  T/L      ( 8 regions, 8533 samples): Recall=0.777, Precision=0.044, F1=0.075, IoU=0.042, SuccessRate=0.993, IoU>0.5=0.000, F1>0.5=0.008, Acc@IoU>=0.50=0.000, Acc@IoU>=0.75=0.000, Acc@IoU[0.50:0.95]=0.000
+
+Model: InternVL3-38B
+--------------------
+  ANATOMY  (18 regions, 13421 samples): Recall=0.311, Precision=0.170, F1=0.172, IoU=0.115, SuccessRate=1.000, IoU>0.5=0.053, F1>0.5=0.130, Acc@IoU>=0.50=0.053, Acc@IoU>=0.75=0.001, Acc@IoU[0.50:0.95]=0.012
+  T/L      ( 8 regions, 8533 samples): Recall=0.295, Precision=0.066, F1=0.079, IoU=0.049, SuccessRate=1.000, IoU>0.5=0.008, F1>0.5=0.031, Acc@IoU>=0.50=0.008, Acc@IoU>=0.75=0.000, Acc@IoU[0.50:0.95]=0.002
+
+Model: MedVision__fullRFT__qwen25vl-7b-fullSFT__AD-TL-D__512x512__PRxAnswer_s250_CoT
+------------------------------------------------------------------------------------
+  ANATOMY  (18 regions, 13421 samples): Recall=0.813, Precision=0.804, F1=0.791, IoU=0.720, SuccessRate=1.000, IoU>0.5=0.801, F1>0.5=0.865, Acc@IoU>=0.50=0.801, Acc@IoU>=0.75=0.635, Acc@IoU[0.50:0.95]=0.599
+  T/L      ( 8 regions, 8533 samples): Recall=0.524, Precision=0.505, F1=0.469, IoU=0.382, SuccessRate=1.000, IoU>0.5=0.407, F1>0.5=0.515, Acc@IoU>=0.50=0.407, Acc@IoU>=0.75=0.194, Acc@IoU[0.50:0.95]=0.211
+
+Model: Qwen3-VL-32B-Thinking
+----------------------------
+  ANATOMY  (18 regions, 13421 samples): Recall=0.358, Precision=0.174, F1=0.195, IoU=0.134, SuccessRate=0.965, IoU>0.5=0.075, F1>0.5=0.161, Acc@IoU>=0.50=0.075, Acc@IoU>=0.75=0.009, Acc@IoU[0.50:0.95]=0.022
+  T/L      ( 8 regions, 8533 samples): Recall=0.339, Precision=0.066, F1=0.082, IoU=0.052, SuccessRate=0.980, IoU>0.5=0.013, F1>0.5=0.039, Acc@IoU>=0.50=0.013, Acc@IoU>=0.75=0.000, Acc@IoU[0.50:0.95]=0.003
+
+Model: MedVision__fullSFT__Qwen2.5VL-7B__D110k-AD5k-TL5k__CoT__512x512__v2
+--------------------------------------------------------------------------
+  ANATOMY  (18 regions, 12421 samples): Recall=0.689, Precision=0.734, F1=0.686, IoU=0.611, SuccessRate=0.955, IoU>0.5=0.678, F1>0.5=0.754, Acc@IoU>=0.50=0.678, Acc@IoU>=0.75=0.494, Acc@IoU[0.50:0.95]=0.475
+  T/L      ( 8 regions, 8533 samples): Recall=0.404, Precision=0.456, F1=0.382, IoU=0.298, SuccessRate=0.981, IoU>0.5=0.293, F1>0.5=0.414, Acc@IoU>=0.50=0.293, Acc@IoU>=0.75=0.099, Acc@IoU[0.50:0.95]=0.129
+
+Model: Llama-3.2-11B-Vision-Instruct-Budget16k
+----------------------------------------------
+  ANATOMY  (18 regions, 13421 samples): Recall=0.522, Precision=0.127, F1=0.143, IoU=0.094, SuccessRate=0.894, IoU>0.5=0.032, F1>0.5=0.120, Acc@IoU>=0.50=0.032, Acc@IoU>=0.75=0.001, Acc@IoU[0.50:0.95]=0.008
+  T/L      ( 8 regions, 8533 samples): Recall=0.490, Precision=0.036, F1=0.059, IoU=0.034, SuccessRate=0.854, IoU>0.5=0.001, F1>0.5=0.006, Acc@IoU>=0.50=0.001, Acc@IoU>=0.75=0.000, Acc@IoU[0.50:0.95]=0.000
+
+Model: MiniMax-M3-INT4
+----------------------
+  ANATOMY  (18 regions, 13421 samples): Recall=0.325, Precision=0.154, F1=0.175, IoU=0.118, SuccessRate=0.999, IoU>0.5=0.056, F1>0.5=0.141, Acc@IoU>=0.50=0.056, Acc@IoU>=0.75=0.003, Acc@IoU[0.50:0.95]=0.014
+  T/L      ( 8 regions, 8533 samples): Recall=0.357, Precision=0.078, F1=0.102, IoU=0.065, SuccessRate=1.000, IoU>0.5=0.016, F1>0.5=0.053, Acc@IoU>=0.50=0.016, Acc@IoU>=0.75=0.001, Acc@IoU[0.50:0.95]=0.004
+
+Model: lingshu-medical-mllm__Lingshu-32B
+----------------------------------------
+  ANATOMY  (18 regions, 13421 samples): Recall=0.374, Precision=0.202, F1=0.202, IoU=0.137, SuccessRate=1.000, IoU>0.5=0.067, F1>0.5=0.179, Acc@IoU>=0.50=0.067, Acc@IoU>=0.75=0.003, Acc@IoU[0.50:0.95]=0.014
+  T/L      ( 8 regions, 8533 samples): Recall=0.402, Precision=0.060, F1=0.086, IoU=0.051, SuccessRate=1.000, IoU>0.5=0.002, F1>0.5=0.015, Acc@IoU>=0.50=0.002, Acc@IoU>=0.75=0.000, Acc@IoU[0.50:0.95]=0.001
+
+Model: FreedomIntelligence__HuatuoGPT-Vision-34B
+------------------------------------------------
+  ANATOMY  (18 regions, 13421 samples): Recall=0.256, Precision=0.177, F1=0.151, IoU=0.098, SuccessRate=0.995, IoU>0.5=0.027, F1>0.5=0.097, Acc@IoU>=0.50=0.027, Acc@IoU>=0.75=0.001, Acc@IoU[0.50:0.95]=0.006
+  T/L      ( 8 regions, 8533 samples): Recall=0.216, Precision=0.050, F1=0.064, IoU=0.038, SuccessRate=0.990, IoU>0.5=0.003, F1>0.5=0.020, Acc@IoU>=0.50=0.003, Acc@IoU>=0.75=0.000, Acc@IoU[0.50:0.95]=0.001
+
+Model: Qwen2.5-VL-7B-Instruct
+-----------------------------
+  ANATOMY  (18 regions, 13421 samples): Recall=0.697, Precision=0.122, F1=0.167, IoU=0.113, SuccessRate=0.994, IoU>0.5=0.056, F1>0.5=0.132, Acc@IoU>=0.50=0.056, Acc@IoU>=0.75=0.006, Acc@IoU[0.50:0.95]=0.017
+  T/L      ( 8 regions, 8533 samples): Recall=0.774, Precision=0.038, F1=0.065, IoU=0.036, SuccessRate=0.996, IoU>0.5=0.000, F1>0.5=0.006, Acc@IoU>=0.50=0.000, Acc@IoU>=0.75=0.000, Acc@IoU[0.50:0.95]=0.000
+
+Model: GLM-4.6V
+---------------
+  ANATOMY  (18 regions, 13421 samples): Recall=0.465, Precision=0.164, F1=0.202, IoU=0.135, SuccessRate=0.999, IoU>0.5=0.060, F1>0.5=0.142, Acc@IoU>=0.50=0.060, Acc@IoU>=0.75=0.008, Acc@IoU[0.50:0.95]=0.018
+  T/L      ( 8 regions, 8533 samples): Recall=0.524, Precision=0.051, F1=0.077, IoU=0.046, SuccessRate=0.998, IoU>0.5=0.005, F1>0.5=0.024, Acc@IoU>=0.50=0.005, Acc@IoU>=0.75=0.000, Acc@IoU[0.50:0.95]=0.001
+
+================================================================================
+Summary metrics saved to: Results/MedVision-detect-v2/summary_metrics_all_models_detect_Task__llm-parsed_gemma-4-31b.json
+================================================================================

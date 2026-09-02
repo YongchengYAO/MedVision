@@ -1,0 +1,67 @@
+{
+  "failure_decomposition": {
+    "n_samples": 4535,
+    "n_strict_parsed": 4535,
+    "n_judge_parsed": 4535,
+    "n_strict_failed": 0,
+    "n_format_failure": 0,
+    "n_genuine_non_answer": 0,
+    "success_rate_strict": 1.0,
+    "success_rate_judge": 1.0,
+    "delta_success_rate": 0.0,
+    "format_failure_share": NaN,
+    "non_answer_rate": 0.0,
+    "n_no_conclusion": 0,
+    "n_undetermined": 0,
+    "no_conclusion_rate": 0.0,
+    "undetermined_rate": 0.0,
+    "by_mode": {
+      "conclusion_in_format": 4535,
+      "conclusion_off_format": 0,
+      "no_conclusion": 0,
+      "undetermined": 0
+    }
+  },
+  "judge_validity": {
+    "n_reference": 4535,
+    "n_agree": 4535,
+    "agreement_rate": 1.0,
+    "n_value_disagreement": 0,
+    "n_no_value_disagreement": 0,
+    "no_value_disagreement_reasons": {},
+    "judge_invalid_rate": 0.0,
+    "span_unverified_rate": 0.0,
+    "judge_missing_rate": 0.0,
+    "n_span_rejected": 0,
+    "span_rejection_reasons": {},
+    "disagreement_examples": []
+  },
+  "step_extraction_coverage": {
+    "n_eligible": 4535,
+    "all_steps_extracted_rate": 0.9997794928335171,
+    "any_step_extracted_rate": 1.0,
+    "per_step_rate": {
+      "1": 0.9997794928335171,
+      "2": 1.0,
+      "3": 1.0,
+      "4": 1.0
+    }
+  },
+  "response_length": {
+    "originally_parsed": {
+      "n": 4535,
+      "mean": 1707.2529217199558,
+      "median": 1698.0
+    },
+    "judge_recovered": {
+      "n": 0,
+      "mean": NaN,
+      "median": NaN
+    },
+    "parsed_quantiles": [
+      1693.0,
+      1698.0,
+      1721.0
+    ]
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "overall": {
+    "AJCC renal T category (greatest dimension)": {
+      "name": "AJCC renal T category (greatest dimension)",
+      "ordinal": true,
+      "accuracy": 0.6565853658536586,
+      "cohen_kappa": 0.378904441143105,
+      "confusion": {
+        "T1a": {
+          "T1a": 511,
+          "T1b": 27,
+          "T2a": 0,
+          "T2b": 0
+        },
+        "T1b": {
+          "T1a": 233,
+          "T1b": 85,
+          "T2a": 13,
+          "T2b": 0
+        },
+        "T2a": {
+          "T1a": 9,
+          "T1b": 47,
+          "T2a": 28,
+          "T2b": 2
+        },
+        "T2b": {
+          "T1a": 3,
+          "T1b": 7,
+          "T2a": 11,
+          "T2b": 49
+        }
+      },
+      "flip_rate": 0.34341463414634144,
+      "n_parsed": 1025,
+      "n_total": 1025,
+      "accuracy_coverage_adjusted": 0.6565853658536586,
+      "flip_rate_coverage_adjusted": 0.34341463414634144,
+      "weighted_kappa": 0.7263658411889298
+    }
+  },
+  "by_dataset": {
+    "AJCC renal T category (greatest dimension) @ KiPA22": {
+      "name": "AJCC renal T category (greatest dimension)",
+      "ordinal": true,
+      "accuracy": 0.5818181818181818,
+      "cohen_kappa": 0.07483693786474407,
+      "confusion": {
+        "T1a": {
+          "T1a": 209,
+          "T1b": 4,
+          "T2a": 0,
+          "T2b": 0
+        },
+        "T1b": {
+          "T1a": 157,
+          "T1b": 15,
+          "T2a": 0,
+          "T2b": 0
+        },
+        "T2a": {
+          "T1a": 0,
+          "T1b": 0,
+          "T2a": 0,
+          "T2b": 0
+        },
+        "T2b": {
+          "T1a": 0,
+          "T1b": 0,
+          "T2a": 0,
+          "T2b": 0
+        }
+      },
+      "flip_rate": 0.4181818181818182,
+      "n_parsed": 385,
+      "n_total": 385,
+      "accuracy_coverage_adjusted": 0.5818181818181818,
+      "flip_rate_coverage_adjusted": 0.4181818181818182,
+      "weighted_kappa": 0.07483693786474455
+    },
+    "AJCC renal T category (greatest dimension) @ KiTS23": {
+      "name": "AJCC renal T category (greatest dimension)",
+      "ordinal": true,
+      "accuracy": 0.7015625,
+      "cohen_kappa": 0.5138306122854813,
+      "confusion": {
+        "T1a": {
+          "T1a": 302,
+          "T1b": 23,
+          "T2a": 0,
+          "T2b": 0
+        },
+        "T1b": {
+          "T1a": 76,
+          "T1b": 70,
+          "T2a": 13,
+          "T2b": 0
+        },
+        "T2a": {
+          "T1a": 9,
+          "T1b": 47,
+          "T2a": 28,
+          "T2b": 2
+        },
+        "T2b": {
+          "T1a": 3,
+          "T1b": 7,
+          "T2a": 11,
+          "T2b": 49
+        }
+      },
+      "flip_rate": 0.2984375,
+      "n_parsed": 640,
+      "n_total": 640,
+      "accuracy_coverage_adjusted": 0.7015625,
+      "flip_rate_coverage_adjusted": 0.2984375,
+      "weighted_kappa": 0.7919283220759699
+    }
+  }
+}

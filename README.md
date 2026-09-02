@@ -865,6 +865,7 @@ The regex parser in step 2 only accepts answers written inside `<answer>…</ans
   - **Equation accuracy** (`equation-accuracy/analyze_equation_accuracy_TL.py`, `equation-accuracy/analyze_equation_accuracy_AD.py`): arithmetic correctness independent of ground truth — extracts the equation the model wrote, evaluates it in Python, and computes MRE between that result and the model's own reported answer.
   - **Detection × target size** (`detection--target-size/run_analysis.sh`): detection metrics (F1, IoU, etc.) stratified by box-to-image ratio, revealing performance trends across small, medium, and large targets.
   - **Clinical Decision Agreement (CDA)** (`clinical-decision-analysis/run_CDA_analysis.sh`): asks whether a measurement error would change the *clinical decision* — each prediction and its ground truth are pushed through a published cutoff table into a clinical category, and agreement is scored with Cohen's / weighted kappa. Re-reads existing `parsed/` records only: no re-inference, no GPU, seconds per model. Check the [CDA pipeline](https://github.com/YongchengYAO/MedVision/tree/master/script/analyze/clinical-decision-analysis).
+  - **Ablation: Segmentation Specialist** Evaludate and fine-tune [BiomedParse v2](https://github.com/microsoft/BiomedParse) on our dataset ([`script/ablation/biomedparse`](script/ablation/biomedparse)) 
 
 - **[Troubleshooting]** [here](https://github.com/YongchengYAO/MedVision/tree/master/docs/debug_env_setup.md)
 
@@ -921,14 +922,6 @@ RL fine-tuning uses the verl framework. MedVision provides **parquet dataset bui
 
 <br/>
 
-# 🧪 Ablation: Segmentation Specialist
-
-How far does a segmentation foundation model get on MedVision's quantitative tasks? The ablation in [`script/ablation/biomedparse`](script/ablation/biomedparse) runs [BiomedParse v2](https://github.com/microsoft/BiomedParse) on the Detection and Tumor/Lesion-size test sets — bounding boxes and ellipse axes are derived from its predicted masks and scored with the same metrics as the VLMs:
-
-- **Track A — evaluate**: the off-the-shelf pretrained model
-- **Track B — fine-tune**: fine-tuned on the same 110K detection samples as MedVision-V0's SFT stage, then re-evaluated on both tasks
-
-See the folder's [README](script/ablation/biomedparse/README.md) for setup (`setup.sh`), the two launcher tracks, and the smoke tests.
 
 # 📚 New Tasks/Models Guide
 

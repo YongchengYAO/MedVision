@@ -1,0 +1,118 @@
+========== JUDGE REPORT: Detection ==========
+task_dir       : Results/MedVision-detect-v2
+parsed_dirname : llm-parsed_gemma-4-31b
+limit          : None
+
+FAILURE DECOMPOSITION -- what the strict parser's failures actually were
+model                                        SR strict  SR judge     dSR  fmt-fail  non-answer
+----------------------------------------------------------------------------------------------
+MedVision__fullRFT__qwen25vl-7b-fullSFT__AD     100.0%    100.0%   +0.0         0           0
+MedVision__fullSFT__Qwen2.5VL-7B__D110k-AD5      96.0%     96.7%   +0.7       146         497
+gemma-3-27b-it                                  100.0%    100.0%   +0.0         0           0
+gemma-4-31B-it                                   98.6%     98.9%   +0.3        69         247
+GLM-4.6V                                         60.0%     99.9%  +39.8     9,193          25
+GLM-4.6V-Flash                                   99.9%    100.0%   +0.1        24           1
+FreedomIntelligence__HuatuoGPT-Vision-34B        77.7%     99.2%  +21.6     4,973         157
+HealthGPT-L14                                    88.9%     98.4%   +9.6     2,210         358
+InternVL3-38B                                   100.0%    100.0%   +0.0         0           0
+lingshu-medical-mllm__Lingshu-32B               100.0%    100.0%   +0.0         0           0
+llava-onevision-qwen2-72b-ov-hf                 100.0%    100.0%   +0.0         0           0
+Llama-3.2-11B-Vision-Instruct-Budget16k          46.5%     87.8%  +41.3     9,528         569
+MedDr__BF16                                      97.2%     97.6%   +0.4        94         387
+google__medgemma-4b-it                           98.4%     98.9%   +0.4       100          23
+medgemma-27b-it                                  96.0%     98.0%   +2.0       450         419
+MiniMax-M3-INT4                                  99.8%    100.0%   +0.1        30          11
+Qwen2.5-VL-7B-Instruct                           99.4%     99.5%   +0.0        10         117
+Qwen2.5-VL-32B-Instruct                         100.0%    100.0%   +0.0         0           1
+Qwen3-VL-32B-Thinking                            96.3%     97.2%   +0.9       207         618
+----------------------------------------------------------------------------------------------
+TOTAL                                            92.3%     98.5%   +6.2    27,034       3,430
+
+ANSWER MODE -- the four categories LLM_judge_answer_mode assigns
+(the two conclusion_* modes count as a successful answer; the rest do not.
+ no-concl does not distinguish 'ran out of room' from 'declined' -- that
+ needs the generation config, so the judge is not asked to guess it)
+model                                         in-format  off-format  no-concl   undet
+-------------------------------------------------------------------------------------
+MedVision__fullRFT__qwen25vl-7b-fullSFT__AD      23,071           0         0       0
+MedVision__fullSFT__Qwen2.5VL-7B__D110k-AD5      21,193         146       497     235
+gemma-3-27b-it                                   23,071           0         0       0
+gemma-4-31B-it                                   22,752          69       247       3
+GLM-4.6V                                         13,844       9,193        25       9
+GLM-4.6V-Flash                                   23,046          24         1       0
+FreedomIntelligence__HuatuoGPT-Vision-34B        17,922       4,973       157      19
+HealthGPT-L14                                    20,502       2,210       358       1
+InternVL3-38B                                    23,071           0         0       0
+lingshu-medical-mllm__Lingshu-32B                23,071           0         0       0
+llava-onevision-qwen2-72b-ov-hf                  23,071           0         0       0
+Llama-3.2-11B-Vision-Instruct-Budget16k          10,727       9,528       569   2,247
+MedDr__BF16                                      22,419          94       387     171
+google__medgemma-4b-it                           22,707         100        23     241
+medgemma-27b-it                                  22,157         450       419      45
+MiniMax-M3-INT4                                  23,030          30        11       0
+Qwen2.5-VL-7B-Instruct                           22,944          10       117       0
+Qwen2.5-VL-32B-Instruct                          23,070           0         1       0
+Qwen3-VL-32B-Thinking                            22,210         207       618      36
+-------------------------------------------------------------------------------------
+TOTAL                                           403,878      27,034     3,430   3,007
+
+JUDGE VALIDITY -- agreement with the strict parser on ITS successes
+(the strict parser is near-perfect on the rows it accepts, so this is a
+ real reliability check; it is free only because we judge 100% of rows)
+(agree% is over n_ref; invalid% and unverif% are over ALL records)
+model                                           n_ref    agree   agree%  invalid%  unverif%
+-----------------------------------------------------------------------------------------
+MedVision__fullRFT__qwen25vl-7b-fullSFT__AD    23,071   23,071  100.00%     0.00%     0.00%
+MedVision__fullSFT__Qwen2.5VL-7B__D110k-AD5    21,193   16,792   79.23%     0.00%     2.67%
+gemma-3-27b-it                                 23,071   23,068   99.99%     0.00%     0.00%
+gemma-4-31B-it                                 22,752   22,752  100.00%     0.00%     0.01%
+GLM-4.6V                                       13,844   13,844  100.00%     0.00%     0.04%
+GLM-4.6V-Flash                                 23,046   23,046  100.00%     0.00%     0.00%
+FreedomIntelligence__HuatuoGPT-Vision-34B      17,922   17,897   99.86%     0.00%     0.09%
+HealthGPT-L14                                  20,502   20,497   99.98%     0.00%     0.00%
+InternVL3-38B                                  23,071   23,071  100.00%     0.00%     0.00%
+lingshu-medical-mllm__Lingshu-32B              23,071   23,057   99.94%     0.00%     0.00%
+llava-onevision-qwen2-72b-ov-hf                23,071   23,071  100.00%     0.00%     0.00%
+Llama-3.2-11B-Vision-Instruct-Budget16k        10,727   10,634   99.13%     0.00%     9.77%
+MedDr__BF16                                    22,419   22,419  100.00%     0.00%     0.74%
+google__medgemma-4b-it                         22,707   22,707  100.00%     0.00%     1.04%
+medgemma-27b-it                                22,157   22,156  100.00%     0.08%     0.11%
+MiniMax-M3-INT4                                23,030   23,020   99.96%     0.00%     0.00%
+Qwen2.5-VL-7B-Instruct                         22,944   22,944  100.00%     0.00%     0.00%
+Qwen2.5-VL-32B-Instruct                        23,070   23,067   99.99%     0.00%     0.00%
+Qwen3-VL-32B-Thinking                          22,210   22,210  100.00%     0.00%     0.16%
+-----------------------------------------------------------------------------------------
+TOTAL                                         403,878  399,323  98.872%
+
+SPAN VERIFICATION -- answers the judge asserted but could not point at
+(the judge quotes; the benchmark's own _NUM_RE re-derives the numbers from
+ that quote. A mismatch means the answer is DISCARDED rather than trusted,
+ which is what makes a hallucinated digit structurally impossible)
+rejection reason                                 count     share
+----------------------------------------------------------------
+arity_mismatch:2!=4                              2,977     88.8%
+arity_mismatch:3!=4                                282      8.4%
+values_not_in_span                                  55      1.6%
+arity_mismatch:1!=4                                 29      0.9%
+span_not_found                                       9      0.3%
+----------------------------------------------------------------
+TOTAL rejected                                   3,352     0.77% of records
+
+RESPONSE LENGTH -- recovered vs originally-parsed (survivorship check)
+(strict failures are systematically longer; if recovered rows are much
+ longer, format-robust error is computed over a harder subset)
+model                                         parsed mean  recovered mean
+-------------------------------------------------------------------------
+MedVision__fullSFT__Qwen2.5VL-7B__D110k-AD5         1,857           1,731
+gemma-4-31B-it                                      1,595          10,776
+GLM-4.6V                                            3,315           3,005
+GLM-4.6V-Flash                                      3,124           2,728
+FreedomIntelligence__HuatuoGPT-Vision-34B             793             787
+HealthGPT-L14                                         460             769
+Llama-3.2-11B-Vision-Instruct-Budget16k             1,612           2,535
+MedDr__BF16                                           220             528
+google__medgemma-4b-it                                362           1,201
+medgemma-27b-it                                     3,109           6,263
+MiniMax-M3-INT4                                     3,781          57,474
+Qwen2.5-VL-7B-Instruct                                735             852
+Qwen3-VL-32B-Thinking                               1,338          13,439
