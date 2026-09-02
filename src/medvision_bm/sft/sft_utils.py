@@ -3728,13 +3728,30 @@ def parse_validate_args_multiTask():
     return vars(args)
 
 
+def _get_sample_limit(kwargs, key, default=-1):
+    """Fetch a sample-limit kwarg: missing/None -> default; 0 -> ValueError (ambiguous)."""
+    v = kwargs.get(key)
+    if v is None:
+        return default
+    if v == 0:
+        raise ValueError(
+            f"\n[Error] {key}=0 is ambiguous: use -1 (or leave it unset) for no limit; "
+            "to skip a task, omit its --tasks_list_json_path_* instead."
+        )
+    return v
+
+
 def parse_sample_limits(**kwargs):
     """
     Determine sample limits for each task with fallbacks.
 
     Logic:
+        - Missing/None limit kwargs fall back to -1 (train: no limit, use the
+          full dataset) or 100 (val fallbacks), mirroring the argparse defaults
         - If task-specific limit > 0: use it
         - Else: use per-task limit
+        - An explicit limit of 0 raises ValueError (ambiguous): to skip a task,
+          omit its tasks_list_json_path instead
         - If task JSON path is None: set limit to 0 (task not used)
 
     Returns:
@@ -3745,45 +3762,43 @@ def parse_sample_limits(**kwargs):
          train_limit_total)
     """
 
+    # The total val limit is not returned (entry points read it from kwargs
+    # directly), but 0 must be rejected at this same choke point.
+    _get_sample_limit(kwargs, "val_sample_limit", default=100)
+
     # Determine sample limits for each task
     # Angle/distance task
-    if kwargs.get("train_sample_limit_task_AD") > 0:
-        train_limit_AD = kwargs.get("train_sample_limit_task_AD")
-    else:
-        train_limit_AD = kwargs.get("train_sample_limit_per_task")
-    if kwargs.get("val_sample_limit_task_AD") > 0:
-        val_limit_AD = kwargs.get("val_sample_limit_task_AD")
-    else:
-        val_limit_AD = kwargs.get("val_sample_limit_per_task")
+    train_limit_AD = _get_sample_limit(kwargs, "train_sample_limit_task_AD")
+    if train_limit_AD <= 0:
+        train_limit_AD = _get_sample_limit(kwargs, "train_sample_limit_per_task")
+    val_limit_AD = _get_sample_limit(kwargs, "val_sample_limit_task_AD")
+    if val_limit_AD <= 0:
+        val_limit_AD = _get_sample_limit(kwargs, "val_sample_limit_per_task", default=100)
     if kwargs.get("tasks_list_json_path_AD") is None:
         train_limit_AD = 0
         val_limit_AD = 0
     # Detection task
-    if kwargs.get("train_sample_limit_task_Detection") > 0:
-        train_limit_detect = kwargs.get("train_sample_limit_task_Detection")
-    else:
-        train_limit_detect = kwargs.get("train_sample_limit_per_task")
-    if kwargs.get("val_sample_limit_task_Detection") > 0:
-        val_limit_detect = kwargs.get("val_sample_limit_task_Detection")
-    else:
-        val_limit_detect = kwargs.get("val_sample_limit_per_task")
+    train_limit_detect = _get_sample_limit(kwargs, "train_sample_limit_task_Detection")
+    if train_limit_detect <= 0:
+        train_limit_detect = _get_sample_limit(kwargs, "train_sample_limit_per_task")
+    val_limit_detect = _get_sample_limit(kwargs, "val_sample_limit_task_Detection")
+    if val_limit_detect <= 0:
+        val_limit_detect = _get_sample_limit(kwargs, "val_sample_limit_per_task", default=100)
     if kwargs.get("tasks_list_json_path_detect") is None:
         train_limit_detect = 0
         val_limit_detect = 0
     # Tumor lesion size task
-    if kwargs.get("train_sample_limit_task_TL") > 0:
-        train_limit_TL = kwargs.get("train_sample_limit_task_TL")
-    else:
-        train_limit_TL = kwargs.get("train_sample_limit_per_task")
-    if kwargs.get("val_sample_limit_task_TL") > 0:
-        val_limit_TL = kwargs.get("val_sample_limit_task_TL")
-    else:
-        val_limit_TL = kwargs.get("val_sample_limit_per_task")
+    train_limit_TL = _get_sample_limit(kwargs, "train_sample_limit_task_TL")
+    if train_limit_TL <= 0:
+        train_limit_TL = _get_sample_limit(kwargs, "train_sample_limit_per_task")
+    val_limit_TL = _get_sample_limit(kwargs, "val_sample_limit_task_TL")
+    if val_limit_TL <= 0:
+        val_limit_TL = _get_sample_limit(kwargs, "val_sample_limit_per_task", default=100)
     if kwargs.get("tasks_list_json_path_TL") is None:
         train_limit_TL = 0
         val_limit_TL = 0
     # Total sample limit across all tasks
-    train_limit_total = kwargs.get("train_sample_limit")
+    train_limit_total = _get_sample_limit(kwargs, "train_sample_limit")
 
     return (
         train_limit_AD,

@@ -81,8 +81,14 @@ num_workers_format_dataset=64
 dataloader_num_workers=4
 # ----------------------------------------------------------------------------------
 # NOTE: If the sample limit is larger than the dataset size, the full dataset will be used.
+# NOTE: Any limit below may be left unset (commented out); -1 is then passed:
+#       - unset train limits => full dataset
+#       - unset val_sample_limit (total) => keep all per-task validation samples
+#       - unset per-task val limits => fallback of 100 validation samples per task
+#       Do NOT set a limit to 0 (rejected as ambiguous); to skip a task, comment out
+#       its tasks_list_json_path_* above instead.
 # ----------------------------------------------------------------------------------
-# [Required] Sample limits in total
+# [Optional] Sample limits in total
 train_sample_limit=121000
 val_sample_limit=200
 
@@ -213,14 +219,14 @@ python -m medvision_bm.sft.train__SFT-CoT__gemma4 \
     --num_workers_concat_datasets ${num_workers_concat_datasets} \
     --num_workers_format_dataset ${num_workers_format_dataset} \
     --dataloader_num_workers ${dataloader_num_workers} \
-    --train_sample_limit ${train_sample_limit} \
-    --val_sample_limit ${val_sample_limit} \
-    --train_sample_limit_task_AD ${train_sample_limit_task_AD} \
-    --val_sample_limit_task_AD ${val_sample_limit_task_AD} \
-    --train_sample_limit_task_Detection ${train_sample_limit_task_Detection} \
-    --val_sample_limit_task_Detection ${val_sample_limit_task_Detection} \
-    --train_sample_limit_task_TL ${train_sample_limit_task_TL} \
-    --val_sample_limit_task_TL ${val_sample_limit_task_TL} \
+    --train_sample_limit ${train_sample_limit:--1} \
+    --val_sample_limit ${val_sample_limit:--1} \
+    --train_sample_limit_task_AD ${train_sample_limit_task_AD:--1} \
+    --val_sample_limit_task_AD ${val_sample_limit_task_AD:--1} \
+    --train_sample_limit_task_Detection ${train_sample_limit_task_Detection:--1} \
+    --val_sample_limit_task_Detection ${val_sample_limit_task_Detection:--1} \
+    --train_sample_limit_task_TL ${train_sample_limit_task_TL:--1} \
+    --val_sample_limit_task_TL ${val_sample_limit_task_TL:--1} \
     --resume_from_checkpoint ${resume_from_checkpoint} \
     --gradient_checkpointing ${gradient_checkpointing} \
     --dataloader_pin_memory ${dataloader_pin_memory} \
@@ -306,14 +312,14 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 \
     --num_workers_concat_datasets ${num_workers_concat_datasets} \
     --num_workers_format_dataset ${num_workers_format_dataset} \
     --dataloader_num_workers ${dataloader_num_workers} \
-    --train_sample_limit ${train_sample_limit} \
-    --val_sample_limit ${val_sample_limit} \
-    --train_sample_limit_task_AD ${train_sample_limit_task_AD} \
-    --val_sample_limit_task_AD ${val_sample_limit_task_AD} \
-    --train_sample_limit_task_Detection ${train_sample_limit_task_Detection} \
-    --val_sample_limit_task_Detection ${val_sample_limit_task_Detection} \
-    --train_sample_limit_task_TL ${train_sample_limit_task_TL} \
-    --val_sample_limit_task_TL ${val_sample_limit_task_TL} \
+    --train_sample_limit ${train_sample_limit:--1} \
+    --val_sample_limit ${val_sample_limit:--1} \
+    --train_sample_limit_task_AD ${train_sample_limit_task_AD:--1} \
+    --val_sample_limit_task_AD ${val_sample_limit_task_AD:--1} \
+    --train_sample_limit_task_Detection ${train_sample_limit_task_Detection:--1} \
+    --val_sample_limit_task_Detection ${val_sample_limit_task_Detection:--1} \
+    --train_sample_limit_task_TL ${train_sample_limit_task_TL:--1} \
+    --val_sample_limit_task_TL ${val_sample_limit_task_TL:--1} \
     --resume_from_checkpoint ${resume_from_checkpoint} \
     --gradient_checkpointing ${gradient_checkpointing} \
     --dataloader_pin_memory ${dataloader_pin_memory} \

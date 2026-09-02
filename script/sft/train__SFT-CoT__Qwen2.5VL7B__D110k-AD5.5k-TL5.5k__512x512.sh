@@ -60,8 +60,14 @@ num_workers_format_dataset=32
 dataloader_num_workers=8
 # ----------------------------------------------------------------------------------
 # NOTE: Allow sampling with replacement if limit exceeds dataset size
+# NOTE: Any limit below may be left unset (commented out); -1 is then passed:
+#       - unset train limits => full dataset
+#       - unset val_sample_limit (total) => keep all per-task validation samples
+#       - unset per-task val limits => fallback of 100 validation samples per task
+#       Do NOT set a limit to 0 (rejected as ambiguous); to skip a task, comment out
+#       its tasks_list_json_path_* above instead.
 # ----------------------------------------------------------------------------------
-# [Required] Sample limits in total
+# [Optional] Sample limits in total
 train_sample_limit=121000
 val_sample_limit=200
 
@@ -222,14 +228,14 @@ python -m medvision_bm.sft.train__SFT-CoT__qwen2_5_vl \
     --num_workers_concat_datasets ${num_workers_concat_datasets} \
     --num_workers_format_dataset ${num_workers_format_dataset} \
     --dataloader_num_workers ${dataloader_num_workers} \
-    --train_sample_limit ${train_sample_limit} \
-    --val_sample_limit ${val_sample_limit} \
-    --train_sample_limit_task_AD ${train_sample_limit_task_AD} \
-    --val_sample_limit_task_AD ${val_sample_limit_task_AD} \
-    --train_sample_limit_task_Detection ${train_sample_limit_task_Detection} \
-    --val_sample_limit_task_Detection ${val_sample_limit_task_Detection} \
-    --train_sample_limit_task_TL ${train_sample_limit_task_TL} \
-    --val_sample_limit_task_TL ${val_sample_limit_task_TL} \
+    --train_sample_limit ${train_sample_limit:--1} \
+    --val_sample_limit ${val_sample_limit:--1} \
+    --train_sample_limit_task_AD ${train_sample_limit_task_AD:--1} \
+    --val_sample_limit_task_AD ${val_sample_limit_task_AD:--1} \
+    --train_sample_limit_task_Detection ${train_sample_limit_task_Detection:--1} \
+    --val_sample_limit_task_Detection ${val_sample_limit_task_Detection:--1} \
+    --train_sample_limit_task_TL ${train_sample_limit_task_TL:--1} \
+    --val_sample_limit_task_TL ${val_sample_limit_task_TL:--1} \
     --push_LoRA ${push_LoRA} \
     --push_merged_model ${push_merged_model} \
     --merge_model ${merge_model} \
@@ -272,14 +278,14 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 \
     --num_workers_concat_datasets ${num_workers_concat_datasets} \
     --num_workers_format_dataset ${num_workers_format_dataset} \
     --dataloader_num_workers ${dataloader_num_workers} \
-    --train_sample_limit ${train_sample_limit} \
-    --val_sample_limit ${val_sample_limit} \
-    --train_sample_limit_task_AD ${train_sample_limit_task_AD} \
-    --val_sample_limit_task_AD ${val_sample_limit_task_AD} \
-    --train_sample_limit_task_Detection ${train_sample_limit_task_Detection} \
-    --val_sample_limit_task_Detection ${val_sample_limit_task_Detection} \
-    --train_sample_limit_task_TL ${train_sample_limit_task_TL} \
-    --val_sample_limit_task_TL ${val_sample_limit_task_TL} \
+    --train_sample_limit ${train_sample_limit:--1} \
+    --val_sample_limit ${val_sample_limit:--1} \
+    --train_sample_limit_task_AD ${train_sample_limit_task_AD:--1} \
+    --val_sample_limit_task_AD ${val_sample_limit_task_AD:--1} \
+    --train_sample_limit_task_Detection ${train_sample_limit_task_Detection:--1} \
+    --val_sample_limit_task_Detection ${val_sample_limit_task_Detection:--1} \
+    --train_sample_limit_task_TL ${train_sample_limit_task_TL:--1} \
+    --val_sample_limit_task_TL ${val_sample_limit_task_TL:--1} \
     --push_LoRA ${push_LoRA} \
     --push_merged_model ${push_merged_model} \
     --merge_model ${merge_model} \

@@ -71,6 +71,11 @@ except Exception:
         pass
 
 
+def _fmt_limit(v):
+    """Format a sample limit for the prepared-dataset dir name (<0 = full dataset)."""
+    return "full" if v < 0 else str(v)
+
+
 def main(
     run_name,
     model_family_name,
@@ -130,7 +135,7 @@ def main(
                 data_dir,
                 "SFT-CoT_datasets",
                 model_family_name,
-                f"ds__AD{train_limit_AD}_D{train_limit_detect}_TL{train_limit_TL}_all{train_limit_total}",
+                f"ds__AD{_fmt_limit(train_limit_AD)}_D{_fmt_limit(train_limit_detect)}_TL{_fmt_limit(train_limit_TL)}_all{_fmt_limit(train_limit_total)}",
             )
             if new_shape_hw is not None:
                 prepared_ds_dir += (
