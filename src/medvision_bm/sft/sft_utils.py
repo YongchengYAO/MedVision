@@ -2050,6 +2050,14 @@ def load_split_limit_dataset(
     # Load tasks list from JSON file
     with open(tasks_list_json_path, "r") as f:
         tasks_dict = json.load(f)
+    # NOTE: Detection task lists may carry eval-side task names ("_BoxCoordinate_",
+    # e.g. the dataset-info AllSlices lists); the HF dataset only has "_BoxSize_"
+    # configs, so rename before building config names.
+    if tag_ds == "BoxSize":
+        tasks_dict = {
+            task.replace("_BoxCoordinate_", "_BoxSize_"): n
+            for task, n in tasks_dict.items()
+        }
     tasks = list(tasks_dict.keys())
 
     print(f"[Info] Found {len(tasks)} tasks to process")
