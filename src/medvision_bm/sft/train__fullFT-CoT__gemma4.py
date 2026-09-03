@@ -32,6 +32,7 @@ from medvision_bm.sft.sft_utils import (
     _format_data_AngleDistanceTask_CoT,
     _format_data_DetectionTask_CoT,
     _format_data_TumorLesionTask_CoT,
+    get_cgroup_limited_cpus,
     parse_sample_limits,
     parse_validate_args_multiTask,
     prepare_trainer_fullFT,
@@ -223,7 +224,13 @@ def main(
                 dataset["validation"] = dataset["validation"].shuffle(seed=SEED)
 
             os.makedirs(prepared_ds_dir, exist_ok=True)
-            dataset.save_to_disk(prepared_ds_dir)
+            # num_proc must not exceed the smallest split's row count (datasets
+            # raises IndexError otherwise, e.g. on tiny smoke-test splits).
+            save_workers = max(
+                1,
+                min(get_cgroup_limited_cpus(), *(len(ds) for ds in dataset.values())),
+            )
+            dataset.save_to_disk(prepared_ds_dir, num_proc=save_workers)
 
     barrier()
 

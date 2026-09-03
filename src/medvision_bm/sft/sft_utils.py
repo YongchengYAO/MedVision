@@ -102,21 +102,33 @@ def get_cgroup_limited_cpus():
     return os.cpu_count()
 
 
+# One-slot per-process cache of the last decompressed volume. Rows reach the
+# formatting map sorted by image_file (see format_dataset), so consecutive rows
+# in a worker share a volume and each .nii.gz is decompressed once, not per slice.
+_NIFTI_CACHE = {"path": None, "voxel_size": None, "image_3d": None}
+
+
 def _load_nifti_2d(nii_path, slice_dim, slice_idx):
     """Map function to load 2D slice from a 3D NIFTI images."""
     if not os.path.exists(nii_path):
         raise FileNotFoundError(f"Image file {nii_path} does not exist.")
-    img_nib = nib.load(nii_path)
-    voxel_size = img_nib.header.get_zooms()
-    image_3d = img_nib.get_fdata().astype("float32")
+    if _NIFTI_CACHE["path"] != nii_path:
+        img_nib = nib.load(nii_path)
+        _NIFTI_CACHE["voxel_size"] = img_nib.header.get_zooms()
+        _NIFTI_CACHE["image_3d"] = img_nib.get_fdata().astype("float32")
+        _NIFTI_CACHE["path"] = nii_path
+    voxel_size = _NIFTI_CACHE["voxel_size"]
+    image_3d = _NIFTI_CACHE["image_3d"]
+    # NOTE: .copy() detaches the slice from the cached volume so downstream
+    # in-place ops can never corrupt the cache.
     if slice_dim == 0:
-        image_2d = image_3d[slice_idx, :, :]
+        image_2d = image_3d[slice_idx, :, :].copy()
         pixel_size = voxel_size[1:3]
     elif slice_dim == 1:
-        image_2d = image_3d[:, slice_idx, :]
+        image_2d = image_3d[:, slice_idx, :].copy()
         pixel_size = voxel_size[0:1] + voxel_size[2:3]
     elif slice_dim == 2:
-        image_2d = image_3d[:, :, slice_idx]
+        image_2d = image_3d[:, :, slice_idx].copy()
         pixel_size = voxel_size[0:2]
     else:
         raise ValueError("slice_dim must be 0, 1 or 2")
@@ -792,14 +804,30 @@ def _doc_to_target_AngleDistanceTask_CoT(doc, values_dict):
 
 
 def img_proccessor_nii2png_save2disk(example, new_shape_hw=None):
-    # Process image: read from nii.gz file and extract 2D slice
-    pil_img = _doc_to_visual(example, new_shape_hw)[0]
-
     # Save tmp PNGs next to the source image inside a tmp_prepared_png folder
     img_path = example["image_file"]
     slice_dim = example["slice_dim"]
     slice_idx = example["slice_idx"]
     png_basename = Path(img_path).name.split(".", 1)[0]
+    png_dir = os.path.join(os.path.dirname(img_path), "tmp_prepared_png")
+
+    # Fast path: with an explicit resize the final size is known without touching
+    # the NIfTI, so a previously generated PNG can be reused (PNG content depends
+    # only on the source volume). Verify it fully decodes first — writes used to
+    # be non-atomic, so a file may be a truncated leftover from a killed run.
+    if new_shape_hw is not None:
+        png_filename = f"{png_basename}_dim{slice_dim}_slice{slice_idx}_resized-wh-{new_shape_hw[1]}x{new_shape_hw[0]}.png"
+        png_path = os.path.join(png_dir, png_filename)
+        if os.path.exists(png_path):
+            try:
+                with Image.open(png_path) as _img:
+                    _img.load()
+                return [png_path]
+            except Exception:
+                pass  # corrupt/truncated: fall through and regenerate
+
+    # Process image: read from nii.gz file and extract 2D slice
+    pil_img = _doc_to_visual(example, new_shape_hw)[0]
 
     # NOTE: The size of Pillow image is given as a 2-tuple (width, height).
     imgsize_w, imgsize_h = pil_img.size
@@ -808,10 +836,13 @@ def img_proccessor_nii2png_save2disk(example, new_shape_hw=None):
     else:
         png_filename = f"{png_basename}_dim{slice_dim}_slice{slice_idx}_original-wh-{imgsize_w}x{imgsize_h}.png"
 
-    png_dir = os.path.join(os.path.dirname(img_path), "tmp_prepared_png")
     png_path = os.path.join(png_dir, png_filename)
     os.makedirs(png_dir, exist_ok=True)
-    pil_img.save(png_path)
+    # Atomic write: existing files are trusted by the fast path above, so a
+    # killed process must never leave a truncated PNG under the final name.
+    tmp_png_path = f"{png_path}.tmp{os.getpid()}"
+    pil_img.save(tmp_png_path, format="PNG")
+    os.replace(tmp_png_path, png_path)
     return [png_path]
 
 
@@ -2224,21 +2255,45 @@ def format_dataset(
     print(
         f"\n[Info] Formatting dataset with {format_workers} workers (writer_batch_size={writer_batch_size})..."
     )
-    dataset = dataset.map(
-        mapping_func,
-        fn_kwargs=mapping_func_args,
-        num_proc=format_workers,
-        writer_batch_size=writer_batch_size,
-        desc="Formatting dataset",
-    )
+
+    def _map_single(ds):
+        # Sort rows by source volume so each worker's contiguous shard hits the
+        # per-process volume cache in _load_nifti_2d (one .nii.gz decompression
+        # per volume instead of per row), then restore the original row order:
+        # the seeded shuffles downstream permute positions, so the input order
+        # must be unchanged for reproducibility.
+        restore_order = "image_file" in ds.column_names and len(ds) > 1
+        if restore_order:
+            paths = ds["image_file"]
+            order = sorted(range(len(paths)), key=paths.__getitem__)
+            ds = ds.select(order)
+        ds = ds.map(
+            mapping_func,
+            fn_kwargs=mapping_func_args,
+            num_proc=format_workers,
+            writer_batch_size=writer_batch_size,
+            desc="Formatting dataset",
+        )
+        if restore_order:
+            inverse_order = np.empty(len(order), dtype=np.int64)
+            inverse_order[np.asarray(order, dtype=np.int64)] = np.arange(len(order))
+            ds = ds.select(inverse_order)
+        return ds
+
+    if isinstance(dataset, DatasetDict):
+        dataset = DatasetDict(
+            {split: _map_single(ds) for split, ds in dataset.items()}
+        )
+    else:
+        dataset = _map_single(dataset)
     return dataset
 
 
 def clean_dataset(dataset, keys_to_keep):
     """Drop all columns from a dataset except a whitelist of keys.
 
-    Maps over the dataset and deletes every key not present in ``keys_to_keep``,
-    keeping the cached rows small before training.
+    Uses ``remove_columns`` — a schema-only operation — so no pass over the
+    data is made, keeping the cached rows small before training.
 
     Args:
         dataset: A HuggingFace ``Dataset`` or ``DatasetDict`` to prune.
@@ -2249,19 +2304,16 @@ def clean_dataset(dataset, keys_to_keep):
         The dataset containing only the whitelisted columns.
     """
 
-    def _clean_dataset_map(example, keys_to_keep):
-        for key in list(example.keys()):
-            if key not in keys_to_keep:
-                del example[key]
-        return example
+    def _drop_columns(ds):
+        return ds.remove_columns(
+            [col for col in ds.column_names if col not in keys_to_keep]
+        )
 
-    dataset = dataset.map(
-        _clean_dataset_map,
-        fn_kwargs={"keys_to_keep": keys_to_keep},
-        writer_batch_size=100,
-        desc="Cleaning dataset",
-    )
-    return dataset
+    if isinstance(dataset, DatasetDict):
+        return DatasetDict(
+            {split: _drop_columns(ds) for split, ds in dataset.items()}
+        )
+    return _drop_columns(dataset)
 
 
 def prepare_dataset(
