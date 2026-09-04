@@ -248,8 +248,11 @@ def install_medvision_ds(
     from the ``YongchengYAO/MedVision`` Hugging Face dataset repo into
     ``data_dir``; otherwise uses ``src/`` under ``local_dir``. A wheel is built
     from that source (guarded by a ``flock`` build lock, with a no-lock fallback)
-    and installed with ``--force-reinstall``. Finally, the Hugging Face and
-    ``medvision_ds`` environment variables are configured for ``data_dir``.
+    and installed in two steps: a plain install that only fills in missing
+    dependencies, then ``--force-reinstall --no-deps`` to refresh the package
+    code without re-resolving already-satisfied dependencies. Finally, the
+    Hugging Face and ``medvision_ds`` environment variables are configured for
+    ``data_dir``.
 
     Args:
         data_dir (str): Data directory used for the snapshot download and for
@@ -279,6 +282,12 @@ def install_medvision_ds(
     egg_info_dir = os.path.join(dir_bmvqa, "medvision_ds.egg-info")
     wheel_dir = os.path.join(dir_bmvqa, "wheels")
     os.makedirs(wheel_dir, exist_ok=True)
+    # Two-step install: the plain install fills in missing deps only (an installed
+    # huggingface_hub that satisfies medvision_ds's wide range is left alone); the
+    # --no-deps force-reinstall then refreshes the package code. A bare
+    # --force-reinstall re-resolves every declared dep to the newest in-range
+    # version (observed: huggingface_hub 0.36.0 -> 1.29.0, which transformers 4.x
+    # rejects at import) — each launcher's frozen requirements must stay in charge.
     cmd_w_flock = (
         f"flock -w 600 {shlex.quote(tmp_build_lock_file)} bash -lc '"
         f"rm -rf {shlex.quote(build_dir)} {shlex.quote(dist_dir)} {shlex.quote(egg_info_dir)} && "
@@ -286,7 +295,8 @@ def install_medvision_ds(
         f"python -m pip install --upgrade build && "
         f"python -m build --wheel --outdir {shlex.quote(wheel_dir)} {shlex.quote(dir_bmvqa)} && "
         f"latest_wheel=$(ls -t {shlex.quote(wheel_dir)}/medvision_ds-*.whl | head -n1) && "
-        f'pip install --no-cache-dir --force-reinstall "$latest_wheel"\''
+        f'pip install --no-cache-dir "$latest_wheel" && '
+        f'pip install --no-cache-dir --force-reinstall --no-deps "$latest_wheel"\''
     )
 
     # Try with flock, fallback to without flock if it fails
@@ -301,7 +311,8 @@ def install_medvision_ds(
             f"python -m pip install --upgrade build && "
             f"python -m build --wheel --outdir {shlex.quote(wheel_dir)} {shlex.quote(dir_bmvqa)} && "
             f"latest_wheel=$(ls -t {shlex.quote(wheel_dir)}/medvision_ds-*.whl | head -n1) && "
-            f'pip install --no-cache-dir --force-reinstall "$latest_wheel"\''
+            f'pip install --no-cache-dir "$latest_wheel" && '
+            f'pip install --no-cache-dir --force-reinstall --no-deps "$latest_wheel"\''
         )
         subprocess.run(cmd_no_flock, check=True, shell=True)
 

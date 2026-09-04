@@ -31,7 +31,8 @@ for idx in angle_indices:
     doc = ds_angle[idx]
     bp = doc["biometric_profile"]
     target_val = float(np.array(doc_to_target_BiometricsFromLandmarks(doc)).flatten()[0])
-    target_str = f"{target_val:.4f}"
+    # The parser only reads numbers inside <answer></answer>; a bare string is a parse failure.
+    target_str = f"<answer>{target_val:.4f}</answer>"
     out = process_results_BiometricsFromLandmarks(doc, [target_str])
     nmae = out["nMAE"]
     assert not nmae["success"], f"angle sample {idx}: nMAE should have success=False, got {nmae}"
@@ -51,7 +52,7 @@ for idx in dist_indices:
     doc = ds_dist[idx]
     bp = doc["biometric_profile"]
     target_val = float(np.array(doc_to_target_BiometricsFromLandmarks(doc)).flatten()[0])
-    target_str = f"{target_val:.4f}"
+    target_str = f"<answer>{target_val:.4f}</answer>"
     out = process_results_BiometricsFromLandmarks(doc, [target_str])
     nmae = out["nMAE"]
     assert nmae["success"], f"distance sample {idx}: nMAE should have success=True, got {nmae}"
@@ -65,7 +66,7 @@ print("\nVerifying that nMAE suppression does not affect MAE/SuccessRate for ang
 for idx in angle_indices[:3]:
     doc = ds_angle[idx]
     target_val = float(np.array(doc_to_target_BiometricsFromLandmarks(doc)).flatten()[0])
-    target_str = f"{target_val:.4f}"
+    target_str = f"<answer>{target_val:.4f}</answer>"
     out = process_results_BiometricsFromLandmarks(doc, [target_str])
     assert out["MAE"]["success"], f"angle sample {idx}: MAE success should be True"
     assert out["SuccessRate"]["success"], f"angle sample {idx}: SuccessRate should be True"

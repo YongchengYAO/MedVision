@@ -31,8 +31,9 @@ sample_indices = random.sample(range(len(ds)), 3)
 for idx in sample_indices:
     doc = ds[idx]
     target = doc_to_target_TumorLesionSize(doc)          # [major, minor] in mm
-    target_str = ",".join(f"{v:.4f}" for v in target)
-    diagonal = _compute_physical_diagonal(doc, scale_mode=None)
+    # The parser only reads numbers inside <answer></answer>; a bare string is a parse failure.
+    target_str = "<answer>" + ",".join(f"{v:.4f}" for v in target) + "</answer>"
+    diagonal = _compute_physical_diagonal(doc, scale_mode=None, explicit_scale=None)
     print(f"  sample ds[{idx}]  major={target[0]:.2f}mm  minor={target[1]:.2f}mm  diagonal={diagonal:.2f}mm")
 
     # Perfect prediction: nMAE must be exactly 0
@@ -46,7 +47,7 @@ for idx in sample_indices:
     # mean_abs_err = mean([|pred_major - gt_major|, |pred_minor - gt_minor|])
     #              = mean([10.0, 0.0]) = 5.0mm  =>  nMAE = 5.0 / diagonal
     perturbed = [target[0] + 10.0, target[1]]
-    perturbed_str = ",".join(f"{v:.4f}" for v in perturbed)
+    perturbed_str = "<answer>" + ",".join(f"{v:.4f}" for v in perturbed) + "</answer>"
     out_perturbed = process_results_TumorLesionSize(doc, [perturbed_str])
     nmae_perturbed = out_perturbed["nMAE"]
     assert nmae_perturbed["success"], f"sample {idx}: perturbed pred should have success=True"

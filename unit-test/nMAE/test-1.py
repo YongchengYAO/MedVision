@@ -36,14 +36,14 @@ doc = {
 
 # scale_mode=None: s_h = s_w = 1
 expected_no_scale = math.sqrt((FAKE_H * FAKE_PX_H) ** 2 + (FAKE_W * FAKE_PX_W) ** 2)
-got = diag_fn(doc, scale_mode=None)
+got = diag_fn(doc, scale_mode=None, explicit_scale=None)
 assert abs(got - expected_no_scale) < 1e-9, f"scale_mode=None mismatch: {got} vs {expected_no_scale}"
 print(f"  None        : {got:.4f}mm = sqrt(({FAKE_H}*{FAKE_PX_H})^2+({FAKE_W}*{FAKE_PX_W})^2)={expected_no_scale:.4f}mm  PASS")
 
 # scale_mode="uniform": single S applied to both axes -> diagonal = S * unscaled
 S = scope["_get_pixel_size_scale_factor"](doc, "uniform")
 expected_uniform = math.sqrt((FAKE_H * FAKE_PX_H * S) ** 2 + (FAKE_W * FAKE_PX_W * S) ** 2)
-got_uniform = diag_fn(doc, scale_mode="uniform")
+got_uniform = diag_fn(doc, scale_mode="uniform", explicit_scale=None)
 assert abs(got_uniform - expected_uniform) < 1e-9, f"uniform mismatch: {got_uniform} vs {expected_uniform}"
 assert abs(got_uniform - S * expected_no_scale) < 1e-9, "uniform diagonal should equal S * unscaled diagonal"
 print(f"  uniform     : {got_uniform:.4f}mm  ratio/S={got_uniform/expected_no_scale:.6f}/{S:.6f}  (S*unscaled={S*expected_no_scale:.4f})  PASS")
@@ -51,13 +51,13 @@ print(f"  uniform     : {got_uniform:.4f}mm  ratio/S={got_uniform/expected_no_sc
 # scale_mode="anisotropic": independent S_h, S_w
 S_h, S_w = scope["_get_pixel_size_scale_factor"](doc, "anisotropic")
 expected_aniso = math.sqrt((FAKE_H * FAKE_PX_H * S_h) ** 2 + (FAKE_W * FAKE_PX_W * S_w) ** 2)
-got_aniso = diag_fn(doc, scale_mode="anisotropic")
+got_aniso = diag_fn(doc, scale_mode="anisotropic", explicit_scale=None)
 assert abs(got_aniso - expected_aniso) < 1e-9, f"anisotropic mismatch: {got_aniso} vs {expected_aniso}"
 print(f"  anisotropic : {got_aniso:.4f}mm  S_h={S_h:.4f} S_w={S_w:.4f}  formula={expected_aniso:.4f}mm  PASS")
 
 # bad scale_mode raises ValueError
 try:
-    diag_fn(doc, scale_mode="bad")
+    diag_fn(doc, scale_mode="bad", explicit_scale=None)
     assert False, "should have raised ValueError"
 except ValueError:
     print("  bad mode    : ValueError raised  PASS")

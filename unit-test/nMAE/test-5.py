@@ -51,8 +51,8 @@ for i in tl_indices:
     raw_px_h, raw_px_w = float(px_hw[0]), float(px_hw[1])
 
     # For uniform mode, diagonal_uniform = S * diagonal_noscale exactly.
-    diag_uniform  = diag_fn(doc, scale_mode="uniform")
-    diag_noscale  = diag_fn(doc, scale_mode=None)
+    diag_uniform  = diag_fn(doc, scale_mode="uniform", explicit_scale=None)
+    diag_noscale  = diag_fn(doc, scale_mode=None, explicit_scale=None)
     got_ratio     = diag_uniform / diag_noscale
     assert abs(got_ratio - S) < 1e-6, (
         f"sample {i}: diag_uniform/diag_noscale={got_ratio:.6f} != S={S:.6f}"
@@ -83,8 +83,8 @@ for i in ad_indices:
     px_hw, _ = load_nifti(doc["image_file"], doc["slice_dim"], doc["slice_idx"])
     raw_px_h, raw_px_w = float(px_hw[0]), float(px_hw[1])
 
-    diag_aniso   = diag_fn(doc, scale_mode="anisotropic")
-    diag_noscale = diag_fn(doc, scale_mode=None)
+    diag_aniso   = diag_fn(doc, scale_mode="anisotropic", explicit_scale=None)
+    diag_noscale = diag_fn(doc, scale_mode=None, explicit_scale=None)
 
     # Verify against closed-form formula.
     expected = math.sqrt((H * raw_px_h * S_h) ** 2 + (W * raw_px_w * S_w) ** 2)
@@ -93,7 +93,7 @@ for i in ad_indices:
     )
 
     # Anisotropic != uniform unless S_h == S_w (confirm non-trivial scaling).
-    diag_uniform = diag_fn(doc, scale_mode="uniform")
+    diag_uniform = diag_fn(doc, scale_mode="uniform", explicit_scale=None)
     S_u = get_scale(doc, "uniform")
     if abs(S_h - S_w) > 0.01:   # only assert when axes differ meaningfully
         assert abs(diag_aniso - diag_uniform) > 1e-4, (

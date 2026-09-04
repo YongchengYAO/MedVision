@@ -1,3 +1,3 @@
-include: BraTS24_TumorLesionSize_base-CoT.yaml
-task: BraTS24_TumorLesionSize_Task04_Coronal-CoT
+include: BraTS24_TumorLesionSize_base-CoT-woInstruct.yaml
+task: BraTS24_TumorLesionSize_Task04_Coronal-CoT-woInstruct
 dataset_name: BraTS24_TumorLesionSize_Task04_Coronal_Test 

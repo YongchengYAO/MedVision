@@ -47,7 +47,6 @@ include = ["medvision_bm*"]
     "medvision_lmms_eval/**", 
     "medvision_lmms_eval/**/*", 
     "medvision_lmms_eval/**/.*",
-    "sft/config/*.yaml"
 ]
 
 [tool.setuptools.dynamic]

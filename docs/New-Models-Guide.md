@@ -25,13 +25,14 @@
       "claude": "Claude",
       # Gemini (Google Gemini API or OpenRouter; 2.5 + 3 series)
       "gemini": "Gemini",
+      # Kimi (Moonshot Open Platform or OpenRouter; K2.6 multimodal)
+      "kimi": "Kimi",
       # Gemma3
       "vllm_gemma3": "VLLM_Gemma3",
       # Gemma4
       "vllm_gemma4": "VLLM_Gemma4",
       # HealthGPT
-      "healthgpt_l14": "HealthGPT_L14",
-      "healthgpt_xl32": "HealthGPT_XL32",
+      "healthgpt": "HealthGPT",
       # HuatuoGPT-Vision
       "huatuogpt_vision": "HuatuoGPT_Vision",
       # InternVL3
@@ -51,6 +52,10 @@
       "meddr": "MedDr",
       # MedGemma
       "medgemma": "MedGemma",
+      # MiniMax-M3 (vision-language; 428B sparse MoE, ~23B active)
+      "vllm_minimax_m3": "VLLM_MiniMaxM3",
+      # GLM-4.6V (GLM-4.6V MoE + GLM-4.6V-Flash dense; one vLLM wrapper for both)
+      "vllm_glm4v": "VLLM_GLM4V",
       # OpenAI (official OpenAI API or OpenRouter)
       "openai": "OpenAI_GPT",
       # Qwen2.5-VL
@@ -58,7 +63,6 @@
       "vllm_qwen25vl": "VLLM_Qwen25VL",
       "vllm_qwen25vl_tooluse": "VLLM_Qwen25VL_ToolUse",
       # Qwen3-VL
-      "qwen3vl": "Qwen3VL",
       "vllm_qwen3vl": "VLLM_Qwen3VL",
       # BiomedGPT
       # "biomedgpt": "BiomedGPT",
@@ -152,7 +156,7 @@
            # Image processor - CLIPImageProcessor:
            img_shape_resized_hw = [336, 336]
            # img_shape_resized_hw = _process_img_huatuogpt_vision(img_2d_raw, extra_kwargs)  # for debugging only
-       elif model_name == "healthgpt_l14":
+       elif model_name == "healthgpt":
            # NOTE: HealthGPT resize images to a fixed size [336, 336]. We used this size for pixel size adjustment.
            img_shape_resized_hw = [336, 336]
            # img_shape_resized_hw = _process_img_healthgpt_L14(img_2d_raw, extra_kwargs)  # for debugging only
@@ -160,6 +164,15 @@
            raise ValueError(f"[Error] {model_name} is not recognised/supported.")
        return img_shape_resized_hw
    ```
+
+   > [!NOTE]
+   > The listing above is **abridged**: it shows the branch shapes, not every branch. The dispatch in
+   > [`medvision_utils.py`](https://github.com/YongchengYAO/MedVision/blob/master/src/medvision_bm/medvision_lmms_eval/lmms_eval/tasks/medvision/medvision_utils.py)
+   > is the source of truth and also covers Qwen3-VL, Gemma-4, GLM-4.6V, MiniMax-M3 and the API
+   > models (Claude, Gemini, OpenAI, Kimi). Read it before adding a branch, and check your new key
+   > against `AVAILABLE_MODELS` — a key registered without a matching branch raises
+   > `[Error] <model_name> is not recognised/supported.` on the T/L and A/D tasks while Detection
+   > still runs.
 
    > [!TIP]
    >
@@ -212,8 +225,8 @@
 
    ```yaml
    lmms_eval_specific_kwargs:
-     healthgpt_l14:
-       model: "healthgpt_l14"
+     healthgpt:
+       model: "healthgpt"
        base_model_hf: "microsoft/phi-4"
        vision_model_hf: "openai/clip-vit-large-patch14-336"
        model_dtype: "FP16"
