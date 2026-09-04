@@ -75,6 +75,22 @@ def broadcast_int_from_main(value, src=0):
     return int(value)
 
 
+def broadcast_object_from_main(value, src=0):
+    """Broadcast any picklable object from the main process to all other processes.
+
+    Same rationale as :func:`broadcast_int_from_main`; used e.g. for a prepared-dataset
+    path that only the main process can resolve. Returns ``value`` unchanged when not
+    running distributed.
+    """
+    import torch.distributed as dist
+
+    if dist.is_available() and dist.is_initialized():
+        obj = [value if dist.get_rank() == src else None]
+        dist.broadcast_object_list(obj, src=src)
+        return obj[0]
+    return value
+
+
 def get_cgroup_limited_cpus():
     # cgroup v1
     try:
@@ -100,6 +116,39 @@ def get_cgroup_limited_cpus():
 
     # fallback to host-wide CPU count
     return os.cpu_count()
+
+
+def get_cgroup_memory_percent():
+    """Return ``(used_gib, limit_gib, percent)`` for the memory cgroup.
+
+    Reads cgroup v2 (``memory.current`` / ``memory.max``), falling back to
+    cgroup v1 and finally to host-wide psutil numbers. On pods psutil reports
+    the HOST total, so the cgroup files are the only trustworthy signal there.
+    """
+    # cgroup v2
+    try:
+        used = int(Path("/sys/fs/cgroup/memory.current").read_text().strip())
+        limit_txt = Path("/sys/fs/cgroup/memory.max").read_text().strip()
+        if limit_txt != "max":
+            limit = int(limit_txt)
+            return used / 2**30, limit / 2**30, 100.0 * used / limit
+    except (ValueError, OSError):
+        pass
+
+    # cgroup v1
+    try:
+        base = Path("/sys/fs/cgroup/memory")
+        used = int((base / "memory.usage_in_bytes").read_text().strip())
+        limit = int((base / "memory.limit_in_bytes").read_text().strip())
+        # v1 reports a huge sentinel value when unlimited
+        if 0 < limit < 1 << 60:
+            return used / 2**30, limit / 2**30, 100.0 * used / limit
+    except (ValueError, OSError):
+        pass
+
+    # fallback to host-wide memory
+    vm = psutil.virtual_memory()
+    return (vm.total - vm.available) / 2**30, vm.total / 2**30, vm.percent
 
 
 # One-slot per-process cache of the last decompressed volume. Rows reach the
@@ -2154,10 +2203,12 @@ def load_split_limit_dataset(
                 task_to_ds[task] = ds
                 print(f"✓ Completed {task} ({len(task_to_ds)}/{len(tasks)})")
 
-                # Monitor memory usage
-                memory_percent = psutil.virtual_memory().percent
-                if memory_percent > 80:
-                    print(f"⚠️  High memory usage: {memory_percent}%")
+                # Monitor memory usage (cgroup-aware: psutil sees the HOST on pods)
+                mem_used_gib, mem_limit_gib, mem_percent = get_cgroup_memory_percent()
+                if mem_percent > 80:
+                    print(
+                        f"⚠️  High cgroup memory: {mem_used_gib:.1f}/{mem_limit_gib:.1f} GiB ({mem_percent:.0f}%)"
+                    )
 
             except Exception as exc:
                 error_msg = f"Task {task} generated an exception: {exc}"
@@ -2316,6 +2367,64 @@ def clean_dataset(dataset, keys_to_keep):
     return _drop_columns(dataset)
 
 
+def format_clean_dataset(
+    dataset,
+    *,
+    mapping_func,
+    model_family_name,
+    base_model_hf,
+    num_workers_format_dataset=32,
+    process_img=False,
+    save_processed_img_to_disk=False,
+    new_shape_hw=None,
+):
+    """Format a loaded+split MedVision dataset for SFT and prune it to the training columns.
+
+    Second stage of :func:`prepare_dataset`, split out so callers can run
+    :func:`load_split_limit_dataset` first, read the true split sizes (e.g. to
+    name the prepared-dataset directory), and only then pay for formatting.
+    Formatting is a row-preserving ``map``, so the sizes do not change here.
+
+    Args:
+        dataset (DatasetDict): Train/validation splits as returned by
+            :func:`load_split_limit_dataset`.
+        mapping_func, model_family_name, base_model_hf, num_workers_format_dataset,
+        process_img, save_processed_img_to_disk, new_shape_hw: As in
+            :func:`prepare_dataset`.
+
+    Returns:
+        DatasetDict: The formatted splits containing only the retained columns.
+    """
+    # Format dataset
+    mapping_func_args = {
+        "model_name": model_family_name,
+        "model_hf": base_model_hf,
+        "process_img": process_img,
+        "save_processed_img_to_disk": save_processed_img_to_disk,
+        "new_shape_hw": new_shape_hw,
+    }
+    dataset = format_dataset(
+        dataset=dataset,
+        mapping_func=mapping_func,
+        mapping_func_args=mapping_func_args,
+        num_workers_format_dataset=num_workers_format_dataset,
+        writer_batch_size=50,
+    )
+
+    # Clean dataset to keep only necessary keys
+    # "image_file" is the original NIfTI image path
+    keys_to_keep = ["messages", "labels", "image_file", "slice_dim", "slice_idx"]
+    if process_img:
+        # "processed_images" is the embedded processed image tensor in the dataset (not recommended)
+        keys_to_keep.append("processed_images")
+    if save_processed_img_to_disk:
+        # "image_file_png" is the path to the saved PNG image on disk
+        keys_to_keep.append("image_file_png")
+    dataset = clean_dataset(dataset, keys_to_keep)
+
+    return dataset
+
+
 def prepare_dataset(
     *,
     tasks_list_json_path,
@@ -2379,34 +2488,17 @@ def prepare_dataset(
         download_mode=download_mode,
     )
 
-    # Format dataset
-    mapping_func_args = {
-        "model_name": model_family_name,
-        "model_hf": base_model_hf,
-        "process_img": process_img,
-        "save_processed_img_to_disk": save_processed_img_to_disk,
-        "new_shape_hw": new_shape_hw,
-    }
-    dataset = format_dataset(
-        dataset=dataset,
+    # Format and prune
+    return format_clean_dataset(
+        dataset,
         mapping_func=mapping_func,
-        mapping_func_args=mapping_func_args,
+        model_family_name=model_family_name,
+        base_model_hf=base_model_hf,
         num_workers_format_dataset=num_workers_format_dataset,
-        writer_batch_size=50,
+        process_img=process_img,
+        save_processed_img_to_disk=save_processed_img_to_disk,
+        new_shape_hw=new_shape_hw,
     )
-
-    # Clean dataset to keep only necessary keys
-    # "image_file" is the original NIfTI image path
-    keys_to_keep = ["messages", "labels", "image_file", "slice_dim", "slice_idx"]
-    if process_img:
-        # "processed_images" is the embedded processed image tensor in the dataset (not recommended)
-        keys_to_keep.append("processed_images")
-    if save_processed_img_to_disk:
-        # "image_file_png" is the path to the saved PNG image on disk
-        keys_to_keep.append("image_file_png")
-    dataset = clean_dataset(dataset, keys_to_keep)
-
-    return dataset
 
 
 def recompute_total_max_steps(trainer):

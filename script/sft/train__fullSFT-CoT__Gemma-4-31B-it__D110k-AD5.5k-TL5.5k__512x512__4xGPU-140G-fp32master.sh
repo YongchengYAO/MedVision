@@ -180,10 +180,20 @@ enable_temperature_sampler=true
 temperature_sampler_T=5
 # ------------------------------------------------------------------------------
 
+# The dataset-prep run below reports where it saved (or found) the prepared dataset. Its
+# default name encodes the TRUE train sizes, which are only known after the load+split
+# stage, so capture that report and hand the directory to the training launch via
+# --prepared_ds_dir: training then loads it directly instead of re-running load+split on
+# rank 0 just to recompute the name. Set prepared_ds_dir above to override the prep run's
+# output location; the training launch always uses whatever the prep run reports.
+mkdir -p "${lora_checkpoint_dir}"
+prep_log="${lora_checkpoint_dir}/prepare_dataset.log"
+
 # Offload dataset processing from training to a separate run to avoid timeout issues
 python -m medvision_bm.sft.train__fullFT-CoT__gemma4 \
     --skip_process_dataset ${skip_process_dataset} \
     --process_dataset_only true \
+    ${prepared_ds_dir:+--prepared_ds_dir ${prepared_ds_dir}} \
     --save_processed_img_to_disk ${save_processed_img_to_disk} \
     --run_name ${run_name} \
     --model_family_name ${model_family_name} \
@@ -221,7 +231,15 @@ python -m medvision_bm.sft.train__fullFT-CoT__gemma4 \
     --resume_from_checkpoint ${resume_from_checkpoint} \
     --gradient_checkpointing ${gradient_checkpointing} \
     --dataloader_pin_memory ${dataloader_pin_memory} \
-    --new_shape_hw 512 512
+    --new_shape_hw 512 512 2>&1 | tee "${prep_log}"
+
+# Resolve the prepared-dataset directory from the prep run's report (see prep_log above).
+prepared_ds_dir="$(sed -n "s/.*Prepared dataset saved at '\([^']*\)'.*/\1/p" "${prep_log}" | tail -n 1)"
+if [ -z "${prepared_ds_dir}" ] || [ ! -d "${prepared_ds_dir}" ]; then
+    echo "[Error] Could not resolve the prepared dataset directory from ${prep_log}; aborting before the training launch."
+    exit 1
+fi
+echo "[Info] Training will load the prepared dataset from: ${prepared_ds_dir}"
 
 # Self-heal deps: the dataset-prep step above reinstalls medvision_ds, whose exact pin
 # huggingface_hub==0.36.0 drags hub below transformers 5.x's floor (>=1.5.0) on EVERY prep
@@ -291,6 +309,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 \
     --fsdp_sync_module_states true \
     -m medvision_bm.sft.train__fullFT-CoT__gemma4 \
     --skip_process_dataset true \
+    --prepared_ds_dir ${prepared_ds_dir} \
     --process_dataset_only false \
     --run_name ${run_name} \
     --model_family_name ${model_family_name} \

@@ -25,9 +25,12 @@ from medvision_bm.sft.qwen25vl_tooluse_utils import make_collate_fn_Qwen25VL_too
 from medvision_bm.sft.sft_utils import (
     _format_data_AngleDistanceTask_tooluse,
     _format_data_TumorLesionTask_tooluse,
+    broadcast_object_from_main,
+    format_clean_dataset,
+    get_cgroup_limited_cpus,
+    load_split_limit_dataset,
     parse_sample_limits,
     parse_validate_args_multiTask,
-    prepare_dataset,
     prepare_trainer_fullFT,
     train_resume_from_checkpoint,
 )
@@ -76,6 +79,13 @@ def _fmt_limit(v):
     return "full" if v < 0 else str(v)
 
 
+def _true_size(limit, n_actual):
+    """Dir-name token for one train split: the requested cap when set, else its true size."""
+    if limit > 0 or n_actual is None:
+        return _fmt_limit(limit)
+    return str(n_actual)
+
+
 def main(
     run_name,
     model_family_name,
@@ -118,117 +128,97 @@ def main(
             )
 
         # ---
-        # NOTE: Keep it here (out of the is_main_process() block below) as it is used in all processes for dataset loading later
+        # Prepared dataset directory. The default name encodes the TRUE train size of
+        # every split whose limit is unset, so it is only known after the load+split
+        # stage below. The main process resolves it (a user-specified dir is taken
+        # as-is) and broadcasts it to the other ranks after the barrier, so every
+        # rank loads the same directory.
         # ---
-        # Prepare the dataset directory path, which will be used to save the prepared dataset for all processes to load later
         new_shape_hw = kwargs.get("new_shape_hw")
-        if kwargs.get("prepared_ds_dir") is not None:
-            # User-specified folder
-            prepared_ds_dir = kwargs.get("prepared_ds_dir")
-            if is_main_process():
-                print(
-                    f"[Info] Using user-specified prepared dataset directory: {prepared_ds_dir}\n"
-                )
+        if new_shape_hw is not None:
+            ds_dir_suffix = f"__resized-wh-{new_shape_hw[1]}x{new_shape_hw[0]}-tooluse"
         else:
-            # Default folder with naming convention encoding model identifier and sample limits
-            prepared_ds_dir = os.path.join(
-                data_dir,
-                "SFT-CoT_datasets",
-                model_family_name,
-                f"ds__AD{_fmt_limit(train_limit_AD)}_D{_fmt_limit(train_limit_detect)}_TL{_fmt_limit(train_limit_TL)}_all{_fmt_limit(train_limit_total)}",
+            ds_dir_suffix = "__original-tooluse"
+        prepared_ds_dir = kwargs.get("prepared_ds_dir")
+        if prepared_ds_dir is not None and is_main_process():
+            print(
+                f"[Info] Using user-specified prepared dataset directory: {prepared_ds_dir}\n"
             )
-            if new_shape_hw is not None:
-                prepared_ds_dir += (
-                    f"__resized-wh-{new_shape_hw[1]}x{new_shape_hw[0]}-tooluse"
-                )
-            else:
-                prepared_ds_dir += f"__original-tooluse"
-
-            if is_main_process():
-                os.makedirs(prepared_ds_dir, exist_ok=True)
-                print(
-                    f"[Info] Using default prepared dataset directory: {prepared_ds_dir}\n"
-                )
-        # ---
 
         # Prepare the dataset on the main process ONLY
         if is_main_process():
-            if not kwargs.get("skip_process_dataset"):
+            # (task label, tasks-list kwarg, train limit, val limit, mapping func, tag_ds)
+            task_specs = [
+                (
+                    "AD",
+                    "tasks_list_json_path_AD",
+                    train_limit_AD,
+                    val_limit_AD,
+                    _format_data_AngleDistanceTask_tooluse,
+                    "BiometricsFromLandmarks",
+                ),
+                (
+                    "TL",
+                    "tasks_list_json_path_TL",
+                    train_limit_TL,
+                    val_limit_TL,
+                    _format_data_TumorLesionTask_tooluse,
+                    "TumorLesionSize",
+                ),
+            ]
 
+            # Stage 1: load and split every requested task FIRST. Row counts are final
+            # here (formatting is a row-preserving map), so the true train sizes are
+            # known before any directory is named or created. It is needed to NAME the
+            # default dir and to FORMAT (stage 2); with an explicit --prepared_ds_dir
+            # plus --skip_process_dataset neither applies (the launchers pass the path
+            # printed by the prep run), so training loads that dir without touching
+            # the raw data.
+            raw_ds = {}
+            if prepared_ds_dir is None or not kwargs.get("skip_process_dataset"):
+                for task_label, path_key, task_train_limit, task_val_limit, _, tag_ds in task_specs:
+                    if kwargs.get(path_key) is not None:
+                        raw_ds[task_label] = _load_split_dataset_task(
+                            kwargs, path_key, task_train_limit, task_val_limit, tag_ds=tag_ds
+                        )
+
+            if prepared_ds_dir is None:
+                # Default folder with naming convention encoding model identifier and sample sizes
+                n_train = {label: len(ds["train"]) for label, ds in raw_ds.items()}
+                prepared_ds_dir = os.path.join(
+                    data_dir,
+                    "SFT-CoT_datasets",
+                    model_family_name,
+                    f"ds__AD{_true_size(train_limit_AD, n_train.get('AD'))}"
+                    f"_D{_true_size(train_limit_detect, n_train.get('Detection'))}"
+                    f"_TL{_true_size(train_limit_TL, n_train.get('TL'))}"
+                    f"_all{_true_size(train_limit_total, sum(n_train.values()))}"
+                    + ds_dir_suffix,
+                )
+                print(
+                    f"[Info] Using default prepared dataset directory: {prepared_ds_dir}\n"
+                )
+
+            if not kwargs.get("skip_process_dataset"):
+                # Stage 2: format each task, tag it for temperature sampling, combine.
                 train_ds_list = []
                 val_ds_list = []
-
-                if kwargs.get("tasks_list_json_path_AD") is not None:
-                    # Prepare datasets for AD task
-                    dataset_AD = prepare_dataset(
-                        tasks_list_json_path=kwargs.get("tasks_list_json_path_AD"),
-                        limit_train_sample=train_limit_AD,
-                        limit_val_sample=val_limit_AD,
-                        mapping_func=_format_data_AngleDistanceTask_tooluse,
-                        model_family_name=model_family_name,
-                        base_model_hf=base_model_hf,
-                        num_workers_concat_datasets=kwargs.get(
-                            "num_workers_concat_datasets"
+                for task_label, _, _, _, mapping_func, _ in task_specs:
+                    if task_label not in raw_ds:
+                        continue
+                    dataset_task = _format_dataset_task(
+                        kwargs,
+                        raw_ds.pop(task_label),
+                        mapping_func,
+                        model_family_name,
+                        base_model_hf,
+                        task_label=task_label,
+                        temperature_sampler_task_column=kwargs.get(
+                            "temperature_sampler_task_column"
                         ),
-                        num_workers_format_dataset=kwargs.get(
-                            "num_workers_format_dataset"
-                        ),
-                        # MedVision dataset specific, used to extract dataset name from AD task configs
-                        tag_ds="BiometricsFromLandmarks",
-                        process_img=kwargs.get("process_img"),
-                        save_processed_img_to_disk=kwargs.get(
-                            "save_processed_img_to_disk"
-                        ),
-                        new_shape_hw=kwargs.get("new_shape_hw"),
-                        download_mode=kwargs.get("ds_download_mode"),
                     )
-                    # Keep task label for optional temperature-based sampling.
-                    dataset_AD["train"] = dataset_AD["train"].add_column(
-                        kwargs.get("temperature_sampler_task_column"),
-                        ["AD"] * len(dataset_AD["train"]),
-                    )
-                    dataset_AD["validation"] = dataset_AD["validation"].add_column(
-                        kwargs.get("temperature_sampler_task_column"),
-                        ["AD"] * len(dataset_AD["validation"]),
-                    )
-                    train_ds_list.append(dataset_AD["train"])
-                    val_ds_list.append(dataset_AD["validation"])
-
-                if kwargs.get("tasks_list_json_path_TL") is not None:
-                    # Prepare datasets for Tumor Lesion Size task
-                    dataset_TL = prepare_dataset(
-                        tasks_list_json_path=kwargs.get("tasks_list_json_path_TL"),
-                        limit_train_sample=train_limit_TL,
-                        limit_val_sample=val_limit_TL,
-                        mapping_func=_format_data_TumorLesionTask_tooluse,
-                        model_family_name=model_family_name,
-                        base_model_hf=base_model_hf,
-                        num_workers_concat_datasets=kwargs.get(
-                            "num_workers_concat_datasets"
-                        ),
-                        num_workers_format_dataset=kwargs.get(
-                            "num_workers_format_dataset"
-                        ),
-                        # MedVision dataset specific, used to extract dataset name from TL task configs
-                        tag_ds="TumorLesionSize",
-                        process_img=kwargs.get("process_img"),
-                        save_processed_img_to_disk=kwargs.get(
-                            "save_processed_img_to_disk"
-                        ),
-                        new_shape_hw=kwargs.get("new_shape_hw"),
-                        download_mode=kwargs.get("ds_download_mode"),
-                    )
-                    # Keep task label for optional temperature-based sampling.
-                    dataset_TL["train"] = dataset_TL["train"].add_column(
-                        kwargs.get("temperature_sampler_task_column"),
-                        ["TL"] * len(dataset_TL["train"]),
-                    )
-                    dataset_TL["validation"] = dataset_TL["validation"].add_column(
-                        kwargs.get("temperature_sampler_task_column"),
-                        ["TL"] * len(dataset_TL["validation"]),
-                    )
-                    train_ds_list.append(dataset_TL["train"])
-                    val_ds_list.append(dataset_TL["validation"])
+                    train_ds_list.append(dataset_task["train"])
+                    val_ds_list.append(dataset_task["validation"])
 
                 # Combine all tasks' datasets
                 dataset = DatasetDict()
@@ -280,10 +270,18 @@ def main(
 
                 # Save the prepared dataset to disk for other processes to load
                 os.makedirs(prepared_ds_dir, exist_ok=True)
-                dataset.save_to_disk(prepared_ds_dir)
+                # num_proc must not exceed the smallest split's row count (datasets
+                # raises IndexError otherwise, e.g. on tiny smoke-test splits).
+                save_workers = max(
+                    1,
+                    min(get_cgroup_limited_cpus(), *(len(ds) for ds in dataset.values())),
+                )
+                dataset.save_to_disk(prepared_ds_dir, num_proc=save_workers)
 
         # All processes synchronize here: wait for dataset preparation to complete
         barrier()
+        # Only the main process resolved the default (true-size) directory name above.
+        prepared_ds_dir = broadcast_object_from_main(prepared_ds_dir)
 
         # Stop here if only processing dataset
         if kwargs.get("process_dataset_only"):
@@ -365,6 +363,48 @@ def main(
             pass
     gc.collect()
     torch.cuda.empty_cache()
+
+
+def _load_split_dataset_task(kwargs, path_key, train_limit, val_limit, *, tag_ds):
+    """Stage 1 of dataset preparation: load one task's MedVision configs and split them."""
+    return load_split_limit_dataset(
+        tasks_list_json_path=kwargs.get(path_key),
+        limit_train_sample=train_limit,
+        limit_val_sample=val_limit,
+        num_workers_concat_datasets=kwargs.get("num_workers_concat_datasets"),
+        tag_ds=tag_ds,
+        download_mode=kwargs.get("ds_download_mode"),
+    )
+
+
+def _format_dataset_task(
+    kwargs,
+    ds,
+    mapping_func,
+    model_family_name,
+    base_model_hf,
+    *,
+    task_label,
+    temperature_sampler_task_column,
+):
+    """Stage 2: format one task's splits into chat messages and tag them for temperature sampling."""
+    ds = format_clean_dataset(
+        ds,
+        mapping_func=mapping_func,
+        model_family_name=model_family_name,
+        base_model_hf=base_model_hf,
+        num_workers_format_dataset=kwargs.get("num_workers_format_dataset"),
+        process_img=kwargs.get("process_img"),
+        save_processed_img_to_disk=kwargs.get("save_processed_img_to_disk"),
+        new_shape_hw=kwargs.get("new_shape_hw"),
+    )
+    ds["train"] = ds["train"].add_column(
+        temperature_sampler_task_column, [task_label] * len(ds["train"])
+    )
+    ds["validation"] = ds["validation"].add_column(
+        temperature_sampler_task_column, [task_label] * len(ds["validation"])
+    )
+    return ds
 
 
 if __name__ == "__main__":
