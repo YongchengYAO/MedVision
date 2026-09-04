@@ -38,6 +38,7 @@
 #   SEED                 Sample-selection seed (1234)    -> --seed
 #   REMOVED_SAMPLES_DIR  TL multi-cluster exclusion root -> --removed_samples_dir
 #   SKIP_EXISTING=1      Skip re-rendering existing PNGs -> --skip_existing
+#   PARTIAL_MODELS (array below)  Models with incomplete runs -> --partial_models
 #
 # Hardcoded below (separate from the main viewer, not env-controlled):
 #   --cases_dirname cases-pilot   PNGs -> <PAGE_DIR>/figure/cases-pilot/<model>/
@@ -69,7 +70,12 @@ TL_MODELS=(
     "MedVision-V0 (7B)=$RESULTS/MedVision-TL-CoT-limit100/${MV_V0}"
     "Claude-Fable-5=$RESULTS/MedVision-TL-CoT-limit100/Claude-Fable-5"
     "Gemini-3.1-Pro=$RESULTS/MedVision-TL-CoT-limit100/Gemini-3.1-Pro"
+    "GPT-5.5-Pro=$RESULTS/MedVision-TL-CoT-limit100/GPT-5.5-Pro"
 )
+# GPT-5.5-Pro's run stopped at 490 of the 750 samples (API budget exhausted): a PARTIAL
+# model. It is left out of the shared-sample intersection (so the other models keep every
+# case) and gets a "not evaluated" placeholder wherever it lacks a selected sample.
+PARTIAL_MODELS=("GPT-5.5-Pro")
 
 PAGE_DIR="${PAGE_DIR:-/mnt/vincent-pvc-rwm/Github/medvision-vlm.github.io}"
 PER_TARGET_TL="${PER_TARGET_TL:-2}"
@@ -106,6 +112,7 @@ python "$SCRIPT_DIR/export_webpage_cases.py" \
     --cases_js static/js/cases-pilot.js \
     --task_key_suffix="-Pilot" \
     --nonmedvision_topleft \
+    --partial_models "${PARTIAL_MODELS[@]}" \
     --per_target_tl "$PER_TARGET_TL" \
     --seed "$SEED" \
     "${PER_TASK_MAX_ARGS[@]}" \

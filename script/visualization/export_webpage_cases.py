@@ -899,9 +899,13 @@ def _collect_model(
     return collected
 
 
-def _select_shared_keys(task, collected, per_target, per_task_max, seed):
+def _select_shared_keys(task, collected, per_target, per_task_max, seed, partial=()):
     """Pick a SHARED, ordered list of join keys present in EVERY model, seeded, that
     sweeps through every distinct DISPLAYED target (the case viewer's TARGET buttons).
+
+    partial: display names of models whose run did not cover every sample (see
+    --partial_models). They are left OUT of the intersection so their gaps never shrink
+    the shared set for everyone; main() emits a placeholder case for each key they lack.
 
     collected: {model_name: {key: (sample, proc, eq)}}. Returns the keys common to all
     models, grouped by the displayed target string — _target_modality() output, post
@@ -918,10 +922,11 @@ def _select_shared_keys(task, collected, per_target, per_task_max, seed):
     dropped — logged."""
     if not collected:
         return []
-    common = set.intersection(*[set(c.keys()) for c in collected.values()])
+    full = {n: c for n, c in collected.items() if n not in partial} or collected
+    common = set.intersection(*[set(c.keys()) for c in full.values()])
     if not common:
         return []
-    any_model = next(iter(collected.values()))  # docs identical across models per key
+    any_model = next(iter(full.values()))  # docs identical across models per key
     rng = random.Random(seed)
     key_target = {}
     by_target = {}
@@ -957,8 +962,15 @@ def _build_case(
     skip_existing=False,
     cases_dirname="cases",
     dual_origin=False,
+    facet_sample=None,
 ):
     """Render one model's overlay + Prompt/Response/Metrics panels for a single sample.
+
+    facet_sample: the reference model's copy of this sample, used for the target / modality
+    facet so case[i] carries ONE target string across models (the viewer's TARGET filter is
+    built from the first model's list and applied to whichever model is selected). Prompt
+    wording can differ between runs of different dates — KiPA22 asked for "tumor" in June
+    and "kidney tumor" in September — and the Prompt panel still shows each model's own text.
 
     Writes the PNG into cases_dir/<model_slug>/ and returns the case dict, or None if
     rendering raised. On unparseable coordinates the figure is image-only and the case is
@@ -978,7 +990,7 @@ def _build_case(
     stem = f"{task.lower()}_{ds}_T{doc.get('taskID')}_S{doc.get('slice_dim')}_{doc_id}"
     png = lambda sfx="": os.path.join(cases_dir, model_slug, f"{stem}_overlay{sfx}.png")
     rel = lambda sfx="": f"figure/{cases_dirname}/{model_slug}/{stem}_overlay{sfx}.png"
-    tgt, mod = _target_modality(task, sample, ds)
+    tgt, mod = _target_modality(task, facet_sample or sample, ds)
     base = {"target": tgt, "modality": mod, "holdMs": 4200}
     try:
         if dual_origin:
@@ -1043,6 +1055,30 @@ def _build_case(
     }
 
 
+_TITLES = {"TL": _title_tl, "Detection": _title_det, "AD": _title_ad}
+
+
+def _placeholder_case(task, ds, model_name, ref_sample):
+    """Index-aligned stand-in for a sample a partial model never ran (--partial_models):
+    the other models' target / modality / title, no figure, one explanatory panel. The
+    viewer shows "not evaluated" in the figure slot instead of "figure pending"."""
+    tgt, mod = _target_modality(task, ref_sample, ds)
+    note = (
+        f"{model_name} was not evaluated on this sample: its run stopped before reaching it "
+        "(API budget exhausted), so there is no response, overlay, or metrics to show."
+    )
+    return {
+        "target": tgt,
+        "modality": mod,
+        "holdMs": 4200,
+        "title": _TITLES[task](ref_sample),
+        "image": None,
+        "segments": [{"label": "Not evaluated", "html": _esc(note)}],
+        "parseFailed": False,
+        "notEvaluated": True,
+    }
+
+
 # ── cases.js emitter ───────────────────────────────────────────────────────────
 
 
@@ -1056,6 +1092,8 @@ def _write_cases_js(path, by_task, task_key_suffix=""):
         "//   case = { title, image:overlay_png, segments:[{label,html}], holdMs, parseFailed }\n"
         "//   segments = the full Prompt / Response / Metrics panels as inline-styled HTML\n"
         "//   (color-coded to match script/visualization/viz_*_responses.py figures).\n"
+        "//   image:null + notEvaluated:true = a --partial_models stand-in: that model never ran\n"
+        "//   this sample, kept so case[i] stays the same sample across models.\n"
     )
     # task_key_suffix lets a variant export (e.g. the API pilot) emit distinct keys
     # ("TL-Pilot") into a separate manifest file. Object.assign merges into any
@@ -1174,6 +1212,16 @@ def main():
         "(default '' = Detection/TL/AD).",
     )
     ap.add_argument(
+        "--partial_models",
+        nargs="*",
+        default=[],
+        metavar="NAME",
+        help="Display names of models whose run did not cover every sample (e.g. an API "
+        "pilot that stopped when its budget ran out). They are left OUT of the shared-key "
+        "intersection, and every selected sample they lack is emitted as a placeholder case "
+        "(image null, notEvaluated true) so the per-model lists stay index-aligned.",
+    )
+    ap.add_argument(
         "--nonmedvision_topleft",
         action="store_true",
         help="Dual-origin mode for off-the-shelf (non-MedVision) TL & AD cases: render "
@@ -1185,6 +1233,7 @@ def main():
         "reflection-invariant, so only the localization line differs by origin.",
     )
     args = ap.parse_args()
+    partial = set(args.partial_models)
 
     cases_dir = os.path.join(args.page_dir, "figure", args.cases_dirname)
     os.makedirs(cases_dir, exist_ok=True)
@@ -1230,8 +1279,10 @@ def main():
         # One shared, seeded sample set — one per displayed target — rendered by EVERY
         # model in the same order.
         selected = _select_shared_keys(
-            task, collected, per_target_by_task[task], args.per_task_max, args.seed
+            task, collected, per_target_by_task[task], args.per_task_max, args.seed, partial
         )
+        # Reference model for placeholder titles/targets: any model with full coverage.
+        ref_model = next((n for n in collected if n not in partial), None)
         print(
             f"  [{task}] {len(selected)} shared case(s) across {len(collected)} model(s)"
         )
@@ -1251,7 +1302,16 @@ def main():
             )
             for key in selected:
                 ds = key[0]
+                if key not in collected[name]:
+                    # Only a --partial_models entry can lack a shared key.
+                    if name in partial and ref_model:
+                        rendered[name][key] = _placeholder_case(
+                            task, ds, name, collected[ref_model][key][0]
+                        )
+                        print(f"  [{task}/{_slug(name)}/{ds}/{key[3]}] not evaluated (placeholder)")
+                    continue
                 sample, proc, eq = collected[name][key]
+                ref_sample = collected[ref_model][key][0] if ref_model else sample
                 case = _build_case(
                     task,
                     ds,
@@ -1265,6 +1325,7 @@ def main():
                     skip_existing=args.skip_existing,
                     cases_dirname=args.cases_dirname,
                     dual_origin=dual_origin,
+                    facet_sample=ref_sample,
                 )
                 if case:
                     rendered[name][key] = case

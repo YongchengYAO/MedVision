@@ -63,7 +63,8 @@ import export_radar_data as erd  # noqa: E402
 GRID = 33
 
 # Every radar on the page, so the violin control appears on all of them rather than on three of
-# four. TL-Pilot rides along cheaply: three models over the 750-sample subset. radar.js only
+# four. TL-Pilot rides along cheaply: four models over the 750-sample subset (GPT-5.5-Pro's partial
+# run yields null cells on the targets it never ran, which radar.js skips). radar.js only
 # offers the control for a task present in this blob, so dropping one here just disables it there.
 TASKS = ["Detection", "TL", "AD", "TL-Pilot"]
 
@@ -150,9 +151,13 @@ def summarize(values, higher_better):
         from scipy.stats import gaussian_kde
 
         density = gaussian_kde(v)(grid)
-    except Exception:
+    except Exception as e:
         # Degenerate input (every sample identical) makes the KDE covariance singular.
-        # Fall back to a histogram so the spoke still shows where the mass sits.
+        # Fall back to a histogram so the spoke still shows where the mass sits — loudly,
+        # because an environment problem lands here too (e.g. a MagicMock ``torch`` in
+        # sys.modules makes scipy's array-API probe raise TypeError on EVERY call, and the
+        # whole blob silently degrades to spiky histograms).
+        print(f"[violin] WARN gaussian_kde failed ({type(e).__name__}: {e}); histogram fallback", file=sys.stderr)
         density, _ = np.histogram(v, bins=GRID, range=(0.0, 1.0), density=False)
         density = density.astype(float)
 
@@ -210,8 +215,16 @@ def build_task(task, results_dir, task_type, parsed_dirname):
         values = {}
         for display in order:
             by_label = per_model[display]
+            radar_cells = grp["values"][display]
+            # No radar point (target never run, or covered only partly — see
+            # export_radar_data's union rule) -> no distribution either, so the overlay can
+            # never show a violin on a spoke whose summary line has a gap.
             values[display] = {
-                m: [summarize(by_label[lbl][m], metrics[m]) for lbl in labels]
+                m: [
+                    None if radar_cells[j].get(m) is None
+                    else summarize(by_label[lbl][m], metrics[m])
+                    for j, lbl in enumerate(labels)
+                ]
                 for m in metric_names
             }
         groups.append({"name": grp["name"], "spokes": labels, "values": values})

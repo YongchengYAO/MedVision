@@ -13,7 +13,9 @@ faithful-port rules are reused directly from ``viz_radar.py`` rather than re-imp
 
   * spokes = the sorted INTERSECTION of targets across all models
     (``EXCLUDED_KEYS`` dropped for Detection/TL; Detection also drops targets with
-    ``num_samples < MINIMUM_GROUP_SIZE``) — ``load_model_metrics`` + set intersection;
+    ``num_samples < MINIMUM_GROUP_SIZE``) — ``load_model_metrics`` + set intersection.
+    A task may opt into the UNION instead (``"spokes": "union"``): a model missing a target then
+    gets a null cell on that spoke (drawn as a gap) rather than the spoke vanishing for everyone;
   * tumor/lesion spokes flagged via ``is_purple_label`` (rendered ``#770087`` bold on the page);
   * A/D targets split into an Angle group and a Distance group via ``split_ad_labels``,
     names abbreviated via ``abbreviate_label_name`` (``..._distance_L-1-2`` -> ``Ceph: d(P1,P2)``);
@@ -54,6 +56,11 @@ from medvision_bm.utils.configs import (  # noqa: E402
 # ── static config ────────────────────────────────────────────────────────────────────────────────
 DEFAULT_RESULTS_DIR = os.path.join(REPO, "Results")
 
+# ``model_palette`` repeats colours from the 21st entry on (two full wraps of the base hues), and
+# the 21st model of the union — GPT-5.5-Pro — would take a darkened blue right next to
+# MedVision-V0's blue on the SAME pilot radar. Pin it to a hue no palette entry uses.
+MODEL_COLOR_OVERRIDES = {"GPT-5.5-Pro": "#C2185B"}
+
 # One entry per task section on the project page. ``metrics`` are the selectable spoke metrics;
 # ``higher_better=False`` means the browser inverts the radius (outer ring = best).
 TASKS = {
@@ -91,14 +98,20 @@ TASKS = {
             {"key": "avgMRE", "label": "MRE", "higher_better": False, "default": True},
         ],
     },
-    # Pilot study: MedVision-V0 vs frontier API models (Claude-Fable-5, Gemini-3.1-Pro) on the
-    # limit100 T/L subset (750 samples). Same shape as TL — clinical-target spokes, MRE — just a
-    # 3-model set with its own summary filename. task_type "TL" so miscellaneous/others are excluded.
+    # Pilot study: MedVision-V0 vs frontier API models (Claude-Fable-5, Gemini-3.1-Pro,
+    # GPT-5.5-Pro) on the limit100 T/L subset (750 samples). Same shape as TL — clinical-target
+    # spokes, MRE — just its own model set and summary filename. task_type "TL" so
+    # miscellaneous/others are excluded. GPT-5.5-Pro's run stopped at 490 samples (API budget), so
+    # its summary lacks two targets: spokes are the UNION here and the missing targets become null
+    # cells (gaps) instead of the intersection silently dropping those spokes for every model. A
+    # target it only PARTLY covers (kidney tumor: KiPA22 only, 100 of 199) is blanked the same way
+    # — a point over a different sample set would not be comparable with the other models'.
     "TL-Pilot": {
         "task_dir": "MedVision-TL-CoT-limit100",
         "config": "config-TL-pilot-CoT.yaml",
         "summary": "summary_metrics_TL_Task_filtered_limit100.json",
         "pin_parsed": True,  # API pilot models have no LLM-judge records — always read parsed/
+        "spokes": "union",
         "min_samples": None,
         "split_ad": False,
         "metrics": [
@@ -170,9 +183,21 @@ def build_task(spec, results_dir, task_type, parsed_dirname):
         task_dir, config_path, summary, metric_keys, spec["min_samples"], task_type, dirname
     )
 
-    # Spokes = sorted intersection of targets across ALL models (faithful to viz_radar).
-    common = set.intersection(*[set(rows.keys()) for rows in frames.values()])
-    common = sorted(common)
+    # Spokes = sorted intersection of targets across ALL models (faithful to viz_radar), or the
+    # union for a task that opted in (TL-Pilot: one model was not run on every target).
+    target_sets = [set(rows.keys()) for rows in frames.values()]
+    if spec.get("spokes") == "union":
+        common = sorted(set.union(*target_sets))
+    else:
+        common = sorted(set.intersection(*target_sets))
+    # Union mode: a model whose sample count on a target falls short of the target's full count
+    # (the max across models) has incomplete coverage there — emit a null cell, like a missing
+    # target, so its point is not read against the others' full-subset points.
+    full_n = {
+        lbl: max(rows[lbl].get("num_samples", 0) for rows in frames.values() if lbl in rows)
+        for lbl in common
+    }
+    partial_ok = spec.get("spokes") != "union"
     if not common:
         sys.exit(f"[radar] {task_type}: no common targets across models.")
 
@@ -201,7 +226,14 @@ def build_task(spec, results_dir, task_type, parsed_dirname):
             rows = frames[display]
             per_spoke = []
             for lbl in labels:
-                row = rows[lbl]
+                row = rows.get(lbl)
+                if row is None:  # union spokes only: target this model was never evaluated on
+                    per_spoke.append({**{k: None for k in metric_keys}, "SR": None, "n": 0})
+                    continue
+                n = int(row.get("num_samples", 0))
+                if not partial_ok and n < full_n[lbl]:  # incomplete coverage: blank, keep n
+                    per_spoke.append({**{k: None for k in metric_keys}, "SR": None, "n": n})
+                    continue
                 cell = {k: _round(row.get(k)) for k in metric_keys}
                 cell["SR"] = _round(row.get("SuccessRate"))
                 cell["n"] = int(row.get("num_samples", 0))
@@ -222,6 +254,8 @@ def emit_js(path, blob):
         "//     metrics:[ {key,label,higher_better,default} ],   // higher_better=false -> radius inverted\n"
         "//     groups:[ { name, spokes:[ {n,name,full,purple} ],\n"
         "//               values:{ '<model name>': [ per-spoke {<metric>..,SR,n} ] } } ] } } }\n"
+        "//   A spoke the model was never evaluated on (TL-Pilot) has null metrics, null SR, n 0;\n"
+        "//   one it covered only partly (n below the spoke's full count) has null metrics, real n.\n"
         "// Radius transform (applied in radar.js, NOT here): r = higher_better ? clamp(v,0,1)\n"
         "//   : 1 - clamp(v,0,1). Stored values are ORIGINAL (avgMRE is a ratio, tooltip shows v*100%).\n"
     )
@@ -273,7 +307,10 @@ def main():
             if name not in union:
                 union.append(name)
     colors = viz_radar.model_palette(len(union))
-    models = [{"name": name, "color": colors[i]} for i, name in enumerate(union)]
+    models = [
+        {"name": name, "color": MODEL_COLOR_OVERRIDES.get(name, colors[i])}
+        for i, name in enumerate(union)
+    ]
 
     blob = {"models": models, "tasks": tasks}
 

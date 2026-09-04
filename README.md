@@ -71,6 +71,8 @@ The live **open leaderboard** (per-task score tables + a **frontier API-model pi
 
 
 # 🔥 News
+- [Sep 1, 2026] Update [paper](https://arxiv.org/abs/2511.18676), [leaderboard](https://medvision-vlm.github.io/), [dataset v1.4.0 blog](https://medvision-vlm.github.io/blog/tl-annotations-v140.html), and [RFT recipe](https://github.com/YongchengYAO/verl)
+
 - [Aug 31, 2026] Released the benchmarking/fine-tuning codebase `medvision_bm` v1.2.0 — [release notes](https://github.com/YongchengYAO/MedVision/blob/master/docs/codebase-release/release-v1.2.0.md)
   <details>
   <summary>Details (Click to expand)</summary>
