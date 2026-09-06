@@ -16,7 +16,7 @@ MedVision is a **meta-dataset**: it layers new annotations on top of many indepe
 
 ## Acknowledgements
 
-This work was supported by UK Research and Innovation (grant **EP/S02431X/1**), through the UKRI Centre for Doctoral Training in Biomedical AI at the University of Edinburgh, School of Informatics.
+This work was supported by UK Research and Innovation (grant **EP/S02431X/1**), through the UKRI Centre for Doctoral Training in Biomedical AI at the University of Edinburgh, School of Informatics. It was also supported by the Edinburgh International Data Facility (EIDF) and the Data-Driven Innovation Programme at the University of Edinburgh.
 
 MedVision builds directly on several open-source projects:
 

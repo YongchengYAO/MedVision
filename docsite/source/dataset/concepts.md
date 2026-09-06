@@ -6,7 +6,7 @@ MedVision is a benchmark built for *quantitative* medical image analysis: instea
 
 ## What MedVision holds
 
-At the data level, MedVision (v1.4.0) consolidates **31 public medical imaging datasets** — including collections such as BraTS24, MSD, and OAIZIB-CM — into a single, uniformly structured resource of **33.2K 3D images** and **12.0 million annotated 2D slices**, carrying — across the three quantitative tasks — **25.7 million single-instance annotations**, or **50.5 million multi-instance annotations** with the per-sample quality/size filters lifted ([what those filters drop](#multi-instance-vs-single-instance-annotations)). Neither figure counts instances: several boxes or clusters of the same target on one slice are one annotation in both. The imaging spans five modalities: X-ray (XR), CT, MRI, ultrasound (US), and PET, across many anatomical regions.
+At the data level, MedVision (v1.4.0) consolidates **31 public medical imaging datasets** — including collections such as BraTS24, MSD, and OAIZIB-CM — into a single, uniformly structured resource of **33.2K 3D images** and **12.0 million annotated 2D slices**, carrying — across the three quantitative tasks — **25.7 million single-instance annotations**, or **50.5 million multi-instance annotations** with the per-sample quality/size filters lifted ([what those filters drop](#multi-instance-vs-single-instance-annotations)). For **Box** and **A/D** neither figure counts instances — several boxes of the same target on one slice are one annotation in both. **T/L is the exception**: the multi-instance T/L figure counts every measured *ellipse* on the slice (`summarize_datasets.py:255`), which is why the v1.4.0 landmark total (3,801,540) is also its multi-instance annotation count. The imaging spans five modalities: X-ray (XR), CT, MRI, ultrasound (US), and PET, across many anatomical regions.
 
 Source images are kept as 3D volumes reoriented to RAS+ (a canonical right-anterior-superior axis convention), which makes plane definitions consistent across datasets that were originally stored with different orientations. Because most vision-language models consume 2D images, MedVision does not ship pre-cut slices: the loader slices volumes to 2D on the fly along any of the three anatomical planes — axial, coronal or sagittal — at load time. This keeps the on-disk footprint tied to the volumes themselves (a full copy is around 1 TB) rather than to an exploded set of PNGs.
 
@@ -20,10 +20,10 @@ MedVision distributes only the annotations. The Hugging Face loader script fetch
 
 Two vocabulary terms do a lot of work throughout the codebase:
 
-- A **dataset** is one of the 30 upstream sources, referenced by its short name (`BraTS24`, `MSD`, `OAIZIB-CM`, …).
+- A **dataset** is one of the 31 upstream sources, referenced by its short name (`BraTS24`, `MSD`, `OAIZIB-CM`, …).
 - A **data config** is a named, ready-to-load subset of MedVision. You pass a config name to select exactly which slices and annotations you get.
 
-Config names follow a fixed five-part convention:
+Config names follow a fixed five-part convention (with one exception, noted below):
 
 ```text
 {dataset}_{annotation-type}_{task-ID}_{slice}_{split}
@@ -36,6 +36,10 @@ Config names follow a fixed five-part convention:
 | `task-ID` | `Task01`, `Task02`, … | a **local** task index within that dataset, not a global MedVision ID |
 | `slice` | `Axial`, `Coronal`, `Sagittal` | slicing plane |
 | `split` | `Train`, `Test` | subject-level split |
+
+The one exception: Ceph-Biometrics-400's landmark-biometry configs insert a `Distance` / `Angle`
+segment after the annotation type, giving a six-part name — e.g.
+`Ceph-Biometrics-400_BiometricsFromLandmarks_Angle_Task01_Sagittal_Test`.
 
 A couple of concrete config names:
 
@@ -52,7 +56,7 @@ The `annotation-type` field selects what the model is asked to produce and, corr
 
 - **`BoxSize`** — bounding-box detection. Each sample lists boxes with pixel-space `min_coords` / `max_coords` / `center_coords` / `dimensions`, plus per-box physical `sizes`. This is the annotation behind the Detection task (metrics: IoU, Precision, Recall, F1, SuccessRate).
 - **`TumorLesionSize`** — the physical extent of a tumour or lesion, reported as major- and minor-axis measurements **in millimetres**. This backs the Tumour/Lesion size task (metrics: MAE, MRE, nMAE, SuccessRate).
-- **`BiometricsFromLandmarks`** — clinical biometrics computed from anatomical landmarks: **angles in degrees and distances in millimetres**. This backs the Angle/Distance task (metrics: MAE, MRE), with a `biometric_profile` carrying the metric type, value, and unit.
+- **`BiometricsFromLandmarks`** — clinical biometrics computed from anatomical landmarks: **angles in degrees and distances in millimetres**. This backs the Angle/Distance task (metrics: MAE, MRE, nMAE, SuccessRate), with a `biometric_profile` carrying the metric type, value, and unit.
 - **`MaskSize`** — segmentation-mask area, exposed via a `ROI_area` field alongside pixel and voxel geometry.
 
 Every sample, regardless of type, also carries the geometry needed to interpret it: `image_size_2d`, `pixel_size` (per-axis, 2D), `image_size_3d`, `voxel_size` (per-axis, 3D), and the slice locator (`slice_dim`, `slice_idx`).
@@ -69,12 +73,15 @@ A benchmark sample is a *(2D slice, target)* pair, counted **per target, not per
 | **Box** — detection | the slice has **more than one** box for the target (`len(bounding_boxes) > 1`), **or** its only box is **< 10 px** on either side |
 | **T/L** — tumor / lesion size | the target mask has **more than one** connected component on the slice (`n_total_clusters > 1`) — counting **all** components, including ones too small to have been measured (see the note below); v1.0.0 plans lack `n_total_clusters`, so there the fallback is more than one *measured* component (`len(biometric_profile) > 1`) |
 | **A/D** — biometrics (angle / distance) | *never dropped* — every angle and distance sample is kept (the loader only splits them by `metric_type`) |
+| **MaskSize** — area (not benchmarked) | the mask covers fewer than **200 pixels** on the slice |
 
 :::{note}
 **T/L has a second, earlier filter that affects both sets.** When the T/L annotations are generated, an ellipse is fitted to each connected component of the target mask on a slice — but components too small to measure are skipped and never recorded. What "too small" means depends on the annotation version:
 
 - **v1.4.0 (current)** — a component is measured only when its fitted ellipse's **major axis** clears a physical floor: `max(2.0 mm, 2 × the coarser in-plane spacing)` of the plane being measured. This is a *resolution* floor, not a clinical one — it is stated in millimetres because a pixel count is not a physical size: sagittal and coronal slices are reconstructed across the slice axis, so the same pixel count spans very different physical extents on different planes. The ellipse fit itself is additionally guarded against degenerate results (a contour under 5 points, a non-finite fit, a minor axis thinner than one voxel, or a major axis over 1.5× the cluster's own bounding-box diagonal are all rejected).
-- **v1.3.0 and earlier** — a raw **pixel-count** threshold: components under **20 pixels** (10 for LIDC-IDRI) were skipped, and a containment gate additionally discarded well-fitted but *rotated* ellipses. Replacing these two rules is what grew the published T/L landmarks 50× in v1.4.0 (75,840 → 3,801,540 across the 12 T/L datasets); see the [v1.4.0 release note](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.4.0.md) and the [per-dataset impact](statistics.md#v140-regenerated-tl-annotations).
+- **v1.1.0 – v1.3.0** — a raw **pixel-count** threshold: components under **20 pixels** (10 for LIDC-IDRI) were skipped (v1.0.0 used a **200-pixel** threshold, lowered to 20 in v1.1.0), and an `all_within` containment gate additionally discarded well-fitted but *rotated* ellipses.
+
+Removing the containment gate — not the lower floor — accounts for most of the v1.4.0 growth, because it discarded well-fitted but rotated ellipses regardless of size. Replacing the two rules grew T/L **landmarks** 50× (75,840 → 3,801,540 across the 12 T/L datasets) and published **single-instance samples** 20× (47,725 → 966,189); the two differ because the default single-cluster filter still drops multi-cluster slices. See the [v1.4.0 release note](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.4.0.md) and the [per-dataset impact](statistics.md#v140-regenerated-tl-annotations).
 
 Two consequences, in every version:
 

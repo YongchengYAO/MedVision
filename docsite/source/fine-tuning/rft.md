@@ -44,7 +44,9 @@ The `script/rft/` directory ships ready-to-run wrappers around this call — eac
 
 ### Builder variants
 
-Three modules share the same CLI surface; pick by dataset size and intent:
+Four modules share a common CLI core — the `__checkpointed` variants add `--shard_size`, and the
+`_with_testset` variants add `--test_sample_limit*` and `--train_sample_limit_per_subset`. Pick by
+dataset size and intent:
 
 - `medvision_bm.rft.verl.build_parquet_ds` — the default. Loads, formats, and writes each task in one pass.
 - `medvision_bm.rft.verl.build_parquet_ds__checkpointed` — writes intermediate shards so a run can survive an out-of-memory kill and resume. Use it for the very large detection splits (the ~1M-sample script above relies on it).
@@ -59,7 +61,8 @@ Three modules share the same CLI surface; pick by dataset size and intent:
 | `--model_hf` | Hugging Face id used to load that processor. |
 | `--tasks_list_json_path_AD` / `_detect` / `_TL` | One task-list JSON per task type. Supply one, two, or all three; missing ones are skipped. |
 | `--train_sample_limit_task_AD` / `_Detection` / `_TL` (+ `val_` twins) | Per-task caps applied while each task is loaded (`-1` = no limit). |
-| `--train_sample_limit` / `--val_sample_limit` | Global caps applied after the tasks are concatenated. Keep these equal to the sum of the per-task limits so nothing is silently truncated. |
+| `--train_sample_limit` / `--val_sample_limit` | Global caps applied after the tasks are concatenated. Keep these equal to the sum of the per-task limits: a smaller value silently truncates, and a **larger** one silently oversamples **with replacement** (seeded bootstrap from `SEED`). |
+| `--shard_size` | Checkpointed builders only (default `50000`). Training rows per shard — the main lever on peak RAM. |
 | `--new_shape_hw H W` | Resize target as height then width (e.g. `512 512`); omit to keep native resolution. |
 | `--without_cot_instruction` | Emit the lite (no reasoning-format) prompt. **Deprecated** — the intended pipeline is SFT-CoT followed by RFT, so keeping the CoT instruction avoids a train-time distribution shift. |
 
@@ -119,3 +122,9 @@ Each recipe takes the dataset directory from `DATASET_ROOT` and the base model f
 ## After training
 
 Point the standard benchmark pipeline at the fine-tuned checkpoint, exactly as you would for any other model — see [Running evaluations](../benchmarking/running-evaluations.md). The `script/benchmark-*/` drivers include an `eval__MedVision-V0-7B__detect.sh` example for scoring an RFT'd detection model.
+
+A verl checkpoint saved through PEFT/LoRA still carries wrapper prefixes in its safetensors keys. Strip them first:
+
+```bash
+python -m medvision_bm.rft.verl.patch_layer_name --model_dir <ckpt> [--push_to_hub --repo_id <id>]
+```

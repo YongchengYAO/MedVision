@@ -35,6 +35,25 @@
 
 <br/>
 
+## 📑 Table of Contents
+
+- [🏆 Benchmarked Models](#-benchmarked-models)
+- [🔥 News](#-news)
+- [🌟 Quick Start](#-quick-start)
+- [🐳 Use Docker](#-use-docker)
+- [💿 Data](#-data)
+- [📊 Benchmark](#-benchmark)
+- [🎯 Training: SFT](#-training-sft)
+- [🎯 Training: RFT](#-training-rft)
+- [📚 New Tasks/Models Guide](#-new-tasksmodels-guide)
+- [🤖 Agent Skills](#-agent-skills)
+- [📖 Essential Dataset Concept](#-essential-dataset-concept)
+- [💿 Batch Download (Optional)](#-batch-download-optional)
+- [📜 License](#-license)
+- [🩵 Acknowledgement](#-acknowledgement)
+
+<br/>
+
 # 🏆 Benchmarked Models
 
 This codebase supports open-weight VLMs and API models. The leaderboard published full scores for 18 VLMs, evaluated with MedVision dataset `v1.0.0-v1.1.1` and 1000-sample-per-subtask. Pilot study include scored for API models with the same dataset but with 100-sample-per-subtask.
@@ -251,7 +270,7 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
    pip show medvision_bm
 
    # Install the latest medvision_ds
-   python -m medvision_bm.benchmark.install_medvision_ds --data_dir ./Data
+   mvbm install mvds -d Data
    pip show medvision_ds
    ```
 > [!TIP]
@@ -867,8 +886,7 @@ The regex parser in step 2 only accepts answers written inside `<answer>…</ans
   - **Equation accuracy** (`equation-accuracy/analyze_equation_accuracy_TL.py`, `equation-accuracy/analyze_equation_accuracy_AD.py`): arithmetic correctness independent of ground truth — extracts the equation the model wrote, evaluates it in Python, and computes MRE between that result and the model's own reported answer.
   - **Detection × target size** (`detection--target-size/run_analysis.sh`): detection metrics (F1, IoU, etc.) stratified by box-to-image ratio, revealing performance trends across small, medium, and large targets.
   - **Clinical Decision Agreement (CDA)** (`clinical-decision-analysis/run_CDA_analysis.sh`): asks whether a measurement error would change the *clinical decision* — each prediction and its ground truth are pushed through a published cutoff table into a clinical category, and agreement is scored with Cohen's / weighted kappa. Re-reads existing `parsed/` records only: no re-inference, no GPU, seconds per model. Check the [CDA pipeline](https://github.com/YongchengYAO/MedVision/tree/master/script/analyze/clinical-decision-analysis).
-  - **Ablation: Segmentation Specialist** Evaludate and fine-tune [BiomedParse v2](https://github.com/microsoft/BiomedParse) on our dataset ([`script/ablation/biomedparse`](script/ablation/biomedparse)) 
-
+  - **Compare with Segmentation Specialist** ([`script/ablation/biomedparse`](script/ablation/biomedparse)): Evaludate and fine-tune [BiomedParse v2](https://github.com/microsoft/BiomedParse) on our dataset 
 - **[Troubleshooting]** [here](https://github.com/YongchengYAO/MedVision/tree/master/docs/debug_env_setup.md)
 
 <br/>
@@ -934,6 +952,99 @@ RL fine-tuning uses the verl framework. MedVision provides **parquet dataset bui
 ## 🖼️ Model Image Processing
 
 For the quantitative tasks (TL/AD), the image size and pixel size stated in each prompt must match the resolution the model's vision encoder actually perceives after its internal resize. [Model image processing](https://github.com/YongchengYAO/MedVision/blob/master/docs/Model-Image-Processing.md) documents the per-model strategy (fixed perceived size, dynamic processor probe, or API resize formula), with code references, validation status, and known caveats for every supported model.
+
+<br/>
+
+# 🤖 Agent Skills
+
+MedVision ships **Agent Skills** — plain-Markdown instructions that teach an AI coding agent how to operate this repository. They live in [`skills/`](https://github.com/YongchengYAO/MedVision/tree/master/skills) and use the cross-harness `<name>/SKILL.md` layout, so the same files work in Claude Code, Codex, OpenCode and Pi.
+
+## Installation
+
+Every harness discovers skills at `<skills-root>/<name>/SKILL.md`. Codex, OpenCode and Pi all read the shared `~/.agents/skills` root; Claude Code reads `~/.claude/skills`. Pick your root and link the three skills:
+
+```bash
+git clone https://github.com/YongchengYAO/MedVision.git && cd MedVision
+
+SKILLS_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills"   # Claude Code
+# SKILLS_ROOT=~/.agents/skills                             # Codex · OpenCode · Pi (shared root)
+# SKILLS_ROOT=~/.config/opencode/skills                    # OpenCode (native root)
+# SKILLS_ROOT=~/.pi/agent/skills                           # Pi (native root)
+
+mkdir -p "$SKILLS_ROOT"
+for s in medvision medvision-paper medvision-pipeline; do
+  ln -s "$PWD/skills/$s" "$SKILLS_ROOT/$s"    # use `cp -r skills/$s "$SKILLS_ROOT/$s"` to pin a copy
+done
+```
+
+To scope the skills to this checkout only, link them into the project instead — `.claude/skills/` for Claude Code, `.agents/skills/` for Codex, OpenCode and Pi:
+
+```bash
+mkdir -p .claude/skills
+for s in medvision medvision-paper medvision-pipeline; do
+  ln -s "../../skills/$s" ".claude/skills/$s"
+done
+```
+
+Restart the agent afterwards so it re-scans the skills root.
+
+| Skill | Invoke | Answers |
+| --- | --- | --- |
+| `medvision-paper` | automatic | Paper facts: dataset scale, annotation rules, metric definitions, the MedVision-V0 recipe, the evaluated VLM roster |
+| `medvision-pipeline` | automatic | The benchmark pipeline end to end, dataset download, environment setup, where the SFT launchers live |
+| `medvision` | `/medvision` | Deep reference: 10 sub-skills covering every flag, launcher, version pin and failure mode |
+
+> [!NOTE]
+> `medvision` sets `disable-model-invocation: true`, so Claude Code and Pi load it only when you type `/medvision`. OpenCode ignores that field and will advertise it automatically.
+
+## Understand the paper: `/medvision-paper`
+
+Ask about the technical details behind the benchmark and get the paper's own definitions rather than a guess:
+
+```
+/medvision-paper  How are tumor/lesion sizes annotated, and which ellipse fits are discarded?
+/medvision-paper  What is nMAE, how does it differ from MRE, and what is the denominator?
+/medvision-paper  What data and hyperparameters produced MedVision-V0?
+```
+
+It is the source of truth for terminology and scale numbers — annotation-generation rules, the real-world-units convention (annotations are mm and degrees, never pixels), metric definitions, the 70/30 subject-level split, and the SFT/RFT recipe.
+
+## Run the benchmark: `/medvision-pipeline`
+
+Describe the run you want and the skill returns the ordered steps with the right module names and flags:
+
+```
+/medvision-pipeline  Evaluate Qwen-2.5-VL on the T/L task, then parse and summarize the results.
+```
+
+The pipeline it walks you through:
+
+```bash
+# 1 — evaluate (or use a launcher in script/benchmark-{detect,TL,AD}/)
+python -m medvision_bm.benchmark.eval__qwen2_5_vl --task_type TL ...
+
+# 2 — parse model outputs into structured predictions
+python -m medvision_bm.benchmark.parse_outputs --task_type TL --task_dir <dir> --model_dir <dir>
+
+# 3 — summarize into metrics
+python -m medvision_bm.benchmark.summarize_TL_task --task_dir <dir>
+
+# 4 — optional: re-parse with the LLM judge for format-robust extraction
+bash script/llm-parsing/run_llm_parsing.sh
+```
+
+Use it the same way for dataset download, environment setup and the SFT launchers.
+
+## Go deeper: `/medvision`
+
+For maintainer-level work — the exact flag, pin or failure mode — the repo skill routes to one of ten sub-skills (`environment-setup`, `dataset-and-tasks`, `benchmark-evaluation`, `results-parsing-and-metrics`, `llm-judge-parsing`, `sft`, `rft`, `analysis`, `extending-models-and-tasks`, `biomedparse-ablation`):
+
+```
+/medvision  How do I add a new model across every site that needs registering?
+/medvision  Why did my detection run OOM while building the plan?
+```
+
+See [`skills/README.md`](https://github.com/YongchengYAO/MedVision/blob/master/skills/README.md) for the routing map, the 39 bundled helper scripts, and how to use the skills as documentation without installing anything.
 
 <br/>
 
@@ -1489,15 +1600,15 @@ ds = load_dataset(
     | :----------------------------------------------------- | :-------- | :------ |
     | reuse_dataset_if_exists (default)                      | Reuse     | Reuse   |
     | reuse_cache_if_exists                                  | Reuse     | Fresh   |
-    | force_redownload (MedVision_FORCE_DOWNLOAD_DATA=False) | Reuse     | Fresh   |
-    | force_redownload (MedVision_FORCE_DOWNLOAD_DATA=True)  | Fresh     | Fresh   |
+    | force_redownload (`MedVision_FORCE_DOWNLOAD_DATA=False`) | Reuse     | Fresh   |
+    | force_redownload (`MedVision_FORCE_DOWNLOAD_DATA=True`)  | Fresh     | Fresh   |
 </details>
 
 🔥 Summary: [Understanding the download mode of MedVision dataset](https://github.com/YongchengYAO/MedVision/issues/11)
 
 <br/>
 
-# 💿 Data Downloading (Optional)
+# 💿 Batch Download (Optional)
 
 > 📚 **Read the Docs:** [Loading data → batch download](https://medvision.readthedocs.io/en/latest/dataset/loading.html) · [CLI reference](https://medvision.readthedocs.io/en/latest/reference/cli.html)
 
@@ -1517,12 +1628,10 @@ Since data downloading and processing take time, you can download datasets from 
 > The QC figures are review material — nothing in the loader reads them, and no task needs them — but they are ~99% of the annotation payload (**298 GB of PNG against 3 GB of annotation**). Until v1.4.0 they shipped inside `Datasets/<dataset>.zip`, which pushed `BraTS24.zip` to 72.6 GB and `MSD.zip` to 51.4 GB — past Hugging Face's 50 GB per-file limit, a hard publish failure. Since v1.4.0 they ship in their own archives: `Datasets/<dataset>_fig.zip`, or `Datasets/<dataset>_fig.partNN.zip` where a single archive would again clear 50 GB.
 >
 > Set the variable to `True` and the figures are restored to **exactly** the paths they occupied before v1.4.0 — the archives carry the same arcnames, so nothing is relocated. Details worth knowing:
-> - The download is checked on **every** load, not only on a first build, so setting the flag on a machine whose annotations are already present still fetches the figures.
-> - **Only the figures are fetched when the data is already there.** The flag does not re-trigger the image, landmark or planner download: whether those are fetched stays step 3's (data loader's step 3) decision, so on a machine that already holds a dataset, setting the flag costs the figure archives and nothing else.
-> - **Figure state is tracked per annotation version, not as a yes/no.** `.downloaded_datasets.json` records `"qc_figures_<dataset>": "1.4.0"` — the biometry annotation version the figures belong to, since figures are generated with the biometry plans and their directories carry that version (`Landmarks-Label2-fig-v1.4.0`). A release that regenerates a dataset's biometry raises the version, so its figures are re-fetched; a release that leaves the dataset alone does not, so nothing is re-pulled.
-> - **Figures already on disk are not re-downloaded.** When the tracker has no usable version — an install made before v1.4.0 already holds every figure, since back then they came inside `Datasets/<dataset>.zip`, yet ran no figure download to record it — the directory itself is read instead, and the version found there is written back. Without that, every such machine would re-pull the full set to overwrite files already in place.
-> - Roughly half the datasets publish no figures at all; the attempt is recorded either way so a figure-less dataset does not re-query the Hub on every load. `MedVision_FORCE_DOWNLOAD_DATA=True` is the way to retry later, and it is also what forces figures already on disk to be fetched again.
-> - Shards are independent zips (not `zip -s` volumes), so they extract in any order and a missing one costs only its own figures.
+> - **Checked on every load.** Setting the flag on a machine whose annotations are already present still fetches the figures — and *only* the figures: the image, landmark and planner downloads stay step 3's decision, so nothing else is re-pulled.
+> - **Tracked per annotation version.** `.downloaded_datasets.json` records `"qc_figures_<dataset>": "1.4.0"` — the biometry version the figures belong to. A release that regenerates a dataset's biometry re-fetches its figures; a release that leaves it alone does not.
+> - **Never re-downloads what is already on disk.** With no usable recorded version — any pre-v1.4.0 install already holds every figure — the directory itself is read and its version written back. Datasets that publish no figures (roughly half) record the attempt too, so they do not re-query the Hub on every load.
+> - **Retry with `MedVision_FORCE_DOWNLOAD_DATA=True`**, which also forces figures already on disk to be fetched again. Shards are independent zips (not `zip -s` volumes), so they extract in any order and a missing one costs only its own figures.
 
 > [!TIP]
 > Command: 

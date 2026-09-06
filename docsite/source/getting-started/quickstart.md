@@ -79,8 +79,9 @@ python -m medvision_bm.benchmark.summarize_AD_task \
     -p 8
 ```
 
-This produces a **per-anatomy summary** (CSV and JSON) reporting mean MAE and MRE
-for the model. Add `--skip_model_wo_parsed_files` to ignore any model folders
+This produces a **per-anatomy summary** reporting mean MAE and MRE for the model: two
+JSON files per model (`summary_metrics_AD_Task.json`, `summary_values_AD_Task.json`) plus a
+task-level `summary_AD_task.txt` report. Add `--skip_model_wo_parsed_files` to ignore any model folders
 that were never parsed.
 
 :::{tip}

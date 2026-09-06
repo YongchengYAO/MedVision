@@ -9,7 +9,9 @@ build:
 
 sphinx:
   configuration: docsite/source/conf.py
-  # Surface broken cross-references / autodoc import failures as build errors.
+  # Warnings (broken cross-references, autodoc import failures) are deliberately
+  # non-fatal: the build must still publish when an optional dep cannot be mocked.
+  # Flip to true once the build is warning-clean.
   fail_on_warning: false
 
 python:

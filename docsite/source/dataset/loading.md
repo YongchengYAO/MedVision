@@ -43,7 +43,7 @@ Requesting any single config pulls the raw imaging data for that source dataset 
 | Value | Resolves to |
 |-------|-------------|
 | `latest` | the newest release (currently `1.4.0`) |
-| a pinned version — `1.0.0` through `1.4.0` | that exact annotation release |
+| a pinned version — `1.0.0` through `1.4.0` | a **ceiling**, not an exact selection: each dataset/plan-kind loads the newest annotation published at or before this version |
 
 Different planner versions can change the exact set and framing of samples, so keep this value fixed across a benchmark to stay reproducible.
 
@@ -96,6 +96,9 @@ Six details are worth knowing:
 To fetch many datasets ahead of time (data downloading and building is slow), use the CLI instead of scripting `load_dataset()` calls by hand:
 
 ```bash
+# The CLI sets no default -- the loader hard-fails without this (see "Planner version" above):
+export MedVision_PLANNER_VERSION=latest
+
 # From a task-list JSON (keys are task names):
 python -m medvision_bm.benchmark.download_datasets \
   --tasks_json <task-list.json> \
@@ -103,15 +106,15 @@ python -m medvision_bm.benchmark.download_datasets \
 
 # ...or from a configs CSV (config names in the first column):
 python -m medvision_bm.benchmark.download_datasets \
-  --configs_csv dataset-info/dataset-configs/v1.0.0-v1.1.1/ConfigurationsList_Test.csv \
+  --configs_csv dataset-info/dataset-configs/v1.4.0/ConfigurationsList_Test.csv \
   --data_dir <data-folder>
 ```
 
 Arguments:
 
 - `--data_dir` — **required**; the folder that becomes `MedVision_DATA_DIR` (datasets and the fetched dataset source code land here).
-- `--tasks_json` — path to a task-list JSON; its top-level keys are read as task names (the same format used under `tasks_list/`).
-- `--configs_csv` — path to a CSV whose first column lists config names. Ready-made lists ship in [`dataset-info/dataset-configs/v1.0.0-v1.1.1/`](https://github.com/YongchengYAO/MedVision/tree/master/dataset-info/dataset-configs/v1.0.0-v1.1.1): `ConfigurationsList_All.csv`, `ConfigurationsList_Test.csv`, and `ConfigurationsList_Train.csv`.
+- `--tasks_json` — path to a task-list JSON; its top-level keys are read as task names (the same format used under `tasks_list/`). Note the **eval** lists there — `tasks_MedVision-{detect,TL,AD}-CoT.json` — carry a `-CoT` suffix on every key that this CLI does not strip, so they resolve to nonexistent configs; pass a `__train_SFT` list or a `dataset-info` config CSV instead.
+- `--configs_csv` — path to a CSV whose first column lists config names. Ready-made lists ship per annotation version in [`dataset-info/dataset-configs/`](https://github.com/YongchengYAO/MedVision/tree/master/dataset-info/dataset-configs) — `v1.0.0-v1.1.1/`, `v1.2.0/`, `v1.3.0/` and `v1.4.0/`, each holding `ConfigurationsList_All.csv`, `ConfigurationsList_Test.csv` and `ConfigurationsList_Train.csv`. Use the directory matching the version you pin; `v1.0.0-v1.1.1` covers 22 datasets / 818 configs, `v1.4.0` covers 31 / 1002.
 - `--split` — `test` (default) or `train`; controls which split of each task/config is requested.
 - `--force_download_data` — store-true flag that forces re-download of the raw imaging data.
 
@@ -152,7 +155,7 @@ ds = load_dataset(
 )
 ```
 
-Note that the CLI's `--force_download_data` maps to `MedVision_FORCE_DOWNLOAD_DATA`; it forces the builder to run and re-fetch raw data for every requested item.
+Note that the CLI's `--force_download_data` only sets `MedVision_FORCE_DOWNLOAD_DATA=true`; it does **not** pass `download_mode`, so for any config that already has a valid Arrow cache the builder is skipped and the flag has no effect. It re-fetches raw data only when the builder actually rund re-fetch raw data for every requested item.
 
 ## Restricted source datasets
 
@@ -183,4 +186,4 @@ export MedVision_ToothFairy2_HF_ID=<your-user>/<your-private-repo>
 
 Step-by-step preparation guides live on the dataset card: [restricted datasets overview](https://huggingface.co/datasets/YongchengYAO/MedVision#datasets), [prepare SKM-TEA](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/dataset_skm-tea.md), [prepare ToothFairy2](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/dataset_toothfairy2.md).
 
-Without these, requesting a config from a restricted dataset will fail at download time. The other 19 datasets need no credentials.
+Without these, requesting a config from a restricted dataset will fail at download time. The other 28 datasets need no credentials, though AbdomenAtlas1.0Mini is a gated Hugging Face repo whose terms must be accepted with the same `HF_TOKEN`.

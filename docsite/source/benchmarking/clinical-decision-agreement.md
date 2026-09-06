@@ -59,7 +59,9 @@ REMOVED_SAMPLES_DIR=$PWD/Data/Datasets bash script/analyze/clinical-decision-ana
 ```
 
 That runs the analysis, the uncertainty pass and the report over the canonical
-result directories. The headline output is `CDA_REPORT.md` in the script's
+result directories. The roster and display names come from `config-AD-CoT.yaml` /
+`config-TL-CoT.yaml`, which the wrapper always passes: a model not listed there is
+not reported, and a listed folder that is missing aborts the run. The headline output is `CDA_REPORT.md` in the script's
 folder — every leaderboard, with confidence intervals, in one Markdown file.
 All CDA outputs are generated, never checked in; the pipeline reads `Results/`
 and `Data/`, both gitignored, so a bare clone cannot reproduce the numbers.
@@ -101,8 +103,9 @@ for the per-script invocations and the flag pairings they require.
 ## Reading the output
 
 Start with `CDA_REPORT.md`. The per-task `.txt` reports underneath it carry the
-per-model detail (full confusion matrices, per-dataset breakdowns) the final
-report leaves out. Columns you will see:
+per-model detail the final report leaves out — the per-proxy overall block and the
+per-dataset breakdown. Full confusion matrices are not in the `.txt`; they live in each
+model's `<parsed-dir>/summary_metrics_CDA_Task.json`. Columns you will see:
 
 - **Acc** — fraction of parsed samples landing in the right category.
 - **Kappa / wKappa** — chance-corrected agreement: 0 is "no better than guessing

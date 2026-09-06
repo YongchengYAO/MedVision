@@ -15,6 +15,13 @@ Before starting, it helps to understand what a sample actually contains — see
 [Dataset concepts](../dataset/concepts.md). If you are wiring up a new *model*
 rather than a new task, go to [Adding a new model](add-a-model.md) instead.
 
+:::{important}
+A new task YAML is not run by anything until its `task:` name is registered in a roster JSON
+under `tasks_list/` — `tasks_MedVision-{detect,TL,AD}-CoT.json`, the `__train_SFT.json` twins, or
+a file under `tasks_list/OOD/`. The eval drivers only run the names listed there, via
+`--tasks_list_json_path`. Do this last, after the YAML loads cleanly.
+:::
+
 ## Folder layout
 
 Every dataset gets its own folder under the harness task tree:
@@ -34,7 +41,7 @@ src/medvision_bm/medvision_lmms_eval/lmms_eval/tasks/
 Two YAML layers keep things DRY:
 
 - **Base config** (`<dataset>_<task_type>_base-CoT.yaml`) holds everything shared
-  across variants of the same task type: `dataset_path` (the HF ID, always
+  across variants of the same task type: `dataset_path` (the HF ID, normally
   `YongchengYAO/MedVision`), `output_type: generate_until`, the four hook
   bindings, and the `metric_list`. It pulls in the shared kwargs and metadata via
   `include:`.
@@ -42,7 +49,9 @@ Two YAML layers keep things DRY:
   `include:`s the base config and sets just `task:` (the unique task ID) and
   `dataset_name:` (the concrete HF subset/split to load).
 
-The per-dataset `utils.py` is a thin shim: it imports the real implementations
+The per-dataset `utils.py` is a thin shim. The preprocessing modules it binds come from the
+companion **`medvision_ds`** package (`medvision_ds.datasets.<Dataset>` — `preprocess_detection`,
+`preprocess_biometry`, `preprocess_segmentation`), not from this repository's task tree. It imports the real implementations
 from `medvision_utils.py` and, for the factory-style prompt builders, binds the
 dataset's own preprocessing module. YAML `!function utils.<name>` references
 resolve against that file.
@@ -60,19 +69,24 @@ Each base YAML binds four hooks (plus the metric aggregators). All live in
   of factories, for example: `create_doc_to_text_BoxCoordinate_CoT` 
   for detection; `create_doc_to_text_TumorLesionSize_CoT` 
   for size.
-- **`doc_to_target`** — returns the ground-truth string for the sample
-  (`doc_to_target_BoxCoordinate`, `doc_to_target_TumorLesionSize`,
-  `doc_to_target_BiometricsFromLandmarks`, `doc_to_target_MaskSize`).
+- **`doc_to_target`** — returns the ground-truth **value(s)** for the sample, not a formatted
+  string: a list of four relative box coordinates for detection, a `[major, minor]` pair for
+  size, and a scalar for angle/distance and area (`doc_to_target_BoxCoordinate`,
+  `doc_to_target_TumorLesionSize`, `doc_to_target_BiometricsFromLandmarks`,
+  `doc_to_target_MaskSize`).
 - **`process_results`** — parses the model's raw generation and computes the
   per-sample metrics (`process_results_BoxCoordinate`,
-  `process_results_TumorLesionSize`, `process_results_BiometricsFromLandmarks`).
+  `process_results_TumorLesionSize`, `process_results_BiometricsFromLandmarks`,
+  `process_results_MaskSize`).
 
 The `metric_list` then names aggregators that reduce the per-sample values across
 the split, e.g. `aggregate_results_MAE`, `aggregate_results_MRE`,
 `aggregate_results_avgMAE`, `aggregate_results_avgMRE`,
 `aggregate_results_SuccessRate`, and `aggregate_results_NMAE`. Pick the ones that
-match the task: detection uses the `avgMAE` / `avgMRE` / `SuccessRate` family,
-while the metric-geometry tasks use `MAE` / `MRE` (and `NMAE` for size).
+match the task: detection **and** Tumour/Lesion size use the `avgMAE` / `avgMRE` /
+`SuccessRate` family, while Angle/Distance (`BiometricsFromLandmarks`) uses `MAE` / `MRE` /
+`SuccessRate`. `nMAE` (aggregator `aggregate_results_NMAE`) is declared in both the TL and the
+AD base configs.
 
 ## Task-type labels and naming
 

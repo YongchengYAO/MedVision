@@ -10,7 +10,7 @@ Three task families are graded, each with its own annotation type and its own no
 | --- | --- | --- | --- |
 | Detection | `BoxCoordinate` | 4 box corner values | IoU, Precision, Recall, F1, SuccessRate |
 | Tumour/Lesion size (TL) | `TumorLesionSize` | major + minor axis (mm) | MAE, MRE, nMAE, SuccessRate |
-| Angle/Distance (AD) | `BiometricsFromLandmarks` | one scalar (degrees or mm) | MAE, MRE, SuccessRate |
+| Angle/Distance (AD) | `BiometricsFromLandmarks` | one scalar (degrees or mm) | MAE, MRE, nMAE (distances only), SuccessRate |
 
 Because the answer is a physical quantity, a model can only score well if it (a) understands the image, (b) reasons about the geometry, and (c) converts pixels to physical units correctly.
 
@@ -38,7 +38,10 @@ All per-sample metrics are computed at parse time; the summarizers then aggregat
 
 [SuccessRate]{.mv-accent}. The fraction of samples whose prediction was parseable and had the right shape. This is the model's basic instruction-following / output-format score, independent of numeric accuracy, and every failed parse lowers it.
 
-**Detection** — [IoU, Precision, Recall, F1]{.mv-accent}. These overlap metrics compare the predicted box to the ground-truth box. A prediction that fails to parse into 4 numbers is **scored as 0**, not dropped: the denominator is always the full sample count, so a model cannot inflate its overlap scores by emitting unparseable answers on hard cases. (The detection `avgMAE` on the raw corner values is also computed as a secondary diagnostic; there a failed parse is `NaN`-excluded, exactly the way the measurement tasks handle MAE below. Overlap is the primary signal.)
+**Detection** — [IoU, Precision, Recall, F1]{.mv-accent}. These overlap metrics compare the predicted box to the ground-truth box. A prediction that fails to parse into 4 numbers is **scored as 0**, not dropped: the denominator is always the full sample count, so a model cannot inflate its overlap scores by emitting unparseable answers on hard cases. (The detection `avgMAE` on the raw corner values is also computed as a secondary diagnostic; there a failed parse is `NaN`-excluded, exactly the way the measurement tasks handle MAE below. Overlap is the primary signal.) The summarizer also emits a COCO-style hit-rate grid,
+[Acc@IoU>=k]{.mv-accent} for k = 0.50, 0.55, … 0.95 and the swept mean
+[Acc@IoU[0.50:0.95]]{.mv-accent} — the fraction of samples clearing each IoU threshold, again over the
+full sample count, so a failed parse (IoU 0) counts as a miss at every threshold.
 
 **TL / AD** — [MAE, MRE, and nMAE]{.mv-accent}. For the measurement tasks the error is reported in physical units:
 

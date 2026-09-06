@@ -13,7 +13,8 @@ find the answer wherever it was written. You end up with two versions of every
 report: the published one, and a format-robust one. The gap between them is how
 much of a model's apparent failure was formatting.
 
-Across the 18-model roster the regex rejects a substantial, non-random slice:
+Across the paper's 18-model roster — the now-retired reader — the regex rejected a
+substantial, non-random slice:
 
 | Task | Responses | Rejected by the regex | Worst model |
 | --- | --: | --: | --- |
@@ -21,9 +22,15 @@ Across the 18-model roster the regex rejects a substantial, non-random slice:
 | Angle/Distance | 37,080 | 26.2% | Qwen2.5-VL-32B, 90.8% |
 | Detection | 415,278 | 6.6% | GLM-4.6V, 40.0% |
 
-Measured effect of the re-parse: T/L success 77.0% → 89.7%, A/D 73.8% → 90.1%,
-Detection 93.4% → 98.4%. Llama-3.2-11B's T/L success goes from 14.5% to 97.9% —
-almost all of its "failure" was formatting.
+Measured effect of the re-parse on that roster: T/L success 77.0% → 89.7%, A/D 73.8% →
+90.1%, Detection 93.4% → 98.4%.
+
+The shipped pipeline now runs a **19-model roster** through the `gemma-4-31b` reader
+(522,868 responses): T/L 82.6% → 94.8%, A/D 80.1% → 94.2%, Detection 92.3% → 98.5%, over
+46,379 / 39,140 / 437,349 responses (strict-regex rejection 17.4% / 19.9% / 7.7%). See
+`script/llm-parsing/DESIGN.md` §13 for the full snapshot and §13.1 for the retired reader.
+Llama-3.2-11B's T/L success still goes from 14.5% to 97.9% — almost all of its "failure"
+was formatting.
 
 ## What the judge does — and is not allowed to do
 
@@ -51,10 +58,11 @@ but **not scored**.
 
 ## What you get
 
-Re-parsed records land in a sibling `llm-parsed/` folder next to each model's
-`parsed/`; the original `parsed/` files are never touched. Summary reports gain
-a `__llm-parsed` suffix so they sit beside the published ones instead of
-overwriting them.
+Re-parsed records land in a sibling `llm-parsed_<reader>/` folder (e.g.
+`llm-parsed_gemma-4-31b/`) next to each model's `parsed/`; the original `parsed/` files are
+never touched. The directory is always reader-suffixed — a bare `llm-parsed/` is never
+produced. Summary reports gain a matching `__llm-parsed_<reader>` suffix so they sit beside
+the published ones instead of overwriting them.
 
 Every record carries one of four outcomes:
 
@@ -65,8 +73,8 @@ Every record carries one of four outcomes:
 | no answer stated | the response never gives one (declined, or stopped early) | no |
 | undetermined | the judge was unusable **and** the regex failed | no |
 
-"Undetermined" is the pipeline's own error rate (currently ≈ 0.4% of all
-responses) — recoveries that were never attempted, so the reported improvement
+"Undetermined" is the pipeline's own error rate (≈0.6% of all responses for the current
+`gemma-4-31b` reader; ≈0.4% for the paper's retired reader) — recoveries that were never attempted, so the reported improvement
 is a floor, not a ceiling. Each recovered record also keeps the quoted sentence,
 so any recovered number can be checked by eye.
 
@@ -74,10 +82,12 @@ so any recovered number can be checked by eye.
 
 The pipeline lives in `script/llm-parsing/` and runs in four resumable stages:
 build per-task work queues from the model roster, sweep them on GPU with offline
-vLLM, verify spans and merge into `llm-parsed/`, then report. The judge reader
+vLLM, verify spans and merge into `llm-parsed_<reader>/`, then report. The judge reader
 comes from a registry; the current (and only) entry is
 [`google/gemma-4-31B-it`](https://huggingface.co/google/gemma-4-31B-it) —
-~62 GB of bf16 weights, run with 2 GPUs per process.
+~62 GB of bf16 weights. Its registry entry recommends 2 GPUs per process, but the driver
+forces `TP=1` unless you set `TP` (`GPU_NUM` only adds shards — it never widens one), so a default run loads the whole reader onto
+one card — which leaves little KV cache, and OOMs below 80 GB.
 
 ### 1. Build the judge environment
 
@@ -115,13 +125,16 @@ environment variables; the ones you are most likely to touch:
 | `PYTHON` | interpreter with the judge's PyTorch + vLLM (from step 1) |
 | `JUDGE` | which registered reader to use (default `gemma-4-31b`) |
 | `TASKS` | default `TL AD Detection` |
-| `TP` | GPUs one judge process spans (default per reader; 2 for gemma-4-31b) |
-| `NUM_SHARDS` | independent processes (default: visible GPUs ÷ `TP`) |
+| `TP` | GPUs one judge process spans. Default **1** (single GPU), overriding the reader's registry value of 2; raise it only to fit the weights |
+| `NUM_SHARDS` | independent judge processes. Default **1** |
+| `GPU_NUM` | total GPUs to use; derives `NUM_SHARDS = GPU_NUM / TP` (must divide evenly) — the one knob for spreading over more cards |
+| `TASK_DIR_<task>` / `ROSTER_YAML_<task>` | re-point one task at a different Results tree / roster YAML — how the OOD splits are judged |
 | `MOCK=1` | exercise the whole pipeline on CPU with a stand-in — never report its numbers |
 
-Every visible GPU is used: the work list is split across independent processes
-(cheap, near-linear speedup) and each process spans the fewest GPUs the model
-fits in (expensive tensor parallelism, capacity not speed). Rough cost on two
+The defaults are single-GPU (`TP=1`, `NUM_SHARDS=1`). Set `GPU_NUM` to spread the
+work: the list is split across `NUM_SHARDS` independent processes (cheap,
+near-linear speedup) and each process spans `TP` GPUs (expensive tensor
+parallelism, capacity not speed). Rough cost on two
 H100s: a one-off model download, minutes of CPU preparation, ~13 hours of GPU
 for the full sweep, and ~1 hour of CPU for the reports.
 
@@ -144,7 +157,7 @@ two flags, so the strict and format-robust columns share one code path:
 python -m medvision_bm.benchmark.summarize_TL_task \
     --task_dir Results/MedVision-TL-v2-CoT -p 32 --skip_model_wo_parsed_files \
     --removed_samples_dir Data/Datasets \
-    --parsed_dirname llm-parsed --resps_key LLM_filtered_resps
+    --parsed_dirname llm-parsed_gemma-4-31b --resps_key LLM_filtered_resps
 ```
 
 | Flag | Meaning |
@@ -159,7 +172,7 @@ aggregate by hand.
 ## Reading the results
 
 Two reports per task land side by side — the published one and its
-`__llm-parsed` twin. Diff them. The judge report additionally splits each
+`__llm-parsed_<reader>` twin. Diff them. The judge report additionally splits each
 model's failures into *wrong format* vs *no answer given*, and reports how often
 the judge agreed with the regex on responses the regex could already read — a
 free reliability check, which is why every response is re-read rather than only
@@ -168,8 +181,9 @@ the failures.
 :::{warning}
 Judge output is **not reproducible run to run**, even with greedy decoding on
 identical hardware — the cause is numerical non-determinism in the inference
-stack, not sampling. Treat the saved `judge-out_*.jsonl` files as the artefact
-of record: release those, don't re-run and expect the same rows back. The full
+stack, not sampling. The pinned vLLM 0.19.0 does ship a batch-invariance switch
+(`VLLM_BATCH_INVARIANT=1`) that the pipeline deliberately leaves off, at a throughput
+cost. Treat the saved `judge-out_*.jsonl` files as the artefact of record: release those, don't re-run and expect the same rows back. The full
 root-cause analysis is in
 [`docs/LLM-Judge-Reproducibility.md`](https://github.com/YongchengYAO/MedVision/blob/master/docs/LLM-Judge-Reproducibility.md)
 (measured on a since-retired reader; its headline rates do not transfer to the

@@ -67,7 +67,7 @@ The base model's own license and usage terms (Qwen2.5-VL) also apply; see
 The model is trained on the **[MedVision](https://huggingface.co/datasets/YongchengYAO/MedVision)** dataset (v1.0.0),
 a large-scale, multi-anatomy, multi-modality medical imaging dataset with quantitative annotations:
 
-- **30.8 million** image–annotation pairs aggregated from **22 public datasets**.
+- **29.0K** 3D images, **11.2M** annotated 2D slices and **24.3M** single-instance annotations (45.3M multi-instance) aggregated from **22 public datasets**.
 - Modalities: **CT, MRI, X-ray, ultrasound (US), PET** — restricted to modalities that carry
   physical spacing (pixel size) information in their file headers, which is essential for
   generating ground-truth real-world measurements.

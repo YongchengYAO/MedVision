@@ -9,7 +9,7 @@ This page is an orientation — the exhaustive, code-level guides live in the re
 - [`docs/Model-Image-Processing.md`](https://github.com/YongchengYAO/MedVision/blob/master/docs/Model-Image-Processing.md) — the per-model image-processing recipes.
 :::
 
-Five things change when you add a model. Each is covered below at a high level, followed by a checklist.
+Six things change when you add a model. Each is covered below at a high level, followed by a checklist.
 
 ## 1. The model registry
 
@@ -43,7 +43,7 @@ The list is deliberately explicit. Keys that are commented out (`qwen2_5_vl`, `i
 
 ## 2. The `generate_until()` contract
 
-Each model subclasses the framework's `lmms` base and must implement:
+Each model subclasses the framework's `lmms` base, an ABC with **three** `@abc.abstractmethod`s — `loglikelihood`, `generate_until` and `generate_until_multi_round` (`lmms_eval/api/model.py`). All three must be defined; MedVision's wrappers give `generate_until` the real implementation and stub the other two with `raise NotImplementedError`. The one that matters:
 
 ```python
 def generate_until(self, requests) -> List[str]:
@@ -54,7 +54,7 @@ It receives a batch of request objects — each carrying the assembled prompt, t
 
 ## 3. Perceived image size (the essential part)
 
-The two quantitative tasks — Tumour/Lesion size and Angle/Distance — write the image size and pixel spacing *into the prompt* and ask the model to convert pixels to millimetres itself. Those numbers must describe the image **after the model's own internal resize**, not the raw slice. Detection is exempt: it asks for relative `[0, 1]` coordinates and never touches this logic.
+The pixel-unit tasks — Tumour/Lesion size, Angle/Distance and the preview MaskSize (area) tasks — write the image size and pixel spacing *into the prompt* and ask the model to convert pixels to millimetres itself. Those numbers must describe the image **after the model's own internal resize**, not the raw slice. Detection is exempt: it asks for relative `[0, 1]` coordinates and never touches this logic.
 
 The single entry point is `get_resized_img_shape()` in `lmms_eval/tasks/medvision/medvision_utils.py`:
 
@@ -84,8 +84,12 @@ The eval driver and shell launcher assemble those flags for you, so the wiring f
 ```text
 eval__<model>.sh   →   eval__<model>.py   →   evaluator.py   →   get_resized_img_shape()
  (--model_name,          (--model,              (injects
-  --model_hf_id)          --model_args)          model_name, model_hf)
+  --model_hf_id *)        --model_args)          model_name, model_hf)
 ```
+
+\* Local/vLLM drivers take `--model_name --model_hf_id`. The four API drivers take
+`--model_name` plus a provider-specific code instead: `--anthropic_model_code`,
+`--google_model_code`, `--openai_model_code`, `--kimi_model_code`.
 
 The shared `tasks/medvision/lmms_eval_specific_kwargs.yaml` only needs an explicit block when a model wants parameters *beyond* `model_name`/`model_hf` — for example, HealthGPT also passes its base/vision checkpoints and HLoRA settings there.
 
@@ -103,7 +107,7 @@ Providers that **pad** the canvas (Claude, Kimi, OpenAI patch models) skew every
 
 Two more pieces make the model runnable end to end:
 
-- **Eval driver** — `src/medvision_bm/benchmark/eval__<model>.py`, mirroring an existing one (`eval__gemini.py` for API models, `eval__qwen3_vl.py` for vLLM). It turns the launcher's flags into the `python -m medvision_bm.benchmark.eval__<model>` invocation. Per-task shell launchers go under `script/benchmark-{detect,TL,AD}/`.
+- **Eval driver** — `src/medvision_bm/benchmark/eval__<model>.py`, mirroring an existing one (`eval__gemini.py` for API models, `eval__qwen3_vl.py` for vLLM). The shell launcher is what invokes `python -m medvision_bm.benchmark.eval__<model>`; the driver in turn turns those flags into a `python3 -m lmms_eval --model <key> --model_args ... --tasks <task>` subprocess, one per task. Per-task shell launchers go under `script/benchmark-{detect,TL,AD}/`.
 - **Dependencies** — a per-model pin file at `requirements/requirements_eval_<model>.txt`, plus the matching extras group under `[project.optional-dependencies]` in `medvision_lmms_eval/pyproject.toml`. Version pins matter: several models need a specific `transformers` (and, for vLLM models, a specific vLLM) or the framework import fails outright.
 
 ## Checklist

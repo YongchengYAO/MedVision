@@ -25,7 +25,7 @@ try:
     version = _version
     release = _version
 except Exception:  # pragma: no cover - version is best-effort
-    version = release = "1.1.1"
+    version = release = "1.2.0"
 
 # -- General configuration ----------------------------------------------------
 extensions = [
@@ -38,7 +38,6 @@ extensions = [
     "sphinx_design",
 ]
 
-templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # MyST (Markdown) extensions used across the docs.

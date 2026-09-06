@@ -29,6 +29,7 @@ Results/<task_tag>/<model>/parsed/
     <task_id>_results.json            # run summary updated with avgMAE / avgMRE / avgIoU / SuccessRate
     summary_metrics_<task>_Task.json  # aggregated metrics per anatomy label (written by summarize)
     summary_values_<task>_Task.json   # raw targets + predictions per group (written by summarize)
+    summary_metrics_anatomy_vs_lesion_detect_Task.json   # Detection only: the anatomy vs T/L split
 Results/<task_tag>/
     summary_<task>_task.txt           # formatted per-model tables printed to console + saved here
 ```
@@ -41,6 +42,10 @@ python -m medvision_bm.benchmark.parse_outputs \
     --task_dir Results/MedVision-detect-v2 \
     -p 32
 ```
+
+> The `-v2*` trees on this page are the authors' canonical result directories. The shipped launchers
+> write `Results/MedVision-{detect,TL,AD}-CoT` (all 72 set those `task_tag`s), so `--task_dir` must
+> match whichever tree your run actually produced.
 
 Point `--task_dir` at a task folder and every model subfolder under it is processed in turn. (You can
 instead target one model with `--model_dir <path>`; exactly one of the two is required.)
@@ -92,7 +97,7 @@ Shared flags across all three:
 | Flag | Meaning |
 | --- | --- |
 | `--task_dir <dir>` / `--model_dir <dir>` | Aggregate every model under a task tag, or a single model. One is required. |
-| `-p`, `--processes <N>` | Parallelize the per-label metric computation. |
+| `-p`, `--processes <N>` | Worker processes: per-label metric computation for A/D and T/L, per-file record loading for Detection. |
 | `--limit <N>` | Match a limited parse run; also suffixes output filenames with `_limit<N>`. |
 | `--skip_model_wo_parsed_files` | Ignore model folders that were never parsed. Valid only with `--task_dir`. |
 
@@ -122,7 +127,7 @@ you must drop those samples at summarize time:
 With this set, the summarizer looks for `multi_cluster_samples_v1.0.0_to_v1.1.0.json` inside each
 dataset folder under that root (override the filename with `--removed_samples_filename`) and skips any
 matching sample. The resulting output files gain a `_filtered` suffix so they never overwrite an
-unfiltered run. This flag exists only on `summarize_TL_task`.
+unfiltered run. Of the three benchmark summarizers, only `summarize_TL_task` takes this flag (the CDA suite has its own equivalent).
 
 :::{warning}
 Omitting `--removed_samples_dir` for T/L silently includes the multi-cluster samples and yields numbers

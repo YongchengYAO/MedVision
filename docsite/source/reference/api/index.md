@@ -77,6 +77,11 @@ those packages are not installed on the docs builder.
 :::
 ::::
 
+Two importable modules are deliberately **not** documented here: `medvision_bm.utils.plan_utils`
+(`find_plan_files`, `plan_version_of`, `resolve_plan_path`, `load_benchmark_plan` — the annotation-version
+*ceiling* resolution every dataset caller depends on) and `medvision_bm.dataset.ds_utils` (the parquet
+split/limit loaders). Read their docstrings in the source until pages exist.
+
 ```{toctree}
 :hidden:
 :maxdepth: 1

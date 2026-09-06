@@ -74,12 +74,14 @@ pip show medvision_ds
 
 ```bash
 python -m medvision_bm.benchmark.install_medvision_ds --data_dir ./Data
+# or the console script that `pip install` puts on PATH:
+mvbm install mvds -d ./Data
 ```
 
 :::{note}
 This installs the base `medvision_ds`, which is everything benchmarking and training need — the loader downloads each dataset's preprocessed release from Hugging Face.
 
-Rebuilding a dataset from its *original* sources is a separate path. Those are the `download_raw.py` scripts under `medvision_ds/datasets/`, and they need the `raw` extra:
+Rebuilding a dataset from its *original* sources is a separate path. Those are the `download_raw.py` scripts under `medvision_ds/datasets/`. Only the two DICOM-based ones — LIDC-IDRI and LNQ2023 — need the `raw` extra:
 
 ```bash
 pip install "medvision_ds[raw]"
@@ -96,7 +98,17 @@ python -m medvision_bm.benchmark.env_setup \
     --data_dir ./Data
 ```
 
-`env_setup` also accepts `--cuda_version` (default `12.4`), `--vllm_version` (default `0.10.0`), and `--lmms_eval_opt_deps` for optional `lmms_eval` extras. In practice you rarely call it directly — the per-model launchers under `script/benchmark-*/` invoke it for you with the right arguments.
+`env_setup` also accepts `--cuda_version` (default `12.4`), `--vllm_version` (default `0.10.0`), and `--lmms_eval_opt_deps` for optional `lmms_eval` extras. It is what the published Docker images run at build time (`dockerfile/Dockerfile.eval_*`).
+
+The launchers under `script/benchmark-*/` do **not** call `env_setup`. They run the equivalent steps by hand and then pass `--skip_env_setup` to the eval driver — this order is load-bearing, so keep it:
+
+```bash
+python -m medvision_bm.benchmark.install_medvision_ds --data_dir ./Data
+python -m medvision_bm.benchmark.install_vendored_lmms_eval --lmms_eval_opt_deps qwen2_5_vl
+pip install -r requirements/requirements_eval_qwen25vl.txt --no-deps
+```
+
+`install_vendored_lmms_eval` installs the `lmms_eval` fork shipped inside `medvision_bm`; `--lmms_eval_opt_deps` selects the model's optional-dependency group.
 
 :::{tip}
 The benchmark and SFT/RFT launcher scripts run the dataset install and environment setup as their first steps, so if you go through those scripts you usually do not need to run these commands by hand.

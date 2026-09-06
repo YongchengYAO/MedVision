@@ -80,7 +80,7 @@ latex2sympy2==1.9.1
 lazy-loader==0.5
 liger_kernel==0.8.0
 # Editable install with no version control (lmms_eval==0.3.0)
--e /home/vincent/Documents/Tools/miniconda3/envs/sft-medgemma/lib/python3.11/site-packages/medvision_bm/medvision_lmms_eval
+# medvision_lmms_eval: installed by `medvision_bm.sft.env_setup` (install_vendored_lmms_eval)
 loguru==0.7.3
 lxml==6.1.1
 Markdown==3.10.2
@@ -89,8 +89,8 @@ MarkupSafe==3.0.3
 matplotlib==3.11.0
 mbstrdecoder==1.1.5
 mdurl==0.1.2
-medvision_bm @ file:///tmp/medvision_build.T7N3e5/wh/medvision_bm-1.1.1.dev0-py3-none-any.whl#sha256=8b4f8be2ecdc0f6533444f6c06278a5a52b6f434bf7f7a0ee4f69a66f5b202b4
-medvision_ds @ file:///mnt/vincent-pvc-rwm/Github/MedVision/Data/src/wheels/medvision_ds-1.1.1-py3-none-any.whl#sha256=62a7cb055c53143430ba41048b058b3415e52e9d0f950a59f14a92392fc6bec5
+# medvision_bm: built and installed from the checkout by the launcher before this file is used
+# medvision_ds: installed by `medvision_bm.sft.env_setup` (install_medvision_ds --data_dir)
 mpmath==1.3.0
 msgpack==1.2.1
 multidict==6.7.1

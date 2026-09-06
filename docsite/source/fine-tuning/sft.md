@@ -10,7 +10,7 @@ This page assumes the package and data are already in place. See [Installation](
 
 ## The three recipes
 
-`script/sft/` ships three ready-to-run scripts, all training the same 121K-sample multi-task mix (110K Detection + 5.5K Angle/Distance + 5.5K Tumour/Lesion):
+`script/sft/` ships three ready-to-run **Qwen2.5-VL-7B reference recipes** (of 21 launchers in total), all training the same 121K-sample multi-task mix (110K Detection + 5.5K Angle/Distance + 5.5K Tumour/Lesion):
 
 | Script | Method | Resolution | Launcher |
 |---|---|---|---|
@@ -18,7 +18,7 @@ This page assumes the package and data are already in place. See [Installation](
 | `train__SFT-CoT__Qwen2.5VL7B__D110k-AD5.5k-TL5.5k__512x512.sh` | LoRA adapters | 512×512 | DDP |
 | `train__fullSFT-CoT__Qwen2.5VL7B__D110k-AD5.5k-TL5.5k__512x512.sh` | full-parameter | 512×512 | FSDP `FULL_SHARD` |
 
-The LoRA scripts train adapters on a frozen backbone and launch with plain DistributedDataParallel. The full-parameter script updates every weight; at 7B that does not fit in DDP on 80 GB GPUs (weights + gradients + FP32 AdamW state ≈ 84 GB/GPU before activations), so it shards optimizer state, gradients, and parameters across GPUs with FSDP.
+The LoRA scripts are **QLoRA**: the base model is loaded in 4-bit NF4 with double quantization and frozen, and adapters (`r=16`, `alpha=32`, `dropout=0.05`, `target_modules="all-linear"`, plus `modules_to_save=["lm_head", "embed_tokens"]`) train on top, launched with plain DistributedDataParallel. The LoRA learning rate is `2e-4`; full-parameter runs use `2e-5`, overridable with the `MEDVISION_SFT_LR` environment variable. The full-parameter script updates every weight; at 7B that does not fit in DDP on 80 GB GPUs (weights + gradients + FP32 AdamW state ≈ 84 GB/GPU before activations), so it shards optimizer state, gradients, and parameters across GPUs with FSDP.
 
 The `__512x512` variants add `--new_shape_hw 512 512`, which resizes each slice during dataset preparation and re-derives the physical pixel size for that resolution. Because measurement tasks depend on knowing the real millimetre-per-pixel scale, the prompt's pixel size always matches the resolution the model actually perceives — the 512×512 full SFT recipe is the one behind the released MedVision-V0 checkpoints.
 
@@ -65,9 +65,13 @@ python -m medvision_bm.sft.train__SFT-CoT__qwen2_5_vl \
     ...   # task lists + sample limits (see below)
 ```
 
-The prepared dataset lands in `--prepared_ds_dir`, defaulting to a path derived from the per-task limits, e.g. `<data_dir>/tmp_prepared_ds_AD5500_D110000_TL5500_all121000`.
+The prepared dataset lands in `--prepared_ds_dir`. Left unset, it defaults to
+`<data_dir>/SFT-CoT_datasets/<model_family_name>/ds__AD<n>_D<n>_TL<n>_all<n><suffix>` — for the run above,
+`<data_dir>/SFT-CoT_datasets/qwen25vl/ds__AD5500_D110000_TL5500_all121000__resized-wh-512x512`.
+Each `<n>` is the requested cap when that limit is set, otherwise the true post-split row count, and
+`<suffix>` is `__resized-wh-<W>x<H>` with `--new_shape_hw` or `__original` without it.
 
-**Phase 2 — training (GPU, distributed).** Launched under `accelerate` with `--skip_process_dataset true` so it loads the cached dataset instead of rebuilding it.
+**Phase 2 — training (GPU, distributed).** Launched under `accelerate` with `--skip_process_dataset true` so it loads the cached dataset instead of rebuilding it. Phase 2 must be told **where** that cache is: the prep run prints `Prepared dataset saved at '<dir>'`, and the shipped launchers tee that output to a log, `sed` the path out of it, and pass it back as `--prepared_ds_dir`. Omit it and training re-runs the whole load-and-split stage.
 
 LoRA uses a plain DDP launch:
 
@@ -77,6 +81,7 @@ accelerate launch --num_processes=4 --main_process_port=29502 --mixed_precision=
     -m medvision_bm.sft.train__SFT-CoT__qwen2_5_vl \
     --skip_process_dataset true \
     --process_dataset_only false \
+    --prepared_ds_dir ${prepared_ds_dir} \
     ...
 ```
 
@@ -95,6 +100,7 @@ accelerate launch --num_processes=4 --main_process_port=29502 --mixed_precision=
     --fsdp_sync_module_states true \
     -m medvision_bm.sft.train__fullFT-CoT__qwen2_5_vl \
     --skip_process_dataset true \
+    --prepared_ds_dir ${prepared_ds_dir} \
     ...
 ```
 
@@ -112,12 +118,12 @@ Tasks enter training as task-list JSONs, one flag per task; supply at least one,
 --tasks_list_json_path_TL     tasks_list/tasks_MedVision-TL__train_SFT.json
 ```
 
-Global caps `--train_sample_limit` and `--val_sample_limit` are always required. On top of them you pick one of two balancing strategies:
+Global caps `--train_sample_limit` and `--val_sample_limit` are both **optional**: unset or `-1` means no total train cap, and `--val_sample_limit` defaults to 100. Only `0` is rejected as ambiguous. (What *is* required is at least one `--tasks_list_json_path_*`.) On top of them you pick one of two balancing strategies:
 
 - **Balanced** — `--train_sample_limit_per_task` / `--val_sample_limit_per_task` spread the budget roughly evenly across the three tasks.
 - **Per-task** (the shipped setting) — `--train_sample_limit_task_AD`, `--train_sample_limit_task_Detection`, `--train_sample_limit_task_TL` (and their `--val_...` counterparts) set exact counts, e.g. 5.5K / 110K / 5.5K.
 
-If a limit exceeds the available samples for a task, it is a no-op: the pool is capped at what is available and never oversampled or repeated. (The only with-replacement oversampling is the optional temperature sampler, enabled with `--enable_temperature_sampler`, which rebalances the multi-task mix by task frequency and is independent of these limits.)
+This no-op rule applies to the **per-task** limits only: if one exceeds the samples available for its task, the pool is capped at what is available and never oversampled. The **global** caps behave differently — a `--train_sample_limit` / `--val_sample_limit` larger than the combined pool bootstrap-resamples **with replacement** (seeded from `SEED`), so it can duplicate rows to reach the requested count. The optional temperature sampler (`--enable_temperature_sampler`) is a third, independent mechanism that rebalances the multi-task mix by task frequency.
 
 ## Key hyperparameters
 
@@ -131,7 +137,7 @@ These are the knobs the scripts expose most often; they map straight to `SFTConf
 | `--gradient_checkpointing` | trade compute for memory | `true` (required for full-FT at 7B) |
 | `--use_flash_attention_2` | FlashAttention-2 kernels | `true` |
 | `--new_shape_hw <H> <W>` | resize + rescale pixel size in prep | `512 512` for the 512 recipes |
-| `--save_steps` / `--eval_steps` / `--logging_steps` | checkpoint / eval / log cadence | `100 / 100 / 50` |
+| `--save_steps` / `--eval_steps` / `--logging_steps` | checkpoint / eval / log cadence | `100 / 100 / 50` (the two Qwen2.5-VL-7B LoRA reference recipes); `100 / 100 / 20` (the other 19 launchers). The other rows in this table are the three Qwen2.5-VL-7B reference recipes' values — other families differ (e.g. `--use_flash_attention_2 false` in the six Gemma-4-31B and six MedGemma-27B launchers) |
 | `--save_total_limit` | max retained checkpoints | `10` |
 | `--resume_from_checkpoint` | resume the same `run_name` | `true` |
 
@@ -218,7 +224,7 @@ The LoRA drivers can merge the trained adapter back into the base model and push
 | `--push_LoRA true` | upload the LoRA adapter after each save |
 | `--merge_only true` | skip training; merge and push the last existing checkpoint |
 
-The full-parameter driver writes complete model checkpoints directly, so it has no merge/push options (its `--lora_checkpoint_dir` argument is reinterpreted internally as the plain checkpoint directory).
+The full-parameter driver writes complete model checkpoints directly, so the **merge** options above (`--merge_model`, `--merged_model_*`, `--merge_only`) do not apply to it — but it does reuse `--push_LoRA` as the push-to-Hub switch for the full checkpoint. Its `--lora_checkpoint_dir` argument is reinterpreted internally as the plain checkpoint directory.
 
 :::{warning}
 Merging a LoRA adapter into the base weights can slightly degrade measurement accuracy versus serving base + adapter. Keep the unmerged adapter around if you care about the last decimal.
@@ -226,7 +232,9 @@ Merging a LoRA adapter into the base weights can slightly degrade measurement ac
 
 ## Entry points and other model families
 
-CoT drivers ship for four families, each with a LoRA and a full-parameter module under `medvision_bm.sft`:
+CoT drivers ship for four families, each with a LoRA and a full-parameter module under `medvision_bm.sft`
+(two further drivers sit outside this table: `train__SFT__qwen2_5_vl`, the non-CoT variant, and
+`train__qwen25vl_AD_TL_tooluse`, the tool-use/function-calling driver whose prompts live in `sft_prompts_tooluse`):
 
 | Family (`--model_family_name`) | LoRA driver | Full-parameter driver |
 |---|---|---|

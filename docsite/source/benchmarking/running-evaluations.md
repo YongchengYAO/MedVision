@@ -2,7 +2,7 @@
 
 This page covers the first step of the benchmark pipeline: producing per-sample model outputs. Evaluation is the only step that needs a GPU (for open-weight models) or an API key (for hosted models); once outputs exist on disk, [parsing and summarizing](parsing-and-summarizing.md) run on CPU. For the bigger picture of the three-step flow, see the [benchmarking overview](overview.md).
 
-Every model has a launcher shell script under `script/benchmark-AD/`, `script/benchmark-TL/`, or `script/benchmark-detect/` (one directory per task family). Each launcher wraps a single Python entry point, `python -m medvision_bm.benchmark.eval__<model>`. The launcher exists to prepare an isolated environment and pass the right flags; the entry point does the actual work.
+Every model has a launcher shell script under `script/benchmark-AD/`, `script/benchmark-TL/`, or `script/benchmark-detect/` (one directory per task family). A fourth set covers the out-of-distribution splits: `script/ablation/OOD/eval__MedVision-V0-7B__{TL,detect}__{plane,task}OOD.sh`, driven by the task lists in `tasks_list/OOD/` (ablation task lists live in `tasks_list/experimental/`). Each launcher wraps a single Python entry point, `python -m medvision_bm.benchmark.eval__<model>`. The launcher exists to prepare an isolated environment and pass the right flags; the entry point does the actual work.
 
 ## The launcher skeleton
 
@@ -12,14 +12,14 @@ Open-weight and API launchers share the same shape. Reading one top-to-bottom is
 
 2. **Build and install `medvision_bm` from source.** The launcher copies the packaging inputs (`pyproject.toml`, `src/`, and the other files the wheel needs) into a private temporary directory, builds the wheel there, and force-reinstalls it. Building in a private temp dir — rather than in the shared repo checkout — avoids an intermittent setuptools build failure on networked storage; a `flock` serializes the install into the shared conda env.
 
-3. **Pin the dataset contract.** Two exports are set before anything touches the data:
+3. **Pin the dataset contract.** Every launcher exports the planner version before anything touches the data; the 24 T/L launchers and the 4 OOD launchers additionally export the release acknowledgement (release 1.4.0 regenerated only the tumour/lesion annotations, so only they need it):
 
    ```bash
-   export MedVision_PLANNER_VERSION='1.0.0'
-   export MedVision_ACK_RELEASE='1.4.0'
+   export MedVision_PLANNER_VERSION='1.0.0'   # every launcher (the 2 T/L OOD launchers pin '1.1.1')
+   export MedVision_ACK_RELEASE='1.4.0'      # the 24 T/L launchers + all 4 script/ablation/OOD/ launchers
    ```
 
-   `MedVision_PLANNER_VERSION` selects which released version of the dataset planner (i.e., annotations) the run evaluates. `MedVision_ACK_RELEASE` is a required acknowledgement whenever you pin the planner below the latest release — its value is always the *current latest* (`1.4.0`), whatever version you pin. See [dataset concepts](../dataset/concepts.md) for what these control.
+   `MedVision_PLANNER_VERSION` selects which released version of the dataset planner (i.e., annotations) the run evaluates, and is exported by all **76** launchers (72 under `script/benchmark-*` plus 4 under `script/ablation/OOD/`; the two T/L OOD launchers pin `1.1.1`). `MedVision_ACK_RELEASE` — set in the 24 `script/benchmark-TL/` launchers and in all 4 OOD launchers — is a required acknowledgement whenever you pin the planner below the latest release — its value is always the *current latest* (`1.4.0`), whatever version you pin. See [dataset concepts](../dataset/concepts.md) for what these control.
 
 4. **Install runtime dependencies.** Three helper entry points do this:
 
@@ -125,7 +125,7 @@ API-specific flags:
 | `--model_name` | Output-directory label, independent of the model code. |
 | `--reasoning_effort` | `low` / `medium` / `high` for reasoning models; omitted entirely when unset, so the provider default applies. |
 | `--max_tokens` | Default max output tokens per request; a per-task value from the task YAML takes precedence. |
-| `--batch_size` | Concurrent requests. |
+| `--batch_size` | Forwarded to the `lmms_eval` harness. It does **not** add request concurrency — no API model class reads it and each `generate_until` issues requests sequentially — so the launchers leave it at 1. |
 
 `--api_provider openai` reads `OPENAI_API_KEY`; `--api_provider openrouter` reads `OPENROUTER_API_KEY`. The entry point fails fast if the relevant key is empty.
 
@@ -322,7 +322,7 @@ python -m medvision_bm.benchmark.eval__meddr \
 :::
 
 :::{dropdown} HuatuoGPT-Vision — `eval__huatuogpt_vision`
-Unique: `--dir_third_party` and `--stop_strings`. This is the only entry point with no `--max_new_tokens` flag.
+Unique: `--dir_third_party` and `--stop_strings`. It does take `--max_new_tokens` (default 4096, raised from the upstream `HuatuoChatbot` default of 512, which truncated CoT responses); the four API entry points are the ones that use `--max_tokens` instead.
 
 ```bash
 python -m medvision_bm.benchmark.eval__huatuogpt_vision \
@@ -330,6 +330,19 @@ python -m medvision_bm.benchmark.eval__huatuogpt_vision \
     --model_name HuatuoGPT-Vision-34B \
     --dir_third_party ./third_party \
     --batch_size_per_gpu 2 --stop_strings '</answer>'
+```
+:::
+
+:::{dropdown} MiniMax-M3 — `eval__minimax_m3`
+Unique: `--cpu_offload_gb` (default `0`) and `--vllm_version` (default `0.11.0`; the MXFP8/INT4 weights need a
+vLLM that registers `minimax_m3_vl`). Serves both `MiniMax-M3` (MXFP8) and `MiniMax-M3-INT4`; the launchers
+create a **Python 3.12** env and raise the budget to 16384 tokens.
+
+```bash
+python -m medvision_bm.benchmark.eval__minimax_m3 \
+    --model_hf_id MiniMaxAI/MiniMax-M3-MXFP8 \
+    --model_name MiniMax-M3 \
+    --max_new_tokens 16384 --stop_strings '</answer>'
 ```
 :::
 

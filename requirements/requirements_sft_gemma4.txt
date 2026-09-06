@@ -80,7 +80,7 @@ kiwisolver==1.5.0
 latex2sympy2==1.9.1
 lazy-loader==0.5
 # Editable install with no version control (lmms_eval==0.3.0)
--e /home/vincent/Documents/Tools/miniconda3/envs/sft-gemma4/lib/python3.11/site-packages/medvision_bm/medvision_lmms_eval
+# medvision_lmms_eval: installed by `medvision_bm.sft.env_setup` (install_vendored_lmms_eval)
 loguru==0.7.3
 lxml==6.1.1
 Markdown==3.10.2
@@ -89,8 +89,8 @@ MarkupSafe==3.0.3
 matplotlib==3.11.0
 mbstrdecoder==1.1.5
 mdurl==0.1.2
-medvision_bm @ file:///tmp/medvision_build.j942DS/wh/medvision_bm-1.1.1-py3-none-any.whl#sha256=b4216e19133c631dc910bf0ad985746d5bb37f091077613c6a2a569a07364294
-medvision_ds @ file:///mnt/vincent-pvc-rwm/Github/MedVision/Data/src/wheels/medvision_ds-1.1.1-py3-none-any.whl#sha256=87765b81f0b9b18654eac0053f86f9a89964534f8f28d010206d4c55032311e6
+# medvision_bm: built and installed from the checkout by the launcher before this file is used
+# medvision_ds: installed by `medvision_bm.sft.env_setup` (install_medvision_ds --data_dir)
 mpmath==1.3.0
 msgpack==1.2.1
 multidict==6.7.1

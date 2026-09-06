@@ -112,9 +112,9 @@ gitignored, so run the pipeline to produce them:
 | `<model>/parsed/summary_metrics_CDA_Task.json` | that model's numbers, machine-readable |
 | `<model>/parsed/summary_values_CDA_Task.json` | one record per sample, for re-analysis |
 
-The `.txt` reports carry per-model detail (full confusion matrices, per-dataset
-breakdowns) that the final report leaves out; go to them when a leaderboard row
-raises a question.
+The `.txt` reports carry per-model detail the final report leaves out — the per-proxy
+overall block and the per-dataset breakdown; go to them when a leaderboard row raises a
+question. Full confusion matrices are only in `summary_metrics_CDA_Task.json`.
 
 A filtered run (`REMOVED_SAMPLES_DIR`) writes a `_filtered` twin of each T/L file
 rather than overwriting it, so both sets can sit side by side. The marker goes

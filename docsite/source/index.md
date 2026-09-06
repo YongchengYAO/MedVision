@@ -70,8 +70,10 @@ Measure an angle (degrees) or distance (mm) between landmarks
 Install the package and run a small evaluation on one task, then aggregate the scores:
 
 ```bash
-# 1. Install from PyPI
-pip install medvision-bm
+# 1. Clone and install. The later steps read tasks_list/, a repo directory that is
+#    NOT shipped in the PyPI wheel (completed_tasks/ is created on first run).
+git clone https://github.com/YongchengYAO/MedVision.git && cd MedVision
+pip install .
 
 # 2. Point the loader at a data directory and pin a dataset version
 export MedVision_DATA_DIR=/path/to/Data

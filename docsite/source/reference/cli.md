@@ -1,15 +1,26 @@
 # Command-line reference
 
-`medvision_bm` ships almost no importable Python API — the top-level package
-exposes only `__version__`. Everything you actually run is an `argparse` entry
-point invoked as a module:
+`medvision_bm` ships almost no importable Python API at the top level — the package
+re-exports only `__version__`; the importable helpers live in submodules (see the
+Python API reference). Almost everything you run is an `argparse` entry point
+invoked as a module:
 
 ```bash
 python -m medvision_bm.<subpackage>.<module> [flags]
 ```
 
-This page is the exhaustive flag reference for every user-facing command,
-grouped by workflow stage. Defaults shown are the argparse defaults baked into
+There is also one console script, installed with the package:
+
+```bash
+mvbm install mvds -d <data_dir>   # alias for python -m medvision_bm.benchmark.install_medvision_ds
+```
+
+This page is the flag reference for the main workflow commands, grouped by
+workflow stage. It is not exhaustive — `medvision_bm` carries roughly 46 argparse
+entry points, and the analysis/visualisation tooling (`utils.configs_to_image_sizes`,
+`benchmark.analyze_detection_task_boxsize*`,
+`benchmark.viz_detection_performance_per_boxImgRatio`, …) is documented alongside the
+`script/` wrappers that drive it. Defaults shown are the argparse defaults baked into
 the source; a blank default means the flag is optional with no default (usually
 `None`) or is required.
 
@@ -50,7 +61,7 @@ Run local-weight vision-language models through vLLM.
 python -m medvision_bm.benchmark.eval__qwen2_5_vl \
   --model_name Qwen2.5-VL-7B-Instruct \
   --model_hf_id Qwen/Qwen2.5-VL-7B-Instruct \
-  --tasks_list_json_path tasks_list/TL.json \
+  --tasks_list_json_path tasks_list/tasks_MedVision-TL-CoT.json \
   --data_dir "$MedVision_DATA_DIR" \
   --results_dir Results/TL \
   --task_status_json_path completed_tasks/TL_qwen25vl.json
@@ -90,7 +101,7 @@ export OPENAI_API_KEY=sk-...
 python -m medvision_bm.benchmark.eval__openai \
   --openai_model_code gpt-5.5 \
   --model_name gpt-5.5 \
-  --tasks_list_json_path tasks_list/Detection.json \
+  --tasks_list_json_path tasks_list/tasks_MedVision-detect-CoT.json \
   --data_dir "$MedVision_DATA_DIR" \
   --results_dir Results/Detection \
   --task_status_json_path completed_tasks/Detection_openai.json
@@ -129,7 +140,7 @@ export ANTHROPIC_API_KEY=sk-ant-...
 python -m medvision_bm.benchmark.eval__claude \
   --anthropic_model_code claude-fable-5 \
   --model_name claude-fable-5 \
-  --tasks_list_json_path tasks_list/AD.json \
+  --tasks_list_json_path tasks_list/tasks_MedVision-AD-CoT.json \
   --data_dir "$MedVision_DATA_DIR" \
   --results_dir Results/AD \
   --task_status_json_path completed_tasks/AD_claude.json
@@ -170,16 +181,22 @@ vLLM / local-weight drivers:
 ```text
 eval__qwen3_vl        eval__gemma3          eval__gemma4
 eval__glm4v           eval__healthgpt       eval__huatuogpt_vision
-eval__intern_vl3      eval__kimi            eval__lingshu
-eval__llama3_2_vision eval__llava_med       eval__llava_onevision
-eval__meddr           eval__medgemma        eval__minimax_m3
+eval__intern_vl3      eval__lingshu         eval__llama3_2_vision
+eval__llava_med       eval__llava_onevision eval__meddr
+eval__medgemma        eval__minimax_m3
 eval__medvision-model-rft
 ```
+
+One further driver, `eval__qwen25vl_tooluse`, does not use the `lmms_eval` shell-out shape the roster
+above shares — it calls vLLM directly. Its flags are `--model_hf_id`, `--lora_path`, `--model_name`,
+`--tasks_list_json_path`, `--results_dir`, `--task_status_json_path`, `--data_dir`, `--sample_limit`,
+`--batch_size`, `--gpu_memory_utilization` and `--max_tokens_*`; it has no `--sample_indices`,
+`--reshape_image_hw`, `--log-sys-prompt`, `--env_setup_only` or `--scaled_ps_*`.
 
 API drivers:
 
 ```text
-eval__openai   eval__claude   eval__gemini
+eval__openai   eval__claude   eval__gemini   eval__kimi
 ```
 
 :::{tip}
@@ -205,7 +222,7 @@ JSON. Exactly one of `--configs_csv` / `--tasks_json` is required.
 ```bash
 python -m medvision_bm.benchmark.download_datasets \
   --data_dir "$MedVision_DATA_DIR" \
-  --tasks_json tasks_list/TL.json --split test
+  --tasks_json tasks_list/tasks_MedVision-TL-CoT.json --split test
 ```
 
 | Flag | Default | Description |
@@ -234,6 +251,8 @@ python -m medvision_bm.benchmark.env_setup \
 | `--lmms_eval_opt_deps` | | Optional-dependency group to install with `lmms_eval` (e.g. a model extra). |
 | `--cuda_version` | `12.4` | CUDA toolkit version to install. |
 | `--vllm_version` | `0.10.0` | vLLM version to install. |
+| `--skip_cuda_toolkit` | off | **store_true** — skip the CUDA toolkit (API-only models with no local GPU inference). |
+| `--skip_vllm` | off | **store_true** — skip installing vLLM (models that do not use it). |
 
 ### `install_medvision_ds`
 
@@ -306,10 +325,14 @@ python -m medvision_bm.benchmark.summarize_AD_task --task_dir Results/AD -p 16
 | `--limit` | `None` | Cap on samples per JSONL file; unset processes all. |
 | `--skip_model_wo_parsed_files` | off | **store_true** — skip models with no `parsed/` folder. Only valid with `--task_dir`. |
 | `-p`, `--processes` | `None` | Worker processes for metric calculation. |
+| `--parsed_dirname` | `parsed` | Per-model subfolder to read; use `llm-parsed_<reader>` for judge output. |
+| `--resps_key` | `filtered_resps` | Response field to score; pair with `LLM_filtered_resps` when reading a judge directory. |
+| `--models` | all | **nargs** — restrict the run to the named model folders. |
 
 :::{note}
 `summarize_*` requires either `--task_dir` or `--model_dir`, and
 `--skip_model_wo_parsed_files` may only be combined with `--task_dir`.
+All three summarizers accept `--parsed_dirname`, `--resps_key` and `--models`.
 :::
 
 ### `summarize_TL_task`
@@ -355,6 +378,23 @@ how these fit together and where the output files land.
 
 ## Fine-tuning (SFT)
 
+### `sft.env_setup`
+
+The environment provisioner the `script/sft/` and `script/rft/` launchers use — a different entry
+point from `benchmark.env_setup` under **Dataset & environment** above, and the more frequently invoked of the two.
+
+```bash
+python -m medvision_bm.sft.env_setup \
+  --data_dir ./Data \
+  -r requirements/requirements_sft_qwen25vl.txt
+```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--data_dir` | **required** | Directory for datasets and dataset code. |
+| `-r`, `--requirement` | | Path to a `requirements.txt`. **Optional here**, unlike `benchmark.env_setup` where it is required. |
+| `--lmms_eval_opt_deps` | | Optional-dependency group to install with `lmms_eval`. |
+
 Supervised fine-tuning drivers live under `medvision_bm.sft` as
 `train__<variant>__<family>` modules (e.g. `train__SFT-CoT__qwen2_5_vl`,
 `train__fullFT-CoT__qwen2_5_vl`). They all parse the same argument surface
@@ -365,7 +405,7 @@ python -m medvision_bm.sft.train__SFT-CoT__qwen2_5_vl \
   --model_family_name qwen2_5_vl \
   --base_model_hf Qwen/Qwen2.5-VL-7B-Instruct \
   --data_dir "$MedVision_DATA_DIR" \
-  --tasks_list_json_path_TL tasks_list/TL.json \
+  --tasks_list_json_path_TL tasks_list/tasks_MedVision-TL__train_SFT.json \
   --run_name my-sft-run
 ```
 
@@ -484,7 +524,7 @@ python -m medvision_bm.rft.verl.build_parquet_ds \
   --model_family_name qwen2_5_vl \
   --model_hf Qwen/Qwen2.5-VL-7B-Instruct \
   --data_dir "$MedVision_DATA_DIR" \
-  --tasks_list_json_path_TL tasks_list/TL.json
+  --tasks_list_json_path_TL tasks_list/tasks_MedVision-TL__train_SFT.json
 ```
 
 | Flag | Default | Description |
@@ -531,7 +571,8 @@ Emit a task-list JSON (task name → sample count) from a config CSV.
 ```bash
 python -m medvision_bm.utils.configs_to_tasks \
   --data_dir "$MedVision_DATA_DIR" \
-  --configs_csv ConfigurationsList_TL.csv \
+  --configs_csv dataset-info/dataset-configs/v1.4.0/ConfigurationsList_All.csv \
+  --families TumorLesionSize \
   --out tasks_list/TL.json
 ```
 
@@ -556,7 +597,8 @@ isotropic/anisotropic rollup, writing a second `__summary` sibling file.
 ```bash
 python -m medvision_bm.utils.configs_to_pixel_sizes \
   --data_dir "$MedVision_DATA_DIR" \
-  --configs_csv ConfigurationsList_TL.csv \
+  --configs_csv dataset-info/dataset-configs/v1.4.0/ConfigurationsList_All.csv \
+  --families TumorLesionSize \
   --out pixel_sizes_TL.json
 ```
 

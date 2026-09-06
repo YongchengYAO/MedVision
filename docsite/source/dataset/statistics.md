@@ -76,7 +76,7 @@ The three quantitative tasks — **Box** (detection), **T/L** (tumor/lesion size
 
 ### v1.4.0: regenerated T/L annotations
 
-**v1.4.0 regenerates the Tumor-Lesion-Size annotations of all 12 T/L datasets.** Clusters are now selected by a physical size floor in millimetres — `max(2.0 mm, 2 × the coarser in-plane spacing)` of the measured plane — instead of a raw pixel count, a gate that silently discarded rotated ellipses is removed, and the ellipse fit is guarded against degenerate results (the method is described under [Dataset concepts](concepts.md#multi-instance-vs-single-instance-annotations)). Published T/L landmarks grow from **75,840 to 3,801,540 (50×)**; every other task and every previously published annotation file is unchanged. Full details are in the [v1.4.0 release note](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.4.0.md).
+**v1.4.0 regenerates the Tumor-Lesion-Size annotations of all 12 T/L datasets.** Clusters are selected by a physical size floor in millimetres — `max(2.0 mm, 2 × the coarser in-plane spacing)` of the measured plane — the `all_within` containment gate — which rejected rotated ellipses whose axis endpoints fell outside a scaled bounding box — is removed (per the release note this removal, not the lower floor, accounts for most of the growth), and the ellipse fit is guarded against degenerate results (the method is described under [Dataset concepts](concepts.md#multi-instance-vs-single-instance-annotations)). Published T/L landmarks grow from **75,840 to 3,801,540 (50×)**; every other task and every previously published annotation file is unchanged. Full details are in the [v1.4.0 release note](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.4.0.md).
 
 Landmarks across all three planes, previous published version → v1.4.0:
 
@@ -99,7 +99,7 @@ Landmarks across all three planes, previous published version → v1.4.0:
 The loader still discards multi-cluster slices, so published sample counts grow by less than the raw landmark counts above.
 
 :::{warning}
-**The train/test split moved on six datasets.** Case counts per split are unchanged, but *which* cases land on each side changes for HNTSMRG24 (47%), KiPA22 (43%), KiTS23 (43%), MSD (42%), autoPET-III (41%) and BraTS24 (41%) — their earlier splits were force-aligned to v1.0.0, and v1.4.0 is their first natural seeded split. Do not compare a v1.4.0 test-set metric against a pre-1.4.0 one on those six datasets, and re-derive any cached split.
+**The train/test split moved on six datasets.** Case counts per split are unchanged — except BraTS24, which gains one case (`BraTS-MET-00232-000`), taking it from 2,121/912 to 2,122/912 — but *which* cases land on each side changes for HNTSMRG24 (43%), KiPA22 (43%), KiTS23 (43%), MSD (42%), autoPET-III (41%) and BraTS24 (41%) — their earlier splits were force-aligned to v1.0.0, and v1.4.0 is their first natural seeded split. Do not compare a v1.4.0 test-set metric against a pre-1.4.0 one on those six datasets, and re-derive any cached split.
 :::
 
 ### Per-version annotation counts
@@ -115,11 +115,11 @@ Each row below sums over the datasets its release contained — 31 for `1.3.0`/`
 | `1.1.0` | 24,292,466 | 45,354,786 |
 | `1.0.0` (leaderboard) | 24,276,501 | 45,314,742 |
 
-Each per-dataset cell reads `total (Box … · T/L … · A/D …)`, and the donut figures show the same split — the outer ring by dataset, the inner ring by task. The figures and counts are generated from the local benchmark plans by [`script/misc/summarize_datasets.sh`](https://github.com/YongchengYAO/MedVision/tree/master/script/misc/summarize_datasets.sh) (source counts also saved as `dataset_summary_filtered.json` / `dataset_summary_raw.json` under each `dataset-info/datasets_summary_v<version>/`).
+Each per-dataset cell reads `total (Box … · T/L … · A/D …)`, and the donut figures split the same totals a different way — the **inner** ring is one wedge per dataset (angle ∝ that dataset's benchmark-annotation count), the **outer** ring that dataset's BoxSize annotations broken down by anatomy sub-label. The figures and counts are generated from the local benchmark plans by [`script/misc/summarize_datasets.sh`](https://github.com/YongchengYAO/MedVision/tree/master/script/misc/summarize_datasets.sh) (source counts also saved as `dataset_summary_filtered.json` / `dataset_summary_raw.json` under each `dataset-info/datasets_summary_v<version>/`).
 
 :::{dropdown} MedVision v1.4.0 (default) — donut + annotation counts
 
-T/L regenerated across all 12 T/L datasets — see [v1.4.0: regenerated T/L annotations](#v1-4-0-regenerated-t-l-annotations) above for what changed and why. Box and A/D counts are carried over from `1.3.0` unmodified.
+T/L regenerated across all 12 T/L datasets — see [v1.4.0: regenerated T/L annotations](#v140-regenerated-tl-annotations) above for what changed and why. Box and A/D counts are carried over from `1.3.0` unmodified.
 
 **Single-instance (filtered)**
 
