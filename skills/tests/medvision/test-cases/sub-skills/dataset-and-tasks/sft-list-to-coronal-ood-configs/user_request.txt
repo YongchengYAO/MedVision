@@ -1,0 +1,3 @@
+I have the T/L SFT training task list and I need the Hugging Face dataset config names for the same
+targets in the coronal plane so I can check what a plane-OOD test split would contain. I am on a
+laptop with no GPU and I do not want to download anything - I just need the names.

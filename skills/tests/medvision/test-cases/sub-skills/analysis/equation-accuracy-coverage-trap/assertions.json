@@ -1,0 +1,21 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "analysis",
+  "target_capability": "equation accuracy coverage semantics",
+  "difficulty": "advanced",
+  "evidence_basis": [
+    "script/analyze/equation-accuracy/analyze_equation_accuracy_TL.py",
+    "unit-test/equation-accuracy/test-1.py"
+  ],
+  "expected_skill_files": [
+    "sub-skills/analysis/references/process-and-equation-accuracy.md",
+    "sub-skills/analysis/references/troubleshooting.md"
+  ],
+  "assertions": [
+    "The response declines to endorse the claim without coverage.",
+    "The response explains that responses without a parseable equation are excluded, not scored as failures.",
+    "The response names the valid-sample and failure counts the analyzer reports.",
+    "The response recommends publishing coverage alongside the mean.",
+    "The response distinguishes arithmetic accuracy from end-to-end measurement accuracy."
+  ]
+}

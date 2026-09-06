@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "repo_id": "YongchengYAO/MedVision",
+  "repo_name": "MedVision",
+  "source_url": "https://github.com/YongchengYAO/MedVision",
+  "source_commit": "780e247d393bafba6ac71bb9707b0e0e4506d2e7",
+  "source_checkout": "/mnt/vincent-pvc-rwm/Github/MedVision",
+  "skill_id": "medvision",
+  "skill_root": "repo-skills/medvision",
+  "skill_content_sha256": "sha256:40d4651abd018b54bc3c6ecca2025ca64984c1068874869be57b5ba1519d29fc",
+  "taxonomy_sha256": "f8c306386015711634ddbb43a5eb95d1f58909c3513ce2063ba42efdd583a431",
+  "status": "classified",
+  "assignments": [
+    {
+      "area": "LLM Models, Training, and Alignment",
+      "family": "Model Evaluation Benchmarks",
+      "confidence": "high",
+      "rationale": "The repository's primary product is a benchmark suite and evaluation harness for vision-language models: it ships a vendored lmms-eval fork with 20 registered model wrappers (5 more commented out) (local vLLM, local Hugging Face, and API providers), 72 per-model launcher scripts across the three task families, per-task YAML definitions with metric aggregation hooks, a parse-and-summarize stage that computes reproducible SuccessRate / MAE / MRE / nMAE / IoU / F1 metrics, an LLM-as-judge second-pass parser, and a published leaderboard. This matches the family scope of model-centric benchmark suites, evaluation harnesses, datasets, and reproducible metrics for language and vision-language models.",
+      "evidence": [
+        {
+          "path": "README.md",
+          "description": "The Benchmark section defines the evaluation protocol: per-subtask sample limits, the three subtask rosters, and the four pipeline steps (evaluate, parse, summarize, LLM-judge re-parse).",
+          "line_start": 691,
+          "line_end": 722
+        },
+        {
+          "path": "src/medvision_bm/medvision_lmms_eval/lmms_eval/models/__init__.py",
+          "description": "AVAILABLE_MODELS registry of the vendored evaluation harness, mapping each supported vision-language model key to its wrapper class.",
+          "line_start": 19,
+          "line_end": 65
+        },
+        {
+          "path": "src/medvision_bm/benchmark/parse_outputs.py",
+          "description": "The benchmark's answer-extraction and per-sample scoring stage that turns raw model outputs into the published metric records."
+        },
+        {
+          "path": "pyproject.toml",
+          "description": "Package metadata declaring medvision_bm as the codebase for the MedVision benchmark, with the mvbm console entry point.",
+          "line_start": 1,
+          "line_end": 32
+        },
+        {
+          "path": "script/benchmark-detect/eval__Qwen-2.5-VL__detect.sh",
+          "description": "A representative per-model evaluation launcher showing the harness invocation, sample limit, token budget, and result-tree conventions."
+        }
+      ]
+    },
+    {
+      "area": "Biomedical AI",
+      "family": "Medical Object Detection",
+      "confidence": "high",
+      "rationale": "Detection is one of the three first-class tasks and the largest by far: models must localize anatomical structures, tumors and lesions on 2D medical slices as bounding boxes, scored with region-based IoU, F1, Precision and Recall plus box-to-image-ratio stratified analyses. The repository owns the detection ground-truth conventions (boxes fitted per mask cluster, single-instance filtering), a dedicated detection summarizer, detection-specific analysis tools, and a 110K-sample detection training set used to post-train the released model. This is localization and detection of lesions, abnormalities and anatomical structures in medical images, not a generic object-detection library.",
+      "evidence": [
+        {
+          "path": "src/medvision_bm/utils/parse_utils.py",
+          "description": "Region-based detection metric implementations (cal_IoU, cal_F1, cal_Precision, cal_Recall, cal_metrics_detection_task) operating on medical-image bounding boxes.",
+          "line_start": 238,
+          "line_end": 540
+        },
+        {
+          "path": "src/medvision_bm/benchmark/summarize_detection_task.py",
+          "description": "The detection-task summarizer that aggregates per-sample box metrics by anatomy, imaging modality and slice plane."
+        },
+        {
+          "path": "src/medvision_bm/benchmark/analyze_detection_task_boxsize.py",
+          "description": "Detection analysis stratified by box-to-image ratio, quantifying performance on small, medium and large anatomical targets."
+        },
+        {
+          "path": "tasks_list/tasks_MedVision-detect-CoT.json",
+          "description": "The detection benchmark roster listing the per-dataset detection subtasks over anatomical and lesion targets."
+        }
+      ]
+    },
+    {
+      "area": "LLM Models, Training, and Alignment",
+      "family": "LLM Fine-Tuning",
+      "confidence": "high",
+      "rationale": "The repository contains a first-class supervised fine-tuning stack for vision-language models, not merely a training example: ten trainer entry points covering four model families (eight CoT LoRA/full-FT, one non-CoT, one tool-use), both LoRA/parameter-efficient and full-parameter FSDP paths, per-family collate and loss-masking utilities, multi-task dataset construction with sample-limit and validation-split semantics, a temperature-scaled multi-task sampler, and checkpoint merging and publishing. It was used to produce the released MedVision-V0 model and has its own documented section in the project README.",
+      "evidence": [
+        {
+          "path": "src/medvision_bm/sft/sft_utils.py",
+          "description": "The supervised fine-tuning core: prepare_trainer builds the parameter-efficient LoRA trainer and prepare_trainer_fullFT builds the full-parameter FSDP trainer.",
+          "line_start": 2696,
+          "line_end": 2960
+        },
+        {
+          "path": "src/medvision_bm/sft/train__SFT-CoT__qwen2_5_vl.py",
+          "description": "A LoRA chain-of-thought supervised fine-tuning entry point for a vision-language model family."
+        },
+        {
+          "path": "src/medvision_bm/sft/train__fullFT-CoT__gemma4.py",
+          "description": "The corresponding full-parameter fine-tuning entry point, showing that full SFT is a supported path rather than an example."
+        },
+        {
+          "path": "README.md",
+          "description": "The Training: SFT section documenting the fine-tuning launchers, their configuration variables, and the resource-constrained settings.",
+          "line_start": 875,
+          "line_end": 902
+        }
+      ]
+    }
+  ],
+  "refreshed_at_utc": "2026-09-05"
+}

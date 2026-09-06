@@ -1,0 +1,23 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "extending-models-and-tasks",
+  "target_capability": "image-size dispatch registration",
+  "difficulty": "troubleshooting",
+  "evidence_basis": [
+    "src/medvision_bm/medvision_lmms_eval/lmms_eval/tasks/medvision/medvision_utils.py",
+    "src/medvision_bm/medvision_lmms_eval/lmms_eval/models/__init__.py",
+    "docs/New-Models-Guide.md"
+  ],
+  "expected_skill_files": [
+    "sub-skills/extending-models-and-tasks/references/add-a-model.md",
+    "sub-skills/extending-models-and-tasks/references/image-size-dispatch.md",
+    "sub-skills/extending-models-and-tasks/scripts/list_registered_models.py"
+  ],
+  "assertions": [
+    "The response identifies a missing image-size dispatch branch, not a registry failure.",
+    "The response explains why measurement tasks need the perceived size but detection does not.",
+    "The response runs the bundled registry-versus-dispatch consistency checker.",
+    "The response refuses to add a catch-all default branch.",
+    "The response validates on a non-square slice by comparing the resized shape with the prompt text."
+  ]
+}

@@ -1,0 +1,3 @@
+Our group wants to fine-tune a vision-language model so it can measure lesion diameters in
+millimetres from CT slices, and then show it beats the off-the-shelf model on a fair benchmark. We
+have 4 GPUs. Where in this project does each half of that live, and in what order should we do it?

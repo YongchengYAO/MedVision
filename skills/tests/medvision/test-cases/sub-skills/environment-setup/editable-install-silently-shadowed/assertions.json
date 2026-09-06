@@ -1,0 +1,22 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "environment-setup",
+  "target_capability": "editable versus site-packages install diagnosis",
+  "difficulty": "troubleshooting",
+  "evidence_basis": [
+    "pyproject.toml",
+    "README.md"
+  ],
+  "expected_skill_files": [
+    "sub-skills/environment-setup/references/installation.md",
+    "sub-skills/environment-setup/references/troubleshooting.md",
+    "scripts/check_medvision_env.py"
+  ],
+  "assertions": [
+    "The response explains that a site-packages copy shadows the checkout source.",
+    "The response gives a concrete check that prints the resolved module file path.",
+    "The response offers both an editable reinstall and a module-path workaround.",
+    "The response warns that a later plain install reverts editable mode.",
+    "The response does not attribute the symptom to caching or stale bytecode."
+  ]
+}

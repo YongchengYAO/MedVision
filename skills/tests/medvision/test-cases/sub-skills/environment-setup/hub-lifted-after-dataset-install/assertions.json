@@ -1,0 +1,24 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "environment-setup",
+  "target_capability": "version pin diagnosis and repair",
+  "difficulty": "troubleshooting",
+  "evidence_basis": [
+    "src/medvision_bm/utils/install_utils.py",
+    "Data/src/pyproject.toml (medvision_ds declared dependencies)",
+    "requirements/requirements_eval_qwen25vl.txt",
+    "docs/debug_env_setup.md"
+  ],
+  "expected_skill_files": [
+    "sub-skills/environment-setup/references/troubleshooting.md",
+    "sub-skills/environment-setup/references/requirements-catalog.md",
+    "sub-skills/environment-setup/scripts/check_env_pins.py"
+  ],
+  "assertions": [
+    "The response attributes the error to an incompatible huggingface_hub / transformers combination (transformers 4.x needs hub <1.0).",
+    "The response explains that the dataset install only moves a hub that is missing or below medvision_ds's declared >=0.35.3 floor, and that pip then resolves it up to the newest in-range release (1.x) \u2014 0.34.4 is below the floor, which is why it moved.",
+    "The response repairs it using the version from the model's frozen requirements file, not an unpinned upgrade.",
+    "The response uses the bundled pin-checking script as the diagnostic.",
+    "The response does not claim that installing the dataset codebase force-reinstalls or re-resolves dependencies that are already satisfied."
+  ]
+}

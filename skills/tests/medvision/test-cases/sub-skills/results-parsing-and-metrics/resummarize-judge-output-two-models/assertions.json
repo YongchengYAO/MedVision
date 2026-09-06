@@ -1,0 +1,23 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "results-parsing-and-metrics",
+  "target_capability": "summarize an alternative parsed directory",
+  "difficulty": "advanced",
+  "evidence_basis": [
+    "src/medvision_bm/benchmark/summarize_TL_task.py",
+    "script/llm-parsing/README.md"
+  ],
+  "expected_skill_files": [
+    "sub-skills/results-parsing-and-metrics/references/workflows.md",
+    "sub-skills/results-parsing-and-metrics/references/cli-reference.md",
+    "sub-skills/results-parsing-and-metrics/scripts/parse_and_summarize.sh"
+  ],
+  "assertions": [
+    "The response uses summarize_TL_task and does not re-run parse_outputs.",
+    "The response passes --parsed_dirname for the judge directory.",
+    "The response changes --resps_key to the judge record key rather than the default.",
+    "The response limits the roster with --models and uses --skip_model_wo_parsed_files.",
+    "The response passes --removed_samples_dir for the T/L ambiguity filter.",
+    "The response names the qualified output files and states the published report is untouched."
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "dataset-and-tasks",
+  "target_capability": "task-name to dataset-config derivation",
+  "difficulty": "intermediate",
+  "evidence_basis": [
+    "src/medvision_bm/utils/data_utils.py",
+    "tasks_list/README.md",
+    "tasks_list/OOD/tasks_MedVision-TL-CoT-planeOOD.json"
+  ],
+  "expected_skill_files": [
+    "sub-skills/dataset-and-tasks/references/task-lists.md",
+    "sub-skills/dataset-and-tasks/scripts/list_tasks.py"
+  ],
+  "assertions": [
+    "The response uses the bundled list_tasks helper rather than manual string editing.",
+    "The response produces coronal test-split config names without a CoT suffix.",
+    "The response explains that evaluation task names carry -CoT but dataset configs do not.",
+    "The response mentions the shipped plane-OOD task list as the authoritative roster.",
+    "The response performs no download and requires no GPU."
+  ]
+}

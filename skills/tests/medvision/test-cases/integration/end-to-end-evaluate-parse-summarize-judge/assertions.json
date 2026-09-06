@@ -1,0 +1,27 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "integration",
+  "target_capability": "four-step benchmark protocol across sub-skills",
+  "difficulty": "advanced",
+  "evidence_basis": [
+    "README.md",
+    "script/llm-parsing/README.md",
+    "script/benchmark-TL/eval__MedGemma-27B__TL.sh"
+  ],
+  "expected_skill_files": [
+    "SKILL.md",
+    "scripts/check_medvision_env.py",
+    "sub-skills/benchmark-evaluation/SKILL.md",
+    "sub-skills/results-parsing-and-metrics/SKILL.md",
+    "sub-skills/llm-judge-parsing/SKILL.md"
+  ],
+  "assertions": [
+    "The response sequences evaluation, parsing, summarizing and judge re-parsing in order.",
+    "The response names the owning sub-skill for each step.",
+    "The response pins the annotation version and states the sample limit needed for comparability.",
+    "The response checks the environment before proposing GPU work.",
+    "The response states that the judge needs a separate environment with a newer serving stack.",
+    "The response gives a concrete verification checkpoint after each stage.",
+    "The response explains that the diff between the two reports isolates formatting from measurement ability."
+  ]
+}

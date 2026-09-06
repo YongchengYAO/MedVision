@@ -1,0 +1,3 @@
+I set the total training sample limit to 121000 to match the paper, but our angle/distance and
+tumour/lesion task lists only have a few thousand samples each. Am I misconfiguring this? And where
+does the validation set come from if I never specified one?

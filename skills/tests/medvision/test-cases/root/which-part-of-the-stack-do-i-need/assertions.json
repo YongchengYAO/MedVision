@@ -1,0 +1,22 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "root",
+  "target_capability": "multi-sub-skill routing and sequencing",
+  "difficulty": "intermediate",
+  "evidence_basis": [
+    "README.md",
+    "docs/model-release/MedVision-V0-7B_ModelCard.md"
+  ],
+  "expected_skill_files": [
+    "SKILL.md",
+    "references/concepts-and-glossary.md",
+    "references/model-roster.md"
+  ],
+  "assertions": [
+    "The response identifies the tumour/lesion task family as the target.",
+    "The response sequences data preparation, fine-tuning, evaluation and summarization in order.",
+    "The response names the owning sub-skill for each step.",
+    "The response checks the baseline model against the supported roster.",
+    "The response states fairness constraints such as a fixed annotation version and equal sample limits."
+  ]
+}

@@ -1,0 +1,7 @@
+I set up a fresh environment for evaluating Qwen2.5-VL on this benchmark. Installing the benchmark
+package worked, but after I installed the dataset codebase the evaluation dies immediately with:
+
+ImportError: cannot import name 'is_offline_mode' from 'huggingface_hub'
+
+pip now shows huggingface_hub 1.29.0. I had pinned 0.34.4 in that env beforehand. Nothing else
+changed. How do I diagnose this properly and get back to a working environment?

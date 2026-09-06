@@ -1,0 +1,2 @@
+One of our datasets only has axial tumour/lesion tasks defined. I want to add the coronal equivalent
+and have it actually run in the benchmark. What is the smallest correct change?

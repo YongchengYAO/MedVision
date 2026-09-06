@@ -1,0 +1,25 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "sft",
+  "target_capability": "prepared-dataset hand-off between phase A and phase B",
+  "difficulty": "troubleshooting",
+  "evidence_basis": [
+    "src/medvision_bm/sft/train__fullFT-CoT__qwen2_5_vl.py",
+    "src/medvision_bm/sft/sft_utils.py",
+    "script/sft/train__fullSFT-CoT__Qwen2.5VL7B__D110k-AD5.5k-TL5.5k__512x512.sh"
+  ],
+  "expected_skill_files": [
+    "sub-skills/sft/references/troubleshooting.md",
+    "sub-skills/sft/references/data-preparation.md",
+    "sub-skills/sft/references/workflows.md",
+    "sub-skills/sft/scripts/sft_launcher_template.sh"
+  ],
+  "assertions": [
+    "The response states that the dataset is not being rebuilt and that only the load+split stage is re-running on rank 0 to derive the default directory name.",
+    "The response explains that the default name encodes the true split sizes, which is why it cannot be derived without loading.",
+    "The response tells the user to pass the directory phase A printed as --prepared_ds_dir on the training launch.",
+    "The response states that with --prepared_ds_dir and --skip_process_dataset the entry point loads that directory as-is and skips the raw configs.",
+    "The response mentions that the repository launchers or the bundled template capture the reported directory from phase A's log automatically.",
+    "The response gives a log-based way to verify that the training launch no longer loads the raw configs."
+  ]
+}

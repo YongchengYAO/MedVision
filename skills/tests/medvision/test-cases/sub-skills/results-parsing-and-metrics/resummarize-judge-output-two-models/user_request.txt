@@ -1,0 +1,4 @@
+We finished the LLM-judge pass on our T/L results tree and now I need a second report that uses the
+judge's re-parsed answers instead of the strict regex ones, but only for two models
+(Qwen2.5-VL-7B-Instruct and medgemma-4b-it), with the ambiguous multi-cluster cases filtered out.
+I do not want to touch the published numbers. What exactly do I run, and which files should appear?

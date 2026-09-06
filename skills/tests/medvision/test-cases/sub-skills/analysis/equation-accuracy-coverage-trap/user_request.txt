@@ -1,0 +1,3 @@
+Our model has the best equation accuracy in the whole roster - a relative error of 0.01 versus 0.2
+for everything else. I want to put that in the paper as evidence that its arithmetic is essentially
+perfect. Any reason not to?

@@ -1,0 +1,3 @@
+I want to add GPT-5.5 to our angle/distance pilot through OpenRouter, running 1000 samples per
+subtask so it matches our open-weight models. The first attempt came back with a 402 even though the
+account has about $80 of credit on it. What is wrong, and what should the command look like?

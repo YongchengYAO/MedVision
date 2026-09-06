@@ -1,0 +1,3 @@
+We fixed a mask problem in one dataset and need to re-score just that dataset for the tumour/lesion
+task using the fine-tuned model, then merge the corrected rows back into the existing result files.
+I want the numbers to stay comparable with the published run, which did not use the last checkpoint.

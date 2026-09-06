@@ -1,0 +1,4 @@
+I ran the MedVision detection benchmark on a model and the summary says mean IoU is 0.62 but
+"IoU>0.5" is only 0.41. That can't both be right - if the average box overlap is 0.62, more than
+41% of samples should be above 0.5. Is this a bug in the summarizer, or am I reading the report
+wrong? The model does refuse to answer on some slices.

@@ -1,0 +1,22 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "analysis",
+  "target_capability": "clinical decision agreement scope",
+  "difficulty": "troubleshooting",
+  "evidence_basis": [
+    "script/analyze/clinical-decision-analysis/README.md",
+    "script/analyze/clinical-decision-analysis/cda_config.py"
+  ],
+  "expected_skill_files": [
+    "sub-skills/analysis/references/cda.md",
+    "sub-skills/analysis/references/troubleshooting.md",
+    "sub-skills/analysis/scripts/run_cda.sh"
+  ],
+  "assertions": [
+    "The response explains that the analysis needs a configured clinical cutoff table per task.",
+    "The response states that an unconfigured task yields an empty report rather than an error.",
+    "The response names which task families are configured.",
+    "The response treats adding a cutoff table as a clinical decision requiring a published source.",
+    "The response does not invent thresholds."
+  ]
+}

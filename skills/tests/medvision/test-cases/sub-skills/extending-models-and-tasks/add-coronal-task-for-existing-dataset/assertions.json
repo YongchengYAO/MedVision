@@ -1,0 +1,21 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "extending-models-and-tasks",
+  "target_capability": "adding and registering a task variant",
+  "difficulty": "intermediate",
+  "evidence_basis": [
+    "docs/New-Tasks-Guide.md",
+    "tasks_list/README.md"
+  ],
+  "expected_skill_files": [
+    "sub-skills/extending-models-and-tasks/references/add-a-task.md",
+    "sub-skills/extending-models-and-tasks/scripts/list_task_yamls.py"
+  ],
+  "assertions": [
+    "The response creates only a per-task YAML and reuses the existing base via include.",
+    "The response uses the CoT suffix in the task name but not in the dataset config name.",
+    "The response registers the task in the appropriate task list.",
+    "The response verifies the registration with the bundled task-YAML inventory tool.",
+    "The response does not create a new base YAML or edit shared utilities."
+  ]
+}

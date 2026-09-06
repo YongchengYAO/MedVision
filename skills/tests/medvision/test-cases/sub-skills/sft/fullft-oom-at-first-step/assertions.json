@@ -1,0 +1,22 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "sft",
+  "target_capability": "full-parameter training memory configuration",
+  "difficulty": "troubleshooting",
+  "evidence_basis": [
+    "src/medvision_bm/sft/sft_utils.py",
+    "script/sft/train__fullSFT-CoT__Gemma-4-31B-it__D110k-AD5.5k-TL5.5k__512x512__4xGPU-140G-fp32master.sh"
+  ],
+  "expected_skill_files": [
+    "sub-skills/sft/references/training-configuration.md",
+    "sub-skills/sft/references/troubleshooting.md",
+    "sub-skills/sft/references/launcher-catalog.md"
+  ],
+  "assertions": [
+    "The response distinguishes optimizer/gradient memory from activation memory given the failure point.",
+    "The response does not simply repeat gradient checkpointing or batch-size reduction.",
+    "The response names the sharded-training and precision options supported by the entry point.",
+    "The response points at the launcher variant built for this memory profile.",
+    "The response states the trade-off of each recommended change."
+  ]
+}

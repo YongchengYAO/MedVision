@@ -1,0 +1,25 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "results-parsing-and-metrics",
+  "target_capability": "metric denominators and failure handling",
+  "difficulty": "troubleshooting",
+  "evidence_basis": [
+    "src/medvision_bm/utils/parse_utils.py",
+    "src/medvision_bm/benchmark/summarize_detection_task.py",
+    "unit-test/detection-metric-failure/test-1.py"
+  ],
+  "expected_skill_files": [
+    "sub-skills/results-parsing-and-metrics/SKILL.md",
+    "sub-skills/results-parsing-and-metrics/references/metrics.md",
+    "sub-skills/results-parsing-and-metrics/scripts/metrics_demo.py"
+  ],
+  "assertions": [
+    "The response routes to the results-parsing-and-metrics sub-skill.",
+    "The response states that detection failures are scored as IoU 0 and are included in the mean.",
+    "The response states that threshold metrics such as IoU>0.5 divide by the total sample count.",
+    "The response notes the threshold comparison is >= (IoU>0.5 equals Acc@IoU>=0.50).",
+    "The response contrasts this with A/D and T/L, whose MAE/MRE are NaN on failure and excluded.",
+    "The response does not call the behaviour a bug in the summarizer.",
+    "The response references the bundled metrics_demo.py helper rather than repository source files."
+  ]
+}

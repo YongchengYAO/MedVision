@@ -1,0 +1,23 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "root",
+  "target_capability": "orientation and environment readiness",
+  "difficulty": "basic",
+  "evidence_basis": [
+    "README.md",
+    "pyproject.toml"
+  ],
+  "expected_skill_files": [
+    "SKILL.md",
+    "references/concepts-and-glossary.md",
+    "scripts/check_medvision_env.py"
+  ],
+  "assertions": [
+    "The response names the three task families and their real-world units.",
+    "The response gives install commands for both the benchmark and the dataset package.",
+    "The response names the required data-directory and annotation-version environment variables.",
+    "The response runs or cites the bundled environment checker.",
+    "The response separates CPU-only capabilities from GPU-only ones.",
+    "The response routes to the benchmark-evaluation sub-skill for the actual run."
+  ]
+}

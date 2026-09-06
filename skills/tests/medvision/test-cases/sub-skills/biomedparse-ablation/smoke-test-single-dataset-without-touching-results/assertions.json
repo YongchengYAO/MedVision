@@ -1,0 +1,22 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "biomedparse-ablation",
+  "target_capability": "scoped smoke test with isolated outputs",
+  "difficulty": "intermediate",
+  "evidence_basis": [
+    "script/ablation/biomedparse/README.md",
+    "script/ablation/biomedparse/scripts/eval/smoke_test.sh"
+  ],
+  "expected_skill_files": [
+    "sub-skills/biomedparse-ablation/SKILL.md",
+    "sub-skills/biomedparse-ablation/references/tracks.md",
+    "sub-skills/biomedparse-ablation/scripts/check_biomedparse_env.py"
+  ],
+  "assertions": [
+    "The response uses the evaluation-track smoke test rather than the full track.",
+    "The response scopes the run to the single requested dataset.",
+    "The response states outputs land in a separate smoke-test directory, leaving shipped results intact.",
+    "The response checks environment prerequisites including the GPU and the compiled dependency.",
+    "The response warns that smoke-test metrics are not scientifically meaningful."
+  ]
+}

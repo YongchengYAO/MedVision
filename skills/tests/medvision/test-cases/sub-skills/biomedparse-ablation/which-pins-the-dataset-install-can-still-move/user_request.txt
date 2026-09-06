@@ -1,0 +1,4 @@
+I ran setup.sh for the BiomedParse ablation, then installed the dataset codebase into the same
+conda env. Now pip check complains and lightning warns about packaging. Before I start pinning
+things by hand: which of my pins can that dataset install actually have moved, and which are safe?
+My requirements pin huggingface-hub 0.36.0, packaging 23.0 and datasets 3.6.0.

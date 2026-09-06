@@ -1,0 +1,25 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "dataset-and-tasks",
+  "target_capability": "annotation version pinning and plan resolution",
+  "difficulty": "troubleshooting",
+  "evidence_basis": [
+    "README.md",
+    "src/medvision_bm/utils/plan_utils.py",
+    "unit-test/medvision-ds-planner-version/test_planner_switch_medvision_ds_v1.1.0.py"
+  ],
+  "expected_skill_files": [
+    "sub-skills/dataset-and-tasks/SKILL.md",
+    "sub-skills/dataset-and-tasks/references/concepts.md",
+    "sub-skills/dataset-and-tasks/references/troubleshooting.md",
+    "sub-skills/dataset-and-tasks/scripts/inspect_benchmark_plan.py"
+  ],
+  "assertions": [
+    "The response explains that the planner version variable is required and must be set before loading.",
+    "The response explains the per-dataset version ceiling rather than an exact-match lookup.",
+    "The response names the acknowledgement variable needed when pinning below the newest release.",
+    "The response states that leaderboard numbers use the v1.0.0 annotations.",
+    "The response states that only T/L annotations differ across versions.",
+    "The response offers an offline way to inspect which plan version resolves, without downloading."
+  ]
+}

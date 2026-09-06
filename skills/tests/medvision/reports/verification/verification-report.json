@@ -1,0 +1,84 @@
+{
+  "skill": "medvision",
+  "refresh_commit": "780e247d393bafba6ac71bb9707b0e0e4506d2e7",
+  "generated_at_utc": "2026-09-05T14:17:28Z",
+  "checks": [
+    {
+      "check": "frontmatter",
+      "status": "PASS",
+      "detail": "11 SKILL.md files: ids, quoted descriptions, invocation flag, license NOASSERTION, disco-role",
+      "evidence": "all valid"
+    },
+    {
+      "check": "provenance",
+      "status": "PASS",
+      "detail": "schema disco.repo-provenance.v1, commit == HEAD, dirty paths literal",
+      "evidence": "check_repo_provenance.py after the refresh: status=current, exit 0 (commit, working_tree and dirty_paths all match)"
+    },
+    {
+      "check": "provenance-linked",
+      "status": "PASS",
+      "detail": "root router points at the freshness baseline",
+      "evidence": ""
+    },
+    {
+      "check": "links",
+      "status": "PASS",
+      "detail": "every backticked bundled path resolves under a real base",
+      "evidence": "all resolve"
+    },
+    {
+      "check": "repo-launcher-references",
+      "status": "WARN",
+      "detail": "10 ablation launcher paths name the repository checkout, not bundled scripts",
+      "evidence": "accepted by design: tracks.md/setup.md use the ${ABLATION_DIR} placeholder; all 10 verified present under script/ablation/biomedparse/scripts/"
+    },
+    {
+      "check": "no-local-paths",
+      "status": "PASS",
+      "detail": "runtime tree free of host paths, conda prefixes, interpreter paths",
+      "evidence": "none found"
+    },
+    {
+      "check": "no-debris",
+      "status": "PASS",
+      "detail": "no caches or build outputs in runtime tree",
+      "evidence": ""
+    },
+    {
+      "check": "usability-cases",
+      "status": "PASS",
+      "detail": "26 cases: copyable prompts, README, assertions, index count",
+      "evidence": "all well-formed"
+    },
+    {
+      "check": "self-refine-evals",
+      "status": "PASS",
+      "detail": "evals.json still parses",
+      "evidence": ""
+    },
+    {
+      "check": "current-repo-claims",
+      "status": "PASS",
+      "detail": "refreshed facts re-verified against this checkout",
+      "evidence": "list_task_yamls.py exit 0 (22 datasets / 199 base / 1253 task YAMLs, no duplicates); list_registered_models.py exit 0 (20 keys); 21 eval__*.py; 24 launchers per family; medvision_ds declares huggingface_hub>=0.35.3,<2.0 and datasets==3.6.0; install_utils.py two-step wheel install; pyproject has no sft/config package data"
+    },
+    {
+      "check": "license",
+      "status": "PASS",
+      "detail": "gh api license query at the refresh commit returned NOASSERTION (unchanged)",
+      "evidence": "reports/license-resolution.json"
+    },
+    {
+      "check": "routing-handoff",
+      "status": "PASS",
+      "detail": "classification.json carries the refreshed source commit and a real content digest",
+      "evidence": "source_commit=780e247\u2026, skill_content_sha256=sha256:40d4651a\u2026 (was an all-zero placeholder); 3 area-family assignments preserved"
+    }
+  ],
+  "summary": {
+    "PASS": 11,
+    "WARN": 1,
+    "FAIL": 0
+  }
+}

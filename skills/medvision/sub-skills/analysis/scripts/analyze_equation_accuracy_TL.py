@@ -1,0 +1,811 @@
+"""
+Analyze equation computing accuracy for T/L (Tumor/Lesion size) task model responses.
+
+For each sample, extracts the equations written in step-3-reasoning (major axis)
+and step-4-reasoning (minor axis), evaluates them in Python, and compares the
+Python-evaluated results with the model's step-k-answer values.
+
+    equation_MRE = abs(model_answer - python_eval) / (|python_eval| + 1e-15)
+
+This measures arithmetic correctness independent of GT: did the model correctly
+compute the distance formula it wrote down?
+
+Prerequisites (bundled copy for the `medvision` skill, runs from any directory):
+  - `medvision_bm` importable (pip install medvision-bm, or PYTHONPATH=<checkout>/src).
+  - `medvision_ds` installed only for the per-label aggregation of --task_dir/--model_dir;
+    --jsonl mode needs neither it nor any dataset file.
+  - No ground truth and no images are read: the comparison is model answer vs the model's
+    own equation, so this runs on results alone.
+  - Reads `resps` (the raw response), so an llm-parsed_<judge>/ folder gives the same
+    numbers as parsed/; point --jsonl at it (--task_dir/--model_dir always read parsed/).
+  - CPU only; writes next to its inputs.
+
+Usage:
+    python analyze_equation_accuracy_TL.py \\
+        --task_dir /path/to/MedVision-TL-v2-CoT \\
+        [--model_dir <model_dir>] \\
+        [--jsonl path/to/explicit.jsonl ...] \\
+        [--output_suffix _eq_acc]
+"""
+
+import argparse
+import ast
+import json
+import math as _math
+import operator as _op
+import re
+import sys
+from pathlib import Path
+
+import numpy as np
+
+try:  # bundled-skill guard: report the missing package instead of a bare traceback
+    from medvision_bm.utils.configs import label_map_rename
+    from medvision_bm.utils.parse_utils import (
+        get_labelsMap_imgModality_from_biometry_benchmark_plan,
+        get_targetLabel_imgModality_from_biometry_benchmark_plan,
+    )
+    from medvision_bm.utils.tool_execution import safe_exec_python
+except ImportError as _e:  # pragma: no cover
+    raise SystemExit(
+        f"[analyze_equation_accuracy_TL] cannot import medvision_bm ({_e}).\n"
+        "  Install the benchmark package (pip install medvision-bm), or point\n"
+        "  PYTHONPATH at a checkout's src/ directory, then re-run."
+    )
+
+# ---------------------------------------------------------------------------
+# Metric
+# ---------------------------------------------------------------------------
+
+
+def _cal_equation_MRE(model_val, python_val):
+    return float(abs(model_val - python_val) / (abs(python_val) + 1e-15))
+
+
+# ---------------------------------------------------------------------------
+# AST-based expression evaluator (restricted to numeric math only)
+# ---------------------------------------------------------------------------
+
+_BINOPS = {
+    ast.Add: _op.add,
+    ast.Sub: _op.sub,
+    ast.Mult: _op.mul,
+    ast.Div: _op.truediv,
+    ast.Pow: _op.pow,
+}
+
+_MATH_FUNCS = {
+    "sqrt": _math.sqrt,
+    "acos": _math.acos,
+    "asin": _math.asin,
+    "atan": _math.atan,
+    "atan2": _math.atan2,
+    "degrees": _math.degrees,
+    "abs": abs,
+}
+
+
+def _eval_node(node):
+    if isinstance(node, ast.Constant):
+        return float(node.value)
+    if isinstance(node, ast.UnaryOp):
+        val = _eval_node(node.operand)
+        if isinstance(node.op, ast.USub):
+            return -val
+        if isinstance(node.op, ast.UAdd):
+            return val
+    if isinstance(node, ast.BinOp):
+        left = _eval_node(node.left)
+        right = _eval_node(node.right)
+        fn = _BINOPS.get(type(node.op))
+        if fn is not None:
+            return fn(left, right)
+    if isinstance(node, ast.Call):
+        if isinstance(node.func, ast.Attribute):
+            fn_name = node.func.attr  # math.sqrt -> "sqrt"
+        elif isinstance(node.func, ast.Name):
+            fn_name = node.func.id  # abs -> "abs"
+        else:
+            raise ValueError(f"Unsupported call node: {ast.dump(node)}")
+        fn = _MATH_FUNCS.get(fn_name)
+        if fn is None:
+            raise ValueError(f"Disallowed function: {fn_name!r}")
+        args = [_eval_node(a) for a in node.args]
+        return fn(*args)
+    raise ValueError(f"Unsupported AST node: {type(node).__name__}")
+
+
+def _compute_expr(py_expr):
+    """Parse and compute a numeric math expression via ast.parse."""
+    tree = ast.parse(py_expr, mode="eval")
+    return _eval_node(tree.body)
+
+
+# ---------------------------------------------------------------------------
+# Equation parsing utilities
+# ---------------------------------------------------------------------------
+
+_FUNC_MAP = {
+    "arccos": "math.acos",
+    "arcsin": "math.asin",
+    "arctan2": "math.atan2",
+    "arctan": "math.atan",
+    "sqrt": "math.sqrt",
+}
+
+
+def _extract_func_call(text, func_name):
+    """Extract the last balanced func_name(...) expression from text."""
+    idx = text.rfind(func_name + "(")
+    if idx == -1:
+        return None
+    start = idx + len(func_name)
+    depth = 0
+    for i in range(start, len(text)):
+        if text[i] == "(":
+            depth += 1
+        elif text[i] == ")":
+            depth -= 1
+            if depth == 0:
+                return text[idx : i + 1]
+    return None
+
+
+def _convert_abs_notation(expr):
+    """Convert |...| absolute-value bars to abs(...). Handles one nesting level."""
+    result = []
+    open_abs = False
+    for ch in expr:
+        if ch == "|":
+            if not open_abs:
+                result.append("abs(")
+                open_abs = True
+            else:
+                result.append(")")
+                open_abs = False
+        else:
+            result.append(ch)
+    return "".join(result)
+
+
+def _to_python_expr(raw):
+    """Convert math-notation distance formula to a Python-evaluable expression string."""
+    expr = _convert_abs_notation(raw)
+    # Parenthesize bare numbers (possibly negative) before ^ to fix Python precedence.
+    expr = re.sub(r"(-?\d+(?:\.\d+)?)\^", r"(\1)**", expr)
+    # Remaining ^ (after closing paren: (...)^2 -> (...)**2)
+    expr = re.sub(r"\^", r"**", expr)
+    for fn, py_fn in _FUNC_MAP.items():
+        expr = expr.replace(fn + "(", py_fn + "(")
+    return expr
+
+
+# ---------------------------------------------------------------------------
+# Step block extraction
+# ---------------------------------------------------------------------------
+
+_NNR = r"\d+(?:\.\d+)?"
+_NNRG = rf"({_NNR})"
+
+
+def _extract_reasoning_block(solution, k):
+    """Return the content of <step-k-reasoning>...</step-k-reasoning>."""
+    m = re.search(
+        rf"<step-{k}-reasoning>(.*?)</step-{k}-reasoning>", solution, re.DOTALL
+    )
+    return m.group(1).strip() if m else None
+
+
+def _extract_step_answer(solution, k):
+    """Return the first numeric value inside <step-k-answer>...</step-k-answer>."""
+    m = re.search(
+        rf"<step-{k}-answer>.*?{_NNRG}.*?</step-{k}-answer>", solution, re.DOTALL
+    )
+    return float(m.group(1)) if m else None
+
+
+# ---------------------------------------------------------------------------
+# Tooluse helpers
+# ---------------------------------------------------------------------------
+
+
+def _extract_tool_call_code(solution):
+    m = re.search(r"<tool_call>(.*?)</tool_call>", solution, re.DOTALL)
+    if not m:
+        return None
+    try:
+        parsed = json.loads(m.group(1))
+        return (parsed.get("arguments") or {}).get("code")
+    except (json.JSONDecodeError, AttributeError):
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Per-sample analyzer
+# ---------------------------------------------------------------------------
+
+
+def analyze_tl_sample(solution):
+    """Evaluate the distance equations in steps 3 and 4 vs model's stated answers."""
+    result = {"metric_type": "tl"}
+
+    for step, axis in [(3, "major"), (4, "minor")]:
+        model_val = _extract_step_answer(solution, step)
+        reasoning = _extract_reasoning_block(solution, step)
+
+        result[f"step{step}_model_answer"] = model_val
+        result[f"step{step}_raw_expr"] = None
+        result[f"step{step}_python_eval"] = None
+        result[f"step{step}_equation_MRE"] = None
+
+        if reasoning is None:
+            continue
+
+        raw = _extract_func_call(reasoning, "sqrt")
+        result[f"step{step}_raw_expr"] = raw
+        if raw is None or model_val is None:
+            continue
+
+        try:
+            py_expr = _to_python_expr(raw)
+            py_val = _compute_expr(py_expr)
+            result[f"step{step}_python_eval"] = float(py_val)
+            result[f"step{step}_equation_MRE"] = _cal_equation_MRE(model_val, py_val)
+        except Exception as e:
+            result[f"step{step}_eval_error"] = str(e)
+
+    # Tooluse fallback: single <tool_call> prints "major, minor" on one line
+    if result["step3_equation_MRE"] is None and result["step3_model_answer"] is None:
+        code = _extract_tool_call_code(solution)
+        if code is not None:
+            stdout = safe_exec_python(code)
+            m_ans = re.search(r"<answer>(.*?)</answer>", solution, re.DOTALL)
+            if stdout and not stdout.startswith("ERROR:") and m_ans:
+                py_nums = [
+                    float(x.replace(",", ""))
+                    for x in re.findall(
+                        r"[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:[eE][-+]?\d+)?",
+                        stdout,
+                    )
+                ]
+                ans_nums = [
+                    float(x.replace(",", ""))
+                    for x in re.findall(
+                        r"[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:[eE][-+]?\d+)?",
+                        m_ans.group(1),
+                    )
+                ]
+                if len(py_nums) >= 2 and len(ans_nums) >= 2:
+                    result["step3_model_answer"] = ans_nums[0]
+                    result["step4_model_answer"] = ans_nums[1]
+                    result["step3_python_eval"] = py_nums[0]
+                    result["step4_python_eval"] = py_nums[1]
+                    result["step3_equation_MRE"] = _cal_equation_MRE(
+                        ans_nums[0], py_nums[0]
+                    )
+                    result["step4_equation_MRE"] = _cal_equation_MRE(
+                        ans_nums[1], py_nums[1]
+                    )
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Removed-samples filtering helpers (mirrors summarize_TL_task.py)
+# ---------------------------------------------------------------------------
+
+_DIM_MAP = {"x": 0, "y": 1, "z": 2}
+
+
+def _build_removed_set(json_path):
+    with open(json_path) as f:
+        entries = json.load(f)
+    return frozenset(
+        (
+            e["image_file"],
+            _DIM_MAP[e["slice_dim"]],
+            int(e["slice_idx"]),
+            int(e["task_ID"]),
+        )
+        for e in entries
+    )
+
+
+def _relative_image_file(full_path, dataset_name):
+    marker = f"/{dataset_name}/"
+    idx = full_path.find(marker)
+    return full_path[idx + len(marker) :] if idx >= 0 else Path(full_path).name
+
+
+# ---------------------------------------------------------------------------
+# Process a single JSONL file
+# ---------------------------------------------------------------------------
+
+
+def process_jsonl(jsonl_path, output_suffix, removed_set=None, dataset_name=None):
+    jsonl_path = Path(jsonl_path)
+    out_path = jsonl_path.with_name(jsonl_path.stem + output_suffix + ".jsonl")
+
+    n_total = n_tl = n_gt_fail = n_parse_fail = n_success = 0
+    results = []
+
+    with open(jsonl_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            sample = json.loads(line)
+            n_total += 1
+
+            doc = sample.get("doc", {})
+            doc_id = sample.get("doc_id")
+            solution = sample.get("resps", [[""]])[0]
+            if isinstance(solution, list):
+                solution = solution[0] if solution else ""
+
+            if removed_set is not None and dataset_name is not None:
+                _img = doc.get("image_file", "")
+                _key = (
+                    _relative_image_file(_img, dataset_name),
+                    doc.get("slice_dim"),
+                    doc.get("slice_idx"),
+                    int(doc.get("taskID", 0)),
+                )
+                if _key in removed_set:
+                    continue
+
+            task_type = doc.get("taskType", "")
+            if "Tumor" not in task_type and "Lesion" not in task_type:
+                n_gt_fail += 1
+                results.append(
+                    {
+                        "doc_id": doc_id,
+                        "error": f"unexpected taskType: {task_type!r}",
+                    }
+                )
+                continue
+
+            n_tl += 1
+            record = {
+                "doc_id": doc_id,
+                "dataset": doc.get("dataset_name"),
+                "taskID": doc.get("taskID"),
+                "taskType": task_type,
+                "image_file": doc.get("image_file"),
+                "slice_dim": doc.get("slice_dim"),
+            }
+
+            try:
+                record.update(analyze_tl_sample(solution))
+                if all(record.get(f"step{k}_equation_MRE") is not None for k in (3, 4)):
+                    n_success += 1
+            except Exception as e:
+                n_parse_fail += 1
+                record["error"] = str(e)
+
+            results.append(record)
+
+    with open(out_path, "w") as f:
+        for r in results:
+            f.write(json.dumps(r) + "\n")
+
+    def _stats(key):
+        vals = [r[key] for r in results if r.get(key) is not None]
+        if not vals:
+            return None, None, 0
+        return float(np.mean(vals)), float(np.std(vals)), len(vals)
+
+    success_str = (
+        f", success_rate={100*n_success/n_tl:.1f}% {n_success}/{n_tl}"
+        if n_tl > 0
+        else ""
+    )
+    print(f"\n[{jsonl_path.name}]")
+    print(
+        f"  Total: {n_total}  "
+        f"(tl={n_tl}, task_type_fail={n_gt_fail}, parse_fail={n_parse_fail}"
+        f"{success_str})"
+    )
+    for key, label in [
+        ("step3_equation_MRE", "Step3 equation MRE (major axis)"),
+        ("step4_equation_MRE", "Step4 equation MRE (minor axis)"),
+    ]:
+        if n_tl == 0:
+            continue
+        mean, sd, n = _stats(key)
+        fail = n_tl - n
+        mean_str = f"{mean:.4f}" if mean is not None else "nan"
+        sd_str = f"{sd:.4f}" if sd is not None else "nan"
+        print(f"  {label}: mean={mean_str} ± sd={sd_str} (n={n}, fail={fail})")
+    print(f"  Output: {out_path}")
+    return results
+
+
+# ---------------------------------------------------------------------------
+# Path discovery helpers
+# ---------------------------------------------------------------------------
+
+
+def _collect_from_model_dir(model_dir):
+    paths = []
+    parsed_dir = Path(model_dir) / "parsed"
+    if parsed_dir.is_dir():
+        for p in sorted(parsed_dir.glob("*.jsonl")):
+            if "_eq_acc" not in p.stem and "_proc_acc" not in p.stem:
+                paths.append(p)
+    return paths
+
+
+def _collect_from_task_dir(task_dir):
+    paths = []
+    for model_dir in sorted(Path(task_dir).iterdir()):
+        paths.extend(_collect_from_model_dir(model_dir))
+    return paths
+
+
+def _collect_from_jsonl_args(jsonl_args):
+    paths = []
+    for pattern in jsonl_args:
+        if "*" in pattern:
+            paths.extend(sorted(Path(".").glob(pattern)))
+        else:
+            paths.append(Path(pattern))
+    return [p for p in paths if p.exists()]
+
+
+# ---------------------------------------------------------------------------
+# Per-model aggregation and cross-model summary
+# ---------------------------------------------------------------------------
+
+SUMMARY_EQ_ACC_TL_METRICS_FILENAME = "summary_eq_acc_TL_metrics.json"
+SUMMARY_EQ_ACC_TL_MODEL_FILENAME = "summary_eq_acc_TL_model.txt"
+
+_IMGMOD_MAP = {"MRI": "MR", "CT": "CT", "ultrasound": "US", "X-ray": "XR", "PET": "PET"}
+_SLICE_MAP = {0: "S", 1: "C", 2: "A"}
+
+
+def _get_tl_label(record):
+    """Derive anatomy label key from a TL record (requires dataset, taskID, slice_dim)."""
+    dataset = record.get("dataset")
+    task_id = record.get("taskID")
+    slice_dim = record.get("slice_dim")
+    if dataset is None or task_id is None or slice_dim is None:
+        return None
+    try:
+        label, _ = get_targetLabel_imgModality_from_biometry_benchmark_plan(
+            dataset, int(task_id)
+        )
+        labels_map, img_modality = (
+            get_labelsMap_imgModality_from_biometry_benchmark_plan(
+                dataset, int(task_id)
+            )
+        )
+        label_name = labels_map.get(str(label))
+        if label_name is None:
+            return None
+        new_label = label_map_rename.get(label_name)
+        if new_label is None:
+            return None
+        img_mod = _IMGMOD_MAP.get(img_modality, img_modality)
+        slicetype = _SLICE_MAP.get(int(slice_dim))
+        if slicetype is None:
+            return None
+        return f"{new_label} @ {img_mod} ({slicetype})"
+    except Exception:
+        return None
+
+
+def _aggregate_by_label_TL(all_results):
+    """Aggregate per-sample results by anatomy label; return {label: averaged equation MREs}."""
+    grouped = {}
+    for r in all_results:
+        if r.get("error"):
+            continue
+        label = _get_tl_label(r)
+        if label is None:
+            continue
+        if label not in grouped:
+            grouped[label] = {"eq3": [], "eq4": [], "n_samples": 0}
+        g = grouped[label]
+        g["n_samples"] += 1
+        v3 = r.get("step3_equation_MRE")
+        v4 = r.get("step4_equation_MRE")
+        if v3 is not None:
+            g["eq3"].append(v3)
+        if v4 is not None:
+            g["eq4"].append(v4)
+
+    def _avg(vals):
+        return float(np.mean(vals)) if vals else float("nan")
+
+    return {
+        label: {
+            "step3_avg_equation_MRE": _avg(g["eq3"]),
+            "step4_avg_equation_MRE": _avg(g["eq4"]),
+            "n_samples": g["n_samples"],
+            "n_valid_3": len(g["eq3"]),
+            "n_valid_4": len(g["eq4"]),
+        }
+        for label, g in grouped.items()
+    }
+
+
+def _process_model_dir(
+    model_dir, output_suffix, removed_samples_dir=None, removed_samples_filename=None
+):
+    """Process all JSONL files in model's parsed/ dir; save per-label summary JSON."""
+    model_dir = Path(model_dir)
+    parsed_dir = model_dir / "parsed"
+    if not parsed_dir.is_dir():
+        print(f"[skip] no parsed/ dir: {model_dir}")
+        return None
+    jsonl_paths = [
+        p
+        for p in sorted(parsed_dir.glob("*.jsonl"))
+        if "_eq_acc" not in p.stem and "_proc_acc" not in p.stem
+    ]
+    if not jsonl_paths:
+        print(f"[skip] no JSONL files in: {parsed_dir}")
+        return None
+
+    filtered = removed_samples_dir is not None
+    effective_suffix = output_suffix + ("_filtered" if filtered else "")
+
+    print(f"\nProcessing model: {model_dir.name}")
+    all_results = []
+    _removed_cache = {}
+    for jp in jsonl_paths:
+        m = re.search(r"samples_([^_]+)_", jp.name)
+        ds_name = m.group(1) if m else None
+        removed_set = None
+        if filtered and ds_name is not None:
+            if ds_name not in _removed_cache:
+                json_path = (
+                    Path(removed_samples_dir) / ds_name / removed_samples_filename
+                )
+                _removed_cache[ds_name] = (
+                    _build_removed_set(json_path) if json_path.exists() else None
+                )
+            removed_set = _removed_cache.get(ds_name)
+        all_results.extend(
+            process_jsonl(
+                jp, effective_suffix, removed_set=removed_set, dataset_name=ds_name
+            )
+        )
+
+    summary = _aggregate_by_label_TL(all_results)
+    metrics_fname = (
+        "summary_eq_acc_TL_metrics_filtered.json"
+        if filtered
+        else SUMMARY_EQ_ACC_TL_METRICS_FILENAME
+    )
+    out_path = parsed_dir / metrics_fname
+    with open(out_path, "w") as f:
+        json.dump(summary, f, indent=2)
+    print(f"  [saved] per-label summary → {out_path}")
+    _print_model_summary_TL(model_dir, summary, filtered=filtered)
+    return summary
+
+
+def _print_model_summary_TL(model_dir, summary, filtered=False):
+    """Write a weighted-average + label-table summary TXT for a single model."""
+    model_dir = Path(model_dir)
+    out_path = model_dir / (
+        "summary_eq_acc_TL_model_filtered.txt"
+        if filtered
+        else SUMMARY_EQ_ACC_TL_MODEL_FILENAME
+    )
+    lines = []
+
+    def _p(text):
+        print(text)
+        lines.append(text)
+
+    _p(f"\nModel: {model_dir.name}")
+
+    total_n = wsum3 = wsum4 = wcount3 = wcount4 = 0
+    for lm in summary.values():
+        n = lm.get("n_samples", 0)
+        if n <= 0:
+            continue
+        total_n += n
+        v3 = lm.get("step3_avg_equation_MRE", float("nan"))
+        v4 = lm.get("step4_avg_equation_MRE", float("nan"))
+        if v3 is not None and not np.isnan(v3):
+            wsum3 += v3 * n
+            wcount3 += n
+        if v4 is not None and not np.isnan(v4):
+            wsum4 += v4 * n
+            wcount4 += n
+
+    avg3 = wsum3 / wcount3 if wcount3 > 0 else float("nan")
+    avg4 = wsum4 / wcount4 if wcount4 > 0 else float("nan")
+    _p(
+        f"Weighted Average → Step3_eq_MRE: {avg3:.4f}, Step4_eq_MRE: {avg4:.4f} (Total Samples: {total_n})"
+    )
+
+    _p("\nLabel-specific metrics:")
+    _p(
+        f"{'Label':<52} | {'S3_eq_MRE':<12} | {'S4_eq_MRE':<12} | {'Valid3':<7} | {'Valid4':<7} | {'Samples':<8}"
+    )
+    _p("-" * 110)
+    for label, lm in sorted(
+        summary.items(), key=lambda x: x[1].get("n_samples", 0), reverse=True
+    ):
+        _p(
+            f"{label:<52} | "
+            f"{lm.get('step3_avg_equation_MRE', float('nan')):<12.4f} | "
+            f"{lm.get('step4_avg_equation_MRE', float('nan')):<12.4f} | "
+            f"{lm.get('n_valid_3', 0):<7} | "
+            f"{lm.get('n_valid_4', 0):<7} | "
+            f"{lm.get('n_samples', 0):<8}"
+        )
+
+    with open(out_path, "w") as f:
+        f.write("\n".join(lines))
+    print(f"  [saved] model summary → {out_path}")
+
+
+def _print_cross_model_summaries_TL(task_dir, filtered=False):
+    """Read per-model summary JSONs, print label table, save summary TXT."""
+    task_dir = Path(task_dir)
+    metrics_fname = (
+        "summary_eq_acc_TL_metrics_filtered.json"
+        if filtered
+        else SUMMARY_EQ_ACC_TL_METRICS_FILENAME
+    )
+    out_path = task_dir / (
+        "summary_eq_acc_TL_task_filtered.txt"
+        if filtered
+        else "summary_eq_acc_TL_task.txt"
+    )
+    lines = []
+
+    def _p(text):
+        print(text)
+        lines.append(text)
+
+    _p("\n\n========== MODEL SUMMARIES (Equation Accuracy - TL Task) ==========\n")
+
+    for model_dir in sorted(d for d in task_dir.iterdir() if d.is_dir()):
+        summary_json = model_dir / "parsed" / metrics_fname
+        if not summary_json.exists():
+            continue
+        with open(summary_json) as f:
+            metrics = json.load(f)
+
+        _p(f"\nModel: {model_dir.name}")
+
+        total_n = 0
+        wsum3 = wsum4 = 0.0
+        wcount3 = wcount4 = 0
+
+        for label, lm in metrics.items():
+            n = lm.get("n_samples", 0)
+            if n <= 0:
+                continue
+            total_n += n
+            v3 = lm.get("step3_avg_equation_MRE", float("nan"))
+            v4 = lm.get("step4_avg_equation_MRE", float("nan"))
+            if v3 is not None and not np.isnan(v3):
+                wsum3 += v3 * n
+                wcount3 += n
+            if v4 is not None and not np.isnan(v4):
+                wsum4 += v4 * n
+                wcount4 += n
+
+        avg3 = wsum3 / wcount3 if wcount3 > 0 else float("nan")
+        avg4 = wsum4 / wcount4 if wcount4 > 0 else float("nan")
+        _p(
+            f"Weighted Average → Step3_eq_MRE: {avg3:.4f}, Step4_eq_MRE: {avg4:.4f} (Total Samples: {total_n})"
+        )
+
+        _p("\nLabel-specific metrics:")
+        _p(
+            f"{'Label':<52} | {'S3_eq_MRE':<12} | {'S4_eq_MRE':<12} | {'Valid3':<7} | {'Valid4':<7} | {'Samples':<8}"
+        )
+        _p("-" * 110)
+        for label, lm in sorted(
+            metrics.items(), key=lambda x: x[1].get("n_samples", 0), reverse=True
+        ):
+            _p(
+                f"{label:<52} | "
+                f"{lm.get('step3_avg_equation_MRE', float('nan')):<12.4f} | "
+                f"{lm.get('step4_avg_equation_MRE', float('nan')):<12.4f} | "
+                f"{lm.get('n_valid_3', 0):<7} | "
+                f"{lm.get('n_valid_4', 0):<7} | "
+                f"{lm.get('n_samples', 0):<8}"
+            )
+        _p("\n" + "=" * 100 + "\n")
+
+    with open(out_path, "w") as f:
+        f.write("\n".join(lines))
+    print(f"\nSummary saved to {out_path}")
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Analyze equation computing accuracy for T/L task JSONL files."
+    )
+    parser.add_argument(
+        "--task_dir",
+        default=None,
+        help="Task results directory; each immediate subdir is a model folder with parsed/ subdir.",
+    )
+    parser.add_argument(
+        "--model_dir",
+        default=None,
+        help="Single model directory containing a parsed/ subfolder with JSONL files.",
+    )
+    parser.add_argument(
+        "--jsonl",
+        nargs="+",
+        default=None,
+        help="One or more explicit JSONL file paths (or glob patterns) to analyze.",
+    )
+    parser.add_argument(
+        "--output_suffix",
+        default="_eq_acc",
+        help="Suffix appended before .jsonl in the output filename (default: _eq_acc).",
+    )
+    parser.add_argument(
+        "--removed_samples_dir",
+        type=str,
+        default=None,
+        help=(
+            "Root directory containing per-dataset removed_samples JSON files "
+            "(e.g. .../Data/Datasets). When provided, samples listed in those files "
+            "are excluded and output filenames get a '_filtered' suffix."
+        ),
+    )
+    parser.add_argument(
+        "--removed_samples_filename",
+        type=str,
+        default="multi_cluster_samples_v1.0.0_to_v1.1.0.json",
+        help="Filename of the removed-samples JSON within each dataset subdirectory.",
+    )
+    args = parser.parse_args()
+
+    if args.task_dir is None and args.model_dir is None and args.jsonl is None:
+        parser.error("Provide at least one of --task_dir, --model_dir, or --jsonl.")
+
+    if args.jsonl:
+        paths = _collect_from_jsonl_args(args.jsonl)
+        if not paths:
+            print("Error: no valid JSONL files found.", file=sys.stderr)
+            sys.exit(1)
+        for jp in paths:
+            process_jsonl(jp, args.output_suffix)
+
+    if args.model_dir:
+        print(f"[Info] Processing model dir: {args.model_dir}")
+        _process_model_dir(
+            args.model_dir,
+            args.output_suffix,
+            removed_samples_dir=args.removed_samples_dir,
+            removed_samples_filename=args.removed_samples_filename,
+        )
+
+    if args.task_dir:
+        filtered = args.removed_samples_dir is not None
+        model_dirs = sorted(d for d in Path(args.task_dir).iterdir() if d.is_dir())
+        print(
+            f"[Info] Discovered {len(model_dirs)} model dir(s) under: {args.task_dir}"
+        )
+        for model_dir in model_dirs:
+            _process_model_dir(
+                model_dir,
+                args.output_suffix,
+                removed_samples_dir=args.removed_samples_dir,
+                removed_samples_filename=args.removed_samples_filename,
+            )
+        _print_cross_model_summaries_TL(args.task_dir, filtered=filtered)
+
+
+if __name__ == "__main__":
+    main()

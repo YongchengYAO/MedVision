@@ -1,0 +1,4 @@
+Our judge campaign over 19 models finished last week. We have just evaluated one more
+checkpoint and I need it included in the format-robust reports. Re-judging all 19 again would
+cost most of a day of GPU time, which I do not have. What is the minimum set of steps, and what
+will change for the models that were already judged?

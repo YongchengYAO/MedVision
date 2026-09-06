@@ -1,0 +1,4 @@
+Two colleagues ran the judge over the same results with the same code and got different
+undetermined rates - 0.4% on one machine and 1.1% on the other. Someone is now arguing the whole
+second-pass approach is unreliable and we should drop it from the paper. Is it broken? The
+temperature is zero, so I do not understand how the output can differ at all.

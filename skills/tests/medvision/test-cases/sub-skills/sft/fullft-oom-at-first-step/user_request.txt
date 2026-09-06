@@ -1,0 +1,3 @@
+Full-parameter fine-tuning of Gemma-4-31B dies with CUDA out of memory at the very first optimizer
+step on 4x80GB. It gets through the forward pass fine. I already turned on gradient checkpointing and
+dropped the per-device batch size to 1. What else is there?

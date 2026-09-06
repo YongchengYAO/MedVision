@@ -1,0 +1,22 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "llm-judge-parsing",
+  "target_capability": "reproducibility semantics",
+  "difficulty": "troubleshooting",
+  "evidence_basis": [
+    "docs/LLM-Judge-Reproducibility.md",
+    "script/llm-parsing/DESIGN.md"
+  ],
+  "expected_skill_files": [
+    "sub-skills/llm-judge-parsing/references/design-notes.md",
+    "sub-skills/llm-judge-parsing/references/troubleshooting.md"
+  ],
+  "assertions": [
+    "The response attributes the variation to numerics and batch composition, not to sampling.",
+    "The response states that a zero temperature does not imply reproducibility.",
+    "The response says judge-invalid rates are comparable only within one machine and checkpoint.",
+    "The response bounds the impact: strict parser results take precedence, so published values cannot be rewritten.",
+    "The response identifies the raw judge output as the artifact of record.",
+    "The response does not claim the pipeline is broken or should be dropped."
+  ]
+}

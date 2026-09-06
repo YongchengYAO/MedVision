@@ -1,0 +1,3 @@
+Before committing GPU time to the full segmentation-specialist comparison, I want to prove the whole
+prepare -> inference -> evaluate path works on just KiPA22. Critically I must not overwrite or mix
+into the result files that are already there from the shipped run. Where do the outputs land?

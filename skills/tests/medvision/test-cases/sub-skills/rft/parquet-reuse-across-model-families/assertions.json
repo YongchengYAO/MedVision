@@ -1,0 +1,21 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "rft",
+  "target_capability": "model-family coupling of prepared datasets",
+  "difficulty": "advanced",
+  "evidence_basis": [
+    "src/medvision_bm/rft/verl/build_parquet_ds.py",
+    "src/medvision_bm/medvision_lmms_eval/lmms_eval/tasks/medvision/medvision_utils.py"
+  ],
+  "expected_skill_files": [
+    "sub-skills/rft/references/parquet-schema.md",
+    "sub-skills/rft/references/workflows.md"
+  ],
+  "assertions": [
+    "The response states the parquet cannot be reused for a different model family.",
+    "The response explains that prompts carry the perceived image size and pixel size.",
+    "The response says the consequence is silently wrong measurements and rewards, not a crash.",
+    "The response names the model-family key and processor id that must change on a rebuild.",
+    "The response allows reuse only for models sharing the same image processor."
+  ]
+}

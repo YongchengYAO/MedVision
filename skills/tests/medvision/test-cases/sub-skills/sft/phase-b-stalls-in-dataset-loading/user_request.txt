@@ -1,0 +1,6 @@
+I prepared the SFT dataset yesterday with --process_dataset_only true and it printed the directory
+it saved to. Today I launched training on 4 GPUs with --skip_process_dataset true and the same flags,
+but rank 0 spent about twenty minutes printing "Loading dataset ... Successfully loaded N samples"
+lines for every config before the first training step, and it did the same thing again after I
+resumed from a checkpoint. Is it rebuilding the dataset? How do I make the training launch just load
+what I already prepared?

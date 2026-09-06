@@ -1,0 +1,499 @@
+{
+  "schema": "disco.native-verification.v1",
+  "runtime_skill": "skills/medvision",
+  "environment": {
+    "prefix_role": "private inspection environment (conda, python 3.11)",
+    "backends_available": [
+      "cpu"
+    ],
+    "backends_blocked": [
+      "cuda"
+    ],
+    "host_gpu": "none visible (nvidia-smi absent; torch.cuda.is_available() False)",
+    "note": "medvision_bm 1.2.0 editable, medvision_ds 1.4.0, vendored lmms_eval 0.3.0, torch 2.6.0+cu124 CPU-only host"
+  },
+  "summary": {
+    "PASS": 32,
+    "NATIVE_FAIL": 1,
+    "SKILL_GAP": 0,
+    "BLOCKED_REQUIRED_BACKEND": 5,
+    "SKIP_UNSAFE": 4,
+    "help_only_PASS": 22
+  },
+  "cases": [
+    {
+      "id": "unit-test/nMAE/test-2.py",
+      "command": "python unit-test/nMAE/test-2.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "nMAE aggregation averages only success=True records and is NaN when none succeed"
+    },
+    {
+      "id": "unit-test/detection-metric-failure/test-1.py",
+      "command": "python unit-test/detection-metric-failure/test-1.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "failures score IoU/F1/P/R as 0 and MAE as NaN"
+    },
+    {
+      "id": "unit-test/detection-metric-failure/test-2.py",
+      "command": "python unit-test/detection-metric-failure/test-2.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "parse_outputs and the summarizer agree on IoU"
+    },
+    {
+      "id": "unit-test/detection-metric-failure/test-3.py",
+      "command": "python unit-test/detection-metric-failure/test-3.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "threshold grid uses the total-sample denominator; Acc@IoU>=0.50 equals IoU>0.5"
+    },
+    {
+      "id": "unit-test/equation-accuracy/test-1.py",
+      "command": "python unit-test/equation-accuracy/test-1.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "equation extraction and evaluation"
+    },
+    {
+      "id": "unit-test/equation-accuracy/test-2.py",
+      "command": "python unit-test/equation-accuracy/test-2.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "equation accuracy edge cases"
+    },
+    {
+      "id": "unit-test/equation-accuracy/test-3.py",
+      "command": "python unit-test/equation-accuracy/test-3.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "equation accuracy edge cases"
+    },
+    {
+      "id": "unit-test/equation-accuracy/test-4.py",
+      "command": "python unit-test/equation-accuracy/test-4.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "equation accuracy edge cases"
+    },
+    {
+      "id": "unit-test/equation-accuracy/test-5.py",
+      "command": "python unit-test/equation-accuracy/test-5.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "near-zero ground-truth filtering"
+    },
+    {
+      "id": "unit-test/llm-parsing/test-1.py",
+      "command": "python unit-test/llm-parsing/test-1.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "strict-parser replay parity over synthetic and real responses"
+    },
+    {
+      "id": "unit-test/llm-parsing/test-2.py",
+      "command": "python unit-test/llm-parsing/test-2.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "span verification / anti-fabrication tiers"
+    },
+    {
+      "id": "unit-test/llm-parsing/test-3.py",
+      "command": "python unit-test/llm-parsing/test-3.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "decoder channel split and bounded candidate scan"
+    },
+    {
+      "id": "unit-test/llm-parsing/test-4.py",
+      "command": "python unit-test/llm-parsing/test-4.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "naming, arity and token-budget invariants"
+    },
+    {
+      "id": "unit-test/llm-parsing/test-5.py",
+      "command": "python unit-test/llm-parsing/test-5.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "record ordering and response unwrapping over real files"
+    },
+    {
+      "id": "unit-test/llm-parsing/test-6.py",
+      "command": "python unit-test/llm-parsing/test-6.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "prompt-schema agreement and fingerprint completeness"
+    },
+    {
+      "id": "unit-test/llm-parsing/test-7.py",
+      "command": "python unit-test/llm-parsing/test-7.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "the judge decision table, including strict-success precedence"
+    },
+    {
+      "id": "unit-test/llm-parsing/test-9.py",
+      "command": "python unit-test/llm-parsing/test-9.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "shell entry points in both MOCK modes"
+    },
+    {
+      "id": "unit-test/llm-parsing/test-11.py",
+      "command": "python unit-test/llm-parsing/test-11.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "judge registry invariants"
+    },
+    {
+      "id": "unit-test/tool-use/test-1.py",
+      "command": "python unit-test/tool-use/test-1.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "AST-validated Python sandbox accepts safe code"
+    },
+    {
+      "id": "unit-test/tool-use/test-2.py",
+      "command": "python unit-test/tool-use/test-2.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "sandbox rejects unsafe constructs"
+    },
+    {
+      "id": "unit-test/tool-use/test-3.py",
+      "command": "python unit-test/tool-use/test-3.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "sandbox rejects unsafe constructs"
+    },
+    {
+      "id": "unit-test/tool-use/test-4.py",
+      "command": "python unit-test/tool-use/test-4.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "sandbox rejects unsafe constructs"
+    },
+    {
+      "id": "unit-test/detection-verl-nocot/test-1.py",
+      "command": "python unit-test/detection-verl-nocot/test-1.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "verl detection prompt construction without CoT"
+    },
+    {
+      "id": "unit-test/scaledPS/test-2.py",
+      "command": "python unit-test/scaledPS/test-2.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "scaled pixel-size pipeline (needs MedVision_DATA_DIR; ran offline)"
+    },
+    {
+      "id": "unit-test/scaledPS/test-3.py",
+      "command": "python unit-test/scaledPS/test-3.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "scaled pixel-size pipeline (needs MedVision_DATA_DIR; ran offline)"
+    },
+    {
+      "id": "unit-test/scaledPS/test-4.py",
+      "command": "python unit-test/scaledPS/test-4.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "scaled pixel-size pipeline (needs MedVision_DATA_DIR; ran offline)"
+    },
+    {
+      "id": "unit-test/scaledPS/test-5.py",
+      "command": "python unit-test/scaledPS/test-5.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "scaled pixel-size pipeline (needs MedVision_DATA_DIR; ran offline)"
+    },
+    {
+      "id": "unit-test/nMAE/test-1.py",
+      "command": "python unit-test/nMAE/test-1.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "FIXED in-session by the maintainer. STALE TEST vs current source: _compute_physical_diagonal() gained a required keyword-only 'explicit_scale'. Repository test drift, not a generated-skill defect; the skill documents the current signature."
+    },
+    {
+      "id": "unit-test/nMAE/test-3.py",
+      "command": "python unit-test/nMAE/test-3.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "FIXED in-session by the maintainer. Same stale signature as test-1."
+    },
+    {
+      "id": "unit-test/nMAE/test-5.py",
+      "command": "python unit-test/nMAE/test-5.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "FIXED in-session by the maintainer. Same stale signature as test-1."
+    },
+    {
+      "id": "unit-test/nMAE/test-4.py",
+      "command": "python unit-test/nMAE/test-4.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "FIXED in-session by the maintainer. A distance sample returned nMAE success=False. This is the documented condition where the NIfTI images are not at the recorded doc.image_file paths, so the physical diagonal cannot be computed and the failure is silent. results-parsing-and-metrics/references/troubleshooting.md already covers it (all-NaN avgNMAE, cause b). No skill change needed."
+    },
+    {
+      "id": "unit-test/scaledPS/test-1.py",
+      "command": "python unit-test/scaledPS/test-1.py",
+      "status": "PASS",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "FIXED in-session by the maintainer. STALE TEST: it extracts source with a regex that now also captures a trailing decorator, producing a SyntaxError. Repository test drift; tests 2-5 of the same suite pass."
+    },
+    {
+      "id": "unit-test/llm-parsing/test-8.py",
+      "command": "python unit-test/llm-parsing/test-8.py",
+      "status": "NATIVE_FAIL",
+      "backend_requirement": "cpu",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "native test",
+      "note": "Detection invariants fail because a stray non-roster directory (a _CoT-suffixed duplicate model folder under Results/MedVision-detect-v2) contains strict parsed records inside an llm-parsed_<judge>/ folder. All 19 roster models are clean. Repository data hygiene issue; llm-judge-parsing/references/troubleshooting.md documents it with the fix."
+    },
+    {
+      "id": "eval-open-weight",
+      "command": "script/benchmark-{detect,TL,AD}/eval__<open-weight model>__*.sh",
+      "status": "BLOCKED_REQUIRED_BACKEND",
+      "backend_requirement": "cuda",
+      "backend_criticality": "required",
+      "cpu_substitute": "none",
+      "assigned_environment": "none available",
+      "verification_expectation": "native example, deferred",
+      "note": "Local VLM evaluation via vLLM/HF. Needs a CUDA host and the per-model frozen stack."
+    },
+    {
+      "id": "sft-training",
+      "command": "script/sft/train__*.sh",
+      "status": "BLOCKED_REQUIRED_BACKEND",
+      "backend_requirement": "cuda",
+      "backend_criticality": "required",
+      "cpu_substitute": "none",
+      "assigned_environment": "none available",
+      "verification_expectation": "native example, deferred",
+      "note": "LoRA and full-parameter fine-tuning. Needs 4 CUDA GPUs; parser --help checks passed on CPU."
+    },
+    {
+      "id": "judge-inference",
+      "command": "bash script/llm-parsing/run_llm_parsing.sh smoke|pilot|full",
+      "status": "BLOCKED_REQUIRED_BACKEND",
+      "backend_requirement": "cuda",
+      "backend_criticality": "required",
+      "cpu_substitute": "none",
+      "assigned_environment": "none available",
+      "verification_expectation": "native example, deferred",
+      "note": "Judge inference needs vLLM 0.19 and at least one H100-class GPU plus a ~62 GB model download."
+    },
+    {
+      "id": "judge-sweep",
+      "command": "bash script/llm-parsing/test-sweep.sh",
+      "status": "BLOCKED_REQUIRED_BACKEND",
+      "backend_requirement": "cuda",
+      "backend_criticality": "required",
+      "cpu_substitute": "none",
+      "assigned_environment": "none available",
+      "verification_expectation": "native example, deferred",
+      "note": "Same GPU requirement as judge inference."
+    },
+    {
+      "id": "biomedparse-tracks",
+      "command": "script/ablation/biomedparse/scripts/{eval,finetune}/*.sh",
+      "status": "BLOCKED_REQUIRED_BACKEND",
+      "backend_requirement": "cuda",
+      "backend_criticality": "required",
+      "cpu_substitute": "none",
+      "assigned_environment": "none available",
+      "verification_expectation": "native example, deferred",
+      "note": "Needs a CUDA GPU with nvcc for the detectron2 source build plus the pinned upstream checkout and 4.2 GB weights."
+    },
+    {
+      "id": "api-image-resize-probes",
+      "command": "unit-test/{claude,gemini,kimi,openai}-image-resize/*.py",
+      "status": "SKIP_UNSAFE",
+      "backend_requirement": "any",
+      "backend_criticality": "optional",
+      "cpu_substitute": "partial",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "documentation only",
+      "note": "Require live API credentials; skipped. Covered synthetically by the extending-models-and-tasks cases."
+    },
+    {
+      "id": "setup-judge-env",
+      "command": "bash script/llm-parsing/setup_judge_env.sh",
+      "status": "SKIP_UNSAFE",
+      "backend_requirement": "any",
+      "backend_criticality": "optional",
+      "cpu_substitute": "partial",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "documentation only",
+      "note": "Creates an environment and downloads multiple GB; skipped."
+    },
+    {
+      "id": "judge-prep",
+      "command": "bash script/llm-parsing/run_llm_parsing.sh prep",
+      "status": "SKIP_UNSAFE",
+      "backend_requirement": "any",
+      "backend_criticality": "optional",
+      "cpu_substitute": "partial",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "documentation only",
+      "note": "Destructive: archives judge output and deletes queues. Never run."
+    },
+    {
+      "id": "sft-loss-masking",
+      "command": "unit-test/sft-loss-masking/*.py",
+      "status": "SKIP_UNSAFE",
+      "backend_requirement": "any",
+      "backend_criticality": "optional",
+      "cpu_substitute": "partial",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "documentation only",
+      "note": "Downloads model processors; skipped. Read as evidence instead."
+    },
+    {
+      "id": "cli-help-suite",
+      "command": "mvbm --help; python -m medvision_bm.<21 modules> --help; python -m lmms_eval --help; bash script/llm-parsing/run_llm_parsing.sh --list",
+      "status": "PASS",
+      "backend_requirement": "any",
+      "backend_criticality": "alternative",
+      "cpu_substitute": "full",
+      "assigned_environment": "inspection (cpu)",
+      "verification_expectation": "help-only",
+      "note": "22 help/parser checks, all exit 0. Every flag documented in the generated cli-reference files was taken from this output."
+    }
+  ],
+  "summary_note": "Updated after defects 1, 2 and 5 were fixed in-session; a fourth case shared defect 1's root cause and was fixed too. Only the stray-results-directory case remains."
+}

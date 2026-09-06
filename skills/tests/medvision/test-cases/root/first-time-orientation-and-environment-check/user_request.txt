@@ -1,0 +1,3 @@
+A collaborator pointed me at MedVision and said we should evaluate our medical VLM on it. I have
+never used it. What is it actually measuring, what do I need installed, and how do I check whether
+this machine can run an evaluation at all before I ask for GPU time?

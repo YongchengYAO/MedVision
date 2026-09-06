@@ -1,0 +1,55 @@
+{
+  "skill_name": "medvision",
+  "method": "Three fresh agents were given one usability prompt each and restricted to reading only the runtime skill directory. They could execute bundled scripts but not open the repository source, docs or the artifact directory. Their answers were graded against the corresponding assertions.json.",
+  "evals": [
+    {
+      "id": 1,
+      "case": "test-cases/root/first-time-orientation-and-environment-check",
+      "prompt": "A collaborator pointed me at MedVision and said we should evaluate our medical VLM on it. I have never used it. What is it actually measuring, what do I need installed, and how do I check whether this machine can run an evaluation at all before I ask for GPU time?",
+      "expected_output": "Task families and units, install commands for both packages, the two required environment variables, a run of the bundled environment checker, a CPU-versus-GPU capability split, and routing to the evaluation sub-skill.",
+      "files": [],
+      "assertions": [
+        "The response names the three task families and their real-world units.",
+        "The response gives install commands for both the benchmark and the dataset package.",
+        "The response names the required data-directory and annotation-version environment variables.",
+        "The response runs or cites the bundled environment checker.",
+        "The response separates CPU-only capabilities from GPU-only ones.",
+        "The response routes to the benchmark-evaluation sub-skill for the actual run.",
+        "The response does not depend on files outside the generated skill directory.",
+        "The response does not mention any local Python environment or machine-specific path."
+      ]
+    },
+    {
+      "id": 2,
+      "case": "test-cases/sub-skills/results-parsing-and-metrics/threshold-vs-mean-iou-discrepancy",
+      "prompt": "Mean IoU is 0.62 but IoU>0.5 is only 0.41. Is this a bug in the summarizer, or am I reading the report wrong? The model does refuse to answer on some slices.",
+      "expected_output": "An explanation of the differing denominators and failure handling, not a bug report.",
+      "files": [],
+      "assertions": [
+        "The response routes to the results-parsing-and-metrics sub-skill.",
+        "The response states that detection failures are scored as IoU 0 and are included in the mean.",
+        "The response states that threshold metrics divide by the total sample count.",
+        "The response notes the threshold comparison is >= so IoU>0.5 equals Acc@IoU>=0.50.",
+        "The response contrasts this with A/D and T/L, whose errors are NaN on failure and excluded.",
+        "The response does not call the behaviour a bug in the summarizer.",
+        "The response references the bundled metrics demo rather than repository source files."
+      ]
+    },
+    {
+      "id": 3,
+      "case": "test-cases/integration/end-to-end-evaluate-parse-summarize-judge",
+      "prompt": "Complete tumour/lesion numbers for our VLM on four H100s, comparable with the published leaderboard, including the format-robust report. Walk me through it from a clean machine with checks at each stage.",
+      "expected_output": "The four documented steps in order with owning sub-skills, comparability constraints, per-stage verification, and the separate judge environment.",
+      "files": [],
+      "assertions": [
+        "The response sequences evaluation, parsing, summarizing and judge re-parsing in order.",
+        "The response names the owning sub-skill for each step.",
+        "The response pins the annotation version and states the sample limit needed for comparability.",
+        "The response checks the environment before proposing GPU work.",
+        "The response states that the judge needs a separate environment with a newer serving stack.",
+        "The response gives a concrete verification checkpoint after each stage.",
+        "The response explains that the diff between the two reports isolates formatting from measurement ability."
+      ]
+    }
+  ]
+}

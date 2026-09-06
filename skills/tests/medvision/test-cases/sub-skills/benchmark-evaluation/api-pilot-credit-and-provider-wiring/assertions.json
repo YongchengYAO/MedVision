@@ -1,0 +1,21 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "benchmark-evaluation",
+  "target_capability": "API provider configuration and cost failures",
+  "difficulty": "troubleshooting",
+  "evidence_basis": [
+    "src/medvision_bm/medvision_lmms_eval/lmms_eval/models/openai.py",
+    "script/benchmark-AD/eval__GPT5.5__AD.sh"
+  ],
+  "expected_skill_files": [
+    "sub-skills/benchmark-evaluation/references/model-catalog.md",
+    "sub-skills/benchmark-evaluation/references/troubleshooting.md"
+  ],
+  "assertions": [
+    "The response questions the 1000-sample choice and cites the 100-sample API pilot convention.",
+    "The response sets the provider, the provider-prefixed model code and the matching API key variable together.",
+    "The response explains 402 as the provider holding the full token budget as credit.",
+    "The response sanitizes the API key for trailing whitespace.",
+    "The response notes that a different sample limit needs its own results tag."
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "biomedparse-ablation",
+  "target_capability": "dependency-pin reasoning after the dataset install",
+  "difficulty": "troubleshooting",
+  "evidence_basis": [
+    "src/medvision_bm/utils/install_utils.py (install_medvision_ds two-step wheel install)",
+    "Data/src/pyproject.toml (medvision_ds declared dependencies)",
+    "script/ablation/biomedparse/requirements.txt"
+  ],
+  "expected_skill_files": [
+    "sub-skills/biomedparse-ablation/references/troubleshooting.md",
+    "sub-skills/biomedparse-ablation/references/setup.md",
+    "sub-skills/biomedparse-ablation/scripts/check_biomedparse_env.py"
+  ],
+  "assertions": [
+    "The response states that huggingface-hub 0.36.0 is inside medvision_ds's declared >=0.35.3,<2.0 range and is therefore left alone by the install.",
+    "The response identifies the wheel-build step's `pip install --upgrade build` as what can still lift packaging past 23.0.",
+    "The response does not claim that the dataset install force-reinstalls or re-resolves its dependencies.",
+    "The response notes that medvision_ds declares an exact datasets==3.6.0, matching the env pin, and declares opencv-python while the env pins opencv-python-headless (the expected pip check noise).",
+    "The response gives re-running `pip install -r requirements.txt` as the repair and names that setup.sh runs it twice on purpose.",
+    "The response names the bundled environment checker as the verification step."
+  ]
+}

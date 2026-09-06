@@ -1,0 +1,3 @@
+I cloned the benchmark repo and I'm editing a scoring function under src/, but my changes have no
+effect at all - the command keeps producing the old numbers. I have reinstalled the package a couple
+of times. There is no error message, it just behaves like my edits do not exist.

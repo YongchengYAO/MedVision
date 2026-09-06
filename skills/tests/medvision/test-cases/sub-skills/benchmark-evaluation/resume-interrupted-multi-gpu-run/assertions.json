@@ -1,0 +1,23 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "benchmark-evaluation",
+  "target_capability": "resume and cache invalidation",
+  "difficulty": "advanced",
+  "evidence_basis": [
+    "src/medvision_bm/benchmark/eval_utils.py",
+    "README.md"
+  ],
+  "expected_skill_files": [
+    "sub-skills/benchmark-evaluation/references/workflows.md",
+    "sub-skills/benchmark-evaluation/references/troubleshooting.md",
+    "sub-skills/benchmark-evaluation/scripts/check_results_tree.py"
+  ],
+  "assertions": [
+    "The response re-runs the same command rather than starting a fresh output tree.",
+    "The response distinguishes the completed-tasks tracker from the per-sample response cache.",
+    "The response states that the cache key includes a prompt hash, so the prompt edit is picked up automatically.",
+    "The response notes that a token-budget change does not invalidate the cache.",
+    "The response offers the bundled results-tree checker to find incomplete tasks.",
+    "The response does not suggest deleting the results tree or editing result files by hand."
+  ]
+}

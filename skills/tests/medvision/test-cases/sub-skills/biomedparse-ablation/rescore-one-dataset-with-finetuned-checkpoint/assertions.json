@@ -1,0 +1,22 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "biomedparse-ablation",
+  "target_capability": "filtered re-run and result merging",
+  "difficulty": "advanced",
+  "evidence_basis": [
+    "script/ablation/biomedparse/README.md",
+    "script/ablation/biomedparse/src/eval_tl.py",
+    "script/ablation/biomedparse/scripts/_env.sh"
+  ],
+  "expected_skill_files": [
+    "sub-skills/biomedparse-ablation/references/tracks.md",
+    "sub-skills/biomedparse-ablation/references/cli-reference.md"
+  ],
+  "assertions": [
+    "The response uses the single-dataset filter option on the relevant stages.",
+    "The response switches the task to tumour/lesion rather than detection.",
+    "The response overrides the checkpoint instead of accepting the last-checkpoint default.",
+    "The response explains that refreshed rows are merged into the existing result files.",
+    "The response mentions the annotation acknowledgement variable required for the T/L path."
+  ]
+}

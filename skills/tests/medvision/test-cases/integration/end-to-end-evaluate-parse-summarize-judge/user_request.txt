@@ -1,0 +1,4 @@
+We have a medical VLM on Hugging Face and four H100s. I need the complete tumour/lesion numbers for
+it, comparable with your published leaderboard, including the format-robust version of the report so
+reviewers cannot say our success rate is just a prompt-formatting artefact. Walk me through it from a
+clean machine, and tell me at each stage what I should check before moving on.

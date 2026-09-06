@@ -1,0 +1,7 @@
+I added our in-house VLM to the benchmark and registered it. Detection ran fine last week, but every
+tumour/lesion task now dies with:
+
+ValueError: [Error] vllm_newvlm is not recognised/supported.
+
+I do not understand why detection worked and this does not. How do I fix it, and how do I convince
+myself the pixel sizes it gets are actually right?

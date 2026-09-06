@@ -1,0 +1,24 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "llm-judge-parsing",
+  "target_capability": "incremental campaign extension",
+  "difficulty": "advanced",
+  "evidence_basis": [
+    "script/llm-parsing/README.md",
+    "script/llm-parsing/run_llm_parsing.sh",
+    "script/llm-parsing/config-TL-CoT.yaml"
+  ],
+  "expected_skill_files": [
+    "sub-skills/llm-judge-parsing/SKILL.md",
+    "sub-skills/llm-judge-parsing/references/recipes.md",
+    "sub-skills/llm-judge-parsing/scripts/make_roster_yaml.py"
+  ],
+  "assertions": [
+    "The response keys the roster entry by the results directory name, not the display name.",
+    "The response requires the new model to already have strict parsed records.",
+    "The response explicitly avoids the destructive prep step.",
+    "The response runs only the queue-build, judge and analyze steps.",
+    "The response explains that finished work is skipped because the queue identity is roster-independent.",
+    "The response states that already-judged models' published values do not change."
+  ]
+}

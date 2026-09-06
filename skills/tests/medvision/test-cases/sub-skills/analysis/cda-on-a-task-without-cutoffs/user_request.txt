@@ -1,0 +1,3 @@
+We want the clinical decision agreement numbers for our detection results so we can put a clinical
+relevance column in the paper next to IoU. I ran the analysis and got an essentially empty report
+with no error. What happened?

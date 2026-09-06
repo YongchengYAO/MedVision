@@ -1,0 +1,4 @@
+I want to run a tumour/lesion study on KiPA22 with the newest annotations I can get, so I set
+MedVision_PLANNER_VERSION=1.2.0. The loader refuses to start, and when I got it running earlier with
+a different setting the number of test samples did not match the leaderboard. What is going on and
+what should I actually set?

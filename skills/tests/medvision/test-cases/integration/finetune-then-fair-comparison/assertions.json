@@ -1,0 +1,26 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "integration",
+  "target_capability": "fine-tuning to evaluation with comparison validity",
+  "difficulty": "advanced",
+  "evidence_basis": [
+    "docs/model-release/MedVision-V0-7B_ModelCard.md",
+    "README.md",
+    "script/sft/train__SFT-CoT__Qwen2.5VL7B__D110k-AD5.5k-TL5.5k__512x512.sh"
+  ],
+  "expected_skill_files": [
+    "sub-skills/dataset-and-tasks/SKILL.md",
+    "sub-skills/sft/SKILL.md",
+    "sub-skills/benchmark-evaluation/SKILL.md",
+    "sub-skills/results-parsing-and-metrics/SKILL.md",
+    "references/model-roster.md"
+  ],
+  "assertions": [
+    "The response sequences data selection, dataset preparation, fine-tuning, evaluation of both models, and summarization.",
+    "The response requires identical annotation version, sample limit and token budget across both runs.",
+    "The response states that the prepared dataset is tied to the model family that built it.",
+    "The response requires the baseline to be in the supported roster.",
+    "The response notes that the released model also used a reinforcement stage run in an external framework.",
+    "The response evaluates the baseline as well as the fine-tuned model."
+  ]
+}

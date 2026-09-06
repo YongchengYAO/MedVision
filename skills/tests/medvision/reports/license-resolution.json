@@ -1,0 +1,11 @@
+{
+  "repository": "YongchengYAO/MedVision",
+  "source_commit": "780e247d393bafba6ac71bb9707b0e0e4506d2e7",
+  "source": "GitHub CLI (gh api)",
+  "value": "NOASSERTION",
+  "status": "resolved",
+  "previous_value": "NOASSERTION",
+  "changed": false,
+  "query": "gh api repos/YongchengYAO/MedVision/license?ref=780e247d393bafba6ac71bb9707b0e0e4506d2e7 --jq '.license.spdx_id // empty'",
+  "note": "resolve_repo_license.mjs could not be executed on this host (only node v6.13.1 is available, which cannot parse ESM); the identical gh api query the resolver wraps was run directly and returned NOASSERTION. GitHub still does not auto-detect a licence for this repository even though it ships a Creative Commons Attribution 4.0 file, so all eleven SKILL.md files keep license: NOASSERTION unchanged."
+}

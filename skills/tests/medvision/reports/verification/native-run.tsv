@@ -1,0 +1,33 @@
+unit-test/nMAE/test-1.py	FAIL(rc=1)	TypeError: _compute_physical_diagonal() missing 1 required keyword-only argument: 'explicit_scale'
+unit-test/nMAE/test-2.py	PASS	
+unit-test/nMAE/test-3.py	FAIL(rc=1)	ValueError: Environment variable MedVision_DATA_DIR must be set to specify download directory
+unit-test/nMAE/test-4.py	FAIL(rc=1)	ValueError: Environment variable MedVision_DATA_DIR must be set to specify download directory
+unit-test/nMAE/test-5.py	FAIL(rc=1)	ValueError: Environment variable MedVision_DATA_DIR must be set to specify download directory
+unit-test/scaledPS/test-1.py	FAIL(rc=1)	SyntaxError: invalid syntax
+unit-test/scaledPS/test-2.py	FAIL(rc=1)	ValueError: Environment variable MedVision_DATA_DIR must be set to specify download directory
+unit-test/scaledPS/test-3.py	FAIL(rc=1)	ValueError: Environment variable MedVision_DATA_DIR must be set to specify download directory
+unit-test/scaledPS/test-4.py	FAIL(rc=1)	ValueError: Environment variable MedVision_DATA_DIR must be set to specify download directory
+unit-test/scaledPS/test-5.py	FAIL(rc=1)	ValueError: Environment variable MedVision_DATA_DIR must be set to specify download directory
+unit-test/detection-metric-failure/test-1.py	PASS	
+unit-test/detection-metric-failure/test-2.py	PASS	
+unit-test/detection-metric-failure/test-3.py	PASS	
+unit-test/equation-accuracy/test-1.py	PASS	
+unit-test/equation-accuracy/test-2.py	PASS	
+unit-test/equation-accuracy/test-3.py	PASS	
+unit-test/equation-accuracy/test-4.py	PASS	
+unit-test/equation-accuracy/test-5.py	PASS	
+unit-test/llm-parsing/test-1.py	PASS	
+unit-test/llm-parsing/test-11.py	PASS	
+unit-test/llm-parsing/test-2.py	PASS	
+unit-test/llm-parsing/test-3.py	PASS	
+unit-test/llm-parsing/test-4.py	PASS	
+unit-test/llm-parsing/test-5.py	PASS	
+unit-test/llm-parsing/test-6.py	PASS	
+unit-test/llm-parsing/test-7.py	PASS	
+unit-test/llm-parsing/test-8.py	FAIL(rc=1)	FAILED (2): ['Detection: strict key removed from every record', 'Detection: LLM_filtered_resps present, one element']
+unit-test/llm-parsing/test-9.py	PASS	
+unit-test/tool-use/test-1.py	PASS	
+unit-test/tool-use/test-2.py	PASS	
+unit-test/tool-use/test-3.py	PASS	
+unit-test/tool-use/test-4.py	PASS	
+unit-test/detection-verl-nocot/test-1.py	PASS	

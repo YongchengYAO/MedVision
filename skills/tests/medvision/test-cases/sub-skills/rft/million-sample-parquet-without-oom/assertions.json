@@ -1,0 +1,23 @@
+{
+  "schema": "disco.usability-case.v1",
+  "target_skill_area": "rft",
+  "target_capability": "checkpointed parquet dataset construction",
+  "difficulty": "troubleshooting",
+  "evidence_basis": [
+    "src/medvision_bm/rft/verl/build_parquet_ds__checkpointed.py",
+    "script/rft/build_parquet_ds__verl__D1000k-AD0k-TL0k__512x512__checkpointed.sh"
+  ],
+  "expected_skill_files": [
+    "sub-skills/rft/SKILL.md",
+    "sub-skills/rft/references/cli-reference.md",
+    "sub-skills/rft/references/troubleshooting.md",
+    "sub-skills/rft/scripts/build_parquet_ds.sh"
+  ],
+  "assertions": [
+    "The response selects the checkpointed parquet builder rather than the plain one.",
+    "The response names the shard-size control and suggests lowering worker counts.",
+    "The response explains the silent kill as a container memory limit, not a Python exception.",
+    "The response passes the target image shape and the model family used for the image processor.",
+    "The response warns that a global sample cap can silently truncate per-task limits."
+  ]
+}
