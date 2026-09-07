@@ -1,7 +1,8 @@
 # CDA — implementation notes
 
 Reference for anyone modifying these scripts. User-facing description is in
-`README.md`; the paper write-up is `docs/clinical-decision-agreement.md`.
+`README.md`; the paper write-up is
+`docsite/source/benchmarking/clinical-decision-agreement.md`.
 
 Everything here is post-hoc re-scoring of existing benchmark outputs. No
 inference, no GPU, no `medvision_bm` import. If a change to this folder requires
@@ -299,8 +300,9 @@ than writing an empty-but-successful report.
 
 **The procedure resamples whole imaging volumes, not records.** A T/L proxy
 scores one record per annotated 2D slice, and a tumour contributes many slices —
-measured: **1,064 renal records from 121 volumes**, mean 8.8, max 64 from a
-single volume. Resampling records i.i.d. treats those 64 slices as 64
+measured on the unfiltered set: **1,064 renal records from 121 volumes**, mean
+8.8, max 64 from a single volume (1,025 from 118 with the benchmark's exclusion
+applied). Resampling records i.i.d. treats those 64 slices as 64
 independent facts. Measured effect on the renal proxy: the i.i.d. CI is
 **5.0× too narrow**, `[-0.067, -0.012]` (excludes zero) versus the clustered
 `[-0.215, +0.056]` (includes zero) — enough to flip a null result into an
@@ -311,9 +313,10 @@ subject, so clustering is a provable no-op there — every A/D row satisfies
 `n == n_clusters`, whatever that model's parse coverage happens to be.
 
 The p-value comes from **inverting that same bootstrap distribution**
-(`p = (#{replicate <= 0} + 1) / (n_valid + 1)`, one-sided for κ > 0), so one
-resampling pass produces both numbers and they cannot disagree about whether
-zero is plausible.
+(`p = (#{replicate <= 0} + 1) / (n_valid + 1)`, one-sided for the row's
+statistic > 0 — `weighted_kappa` on an ordinal proxy, `cohen_kappa` otherwise),
+so one resampling pass produces both numbers and they cannot disagree about
+whether zero is plausible.
 
 A label-permutation test was used here and was removed as **unfixable under
 clustering**. The exchangeable unit is the volume, but volumes have unequal
@@ -462,5 +465,6 @@ Real and unfixed. Anything quoting CDA numbers should carry these.
   is by definition a duplicate.
 - Changing a cutoff, a boundary direction, an `ordinal` flag or the resampling
   unit changes published numbers. Re-run `run_CDA_analysis.sh` (which re-renders
-  `CDA_REPORT.md`) and update `docs/clinical-decision-agreement.md` in the same
+  `CDA_REPORT.md`) and update
+  `docsite/source/benchmarking/clinical-decision-agreement.md` in the same
   change.

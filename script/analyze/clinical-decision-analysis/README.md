@@ -92,9 +92,11 @@ isolates the model: both sides go through the same cutoff table, so any
 disagreement is caused by measurement error alone.
 
 The analysis is followed by an uncertainty pass giving bootstrap 95% CIs and a
-one-sided p-value for κ > 0. Both come from the same resampling pass, which
-draws whole imaging volumes rather than individual slices — for a tumour proxy
-the slices of one tumour are not independent observations.
+one-sided p-value for that statistic > 0, computed on the **weighted** kappa for
+an ordinal proxy — every proxy here — so read the interval against **wKappa**,
+not **Kappa**. Both come from the same resampling pass, which draws whole
+imaging volumes rather than individual slices — for a tumour proxy the slices of
+one tumour are not independent observations.
 
 ## Reading the output
 
@@ -246,6 +248,6 @@ verified against hand-computed references.
 
 ## Further reading
 
-`docs/clinical-decision-agreement.md` has the full write-up, citations and
-results. `DESIGN.md` in this folder documents the implementation for anyone
-(human or agent) modifying these scripts.
+`docsite/source/benchmarking/clinical-decision-agreement.md` has the full
+write-up, citations and results. `DESIGN.md` in this folder documents the
+implementation for anyone (human or agent) modifying these scripts.

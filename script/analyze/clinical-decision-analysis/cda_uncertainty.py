@@ -1,7 +1,8 @@
 """Clinical Decision Agreement (CDA) — uncertainty analysis.
 
 Regenerates the **bootstrap 95% confidence intervals** and **p-values** reported
-alongside the CDA point estimates in ``docs/clinical-decision-agreement.md``.
+alongside the CDA point estimates in
+``docsite/source/benchmarking/clinical-decision-agreement.md``.
 
 This script re-reads the per-sample categorizations already written by
 ``summarize_CDA_task.py`` (it never re-runs inference and never re-derives
@@ -14,10 +15,11 @@ number they annotate.
 
 **The resampling unit is the imaging volume, not the record.** A T/L proxy
 scores one record per annotated 2D slice, and a single tumor contributes many
-slices (KiTS23+KiPA22: 1,064 records from 121 volumes, up to 64 from one), so
-records are correlated. Resampling records i.i.d. would treat a tumor measured
-on 64 slices as 64 independent facts and understate the interval about
-five-fold -- enough to move the renal CI from excluding zero to including it.
+slices (KiTS23+KiPA22, unfiltered: 1,064 records from 121 volumes, up to 64
+from one; 1,025 from 118 with the benchmark's exclusion applied), so records are
+correlated. Resampling records i.i.d. would treat a tumor measured on 64 slices
+as 64 independent facts and understate the interval about five-fold -- enough to
+move the renal CI from excluding zero to including it.
 The procedure therefore works on whole volumes. For the cephalometric proxies,
 which contribute one record per subject, this is identical to record-level
 resampling.

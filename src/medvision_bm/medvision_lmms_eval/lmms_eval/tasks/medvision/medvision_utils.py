@@ -1306,6 +1306,12 @@ def get_resized_img_shape(model_name, img_2d_raw, extra_kwargs):
     # (LLaVA-OneVision, CLIP-336 trio, Llama-3.2) set img_shape_content_hw explicitly below.
     img_shape_content_hw = None
     if model_name in ["qwen3vl", "vllm_qwen3vl"]:
+        # NOTE: Qwen3-VL reuses Qwen2.5-VL's image processor class (Qwen2VLImageProcessorFast) but
+        # ships patch_size 16 (NOT 14), so it smart-resizes each side to a multiple of
+        # patch_size (16) * merge_size (2) = 32 -- not the 28 of Qwen2.5-VL/Lingshu/GLM below.
+        # The probe reads patch_size off the processor, so it follows the checkpoint; this comment
+        # records the factor the prompt's pixel-size math actually sees.
+        # Preprocessor config: https://huggingface.co/Qwen/Qwen3-VL-32B-Thinking/blob/main/preprocessor_config.json
         img_shape_resized_hw = _process_img_qwen3vl(img_2d_raw, extra_kwargs) 
     elif model_name in ["vllm_minimax_m3", "minimax_m3"]:
         # NOTE: MiniMax-M3's MiniMaxM3VLImageProcessor smart-resizes to a multiple of

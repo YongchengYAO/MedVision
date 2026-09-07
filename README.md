@@ -1002,20 +1002,25 @@ Restart the agent afterward so it re-scans the skills root.
 Ask about the technical details behind the benchmark and get the paper's own definitions rather than a guess:
 
 ```
+/medvision-paper  How many datasets, 3D volumes and annotated slices does MedVision contain?
 /medvision-paper  How are tumor/lesion sizes annotated?
 /medvision-paper  Summarize the training of MedVision-V0
 /medvision-paper  What are the benchmarking tasks?
 /medvision-paper  How are model responses parsed and converted to metrics?
+/medvision-paper  Explain the clinical decision agreement analysis?
+/medvision-paper  Is the measurement bottleneck visual perception or arithmetic?
 ```
 
 ## Run the benchmark: `/medvision-pipeline`
 
-Ask for how to run the benchmarking, post-training, and analyses.
+Ask for how to set up the stack, run the benchmarking, and post-training.
 
 ```
+/medvision-pipeline  Set up the environment and download the datasets for the detection task.
 /medvision-pipeline  Evaluate Qwen-2.5-VL on the T/L task, then parse and summarize the results.
+/medvision-pipeline  Parse and summarize an existing run without re-running inference.
+/medvision-pipeline  Why don't my summarized metrics match the leaderboard?
 /medvision-pipeline  How to finetune Gemma4 on multi-task mixture of MedVision data?
-/medvision-pipeline  Explain the clinical decision agreement analysis?
 ```
 
 ## Go deeper: `/medvision`
@@ -1024,6 +1029,9 @@ For maintainer-level work — the exact flag, pin or failure mode — the repo s
 
 ```
 /medvision  How do I add a new model across every site that needs registering?
+/medvision  How do I resume an interrupted multi-GPU evaluation?
+/medvision  Which annotation version and environment variables do I pin to reproduce the published numbers?
+/medvision  Run the clinical decision agreement analysis on my parsed results.
 ```
 
 See [`skills/README.md`](https://github.com/YongchengYAO/MedVision/blob/master/skills/README.md) for the routing map, the 39 bundled helper scripts, and how to use the skills as documentation without installing anything.

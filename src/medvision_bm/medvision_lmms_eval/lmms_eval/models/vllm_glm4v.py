@@ -30,7 +30,7 @@ class VLLM_GLM4V(lmms):
 
     Covers both released checkpoints with a single module -- they share the GLM-4V image
     processor (Glm4vImageProcessor) and chat template and differ only in the LLM backbone:
-        - zai-org/GLM-4.6V        -> Glm4vMoeForConditionalGeneration (MoE, ~108B)
+        - zai-org/GLM-4.6V        -> Glm4vMoeForConditionalGeneration (MoE, ~106B)
         - zai-org/GLM-4.6V-Flash  -> Glm4vForConditionalGeneration    (dense, ~9B)
     vLLM auto-detects the architecture from the checkpoint config, so the same wrapper serves
     both; pick the checkpoint via `model_hf` (and scale `tensor_parallel_size` for the MoE).

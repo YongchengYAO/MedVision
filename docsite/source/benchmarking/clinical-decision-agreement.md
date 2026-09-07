@@ -45,10 +45,13 @@ sides go through the same cutoff table, so any disagreement is
 [caused by measurement error alone]{.mv-accent}.
 
 The analysis is followed by an uncertainty pass: bootstrap 95% confidence
-intervals and a one-sided p-value for κ > 0. The bootstrap resamples
-[whole imaging volumes, not slices]{.mv-accent} — the 1,064 renal records come
-from 121 volumes, and slices of one tumour are not independent observations. An
-i.i.d. per-slice bootstrap gave intervals five times too narrow.
+intervals and a one-sided p-value for that statistic > 0, computed on the
+proxy's **weighted** kappa where it is ordinal — every proxy here — so the
+interval pairs with **wKappa**, not **Kappa**. The bootstrap resamples
+[whole imaging volumes, not slices]{.mv-accent} — the published run's 1,025
+renal records come from just 118 volumes (1,064 from 121 unfiltered), and slices
+of one tumour are not independent observations. Measured on the unfiltered set,
+an i.i.d. per-slice bootstrap gave intervals five times too narrow.
 
 ## Quick start
 
