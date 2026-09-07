@@ -50,7 +50,7 @@
 - [📖 Essential Dataset Concept](#-essential-dataset-concept)
 - [💿 Batch Download (Optional)](#-batch-download-optional)
 - [📜 License](#-license)
-- [🩵 Acknowledgement](#-acknowledgement)
+- [🩵 Acknowledgment](#-acknowledgment)
 
 <br/>
 
@@ -108,7 +108,7 @@ The live **open leaderboard** (per-task score tables + a **frontier API-model pi
   <details>
   <summary>Details (Click to expand)</summary>
 
-  - Regenerate Tumor-Lesion-Size annotations for all 12 tumour/lesion datasets: multi-instance annotations 75K --> 3.8M 
+  - Regenerate Tumor-Lesion-Size annotations for all 12 tumor/lesion datasets: multi-instance annotations 75K --> 3.8M 
 
   </details>
 
@@ -116,7 +116,7 @@ The live **open leaderboard** (per-task score tables + a **frontier API-model pi
   <details>
   <summary>Details (Click to expand)</summary>
 
-  - New dataset: MSWAL (484 abdominal CT cases; tumor/lesion labels: liver tumour, kidney tumour, pancreatic cancer, liver cyst, and kidney cyst).
+  - New dataset: MSWAL (484 abdominal CT cases; tumor/lesion labels: liver tumor, kidney tumor, pancreatic cancer, liver cyst, and kidney cyst).
 
   </details>
 
@@ -154,7 +154,7 @@ The live **open leaderboard** (per-task score tables + a **frontier API-model pi
   <details>
   <summary>Details (Click to expand)</summary>
 
-  - **Highlight**: corrected T/L ellipse fit — fixes a transposed in-plane voxel-spacing bug (wrong axis lengths and major/minor labelling on anisotropic slices, e.g. sagittal/coronal); ~22% fewer T/L samples on anisotropic data, isotropic data (e.g., axial slices) essentially unchanged
+  - **Highlight**: corrected T/L ellipse fit — fixes a transposed in-plane voxel-spacing bug (wrong axis lengths and major/minor labeling on anisotropic slices, e.g. sagittal/coronal); ~22% fewer T/L samples on anisotropic data, isotropic data (e.g., axial slices) essentially unchanged
   - **Backward compatibility**: The codebase `medvision_ds` will be automatically updated to the latest (v1.1.1). `MedVision_PLANNER_VERSION='latest'` now resolves to `'1.1.1'`; pin `'1.1.0'` or `'1.0.0'` for earlier annotations.
   - ⚠️ New env var `MedVision_ACK_RELEASE`: required **only** when you pin an older version (`MedVision_PLANNER_VERSION` below the latest) — **set it to the latest version (`1.1.1`) to acknowledge you have read this release note and unblock loading legacy data**. 
   - Always set `MedVision_FORCE_INSTALL_CODE='True'` to receive notification of future releases. See [Environment Variables](https://huggingface.co/datasets/YongchengYAO/MedVision#environment-variables).
@@ -374,7 +374,7 @@ Computed from the local benchmark plans by [`script/misc/summarize_datasets.sh`]
 
 <br/>
 
-**T/L regenerated.** Clusters are now selected by a physical size floor in millimetres — `max(2.0 mm, 2 × the coarser in-plane spacing)` of the measured plane — instead of a raw pixel count; a gate that silently discarded rotated ellipses is removed; and the ellipse fit is guarded against degenerate results. Published T/L landmarks grow **75,840 → 3,801,540 (50×)**. Every other task and every previously published annotation file is unchanged. See the [v1.4.0 release note](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.4.0.md) and the blog post ([MedVision v1.4.0: 50× More Tumor/Lesion Measurements and Their Annotation Recall](https://medvision-vlm.github.io/blog/tl-annotations-v140.html)).
+**T/L regenerated.** Clusters are now selected by a physical size floor in millimeters — `max(2.0 mm, 2 × the coarser in-plane spacing)` of the measured plane — instead of a raw pixel count; a gate that silently discarded rotated ellipses is removed; and the ellipse fit is guarded against degenerate results. Published T/L landmarks grow **75,840 → 3,801,540 (50×)**. Every other task and every previously published annotation file is unchanged. See the [v1.4.0 release note](https://huggingface.co/datasets/YongchengYAO/MedVision/blob/main/doc/release-v1.4.0.md) and the blog post ([MedVision v1.4.0: 50× More Tumor/Lesion Measurements and Their Annotation Recall](https://medvision-vlm.github.io/blog/tl-annotations-v140.html)).
 
 <table>
   <tr>
@@ -876,7 +876,7 @@ The regex parser in step 2 only accepts answers written inside `<answer>…</ans
   - **T/L ellipse fit: image vs. real space** (`viz_ellipse_fit_comparison.py`): overlay the T/L ellipse axes fit in image (pixel) space vs. real (physical) space on one coronal/sagittal slice, illustrating how anisotropic pixel spacing makes the two fits diverge (rendered with and without the physical aspect-ratio correction).
   - **Detection box overlays** (`viz_detection_boxes.sh`): per-sample GT vs. predicted bounding boxes.
   - **Detection response panels** (`viz_detection_responses.sh`): per-sample prompt/response/GT panels.
-  - **Ground-truth annotation figure** (`viz_gt_annotations.sh`): GT-only panels rendered straight from the on-disk benchmark plans (no model output, no HuggingFace build), compiled into one figure with a labelled row-block per task.
+  - **Ground-truth annotation figure** (`viz_gt_annotations.sh`): GT-only panels rendered straight from the on-disk benchmark plans (no model output, no HuggingFace build), compiled into one figure with a labeled row-block per task.
   - **Plane-OOD sample grids** (`viz_planeOOD_samples.sh`): the same volume and target shown in the in-distribution axial plane and in both OOD planes (coronal, sagittal); Detection and T/L only, since A/D has no plane-OOD split.
   - **Label clouds** (`viz_label_cloud.sh`): 2×2 target × modality label clouds contrasting each task's in-distribution roster against its target-OOD roster.
   - **Comparison grids** (`viz_compile_grid_batch.sh`): tile per-sample overlays across models.
@@ -961,7 +961,7 @@ MedVision ships **Agent Skills** — plain-Markdown instructions that teach an A
 
 ## Installation
 
-Every harness discovers skills at `<skills-root>/<name>/SKILL.md`. Codex, OpenCode and Pi all read the shared `~/.agents/skills` root; Claude Code reads `~/.claude/skills`. Pick your root and link the three skills:
+**Global Agent Skill**: Every harness discovers skills at `<skills-root>/<name>/SKILL.md`. Codex, OpenCode and Pi all read the shared `~/.agents/skills` root; Claude Code reads `~/.claude/skills`. Pick your root and link the three skills:
 
 ```bash
 git clone https://github.com/YongchengYAO/MedVision.git && cd MedVision
@@ -977,7 +977,7 @@ for s in medvision medvision-paper medvision-pipeline; do
 done
 ```
 
-To scope the skills to this checkout only, link them into the project instead — `.claude/skills/` for Claude Code, `.agents/skills/` for Codex, OpenCode and Pi:
+**Project Agent Skill**: To scope the skills to this project only, link them into the local skill folder in this repo instead — `.claude/skills/` for Claude Code, `.agents/skills/` for Codex, OpenCode and Pi:
 
 ```bash
 mkdir -p .claude/skills
@@ -986,7 +986,7 @@ for s in medvision medvision-paper medvision-pipeline; do
 done
 ```
 
-Restart the agent afterwards so it re-scans the skills root.
+Restart the agent afterward so it re-scans the skills root.
 
 | Skill | Invoke | Answers |
 | --- | --- | --- |
@@ -1002,38 +1002,21 @@ Restart the agent afterwards so it re-scans the skills root.
 Ask about the technical details behind the benchmark and get the paper's own definitions rather than a guess:
 
 ```
-/medvision-paper  How are tumor/lesion sizes annotated, and which ellipse fits are discarded?
-/medvision-paper  What is nMAE, how does it differ from MRE, and what is the denominator?
-/medvision-paper  What data and hyperparameters produced MedVision-V0?
+/medvision-paper  How are tumor/lesion sizes annotated?
+/medvision-paper  Summarize the training of MedVision-V0
+/medvision-paper  What are the benchmarking tasks?
+/medvision-paper  How are model responses parsed and converted to metrics?
 ```
-
-It is the source of truth for terminology and scale numbers — annotation-generation rules, the real-world-units convention (annotations are mm and degrees, never pixels), metric definitions, the 70/30 subject-level split, and the SFT/RFT recipe.
 
 ## Run the benchmark: `/medvision-pipeline`
 
-Describe the run you want and the skill returns the ordered steps with the right module names and flags:
+Ask for how to run the benchmarking, post-training, and analyses.
 
 ```
 /medvision-pipeline  Evaluate Qwen-2.5-VL on the T/L task, then parse and summarize the results.
+/medvision-pipeline  How to finetune Gemma4 on multi-task mixture of MedVision data?
+/medvision-pipeline  Explain the clinical decision agreement analysis?
 ```
-
-The pipeline it walks you through:
-
-```bash
-# 1 — evaluate (or use a launcher in script/benchmark-{detect,TL,AD}/)
-python -m medvision_bm.benchmark.eval__qwen2_5_vl --task_type TL ...
-
-# 2 — parse model outputs into structured predictions
-python -m medvision_bm.benchmark.parse_outputs --task_type TL --task_dir <dir> --model_dir <dir>
-
-# 3 — summarize into metrics
-python -m medvision_bm.benchmark.summarize_TL_task --task_dir <dir>
-
-# 4 — optional: re-parse with the LLM judge for format-robust extraction
-bash script/llm-parsing/run_llm_parsing.sh
-```
-
-Use it the same way for dataset download, environment setup and the SFT launchers.
 
 ## Go deeper: `/medvision`
 
@@ -1041,7 +1024,6 @@ For maintainer-level work — the exact flag, pin or failure mode — the repo s
 
 ```
 /medvision  How do I add a new model across every site that needs registering?
-/medvision  Why did my detection run OOM while building the plan?
 ```
 
 See [`skills/README.md`](https://github.com/YongchengYAO/MedVision/blob/master/skills/README.md) for the routing map, the 39 bundled helper scripts, and how to use the skills as documentation without installing anything.
@@ -1669,7 +1651,7 @@ MedVision is released under the [Creative Commons Attribution 4.0 International 
 
 <br/>
 
-# 🩵 Acknowledgement
+# 🩵 Acknowledgment
 
 This work was supported by 
 - The United Kingdom Research and Innovation (grant EP/S02431X/1), UKRI Centre for Doctoral Training in Biomedical AI at the University of Edinburgh, School of Informatics

@@ -28,7 +28,7 @@
 #       --tasks-ad <repo>/tasks_list/tasks_MedVision-AD__train_SFT.json \
 #       --tasks-tl <repo>/tasks_list/tasks_MedVision-TL__train_SFT.json \
 #       --tasks-detect <repo>/tasks_list/tasks_MedVision-detect__train_SFT.json
-#   # 3) the paper's 1M detection set, resumable:
+#   # 3) a 1M detection set (larger than V0's 110K stage-3 slice), resumable:
 #   MedVision_PLANNER_VERSION=1.0.0 bash build_parquet_ds.sh --data-dir <data_dir> \
 #       --tasks-detect <repo>/tasks_list/tasks_MedVision-detect__train_SFT.json \
 #       --train-limit-detect 1000000 --val-limit-detect 500 --checkpointed --shard-size 50000 \

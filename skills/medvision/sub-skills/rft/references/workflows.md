@@ -99,7 +99,7 @@ Not part of `medvision_bm`; see `rft-recipes.md` for the exact recipes, rewards 
    DATASET_ROOT=<data_dir>/verl_datasets/qwen25vl/ds__AD5500_D0_TL0_all5500__resized-hw-512x512 \
    BASE_MODEL_PATH=<full-SFT-CoT-checkpoint> DRY_RUN=1 bash examples/grpo_trainer/train__rft-sequential__1-AD.sh   # preview
    # then DRY_RUN=0; stage 2 with ds__AD0_D0_TL5500_all5500__... and BASE_MODEL_PATH=<stage1>/global_step_N/actor/merged_hf_model
-   # stage 3 with ds__AD0_D1000000_TL0_all1000000__... (shards/ accepted); MedVision-V0 = its global_step_250
+   # stage 3 with ds__AD0_D110000_TL0_all110000__... (the 110K detection slice of the 121K); MedVision-V0 = its global_step_250
    ```
 3. Multi-task alternative: `train__rft-multitask.sh` on `ds__AD5500_D110000_TL5500_all121000__resized-hw-512x512`
    (T=8 mixing + curriculum; `+data.curriculum.enable=False` disables the curriculum); additive-reward ablation:

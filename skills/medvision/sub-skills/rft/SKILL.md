@@ -57,7 +57,7 @@ MedVision_PLANNER_VERSION=1.0.0 bash scripts/build_parquet_ds.sh --data-dir <dat
 python scripts/inspect_parquet_ds.py --path <data_dir>/verl_datasets/qwen25vl/ds__AD0_D0_TL200_all200__resized-hw-512x512
 ```
 
-**Build the paper's 1M detection set without OOM:** add `--tasks-detect ... --train-limit-detect 1000000
+**Build the 1M detection set without OOM** (a larger exploratory build, *not* V0's stage-3 data)**:** add `--tasks-detect ... --train-limit-detect 1000000
 --val-limit-detect 500 --checkpointed --shard-size 50000 --workers-format 64` (32 GB box: `--workers-format 16
 --shard-size 20000`); rerun the same command to resume from `checkpoint.json`.
 

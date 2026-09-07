@@ -12,12 +12,18 @@ CPU host. Training requires 4x H200-class GPUs (paper) and a verl environment.
 | Stage | What | Data | Where |
 | --- | --- | --- | --- |
 | 1. SFT (CoT) | full fine-tuning of `Qwen/Qwen2.5-VL-7B-Instruct`, 3 epochs, effective batch 256, bf16 FSDP, 512x512, weighted sampler | 121K CoT samples: 110K detection / 5.5K T/L / 5.5K A/D, **axial slices only for detection and T/L** (coronal/sagittal held out for the plane-OOD split); the A/D pool is mostly sagittal/coronal and has no plane-OOD split | `medvision_bm.sft` -> `../../sft/SKILL.md` |
-| 2. RFT (GRPO) | full-parameter GRPO on the SFT checkpoint, **sequentially A/D -> T/L -> detection**, as three single-task parquets built from the same training pools — A/D 5.5K, T/L 5.5K, detection 1M — with the CoT answers removed (prompts keep the CoT instruction); the 121K mixture is used by the multi-task ablation, not by this stage | parquet built by this sub-skill's builders at 512x512 for `qwen25vl` | verl fork recipes `train__rft-sequential__{1-AD,2-TL,3-detection}.sh` |
+| 2. RFT (GRPO) | full-parameter GRPO on the SFT checkpoint, **sequentially A/D -> T/L -> detection**, as three per-task parquets that **partition the same 121K SFT samples** — A/D 5.5K, T/L 5.5K, detection 110K — with the CoT answers removed (prompts keep the CoT instruction); the multi-task ablation trains on that same 121K as a single mixture parquet | parquet built by this sub-skill's builders at 512x512 for `qwen25vl` | verl fork recipes `train__rft-sequential__{1-AD,2-TL,3-detection}.sh` |
 
 The released `YongchengYAO/MedVision-V0-7B` is stage 3's `global_step_250` (recipe header of
-`train__rft-sequential__3-detection.sh`); stage 3 trains on the **1M detection** parquet
-(`ds__AD0_D1000000_TL0_all1000000__resized-hw-512x512`, built with the checkpointed builder), stages 1-2 on the 5.5K
-single-task parquets.
+`train__rft-sequential__3-detection.sh`). All three stages consume **the same 121K samples as SFT**, split by task:
+stages 1-2 the 5.5K A/D and T/L parquets, stage 3 the **110K detection** parquet
+(`ds__AD0_D110000_TL0_all110000__resized-hw-512x512`). This matches paper.tex:210 ("The same 121K training samples
+from the SFT stage are used").
+
+> A larger 1M-sample detection parquet (`ds__AD0_D1000000_TL0_all1000000__resized-hw-512x512`, built with the
+> checkpointed builder) also exists on disk and is still named in the stage-3 recipe header. Per the model author
+> it is **not** V0's training set. Do not "correct" this file back to the 1M set from that header — two earlier
+> consistency audits did exactly that and were wrong.
 
 ## 2. Rewards (`verl/utils/reward_score/medvision_rewards/`, fork `REWARDS.md`)
 
@@ -98,7 +104,7 @@ fully decay as epochs shrink (a constant LR is fine).
 | --- | --- | --- | --- | --- |
 | `train__rft-sequential__1-AD.sh` | MedVision-V0 stage 1 | full-SFT CoT checkpoint | `ds__AD5500_D0_TL0_all5500__resized-hw-512x512` | soft, multiplicative |
 | `train__rft-sequential__2-TL.sh` | stage 2 | stage 1 `global_step_N/actor/merged_hf_model` | `ds__AD0_D0_TL5500_all5500__resized-hw-512x512` | soft, multiplicative |
-| `train__rft-sequential__3-detection.sh` | stage 3 -> **MedVision-V0** (`global_step_250`) | stage 2 merged model | `ds__AD0_D1000000_TL0_all1000000__resized-hw-512x512` (accepts `shards/train_shard_*.parquet`) | soft, multiplicative |
+| `train__rft-sequential__3-detection.sh` | stage 3 -> **MedVision-V0** (`global_step_250`) | stage 2 merged model | `ds__AD0_D110000_TL0_all110000__resized-hw-512x512` -- the 110K detection slice of the 121K (the recipe header still names the 1M variant; see the note in section 1) | soft, multiplicative |
 | `train__rft-multitask.sh` | multi-task ablation: one stage, T=8 mixing, curriculum | full-SFT CoT checkpoint (`BASE_MODEL_HF` default is a **private** repo -- override) | `ds__AD5500_D110000_TL5500_all121000__resized-hw-512x512` | soft, multiplicative |
 | `train__rft-multitask__additive-reward.sh` | reward-design ablation | same | same | soft, **additive** |
 

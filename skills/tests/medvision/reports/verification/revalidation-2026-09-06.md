@@ -40,6 +40,15 @@ By source: paper alignment 22, medvision_ds 18, medvision_bm regression 88.
 - **Truth:** paper.tex:210 (\section{MedVision-V0 Training}, RFT via GRPO): "The same 121K training samples from the SFT stage are used; the image size and prompt remain the same, while the CoT answer is removed in RFT data as models learn from the reward signal." The paper nowhere mentions a 1M detection set (grep for "1M"/"1,000,000" in paper.tex returns nothing) and nowhere names a released checkpoint step. The 1M figure and step 250 come only from the as-run recipe: /mnt/vincent-pvc-rwm/verl/examples/grpo_trainer/train__rft-sequential__3-detection.sh:6-8 ("the paper's model is global_step_250 of this stage"; "dataset variant .. ds__AD0_D1000000_TL0_all1000000__resized-hw-512x512 (1M detection set, shards/)"), vs. train__rft-sequential__1-AD.sh:8 (5500) and 2-TL.sh:8 (5500).
 - **Fix:** Make the divergence explicit instead of presenting 1M as a paper fact, e.g.: "stages 1-2 use the 5.5K single-task sets; the paper states RFT reuses the same 121K SFT samples, but the as-run stage-3 recipe (train__rft-sequential__3-detection.sh) trains on a 1M-sample detection set and the released model is that stage's global_step_250 (code, not paper)."
 - **Verifier adjustment:** skills/medvision-paper/SKILL.md:27 presents code-only facts as paper facts (severity: medium). Reword to mark the divergence, e.g. "the paper states RFT reuses the same 121K SFT samples (paper.tex:210); the as-run recipes instead use single-task sets — stages 1-2 the 5.5K A/D and T/L parquets, stage 3 the 1M-cap detection parquet ds__AD0_D1000000_TL0_all1000000 — and the released model is that stage's global_step_250 (train__rft-sequential__{1,2,3}*.sh headers; code, not paper)."
+- **⛔ RETRACTED 2026-09-07 (author correction) — DO NOT RE-APPLY.** There is no paper-vs-code data
+  divergence here. MedVision-V0's stage-3 detection RFT trained on the **110K detection slice of the same
+  121K SFT samples**, exactly as paper.tex:210 states; the three sequential stages partition that 121K
+  (5.5K A/D → 5.5K T/L → 110K detection). The 1M-cap parquet
+  `ds__AD0_D1000000_TL0_all1000000__resized-hw-512x512` exists on disk but is **not** V0's training data —
+  the stale artifact is the `train__rft-sequential__3-detection.sh` *header*, not the paper. `global_step_250`
+  as the released checkpoint remains correct. The finding above was a reconstruction from that stale header.
+  skills/medvision-paper/SKILL.md has been corrected accordingly; re-applying this recommendation would
+  reintroduce the error.
 
 ### H5. `skills/medvision-paper/SKILL.md:12`
 *paper:methods (paper) · contradicts-paper · confirmed*
