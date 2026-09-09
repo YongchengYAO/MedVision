@@ -27,6 +27,7 @@ from medvision_bm.sft.sft_prompts import (
     _get_prompt_distance,
     fill_in_template,
 )
+from medvision_bm.sft.task_cache import DEFAULT_CHUNK_SIZE
 from medvision_bm.utils import str2bool
 from medvision_bm.utils.configs import DATASETS_NAME2PACKAGE, SEED
 from medvision_bm.utils.tool_execution import safe_exec_python
@@ -1816,6 +1817,23 @@ def _format_data_DetectionTask_CoT(
     return example
 
 
+def _hf_datasets_cache_dir():
+    """Arrow cache directory for MedVision dataset loads, or None for HF's default.
+
+    ``setup_env_hf`` exports ``HF_DATASETS_CACHE``, but ``datasets`` reads that
+    variable once, when it is imported -- and the entry points import it at
+    module load, long before ``main()`` calls ``setup_env_hf``. The export is
+    therefore a no-op here and the cache silently lands in ``~/.cache``, which on
+    these pods is the container overlay: every raw Arrow build (hours, and >96GiB
+    of RAM for the detection configs) is discarded when the pod restarts. Passing
+    the directory explicitly does not depend on import order.
+    """
+    data_dir = os.environ.get("MedVision_DATA_DIR")
+    if not data_dir:
+        return None
+    return os.path.join(data_dir, ".cache", "huggingface", "datasets")
+
+
 def _load_single_dataset(
     dataset_hf_id,
     dataset_name,
@@ -1854,6 +1872,7 @@ def _load_single_dataset(
                     split=split,
                     streaming=False,
                     download_mode=download_mode,
+                    cache_dir=_hf_datasets_cache_dir(),
                 )
                 if limit is not None and limit > 0 and len(ds) > limit:
                     ds = ds.select(range(limit))
@@ -3669,6 +3688,17 @@ def parse_args_multiTask():
         type=int,
         default=32,
         help="Number of workers for formatting datasets",
+    )
+    parser.add_argument(
+        "--format_cache_chunk_size",
+        type=int,
+        default=DEFAULT_CHUNK_SIZE,
+        help=(
+            "Rows per resumable chunk of the dataset-formatting cache. Each chunk "
+            "is saved as it completes, so an interrupted run resumes at the first "
+            "missing chunk; smaller values lose less work to a crash, larger ones "
+            "amortise the per-chunk worker startup."
+        ),
     )
     parser.add_argument(
         "--dataloader_num_workers",

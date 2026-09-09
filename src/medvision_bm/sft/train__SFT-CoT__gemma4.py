@@ -32,7 +32,6 @@ from medvision_bm.sft.sft_utils import (
     _format_data_DetectionTask_CoT,
     _format_data_TumorLesionTask_CoT,
     broadcast_object_from_main,
-    format_clean_dataset,
     get_cgroup_limited_cpus,
     load_split_limit_dataset,
     merge_models,
@@ -40,6 +39,14 @@ from medvision_bm.sft.sft_utils import (
     parse_validate_args_multiTask,
     prepare_trainer,
     train_resume_from_checkpoint,
+)
+from medvision_bm.sft.task_cache import (
+    DEFAULT_CHUNK_SIZE,
+    build_task_cache,
+    load_cached_task,
+    task_cache_dir,
+    task_cache_inputs,
+    task_cache_key,
 )
 from medvision_bm.utils import setup_env_hf_medvision_ds
 from medvision_bm.utils.configs import SEED
@@ -181,16 +188,60 @@ def main(
             # printed by the prep run), so training loads that dir without touching
             # the raw data.
             raw_ds = {}
+            cached_ds = {}
+            task_caches = {}
             if prepared_ds_dir is None or not kwargs.get("skip_process_dataset"):
-                for task_label, path_key, task_train_limit, task_val_limit, _, tag_ds in task_specs:
-                    if kwargs.get(path_key) is not None:
-                        raw_ds[task_label] = _load_split_dataset_task(
-                            kwargs, path_key, task_train_limit, task_val_limit, tag_ds=tag_ds
-                        )
+                for (
+                    task_label,
+                    path_key,
+                    task_train_limit,
+                    task_val_limit,
+                    mapping_func,
+                    tag_ds,
+                ) in task_specs:
+                    if kwargs.get(path_key) is None:
+                        continue
+                    # Consult the per-task cache BEFORE loading: a hit already holds the
+                    # formatted rows, and therefore the true split sizes, so a task that an
+                    # earlier run finished costs neither its raw Arrow generation nor its
+                    # formatting when the run is resumed.
+                    cache_inputs = task_cache_inputs(
+                        task_label=task_label,
+                        tasks_list_json_path=kwargs.get(path_key),
+                        train_limit=task_train_limit,
+                        val_limit=task_val_limit,
+                        tag_ds=tag_ds,
+                        mapping_func=mapping_func,
+                        model_family_name=model_family_name,
+                        base_model_hf=base_model_hf,
+                        process_img=kwargs.get("process_img"),
+                        save_processed_img_to_disk=kwargs.get("save_processed_img_to_disk"),
+                        new_shape_hw=kwargs.get("new_shape_hw"),
+                        temperature_sampler_task_column=kwargs.get(
+                            "temperature_sampler_task_column"
+                        ),
+                    )
+                    cache_dir = task_cache_dir(
+                        data_dir,
+                        model_family_name,
+                        task_label,
+                        task_cache_key(cache_inputs),
+                    )
+                    task_caches[task_label] = (cache_dir, cache_inputs)
+                    cached = load_cached_task(cache_dir)
+                    if cached is not None:
+                        cached_ds[task_label] = cached
+                        continue
+                    raw_ds[task_label] = _load_split_dataset_task(
+                        kwargs, path_key, task_train_limit, task_val_limit, tag_ds=tag_ds
+                    )
 
             if prepared_ds_dir is None:
                 # Default folder with naming convention encoding model identifier and sample sizes
-                n_train = {label: len(ds["train"]) for label, ds in raw_ds.items()}
+                n_train = {
+                    label: len(ds["train"])
+                    for label, ds in {**raw_ds, **cached_ds}.items()
+                }
                 prepared_ds_dir = os.path.join(
                     data_dir,
                     "SFT-CoT_datasets",
@@ -210,19 +261,25 @@ def main(
                 train_ds_list = []
                 val_ds_list = []
                 for task_label, _, _, _, mapping_func, _ in task_specs:
-                    if task_label not in raw_ds:
+                    if task_label in cached_ds:
+                        dataset_task = cached_ds.pop(task_label)
+                    elif task_label in raw_ds:
+                        cache_dir, cache_inputs = task_caches[task_label]
+                        dataset_task = _format_dataset_task(
+                            kwargs,
+                            raw_ds.pop(task_label),
+                            mapping_func,
+                            model_family_name,
+                            base_model_hf,
+                            task_label=task_label,
+                            temperature_sampler_task_column=kwargs.get(
+                                "temperature_sampler_task_column"
+                            ),
+                            cache_dir=cache_dir,
+                            cache_inputs=cache_inputs,
+                        )
+                    else:
                         continue
-                    dataset_task = _format_dataset_task(
-                        kwargs,
-                        raw_ds.pop(task_label),
-                        mapping_func,
-                        model_family_name,
-                        base_model_hf,
-                        task_label=task_label,
-                        temperature_sampler_task_column=kwargs.get(
-                            "temperature_sampler_task_column"
-                        ),
-                    )
                     train_ds_list.append(dataset_task["train"])
                     val_ds_list.append(dataset_task["validation"])
 
@@ -397,10 +454,19 @@ def _format_dataset_task(
     *,
     task_label,
     temperature_sampler_task_column,
+    cache_dir,
+    cache_inputs,
 ):
-    """Stage 2: format one task's splits into chat messages and tag them for temperature sampling."""
-    ds = format_clean_dataset(
+    """Stage 2: format one task's splits into chat messages and tag them for temperature sampling.
+
+    Formatting runs in resumable chunks and the finished task is published to
+    ``cache_dir``, so an interrupted run restarts at the first missing chunk
+    rather than re-formatting every task from row 0.
+    """
+    return build_task_cache(
         ds,
+        cache_dir=cache_dir,
+        inputs=cache_inputs,
         mapping_func=mapping_func,
         model_family_name=model_family_name,
         base_model_hf=base_model_hf,
@@ -408,14 +474,10 @@ def _format_dataset_task(
         process_img=kwargs.get("process_img"),
         save_processed_img_to_disk=kwargs.get("save_processed_img_to_disk"),
         new_shape_hw=kwargs.get("new_shape_hw"),
+        task_label=task_label,
+        temperature_sampler_task_column=temperature_sampler_task_column,
+        chunk_size=kwargs.get("format_cache_chunk_size") or DEFAULT_CHUNK_SIZE,
     )
-    ds["train"] = ds["train"].add_column(
-        temperature_sampler_task_column, [task_label] * len(ds["train"])
-    )
-    ds["validation"] = ds["validation"].add_column(
-        temperature_sampler_task_column, [task_label] * len(ds["validation"])
-    )
-    return ds
 
 
 if __name__ == "__main__":
