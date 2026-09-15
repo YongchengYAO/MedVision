@@ -181,16 +181,20 @@ def task_cache_key(inputs):
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
 
 
-def task_cache_dir(data_dir, model_family_name, task_label, key):
+def task_cache_dir(data_dir, datasets_dirname, model_family_name, task_label, key):
     """Directory holding one task's formatted splits.
 
-    Deliberately independent of the prepared-dataset directory name: that name
+    Deliberately independent of the prepared-dataset directory *name*: that name
     is derived from *all* tasks' row counts, which are unknown until each task
-    has been loaded, so a cache keyed on it could never be consulted first.
+    has been loaded, so a cache keyed on it could never be consulted first. It
+    does sit under the same parent folder, so ``datasets_dirname`` has no default
+    -- callers pass the same literal they build the prepared directory from
+    (``SFT-CoT_datasets`` for the CoT entry points, ``SFT_datasets`` for the
+    non-CoT one), which keeps a task's cache beside the dataset it feeds.
     """
     return os.path.join(
         data_dir,
-        "SFT-CoT_datasets",
+        datasets_dirname,
         model_family_name,
         "_task_cache",
         f"{task_label}__{key}",

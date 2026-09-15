@@ -223,6 +223,7 @@ def main(
                     )
                     cache_dir = task_cache_dir(
                         data_dir,
+                        "SFT-CoT_datasets",
                         model_family_name,
                         task_label,
                         task_cache_key(cache_inputs),
