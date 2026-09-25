@@ -28,6 +28,7 @@ from medvision_bm.sft.sft_utils import (
     _format_data_TumorLesionTask_CoT,
     broadcast_object_from_main,
     get_cgroup_limited_cpus,
+    limit_prepared_validation_split,
     load_split_limit_dataset,
     parse_sample_limits,
     parse_validate_args_multiTask,
@@ -318,6 +319,20 @@ def main(
         return
 
     dataset = load_from_disk(prepared_ds_dir)
+    if kwargs.get("skip_process_dataset"):
+        # Preparation was skipped, so the val_sample_limit* knobs never touched this split:
+        # apply them now (drop-only, seeded) so periodic evaluation stays affordable on a
+        # dataset prepared with larger validation carve-outs.
+        dataset["validation"] = limit_prepared_validation_split(
+            dataset["validation"],
+            per_task_limits={
+                "AD": val_limit_AD,
+                "Detection": val_limit_detect,
+                "TL": val_limit_TL,
+            },
+            total_limit=kwargs.get("val_sample_limit"),
+            task_column=kwargs.get("temperature_sampler_task_column"),
+        )
 
     # Detect an existing checkpoint BEFORE building the trainer: its weights must load
     # through the FSDP-aware from_pretrained path (model_weights_from), not

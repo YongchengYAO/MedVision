@@ -3399,6 +3399,66 @@ def merge_models(
     print("[Info] Model merge completed.")
 
 
+def fsdp_flat_param_dtype(model):
+    """Return the dtype of the model's FSDP flat parameters, or None.
+
+    None means the model is not FSDP-wrapped (nothing to reconcile) or its flat params
+    have mixed dtypes (ambiguous; a warning is printed and the caller should leave the
+    optimizer state as loaded).
+    """
+    try:
+        from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+    except ImportError:  # pragma: no cover - torch without distributed support
+        return None
+    dtypes = {
+        m._flat_param.dtype
+        for m in FSDP.fsdp_modules(model)
+        if getattr(m, "_has_params", False) and m._flat_param is not None
+    }
+    if len(dtypes) != 1:
+        if dtypes:
+            safe_print(
+                f"[WARN] Mixed FSDP flat-param dtypes {sorted(map(str, dtypes))}; "
+                "optimizer state left as loaded."
+            )
+        return None
+    return dtypes.pop()
+
+
+def recast_optimizer_state(optimizer, target_dtype):
+    """Recast the optimizer's floating-point moment tensors to ``target_dtype``.
+
+    Every state tensor except ``step`` (exp_avg, exp_avg_sq, ...) is moved to
+    ``target_dtype`` on its parameter's device; ``step`` is left exactly as loaded
+    (fused AdamW keeps it fp32). Accepts a raw torch optimizer or accelerate's
+    ``AcceleratedOptimizer`` wrapper.
+
+    Why this exists: on an FSDP resume the Trainer loads the optimizer state BEFORE the
+    first forward. With ``use_orig_params=True`` (the ``accelerate launch`` default) the
+    optimizer holds the ORIGINAL parameter views created at wrap time, still in the dtype
+    the model was loaded in (bf16); accelerate's mixed-precision upcast only replaces the
+    FLAT params' data with fp32, and FSDP refreshes the views on the first forward
+    (lazy_init). ``Optimizer.load_state_dict`` therefore casts the moments to the stale
+    bf16 dtype and the first fused-AdamW step sees fp32 params next to bf16 moments:
+    ``RuntimeError: Tensors of the same index must be on the same device and the same
+    dtype`` (observed 2026-09-21 resuming Qwen2.5-VL-7B fullFT from checkpoint-1000). A
+    fresh run never hits this because its moments are created lazily AFTER the refresh.
+
+    Returns:
+        int: Number of tensors recast.
+    """
+    opt = getattr(optimizer, "optimizer", optimizer)  # unwrap AcceleratedOptimizer
+    n = 0
+    for p, st in opt.state.items():
+        for k, v in list(st.items()):
+            if k == "step" or not torch.is_tensor(v) or not v.is_floating_point():
+                continue
+            if v.dtype != target_dtype or v.device != p.device:
+                st[k] = v.to(dtype=target_dtype, device=p.device)
+                n += 1
+    return n
+
+
 def train_resume_from_checkpoint(trainer, last_checkpoint, weights_preloaded=False):
     safe_print("[Resume] Requested resume_from_checkpoint=True")
 
@@ -3483,6 +3543,26 @@ def train_resume_from_checkpoint(trainer, last_checkpoint, weights_preloaded=Fal
             )
 
         trainer._load_from_checkpoint = _skip_load_from_checkpoint
+
+    # After the Trainer loads optimizer state, recast the moments to the FSDP flat-param
+    # dtype: see recast_optimizer_state for why the loaded dtype can be stale under
+    # use_orig_params + accelerate's fp32 upcast. No-op for non-FSDP models.
+    _orig_load_optimizer_and_scheduler = trainer._load_optimizer_and_scheduler
+
+    def _load_optimizer_and_scheduler_then_recast(checkpoint):
+        _orig_load_optimizer_and_scheduler(checkpoint)
+        if checkpoint is None or trainer.optimizer is None:
+            return
+        target_dtype = fsdp_flat_param_dtype(trainer.model)
+        if target_dtype is None:
+            return
+        n_recast = recast_optimizer_state(trainer.optimizer, target_dtype)
+        safe_print(
+            f"[Resume] Recast {n_recast} optimizer moment tensors to {target_dtype} "
+            "(FSDP flat-param dtype) after loading optimizer state."
+        )
+
+    trainer._load_optimizer_and_scheduler = _load_optimizer_and_scheduler_then_recast
 
     safe_print("Resuming training...")
     trainer.train(resume_from_checkpoint=last_checkpoint)
@@ -3991,6 +4071,74 @@ def parse_sample_limits(**kwargs):
         val_limit_TL,
         train_limit_total,
     )
+
+
+def limit_prepared_validation_split(
+    dataset, *, per_task_limits, total_limit, task_column, seed=SEED
+):
+    """Apply the validation sample limits to an already-PREPARED validation split.
+
+    Dataset preparation carves each task's validation split with the ``val_sample_limit*``
+    knobs, but a run that loads a prepared dataset (``--skip_process_dataset`` with
+    ``--prepared_ds_dir``) bypasses preparation and would otherwise evaluate on the split
+    exactly as saved (1.8M rows for the full v1.4.0 data). This re-applies the same knobs
+    to the loaded split so periodic evaluation stays affordable:
+
+    1. per task: rows whose ``task_column`` equals a key of ``per_task_limits`` with a
+       positive limit are sub-sampled down to that limit (uniformly, without replacement);
+       a task at or below its limit, or without a positive limit, is kept whole, and the
+       surviving rows keep the split's original order;
+    2. total: if ``total_limit`` is positive and smaller than what remains, the split is
+       shuffled with ``seed`` and truncated to ``total_limit``.
+
+    Rows are only ever dropped, never upsampled. Every selection is seeded so all ranks
+    keep identical rows. If ``task_column`` is missing, the per-task step is skipped with a
+    warning and only the total limit applies. A split already within its limits (e.g. one
+    prepared by the same launcher) is returned unchanged.
+
+    Args:
+        dataset (datasets.Dataset): The loaded validation split.
+        per_task_limits (dict[str, int | None]): Task label -> row limit (<= 0 / None keeps
+            that task whole).
+        total_limit (int | None): Overall row limit (<= 0 / None keeps all).
+        task_column (str): Column holding each row's task label.
+        seed (int): RNG seed. Defaults to the project SEED.
+
+    Returns:
+        datasets.Dataset: The (possibly) reduced validation split.
+    """
+    active = {
+        label: int(limit)
+        for label, limit in (per_task_limits or {}).items()
+        if limit is not None and int(limit) > 0
+    }
+    n_before = len(dataset)
+    if active:
+        if task_column not in dataset.column_names:
+            safe_print(
+                f"[WARN] Validation split has no '{task_column}' column: per-task validation "
+                f"limits {active} cannot be applied to the prepared split ({n_before} rows kept). "
+                "Only the total val_sample_limit applies."
+            )
+        else:
+            labels = np.asarray(dataset[task_column])
+            keep = np.ones(n_before, dtype=bool)
+            rng = np.random.default_rng(seed)
+            for label, limit in active.items():
+                idx = np.flatnonzero(labels == label)
+                if idx.size > limit:
+                    keep[idx] = False
+                    keep[rng.choice(idx, size=limit, replace=False)] = True
+            if not keep.all():
+                dataset = dataset.select(np.flatnonzero(keep))
+    if total_limit is not None and int(total_limit) > 0 and len(dataset) > int(total_limit):
+        dataset = dataset.shuffle(seed=seed).select(range(int(total_limit)))
+    if len(dataset) != n_before:
+        safe_print(
+            f"[Info] Validation split capped for evaluation: {n_before} -> {len(dataset)} rows "
+            f"(per-task limits {active}, total limit {total_limit})."
+        )
+    return dataset
 
 
 def _mask_turns(input_ids, labels, start_id, end_id, role_id, newline_id):
