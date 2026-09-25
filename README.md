@@ -311,18 +311,10 @@ Docker images are built from these [dockerfiles](https://github.com/YongchengYAO
 - **Image size distribution.** The distribution of image sizes across subtasks is provided in [`image_sizes__ds_v1.0.0`](https://github.com/YongchengYAO/MedVision/tree/master/dataset-info/image_sizes__ds_v1.0.0).
 
 - **Multi-instance and single-instance annotations.** Each benchmark sample is a *(2D slice, target)* pair, several instances of the same target on one slice still count as one annotation.
+  - 📚 [doc: multi-instance-vs-single-instance-annotations](https://medvision.readthedocs.io/en/latest/dataset/concepts.html#multi-instance-vs-single-instance-annotations)
   - **Single-instance ⊆ multi-instance**
   - **Multi-instance** (unfiltered) — every target carrying ≥ 1 annotation is kept, however many instances (boxes / clusters) it has on the slice and whatever their size.
   - **Single-instance** (filtered) — a target is kept only when it is a single, large-enough instance. Per benchmark task, a sample is dropped when:
-
-  <details>
-  <summary>Details (Click to expand)</summary>
-  | Benchmark task | Single-instance drops the sample when… |
-  |---|---|
-  | **Box** — detection | the slice has **more than one** box for the target (`len(boxes) > 1`), **or** a box is **< 10 px** on any side |
-  | **T/L** — tumor / lesion size | the target has **more than one** cluster on the slice (`n_clusters > 1`; `len(biometric_profile) > 1` on the v1.0.0 fallback) |
-  | **A/D** — biometrics (angle / distance) | *never dropped* — every angle and distance sample is kept (the loader only splits them by `metric_type`) |
-  </details>
 
 
 > [!TIP] 
