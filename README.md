@@ -69,7 +69,7 @@ The live **open leaderboard** (per-task score tables + a **frontier API-model pi
 #### General-purpose VLMs (open-weight)
 
 <p align="left">
-<img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/qwen-color.png" height="20" alt="Qwen"/> <a href="https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct">Qwen2.5-VL</a>, <a href="https://huggingface.co/Qwen/Qwen3-VL-32B-Thinking">Qwen3-VL-Thinking</a> &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/internlm-color.png" height="20" alt="InternVL"/> <a href="https://huggingface.co/OpenGVLab/InternVL3-38B">InternVL3</a> &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/gemma-color.png" height="20" alt="Gemma"/> <a href="https://huggingface.co/google/gemma-3-27b-it">Gemma-3</a>, <a href="https://huggingface.co/google/gemma-4-31B-it">Gemma-4</a> &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/meta-color.png" height="20" alt="Meta"/> <a href="https://huggingface.co/meta-llama/Llama-3.2-11B-Vision-Instruct">Llama-3.2-Vision</a> &nbsp;·&nbsp; <a href="https://huggingface.co/llava-hf/llava-onevision-qwen2-72b-ov-hf">LLaVA-OneVision</a> &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/glmv-color.png" height="20" alt="GLM"/> <a href="https://huggingface.co/zai-org/GLM-4.6V">GLM-4.6V</a>, <a href="https://huggingface.co/zai-org/GLM-4.6V-Flash">GLM-4.6V-Flash</a>
+<img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/qwen-color.png" height="20" alt="Qwen"/> <a href="https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct">Qwen2.5-VL</a>, <a href="https://huggingface.co/Qwen/Qwen3-VL-32B-Thinking">Qwen3-VL-Thinking</a> &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/internlm-color.png" height="20" alt="InternVL"/> <a href="https://huggingface.co/OpenGVLab/InternVL3-38B">InternVL3</a> &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/gemma-color.png" height="20" alt="Gemma"/> <a href="https://huggingface.co/google/gemma-3-27b-it">Gemma-3</a>, <a href="https://huggingface.co/google/gemma-4-31B-it">Gemma-4</a> &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/meta-color.png" height="20" alt="Meta"/> <a href="https://huggingface.co/meta-llama/Llama-3.2-11B-Vision-Instruct">Llama-3.2-Vision</a> &nbsp;·&nbsp; <a href="https://huggingface.co/llava-hf/llava-onevision-qwen2-72b-ov-hf">LLaVA-OneVision</a> &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/glmv-color.png" height="20" alt="GLM"/> <a href="https://huggingface.co/zai-org/GLM-4.6V">GLM-4.6V</a>, <a href="https://huggingface.co/zai-org/GLM-4.6V-Flash">GLM-4.6V-Flash</a> &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/minimax-color.png" height="20" alt="MiniMax"/> <a href="https://huggingface.co/MiniMaxAI/MiniMax-M3-MXFP8">MiniMax-M3</a>
 </p>
 
 #### Medical VLMs (open-weight)
@@ -84,13 +84,24 @@ The live **open leaderboard** (per-task score tables + a **frontier API-model pi
 <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/claude-color.png" height="20" alt="Claude"/> Claude-Fable-5 &nbsp;·&nbsp; <picture><source media="(prefers-color-scheme: dark)" srcset="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/dark/openai.png"><img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/openai.png" height="20" alt="OpenAI"/></picture> GPT-5.5-Pro &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/gemini-color.png" height="20" alt="Gemini"/> Gemini-3.1-Pro &nbsp;·&nbsp; <img src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.91.0/light/kimi-color.png" height="20" alt="Kimi"/> Kimi-K2.6
 </p>
 
-> The project-page leaderboard currently publishes full score tables for the 12 off-the-shelf VLMs + MedVision-V0, plus a Claude-Fable-5 / Gemini-3.1-Pro API pilot on tumor/lesion size. Newer entries (Qwen3-VL-Thinking, Gemma-4, GLM-4.6V/-Flash, GPT-5.5-Pro, Kimi-K2.6) have eval scripts wired up and are being rolled into the leaderboard.
+> The project-page leaderboard publishes full score tables for 18 VLMs (17 off-the-shelf VLMs + MedVision-V0), plus a Claude-Fable-5 / Gemini-3.1-Pro / GPT-5.5-Pro API pilot on tumor/lesion size. Kimi-K2.6 has an eval script wired up and is not yet on the leaderboard.
 
 <br/>
 
 
 # 🔥 News
 - [Sep 1, 2026] Update [paper](https://arxiv.org/abs/2511.18676), [leaderboard](https://medvision-vlm.github.io/), [dataset v1.4.0 blog](https://medvision-vlm.github.io/blog/tl-annotations-v140.html), and [RFT recipe](https://github.com/YongchengYAO/verl)
+
+- [Sep 25, 2026] Released the benchmarking/fine-tuning codebase `medvision_bm` v1.2.1 — [release notes](https://github.com/YongchengYAO/MedVision/blob/master/docs/codebase-release/release-v1.2.1.md)
+  <details>
+  <summary>Details (Click to expand)</summary>
+
+  - 🗂️ Resumable, cached and faster [SFT dataset preparation](https://github.com/YongchengYAO/MedVision/tree/master/src/medvision_bm/sft): per-task and per-chunk caching, so an interrupted build loses at most one chunk.
+  - 🐛 SFT training fixes: FSDP checkpoint resume no longer crashes on mismatched optimizer dtypes; the validation split is capped when training on a prepared dataset.
+  - 🤖 New [Agent Skills](https://github.com/YongchengYAO/MedVision/tree/master/skills) for Claude Code, Codex, OpenCode and Pi.
+  - 🔬 [BiomedParse segmentation-specialist ablation](https://github.com/YongchengYAO/MedVision/tree/master/script/ablation/biomedparse) and the `figure_concat` panel compositor.
+
+  </details>
 
 - [Aug 31, 2026] Released the benchmarking/fine-tuning codebase `medvision_bm` v1.2.0 — [release notes](https://github.com/YongchengYAO/MedVision/blob/master/docs/codebase-release/release-v1.2.0.md)
   <details>

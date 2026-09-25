@@ -25,7 +25,7 @@ try:
     version = _version
     release = _version
 except Exception:  # pragma: no cover - version is best-effort
-    version = release = "1.2.0"
+    version = release = "1.2.1"
 
 # -- General configuration ----------------------------------------------------
 extensions = [
