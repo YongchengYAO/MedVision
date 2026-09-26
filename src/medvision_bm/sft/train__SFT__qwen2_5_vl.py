@@ -398,6 +398,7 @@ def main(
             temperature_sampler_num_samples=kwargs.get(
                 "temperature_sampler_num_samples"
             ),
+            archive_every_n_steps=kwargs.get("archive_every_n_steps"),
         )
 
         # Train the model (DO NOT guard this with is_main_process())

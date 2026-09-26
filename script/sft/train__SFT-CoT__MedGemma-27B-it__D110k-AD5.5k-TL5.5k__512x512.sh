@@ -58,6 +58,7 @@ save_steps=100
 eval_steps=100
 logging_steps=20
 save_total_limit=5 # LoRA ckpts still carry fp32 modules_to_save (embed+lm_head, 262k Gemma vocab) + their optimizer state (~35-40GB each at 27B); keep few
+archive_every_n_steps=0 # Every N steps, keep a checkpoint copy in ${lora_checkpoint_dir}/archive (exempt from save_total_limit); 0 = off
 use_flash_attention_2=true
 num_workers_concat_datasets=4
 num_workers_format_dataset=64
@@ -206,6 +207,7 @@ python -m medvision_bm.sft.train__SFT-CoT__medgemma \
     --eval_steps ${eval_steps} \
     --logging_steps ${logging_steps} \
     --save_total_limit ${save_total_limit} \
+    --archive_every_n_steps ${archive_every_n_steps} \
     --per_device_train_batch_size ${per_device_train_batch_size} \
     --per_device_eval_batch_size ${per_device_eval_batch_size} \
     --gradient_accumulation_steps ${gradient_accumulation_steps} \
@@ -286,6 +288,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 \
     --eval_steps ${eval_steps} \
     --logging_steps ${logging_steps} \
     --save_total_limit ${save_total_limit} \
+    --archive_every_n_steps ${archive_every_n_steps} \
     --per_device_train_batch_size ${per_device_train_batch_size} \
     --per_device_eval_batch_size ${per_device_eval_batch_size} \
     --gradient_accumulation_steps ${gradient_accumulation_steps} \

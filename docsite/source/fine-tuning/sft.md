@@ -139,6 +139,7 @@ These are the knobs the scripts expose most often; they map straight to `SFTConf
 | `--new_shape_hw <H> <W>` | resize + rescale pixel size in prep | `512 512` for the 512 recipes |
 | `--save_steps` / `--eval_steps` / `--logging_steps` | checkpoint / eval / log cadence | `100 / 100 / 50` (the two Qwen2.5-VL-7B LoRA reference recipes); `100 / 100 / 20` (the other 19 launchers). The other rows in this table are the three Qwen2.5-VL-7B reference recipes' values — other families differ (e.g. `--use_flash_attention_2 false` in the six Gemma-4-31B and six MedGemma-27B launchers) |
 | `--save_total_limit` | max retained checkpoints | `10` |
+| `--archive_every_n_steps` | every N steps, save a checkpoint and keep it in `<checkpoint_dir>/archive/` (exempt from `--save_total_limit`, never picked up by resume) | `0` (off) |
 | `--resume_from_checkpoint` | resume the same `run_name` | `true` |
 
 The model family is chosen with `--model_family_name` (e.g. `qwen25vl`) plus `--base_model_hf` (a Hub ID or local path). The family name is validated at startup against the registered model list — both `vllm_qwen25vl` and the bare `qwen25vl` are accepted — so a typo fails fast instead of mid-run.

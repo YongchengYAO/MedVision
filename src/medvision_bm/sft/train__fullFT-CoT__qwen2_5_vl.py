@@ -367,6 +367,7 @@ def main(
         temperature_sampler_T=kwargs.get("temperature_sampler_T"),
         temperature_sampler_task_column=kwargs.get("temperature_sampler_task_column"),
         temperature_sampler_num_samples=kwargs.get("temperature_sampler_num_samples"),
+        archive_every_n_steps=kwargs.get("archive_every_n_steps"),
     )
 
     if kwargs.get("resume_from_checkpoint"):

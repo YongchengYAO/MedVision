@@ -2712,6 +2712,54 @@ def _build_temperature_sampler_trainer(
     )
 
 
+def _make_step_archive_callback(every_n_steps):
+    """Build a callback that archives a checkpoint every N optimizer steps.
+
+    At each ``global_step % every_n_steps == 0`` a checkpoint is saved (even when it
+    does not fall on ``save_steps``) and ``<output_dir>/checkpoint-<step>`` is mirrored
+    into ``<output_dir>/archive/checkpoint-<step>``. The archive sits outside the
+    ``checkpoint-*`` rotation, so ``save_total_limit`` never deletes it, and
+    ``get_last_checkpoint`` never resumes from it. Files are hard-linked (instant, no
+    extra disk while the source lives, survives the source's rotation) and fall back to
+    a real copy when the filesystem refuses links.
+    """
+    import shutil
+
+    from transformers import TrainerCallback
+
+    def _link_or_copy(src, dst):
+        try:
+            os.link(src, dst)
+        except OSError:
+            shutil.copy2(src, dst)
+
+    class _StepArchiveCallback(TrainerCallback):
+        def on_step_end(self, args, state, control, **kwargs):
+            if state.global_step % every_n_steps == 0:
+                control.should_save = True
+            return control
+
+        def on_save(self, args, state, control, **kwargs):
+            if state.global_step % every_n_steps != 0:
+                return control
+            # Every rank writes its own files (e.g. rng_state_<rank>.pth) into the
+            # checkpoint, so wait for all of them before rank 0 mirrors the directory.
+            PartialState().wait_for_everyone()
+            if state.is_world_process_zero:
+                name = f"checkpoint-{state.global_step}"
+                src = os.path.join(args.output_dir, name)
+                dst = os.path.join(args.output_dir, "archive", name)
+                if os.path.isdir(dst):
+                    print(f"[Archive] {dst} already exists, skipped.", flush=True)
+                else:
+                    shutil.copytree(src, dst, copy_function=_link_or_copy)
+                    print(f"[Archive] archived {src} -> {dst}", flush=True)
+            PartialState().wait_for_everyone()
+            return control
+
+    return _StepArchiveCallback()
+
+
 def prepare_trainer(
     *,
     run_name,
@@ -2736,6 +2784,7 @@ def prepare_trainer(
     temperature_sampler_T=3.0,
     temperature_sampler_task_column="__task_name",
     temperature_sampler_num_samples=-1,
+    archive_every_n_steps=0,
 ):
     """Build a QLoRA :class:`~trl.SFTTrainer` for MedVision SFT.
 
@@ -2779,6 +2828,9 @@ def prepare_trainer(
             Defaults to ``"__task_name"``.
         temperature_sampler_num_samples (int): Draws per epoch; <= 0 keeps the
             training-set length. Defaults to -1.
+        archive_every_n_steps (int): When > 0, save a checkpoint every N steps
+            and keep it under ``<output_dir>/archive`` (exempt
+            from ``save_total_limit``). Defaults to 0 (off).
 
     Returns:
         SFTTrainer: The configured trainer (a temperature-sampling subclass when
@@ -2913,6 +2965,11 @@ def prepare_trainer(
         data_collator=make_collate_fn(processor),
     )
 
+    if archive_every_n_steps and archive_every_n_steps > 0:
+        trainer_kwargs.setdefault("callbacks", []).append(
+            _make_step_archive_callback(archive_every_n_steps)
+        )
+
     # Temperature sampler path (optional): rebalance multi-task sampling by sampling tasks
     # according to p(task) ~ count(task)^(1/T) instead of raw dataset proportion.
     if enable_temperature_sampler:
@@ -2953,6 +3010,7 @@ def prepare_trainer_fullFT(
     temperature_sampler_T=3.0,
     temperature_sampler_task_column="__task_name",
     temperature_sampler_num_samples=-1,
+    archive_every_n_steps=0,
 ):
     """Prepare an SFTTrainer for full parameter finetuning (no LoRA, no quantization).
 
@@ -2999,6 +3057,9 @@ def prepare_trainer_fullFT(
             Defaults to ``"__task_name"``.
         temperature_sampler_num_samples (int): Draws per epoch; <= 0 keeps the
             training-set length. Defaults to -1.
+        archive_every_n_steps (int): When > 0, save a checkpoint every N steps
+            and keep it under ``<output_dir>/archive`` (exempt
+            from ``save_total_limit``). Defaults to 0 (off).
 
     Returns:
         SFTTrainer: The configured trainer (a temperature-sampling subclass when
@@ -3223,6 +3284,11 @@ def prepare_trainer_fullFT(
                         print(f"[MEMPROBE] optimizer introspection failed: {e!r}", flush=True)
 
         trainer_kwargs["callbacks"] = [_MemProbe()]
+
+    if archive_every_n_steps and archive_every_n_steps > 0:
+        trainer_kwargs.setdefault("callbacks", []).append(
+            _make_step_archive_callback(archive_every_n_steps)
+        )
 
     # Temperature sampler path (optional): rebalance multi-task sampling by sampling tasks
     # according to p(task) ~ count(task)^(1/T) instead of raw dataset proportion.
@@ -3918,6 +3984,16 @@ def parse_args_multiTask():
         default=-1,
         # <=0 uses len(train_dataset), matching default epoch length semantics.
         help="Number of drawn samples per epoch when temperature sampler is enabled. <=0 means len(train_dataset).",
+    )
+    parser.add_argument(
+        "--archive_every_n_steps",
+        type=int,
+        default=0,
+        help=(
+            "Save a checkpoint every N steps and keep it in "
+            "<checkpoint_dir>/archive/checkpoint-<step>, exempt from --save_total_limit. "
+            "0 (default) disables archiving."
+        ),
     )
     args = parser.parse_args()
     return args

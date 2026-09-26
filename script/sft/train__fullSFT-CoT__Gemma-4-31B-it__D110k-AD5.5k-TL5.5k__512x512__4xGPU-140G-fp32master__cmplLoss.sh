@@ -80,6 +80,7 @@ save_steps=100
 eval_steps=100
 logging_steps=20
 save_total_limit=3 # Resumable full-FT ckpts are huge at 31B (~62GB bf16 weights + ~124GB optimizer state ≈ 190GB each); keep few
+archive_every_n_steps=0 # Every N steps, keep a checkpoint copy in ${lora_checkpoint_dir}/archive (exempt from save_total_limit); 0 = off
 # NOTE: FA2 disabled for Gemma 4 (new arch + transformers 5.x); SDPA/eager is used instead.
 use_flash_attention_2=false
 num_workers_concat_datasets=4
@@ -214,6 +215,7 @@ python -m medvision_bm.sft.train__fullFT-CoT__gemma4 \
     --eval_steps ${eval_steps} \
     --logging_steps ${logging_steps} \
     --save_total_limit ${save_total_limit} \
+    --archive_every_n_steps ${archive_every_n_steps} \
     --per_device_train_batch_size ${per_device_train_batch_size} \
     --per_device_eval_batch_size ${per_device_eval_batch_size} \
     --gradient_accumulation_steps ${gradient_accumulation_steps} \
@@ -330,6 +332,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 \
     --eval_steps ${eval_steps} \
     --logging_steps ${logging_steps} \
     --save_total_limit ${save_total_limit} \
+    --archive_every_n_steps ${archive_every_n_steps} \
     --per_device_train_batch_size ${per_device_train_batch_size} \
     --per_device_eval_batch_size ${per_device_eval_batch_size} \
     --gradient_accumulation_steps ${gradient_accumulation_steps} \

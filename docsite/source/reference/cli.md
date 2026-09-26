@@ -458,6 +458,7 @@ At least one of `--tasks_list_json_path_AD`, `--tasks_list_json_path_detect`, or
 | `--eval_steps` | `50` | Steps between evaluations. |
 | `--logging_steps` | `50` | Steps between log lines. |
 | `--save_total_limit` | `10` | Max checkpoints kept. |
+| `--archive_every_n_steps` | `0` | Every N steps, save a checkpoint and keep it in `<checkpoint_dir>/archive/checkpoint-<step>`, exempt from `--save_total_limit`. `0` disables. |
 | `--per_device_train_batch_size` | `20` | Train batch size per device. |
 | `--per_device_eval_batch_size` | `20` | Eval batch size per device. |
 | `--gradient_accumulation_steps` | `2` | Accumulation steps before an update. |

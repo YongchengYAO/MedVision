@@ -912,6 +912,7 @@ The regex parser in step 2 only accepts answers written inside `<answer>…</ans
 >   - `per_device_train_batch_size`
 >   - `gradient_accumulation_steps`
 >   - `CUDA_VISIBLE_DEVICES=0,1,2,3` and `--num_processes=4`
+> - `archive_every_n_steps`: every N steps, keep a checkpoint in `<checkpoint_dir>/archive/checkpoint-<step>` that `save_total_limit` never deletes (`0` = off)
 
 - **[Blog]** [Supervised Fine-Tuning (SFT) for VLMs on Medical Image Data](https://huggingface.co/blog/YongchengYAO/medvision-sft-guide)
 

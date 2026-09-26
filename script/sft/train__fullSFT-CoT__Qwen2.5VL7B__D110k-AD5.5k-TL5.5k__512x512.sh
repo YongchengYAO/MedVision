@@ -47,6 +47,7 @@ save_steps=100
 eval_steps=100
 logging_steps=20
 save_total_limit=10 # Full FT checkpoints are large; keep fewer
+archive_every_n_steps=0 # Every N steps, keep a checkpoint copy in ${lora_checkpoint_dir}/archive (exempt from save_total_limit); 0 = off
 use_flash_attention_2=true
 num_workers_concat_datasets=4
 num_workers_format_dataset=64
@@ -178,6 +179,7 @@ python -m medvision_bm.sft.train__fullFT-CoT__qwen2_5_vl \
     --eval_steps ${eval_steps} \
     --logging_steps ${logging_steps} \
     --save_total_limit ${save_total_limit} \
+    --archive_every_n_steps ${archive_every_n_steps} \
     --per_device_train_batch_size ${per_device_train_batch_size} \
     --per_device_eval_batch_size ${per_device_eval_batch_size} \
     --gradient_accumulation_steps ${gradient_accumulation_steps} \
@@ -250,6 +252,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 \
     --eval_steps ${eval_steps} \
     --logging_steps ${logging_steps} \
     --save_total_limit ${save_total_limit} \
+    --archive_every_n_steps ${archive_every_n_steps} \
     --per_device_train_batch_size ${per_device_train_batch_size} \
     --per_device_eval_batch_size ${per_device_eval_batch_size} \
     --gradient_accumulation_steps ${gradient_accumulation_steps} \
