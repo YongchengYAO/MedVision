@@ -12,11 +12,25 @@ For each sample in the input JSONL file(s):
       Step 3: major axis length (scalar)      → MRE vs GT
       Step 4: minor axis length (scalar)      → MRE vs GT
 
+Requirements:
+    medvision_ds (and its deps, e.g. opencv-python) MUST be importable. Per-label
+    aggregation resolves each target label from the medvision_ds benchmark plan;
+    if that import fails, every sample is silently dropped and the summary reports
+    "nan ... (Total Samples: 0)". Install it first:
+        python -m medvision_bm.benchmark.install_medvision_ds --data_dir /path/to/MedVision/Data
+    (see script/analyze/scaled-pixel-size/analyze__proc_acc__model_level.sh).
+
 Usage:
     python analyze_process_accuracy_TL.py \
         --task_dir /path/to/MedVision-TL-v2-CoT \
         [--jsonl /path/to/explicit.jsonl ...] \
         [--output_suffix _proc_acc]
+
+    # Exclude removed samples (outputs get a "_filtered" suffix):
+    python analyze_process_accuracy_TL.py \
+        --model_dir /path/to/MedVision-TL-v2-CoT/<model> \
+        --removed_samples_dir /path/to/MedVision/Data/Datasets \
+        [--removed_samples_filename multi_cluster_samples_v1.0.0_to_v1.1.0.json]
 """
 
 import argparse
@@ -620,6 +634,10 @@ SUMMARY_PROC_ACC_TL_MODEL_FILENAME = "summary_proc_acc_TL_model.txt"
 _IMGMOD_MAP = {"MRI": "MR", "CT": "CT", "ultrasound": "US", "X-ray": "XR", "PET": "PET"}
 _SLICE_MAP = {0: "S", 1: "C", 2: "A"}
 
+# Distinct label-lookup errors already reported, so a systemic cause (e.g. missing
+# medvision_ds) is printed once instead of silently dropping every sample.
+_LABEL_ERRORS_WARNED = set()
+
 
 def _get_tl_label(record):
     """Derive anatomy label key (e.g. 'Hepatocellular Carcinoma @ CT (S)') from a TL record."""
@@ -648,18 +666,29 @@ def _get_tl_label(record):
         if slicetype is None:
             return None
         return f"{new_label} @ {img_mod} ({slicetype})"
-    except Exception:
+    except Exception as e:
+        err = f"{type(e).__name__}: {e}"
+        if err not in _LABEL_ERRORS_WARNED:
+            print(
+                f"[error] label lookup failed ({err}); affected samples are "
+                "excluded from the summary. Is medvision_ds installed?",
+                file=sys.stderr,
+            )
+            _LABEL_ERRORS_WARNED.add(err)
         return None
 
 
 def _aggregate_by_label_TL(all_results):
     """Aggregate per-sample results by anatomy label; return {label: averaged step metrics}."""
     grouped = {}
+    n_candidates = n_unlabeled = 0
     for r in all_results:
         if r.get("error"):
             continue
+        n_candidates += 1
         label = _get_tl_label(r)
         if label is None:
+            n_unlabeled += 1
             continue
         if label not in grouped:
             grouped[label] = {
@@ -696,6 +725,13 @@ def _aggregate_by_label_TL(all_results):
             and s4_mre is not None
         ):
             g["n_success"] += 1
+
+    if n_unlabeled:
+        print(
+            f"[warn] {n_unlabeled}/{n_candidates} samples dropped from the summary: "
+            "target label could not be resolved.",
+            file=sys.stderr,
+        )
 
     def _avg(vals):
         return float(np.mean(vals)) if vals else float("nan")

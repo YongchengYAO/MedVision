@@ -16,6 +16,13 @@ For each sample in the input JSONL file(s):
       Step 2: line 2 endpoints (2 coords) → norm-L2
       Step 3: computed angle              → MRE
 
+Requirements:
+    medvision_ds (and its deps, e.g. opencv-python) MUST be importable: the
+    benchmark_plan used for GT extraction is imported from medvision_ds, so without
+    it every sample fails GT extraction. Install it first:
+        python -m medvision_bm.benchmark.install_medvision_ds --data_dir /path/to/MedVision/Data
+    (see script/analyze/scaled-pixel-size/analyze__proc_acc__model_level.sh).
+
 Usage:
     python analyze_process_accuracy_AD.py \
         --task_dir /path/to/MedVision-AD-v2-CoT \
