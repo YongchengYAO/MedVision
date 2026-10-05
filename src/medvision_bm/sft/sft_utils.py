@@ -3525,11 +3525,77 @@ def recast_optimizer_state(optimizer, target_dtype):
     return n
 
 
+def match_checkpoint_global_batch(trainer, last_checkpoint):
+    """Rescale gradient_accumulation_steps so the global batch equals the checkpoint's.
+
+    HF Trainer counts optimizer steps. Resuming on a different number of GPUs with the
+    same gradient_accumulation_steps changes the samples per step, but the restored
+    global_step is not rescaled: the epoch counter, LR schedule position and resume
+    data-skip all jump (2 -> 4 GPUs moved a run from epoch 0.41 to 0.83 and skipped the
+    data in between). Keeping per_device_bsz * world_size * grad_accum equal to the
+    checkpoint's global batch keeps every step-indexed quantity valid.
+
+    The checkpoint's global batch is inferred from trainer_state.json as
+    epoch * len(train_dataset) / global_step (the same samples-per-epoch definition
+    recompute_total_max_steps uses), rounded to a multiple of its per-device batch.
+    """
+    args = trainer.args
+    world_size = PartialState().num_processes
+    micro_bsz = args.per_device_train_batch_size * world_size
+
+    new_grad_accum = args.gradient_accumulation_steps
+    if is_main_process():
+        with open(
+            os.path.join(last_checkpoint, "trainer_state.json"), "r", encoding="utf-8"
+        ) as f:
+            _state = json.load(f)
+        prev_global = _state.get("global_step") or 0
+        prev_epoch = _state.get("epoch") or 0.0
+        prev_device_bsz = _state.get("train_batch_size") or args.per_device_train_batch_size
+        if prev_global > 0 and prev_epoch > 0:
+            samples_per_step = prev_epoch * len(trainer.train_dataset) / prev_global
+            prev_global_bsz = prev_device_bsz * max(
+                1, round(samples_per_step / prev_device_bsz)
+            )
+            print(
+                f"[Resume] Checkpoint global batch (inferred): {prev_global_bsz}; "
+                f"current: {args.per_device_train_batch_size} x {world_size} GPUs x "
+                f"{args.gradient_accumulation_steps} accum = "
+                f"{micro_bsz * args.gradient_accumulation_steps}"
+            )
+            if prev_global_bsz % micro_bsz == 0:
+                new_grad_accum = prev_global_bsz // micro_bsz
+            else:
+                print(
+                    f"[Resume] ERROR: checkpoint global batch {prev_global_bsz} is not a "
+                    f"multiple of per_device_train_batch_size x world_size = {micro_bsz}; "
+                    "no gradient_accumulation_steps keeps the epoch count consistent."
+                )
+                new_grad_accum = 0
+
+    # Broadcast so every rank applies the same value (0 = unresolvable on main).
+    new_grad_accum = broadcast_int_from_main(new_grad_accum)
+    if new_grad_accum < 1:
+        raise RuntimeError(
+            "[Resume] Cannot match the checkpoint's global batch with the current "
+            "number of GPUs and per_device_train_batch_size (see log above)."
+        )
+    if new_grad_accum != args.gradient_accumulation_steps:
+        safe_print(
+            f"[Resume] gradient_accumulation_steps: {args.gradient_accumulation_steps} -> "
+            f"{new_grad_accum} to keep the checkpoint's global batch on {world_size} GPUs."
+        )
+        args.gradient_accumulation_steps = new_grad_accum
+
+
 def train_resume_from_checkpoint(trainer, last_checkpoint, weights_preloaded=False):
     safe_print("[Resume] Requested resume_from_checkpoint=True")
 
     assert last_checkpoint is not None, f"No checkpoint found in {last_checkpoint}"
     safe_print(f"[Resume] Found checkpoint: {last_checkpoint}")
+
+    # Must run before recompute_total_max_steps, which depends on gradient_accumulation_steps.
+    match_checkpoint_global_batch(trainer, last_checkpoint)
 
     # recompute_total_max_steps already broadcasts the integer so every process
     # receives the same `new_max_steps` value in its local variable.
