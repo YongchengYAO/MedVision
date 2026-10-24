@@ -21,7 +21,7 @@ sd_hide_title: true
 
 **Dataset and benchmark for _quantitative_ medical image analysis**
 
-[Paper](https://arxiv.org/abs/2511.18676) ·
+[Paper](https://aclanthology.org/2026.emnlp-main.1362/) ·
 [Project page](https://medvision-vlm.github.io) ·
 [Dataset](https://huggingface.co/datasets/YongchengYAO/MedVision) ·
 [Models](https://huggingface.co/collections/YongchengYAO/medvision-v0) ·
@@ -111,17 +111,29 @@ The benchmarking codebase is published on PyPI as
 
 ## Citation
 
-If MedVision, the `medvision_bm` code, or the MedVision-V0 models are useful in your research, please cite the preprint:
+If MedVision, the `medvision_bm` code, or the MedVision-V0 models are useful in your research, please cite the paper:
 
 ```bibtex
-@misc{yao2026medvisionbenchmarkingquantitativemedical,
-      title={MedVision: Benchmarking Quantitative Medical Image Analysis},
-      author={Yongcheng Yao and Yongshuo Zong and Raman Dutt and Yongxin Yang and Sotirios A Tsaftaris and Timothy Hospedales},
-      year={2026},
-      eprint={2511.18676},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/2511.18676},
+@inproceedings{yao-etal-2026-medvision,
+    title = "{M}ed{V}ision: Benchmarking Quantitative Medical Image Analysis",
+    author = "Yao, Yongcheng  and
+      Zong, Yongshuo  and
+      Dutt, Raman  and
+      Yang, Yongxin  and
+      Tsaftaris, Sotirios A.  and
+      Hospedales, Timothy",
+    editor = "Lee, Hung-Yi  and
+      Dev, Sunipa  and
+      Li, Jessy  and
+      Elliott, Desmond",
+    booktitle = "Proceedings of the 2026 Conference on Empirical Methods in Natural Language Processing",
+    month = oct,
+    year = "2026",
+    address = "Budapest, Hungary",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2026.emnlp-main.1362/",
+    pages = "31065--31102",
+    ISBN = "979-8-89176-459-0"
 }
 ```
 
@@ -129,7 +141,7 @@ If MedVision, the `medvision_bm` code, or the MedVision-V0 models are useful in 
 
 Everything the project publishes lives at one of these entry points:
 
-- **Paper (arXiv)** — <https://arxiv.org/abs/2511.18676>
+- **Paper (EMNLP 2026)** — <https://aclanthology.org/2026.emnlp-main.1362/>
 - **Project page & open leaderboard** — <https://medvision-vlm.github.io> (per-task score tables, an interactive case viewer, and a frontier API-model pilot study)
 - **Dataset (Hugging Face)** — <https://huggingface.co/datasets/YongchengYAO/MedVision>
 - **PyPI package** — <https://pypi.org/project/medvision-bm/>

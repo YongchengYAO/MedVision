@@ -8,7 +8,7 @@
 
   🎉 **Paper accepted @ EMNLP 2026 Main Conference** <picture><source media="(prefers-color-scheme: dark)" srcset="fig/emnlp2026-logo-dark.png"><img src="fig/emnlp2026-logo.png" height="22" alt="EMNLP 2026, Budapest" /></picture> 🎉
 
-  | 🌏 [**Project**](https://medvision-vlm.github.io) | 🧑🏻‍💻 [**GitHub**](https://github.com/YongchengYAO/MedVision) | 📚 [**Docs**](https://medvision.readthedocs.io/en/latest/index.html) | 🩻 [**Dataset**](https://huggingface.co/datasets/YongchengYAO/MedVision) | 🔎 [**Data Explorer**](https://medvision-vlm.github.io/explorer.html) | 🐳 [**Docker**](https://hub.docker.com/r/vincentycyao/medvision/tags) | 🤗 [**Models**](https://huggingface.co/collections/YongchengYAO/medvision-v0) | 🚀 [**Demo**](https://huggingface.co/spaces/YongchengYAO/MedVision-V0-demo) | 📖 [**arXiv**](https://arxiv.org/abs/2511.18676) | 💼 [**LinkedIn**](https://www.linkedin.com/in/yongcheng-yao-379b44279) |
+  | 🌏 [**Project**](https://medvision-vlm.github.io) | 🧑🏻‍💻 [**GitHub**](https://github.com/YongchengYAO/MedVision) | 📚 [**Docs**](https://medvision.readthedocs.io/en/latest/index.html) | 🩻 [**Dataset**](https://huggingface.co/datasets/YongchengYAO/MedVision) | 🔎 [**Data Explorer**](https://medvision-vlm.github.io/explorer.html) | 🐳 [**Docker**](https://hub.docker.com/r/vincentycyao/medvision/tags) | 🤗 [**Models**](https://huggingface.co/collections/YongchengYAO/medvision-v0) | 🚀 [**Demo**](https://huggingface.co/spaces/YongchengYAO/MedVision-V0-demo) | 📖 [**Paper**](https://aclanthology.org/2026.emnlp-main.1362/) | 💼 [**LinkedIn**](https://www.linkedin.com/in/yongcheng-yao-379b44279) |
 
   🔎 Benchmarking VLMs for medical vision tasks: detection and measurement 📏
 
@@ -22,14 +22,26 @@
 
 
 ```
-@misc{yao2026medvisionbenchmarkingquantitativemedical,
-      title={MedVision: Benchmarking Quantitative Medical Image Analysis}, 
-      author={Yongcheng Yao and Yongshuo Zong and Raman Dutt and Yongxin Yang and Sotirios A Tsaftaris and Timothy Hospedales},
-      year={2026},
-      eprint={2511.18676},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/2511.18676}, 
+@inproceedings{yao-etal-2026-medvision,
+    title = "{M}ed{V}ision: Benchmarking Quantitative Medical Image Analysis",
+    author = "Yao, Yongcheng  and
+      Zong, Yongshuo  and
+      Dutt, Raman  and
+      Yang, Yongxin  and
+      Tsaftaris, Sotirios A.  and
+      Hospedales, Timothy",
+    editor = "Lee, Hung-Yi  and
+      Dev, Sunipa  and
+      Li, Jessy  and
+      Elliott, Desmond",
+    booktitle = "Proceedings of the 2026 Conference on Empirical Methods in Natural Language Processing",
+    month = oct,
+    year = "2026",
+    address = "Budapest, Hungary",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2026.emnlp-main.1362/",
+    pages = "31065--31102",
+    ISBN = "979-8-89176-459-0"
 }
 ```
 

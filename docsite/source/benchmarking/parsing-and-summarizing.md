@@ -131,7 +131,7 @@ unfiltered run. Of the three benchmark summarizers, only `summarize_TL_task` tak
 
 :::{warning}
 Omitting `--removed_samples_dir` for T/L silently includes the multi-cluster samples and yields numbers
-that do not line up with the [paper](https://arxiv.org/abs/2511.18676).
+that do not line up with the [paper](https://aclanthology.org/2026.emnlp-main.1362/).
 :::
 
 ## Beyond the published numbers

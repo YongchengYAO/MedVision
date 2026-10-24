@@ -24,7 +24,7 @@ dependencies = [
 [project.urls]
 "License" = "https://creativecommons.org/licenses/by/4.0/"
 "Homepage" = "https://medvision-vlm.github.io"
-"Paper" = "https://arxiv.org/abs/2511.18676"
+"Paper" = "https://aclanthology.org/2026.emnlp-main.1362/"
 "Source" = "https://github.com/YongchengYAO/MedVision"
 "Data" = "https://huggingface.co/datasets/YongchengYAO/MedVision"
 
